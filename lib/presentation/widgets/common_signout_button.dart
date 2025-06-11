@@ -1,0 +1,34 @@
+import 'package:dar_al_safwa/core/constants/custom_size.dart';
+import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+
+Widget commonSignOutButton() {
+  return Container(
+    margin: EdgeInsets.symmetric(horizontal: screenWidth5),
+    width: screenWidth * 0.3,
+    child: ElevatedButton(
+      onPressed: () {},
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.secondaryColor,
+        foregroundColor: AppColors.white,
+        padding: EdgeInsets.symmetric(vertical: screenHeight2),
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            width: 2,
+            color: Colors.white,
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        elevation: 2,
+      ),
+      child: Text(
+        'Sign Out',
+        style: TextStyle(
+          fontSize: H18,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    ),
+  );
+}
