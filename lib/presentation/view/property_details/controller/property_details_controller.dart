@@ -47,10 +47,10 @@ class PropertyDetailsController extends GetxController {
 
       if (response.statusCode == 200) {
         final propertyResponse = PropertyResponse.fromJson(response.data);
-        debugPrint("🔔 property response: $propertyResponse");
+        debugPrint("🔔 property response: ${propertyResponse.data?.property}");
         property(propertyResponse.data?.property);
         debugPrint(
-            '👌 Property loaded successfully: ${propertyResponse.data?.property}');
+            '👌 Property loaded successfully: ${propertyResponse.data?.property?.description?.en}');
       } else {
         debugPrint(
             '😔 Failed to load property details: ${response.statusMessage}');

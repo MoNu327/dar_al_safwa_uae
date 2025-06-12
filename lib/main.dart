@@ -105,9 +105,9 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         locale: const Locale('en'),
         fallbackLocale: const Locale('en'),
-        home: TenantDashboard(),
-        // initialRoute:
-        //     isAuthenticated ? AppRoute.navbar : AppRoute.initial, //navbar
+        // home: TenantDashboard(),
+        initialRoute:
+            isAuthenticated ? AppRoute.navbar : AppRoute.initial, //navbar
         getPages: AppRoute.routes,
         initialBinding: AppBindings(),
       ),

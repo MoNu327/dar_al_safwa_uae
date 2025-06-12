@@ -24,8 +24,7 @@ class TenantDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final LocalizationController localizationController = Get.find();
     final LoginController loginController = Get.put(LoginController());
-    final TenantPropertyController tenantPropertyController =
-        Get.put(TenantPropertyController());
+
     final FirebaseAuth auth = FirebaseAuth.instance;
     return PopScope(
       canPop: false,
@@ -138,7 +137,9 @@ class TenantDashboard extends StatelessWidget {
                     buildMenuTile(
                       leading: Image.asset("assets/images/Documents.png"),
                       title: 'My Documents',
-                      onTap: () {},
+                      onTap: () {
+                        Get.toNamed("/tenantDocumentsList");
+                      },
                     ),
                     buildMenuTile(
                       leading: Image.asset("assets/images/Tickets.png"),
@@ -167,60 +168,3 @@ class TenantDashboard extends StatelessWidget {
     );
   }
 }
-
-// Padding( // This should be aded inside the properties section of tenants
-//           padding: EdgeInsets.symmetric(
-//             horizontal: Get.width * 0.04,
-//             vertical: Get.height * 0.02,
-//           ),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               kHeight(0.01),
-//               Padding(
-//                 padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
-//                 child: CustomTextWidget(
-//                   title: "My Properties",
-//                   fontSize: screenHeight * 0.02,
-//                   fontWeight: FontWeight.w600,
-//                   color: AppColors.black,
-//                 ),
-//               ),
-//               kHeight(0.005),
-//               Expanded(
-//                 child: Obx(() {
-//                   if (tenantPropertyController.tenantProperties.isEmpty) {
-//                     return Center(
-//                       child: CustomTextWidget(
-//                         title: 'No Properties',
-//                         fontSize: Get.height * 0.02,
-//                         color: AppColors.black600,
-//                       ),
-//                     );
-//                   }
-
-//                   return ListView.builder(
-//                     itemCount: tenantPropertyController.tenantProperties.length,
-//                     itemBuilder: (context, index) {
-//                       final property =
-//                           tenantPropertyController.tenantProperties[index];
-//                       return TenantPropertyListWidget(
-//                         imageUrl: property['imageUrl'],
-//                         propertyName: property['propertyName'],
-//                         status: property['status'],
-//                         location: property['location'],
-//                         onTap: () {
-//                           Get.to(
-//                             () => CustomTenantPropertyDetailWidget(
-//                               propertyId: property['id'],
-//                             ),
-//                           );
-//                         },
-//                       );
-//                     },
-//                   );
-//                 }),
-//               ),
-//             ],
-//           ),
-//         ),

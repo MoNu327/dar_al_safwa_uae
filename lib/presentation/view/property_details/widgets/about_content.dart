@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../../../data/model/property_details_model.dart';
 import '../../../view_model/localization_controller.dart';
@@ -22,7 +23,6 @@ class AboutContent extends StatelessWidget {
   AboutContent({super.key});
 
   final PropertyDetailsController propertyDetailsController = Get.find();
-
   final LocalizationController localizationController = Get.find();
   final FirebaseAuth auth = FirebaseAuth.instance;
   final VideoController videoController = Get.put(VideoController());
@@ -43,22 +43,16 @@ class AboutContent extends StatelessWidget {
             bottom: Get.height * 0.02,
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             spacing: Get.height * 0.025,
             children: [
               _buildTitle(
                 'Description',
                 _buildDescriptionSection(isArabic
-                    ? property.description?.ar
-                    : property.description?.en),
+                    ? property.description?.ar ?? ""
+                    : property.description?.en ?? ""),
               ),
 
-              // _buildTitle(
-              //   (isArabic
-              //           ? property.overview?.sectionTitle?.ar
-              //           : property.overview?.sectionTitle?.en) ??
-              //       'Overview',
-              //   _buildOverviewSection(property.overview),
-              // ),
               _buildSection(
                 title: (isArabic
                         ? property.overview?.sectionTitle?.ar
@@ -71,7 +65,7 @@ class AboutContent extends StatelessWidget {
               _buildAgentDetails(),
 
               // Take a video tour
-              _buildTitle('Take a video tour', _buildVideoTourSection()),
+              _buildTitle('Take a video tour', _buildYoutubeViewerSection()),
 
               _buildSection(
                 title: 'Features & Amenities',
@@ -85,17 +79,7 @@ class AboutContent extends StatelessWidget {
                 title: 'Nearby Locations',
                 child: _buildNearbyLocations(property.location?.nearby),
               ),
-
-              // // Features & Amenities
-              // _buildTitle(
-              //     'Features & Amenities', _buildFeaturesAmenitiesSection()),
-
-              // // Regulatory Information Section
-              // _buildTitle(
-              //     'Regulatory Information', _buildRegulatoryInfoSection()),
-
-              // // Location Nearby
-              // _buildTitle('Location Nearby', _buildLocationNearbySection())
+              kHeight(0.02)
             ],
           ),
         ),
@@ -122,7 +106,7 @@ class AboutContent extends StatelessWidget {
   }
 
   Widget _buildOverview(Overview? overview) {
-    if (overview == null || overview.items!.isEmpty) {
+    if (overview == null || overview.items == null || overview.items!.isEmpty) {
       return const Text('No overview information available');
     }
 
@@ -135,10 +119,10 @@ class AboutContent extends StatelessWidget {
         mainAxisSpacing: screenHeight * 0.015,
         childAspectRatio: 1.5,
       ),
-      itemCount: overview.items?.length,
+      itemCount: overview.items?.length ?? 0,
       itemBuilder: (context, index) {
         final item = overview.items?[index];
-        return _buildOverviewItem(item!);
+        return item != null ? _buildOverviewItem(item) : const SizedBox();
       },
     );
   }
@@ -154,7 +138,7 @@ class AboutContent extends StatelessWidget {
         ),
         SizedBox(height: screenHeight * 0.005),
         CustomTextWidget(
-          title: isArabic ? item.title?.ar : item.title?.en ?? '',
+          title: isArabic ? item.title?.ar ?? '' : item.title?.en ?? '',
           fontSize: tagTitle,
         ),
         Text(
@@ -169,13 +153,14 @@ class AboutContent extends StatelessWidget {
   }
 
   String _formatOverviewValue(dynamic value) {
+    if (value == null) return '';
     if (value is int || value is String) return value.toString();
     if (value is AreaValue) return value.formatted?.en ?? '';
     return '';
   }
 
   IconData _getIconForOverviewItem(String? iconName) {
-    switch (iconName) {
+    switch (iconName ?? '') {
       case 'bed':
         return Icons.bed;
       case 'bathtub':
@@ -209,7 +194,6 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  // Description Section Widget
   Widget _buildDescriptionSection(String? description) {
     return CustomTextWidget(
       title: description ?? "No description available.",
@@ -220,136 +204,6 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  // Overview Section Widget
-  Widget _buildOverviewSection(Overview? overview) {
-    return Obx(() {
-      if (overview == null || overview.items!.isEmpty) {
-        return const Text('No overview information available');
-      }
-
-      return _buildPropertyOverviewGrid();
-    });
-  }
-
-  // Grid View Widget for Property Overview
-  Widget _buildPropertyOverviewGrid() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: Get.width * 0.015,
-        mainAxisSpacing: Get.height * 0.01,
-        childAspectRatio: 2,
-      ),
-      itemCount: propertyDetailsController.propertyOverView.length * 8,
-      itemBuilder: (context, index) {
-        var property = propertyDetailsController.propertyOverView[index ~/ 8];
-        int detailIndex = index % 8;
-
-        return _buildRowWithIcon(detailIndex, property);
-      },
-    );
-  }
-
-  // Property Overview Row Widget
-  Widget _buildRowWithIcon(int detailIndex, var property) {
-    String label;
-    dynamic value;
-    IconData icon;
-
-    switch (detailIndex) {
-      case 0:
-        label = 'ID:';
-        value = property['id'];
-        icon = Icons.home;
-        break;
-      case 1:
-        label = 'Type:';
-        value = property['type'];
-        icon = Icons.home_work;
-        break;
-      case 2:
-        label = 'Garages:';
-        value = property['garages'];
-        icon = Icons.garage_sharp;
-        break;
-      case 3:
-        label = 'Bedrooms:';
-        value = property['bedrooms'];
-        icon = Icons.bed;
-        break;
-      case 4:
-        label = 'Bathrooms:';
-        value = property['bathrooms'];
-        icon = Icons.bathtub;
-        break;
-      case 5:
-        label = 'Size:';
-        value = '${property['size']} sq.ft';
-        icon = Icons.scale;
-        break;
-      case 6:
-        label = 'Built Year:';
-        value = property['builtYear'];
-        icon = Icons.calendar_today;
-        break;
-      case 7:
-        label = 'Balcony:';
-        value = property['hasBalcony'] ? 'Available' : 'Not-Available';
-        icon = Icons.filter_hdr;
-        break;
-      default:
-        return Container();
-    }
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: Get.height * 0.015),
-      child: Row(
-        spacing: Get.width * 0.015,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: Get.width * 0.025,
-              vertical: Get.height * 0.013,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              border: Border.all(width: 1, color: AppColors.lightGrey),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              icon,
-              color: AppColors.black,
-              size: Get.height * 0.022,
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CustomTextWidget(
-                title: label,
-                fontSize: Get.height * 0.012,
-                color: AppColors.black800,
-                fontWeight: FontWeight.w400,
-              ),
-              SizedBox(height: Get.height * 0.002),
-              CustomTextWidget(
-                title: '$value',
-                fontSize: Get.height * 0.015,
-                color: AppColors.black,
-                fontWeight: FontWeight.w500,
-              )
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Agent Details Widget
   Widget _buildAgentDetails() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -439,7 +293,6 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  // Video section widget for video tour
   Widget _buildVideoTourSection() {
     return Container(
       width: double.infinity,
@@ -460,9 +313,7 @@ class AboutContent extends StatelessWidget {
             bottom: 5,
             left: 8,
             child: ElevatedButton(
-              onPressed: () {
-                // Add your onPressed code here!
-              },
+              onPressed: () {},
               child: const Text("View All"),
             ),
           ),
@@ -478,227 +329,142 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  // Features & Amenities Section
-  Widget _buildFeaturesAmenitiesSection() {
-    return Obx(() {
-      var features = propertyDetailsController.featuresAndAmenities;
+  Widget _buildYoutubeViewerSection() {
+    final videoController = Get.find<VideoController>();
 
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          crossAxisSpacing: Get.width * 0.03,
-          childAspectRatio: 1,
-        ),
-        itemCount: features.length,
-        itemBuilder: (context, index) {
-          var feature = features[index];
-
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                padding: EdgeInsets.all(Get.height * 0.015),
+    return Container(
+      width: double.infinity,
+      height: Get.height * 0.24, // Made it taller for debug info
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Stack(
+        children: [
+          // YouTube Player or Debug Info
+          Obx(() {
+            if (videoController.isYoutubeInitialized.value &&
+                videoController.youtubeController != null) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: YoutubePlayer(
+                  controller: videoController.youtubeController!,
+                  showVideoProgressIndicator: true,
+                  progressIndicatorColor: AppColors.primaryColor,
+                  progressColors: ProgressBarColors(
+                    playedColor: AppColors.primaryColor,
+                    handleColor: AppColors.primaryColor,
+                  ),
+                  onReady: () {
+                    print('✅ YouTube player onReady called');
+                    videoController.debugMessage.value = 'Player ready!';
+                  },
+                  onEnded: (data) {
+                    print('YouTube video ended');
+                  },
+                ),
+              );
+            } else {
+              // Debug loading screen
+              return Container(
                 decoration: BoxDecoration(
-                  color: AppColors.white,
-                  border: Border.all(
-                    width: 1,
-                    color: AppColors.lightGrey,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
-                  child: Icon(
-                    _getIconData(feature["icon"]),
-                    color: AppColors.black,
-                    size: Get.height * 0.02,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(color: Colors.white),
+                      const SizedBox(height: 16),
+                      Obx(() => Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              videoController.debugMessage.value,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          )),
+                      const SizedBox(height: 16),
+                      // Debug buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () =>
+                                videoController.retryYoutubeInitialization(),
+                            child: const Text('Retry',
+                                style: TextStyle(fontSize: 10)),
+                          ),
+                          const SizedBox(width: 8),
+                          // ElevatedButton(
+                          //   onPressed: () => videoController
+                          //       .testWithDifferentVideo('BaW_jenozKc'),
+                          //   child: const Text('Test Video',
+                          //       style: TextStyle(fontSize: 10)),
+                          // ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Expanded(
-                child: Center(
+              );
+            }
+          }),
+
+          // Original buttons
+          Positioned(
+            top: 8,
+            right: 8,
+            child: SizedBox(
+              height: screenHeight * 0.04,
+              width: screenWidth * 0.25,
+              child: ElevatedButton(
+                  onPressed: () {
+                    // videoController.launchYouTubeVideo(
+                    //     "https://www.youtube.com/watch?v=pGQ7Km9gMpg");
+                  },
+                  style: ElevatedButton.styleFrom(
+                    shape: StadiumBorder(),
+                    padding: EdgeInsets.all(4),
+
+                    backgroundColor:
+                        AppColors.secondaryColor, // set your desired color
+                  ),
                   child: CustomTextWidget(
-                    title: feature["name"],
-                    color: AppColors.black800,
-                    fontWeight: FontWeight.w400,
-                    fontSize: Get.height * 0.012,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      );
-    });
-  }
-
-  // Helper function to map the icon string to IconData
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case "bathtub":
-        return Icons.bathtub;
-      case "spa":
-        return Icons.spa;
-      case "ac_unit":
-        return Icons.ac_unit;
-      case "storage":
-        return Icons.storage;
-      case "business_center":
-        return Icons.business_center;
-      default:
-        return Icons.help_outline;
-    }
-  }
-
-  // Regulatory Information Section
-  Widget _buildRegulatoryInfoSection() {
-    return Obx(() {
-      var regulatoryList = propertyDetailsController.regulatoryInfo;
-
-      return Column(
-        children: List.generate(regulatoryList.length, (index) {
-          var item = regulatoryList[index];
-          return Padding(
-            padding: EdgeInsets.only(bottom: Get.height * 0.015),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  spacing: Get.width * 0.01,
-                  children: [
-                    CustomTextWidget(
-                      title: item['title']!,
-                      color: AppColors.black800,
-                      fontWeight: FontWeight.w500,
-                      fontSize: Get.height * 0.015,
-                    ),
-                    Icon(
-                      Icons.warning_outlined,
-                      color: AppColors.redColor,
-                      size: Get.height * 0.015,
-                    ),
-                  ],
-                ),
-                CustomTextWidget(
-                  title: item['value']!,
-                  color: AppColors.black500,
-                  fontWeight: FontWeight.w400,
-                  fontSize: Get.height * 0.015,
-                )
-              ],
+                    fontSize: tagTitle,
+                    title: "View More",
+                    color: AppColors.primaryColor,
+                  )),
             ),
-          );
-        }),
-      );
-    });
-  }
+          ),
 
-  // Location nearby section
-  Widget _buildLocationNearbySection() {
-    return Obx(() {
-      var locations = propertyDetailsController.nearbyLocations;
-
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          crossAxisSpacing: screenWidth * 0.03,
-          mainAxisSpacing: screenHeight2,
-          childAspectRatio: 1,
-        ),
-        itemCount: locations.length,
-        itemBuilder: (context, index) {
-          var location = locations[index];
-
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Icon Container
-              Container(
-                padding: EdgeInsets.all(Get.width * 0.03),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  border: Border.all(
-                    width: 1,
-                    color: AppColors.lightGrey,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    _getIconDataForNearByLocations(location["icon"]),
-                    color: AppColors.black,
-                    size: Get.height * 0.025,
-                  ),
-                ),
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(8),
               ),
-              // Location Name
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: Get.width * 0.01),
-                child: CustomTextWidget(
-                  title: location["name"],
-                  color: AppColors.black800,
-                  fontWeight: FontWeight.w500,
-                  fontSize: screenHeight * 0.012,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              child: const Text(
+                "Watch our YouTube videos\nfor more information.",
+                style: TextStyle(color: Colors.white, fontSize: 12),
               ),
-
-              kHeight(0.005),
-
-              // Distance
-              CustomTextWidget(
-                title: '${location["distance"]} km',
-                color: AppColors.black600,
-                fontWeight: FontWeight.w400,
-                fontSize: Get.height * 0.012,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          );
-        },
-      );
-    });
-  }
-
-// Helper function to map the icon string to IconData
-  IconData _getIconDataForNearByLocations(String iconName) {
-    switch (iconName) {
-      case "bathtub":
-        return Icons.bathtub;
-      case "spa":
-        return Icons.spa;
-      case "ac_unit":
-        return Icons.ac_unit;
-      case "storage":
-        return Icons.storage;
-      case "business_center":
-        return Icons.business_center;
-      case "school":
-        return Icons.school;
-      case "local_hospital":
-        return Icons.local_hospital;
-      case "park":
-        return Icons.park;
-      case "restaurant":
-        return Icons.restaurant;
-      case "airplanemode_active":
-        return Icons.airplanemode_active;
-      default:
-        return Icons.help_outline;
-    }
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildFeatures(PropertyFeatures? features) {
-    if (features == null || features.items!.isEmpty) {
+    if (features == null || features.items == null || features.items!.isEmpty) {
       return const Text('No features information available');
     }
 
@@ -707,7 +473,7 @@ class AboutContent extends StatelessWidget {
       runSpacing: screenHeight * 0.015,
       children: features.items!.map((feature) {
         return Chip(
-          label: Text(isArabic ? (feature.ar ?? 'N/A') : (feature.en ?? 'N/A')),
+          label: Text(isArabic ? (feature.ar ?? '') : (feature.en ?? '')),
           backgroundColor: AppColors.white,
           shape: RoundedRectangleBorder(
             side: const BorderSide(color: AppColors.lightGrey),
@@ -719,7 +485,9 @@ class AboutContent extends StatelessWidget {
   }
 
   Widget _buildRegulations(Regulations? regulations) {
-    if (regulations == null || regulations.data!.isEmpty) {
+    if (regulations == null ||
+        regulations.data == null ||
+        regulations.data!.isEmpty) {
       return const Text('No regulatory information available');
     }
 
@@ -732,8 +500,8 @@ class AboutContent extends StatelessWidget {
             children: [
               Text(
                 isArabic
-                    ? (regulation.title?.ar ?? 'N/A')
-                    : (regulation.title?.en ?? 'N/A'),
+                    ? (regulation.title?.ar ?? '')
+                    : (regulation.title?.en ?? ''),
                 style: TextStyle(
                   fontSize: screenHeight * 0.015,
                   color: AppColors.black800,
@@ -803,7 +571,7 @@ class AboutContent extends StatelessWidget {
   }
 
   IconData _getIconForNearbyLocation(String? icon) {
-    switch (icon) {
+    switch (icon ?? '') {
       case 'local_mall':
         return Icons.local_mall;
       case 'school':

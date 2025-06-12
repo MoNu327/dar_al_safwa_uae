@@ -468,7 +468,13 @@ class _CustomTabBarState extends State<CustomTabBar>
               Gallery(),
 
               // 360 view tab
-              View360(),
+              View360(
+                videoUrls: [
+                  "https://videos.pexels.com/video-files/12931062/12931062-sd_640_360_30fps.mp4",
+                  "https://videos.pexels.com/video-files/10677884/10677884-sd_640_360_30fps.mp4",
+                  "https://videos.pexels.com/video-files/15353502/15353502-sd_640_360_24fps.mp4"
+                ],
+              ),
 
               // Review Tab
               Reviews(),
