@@ -16,8 +16,8 @@ Widget buildPropertyCard({
   return Container(
     margin: EdgeInsets.only(bottom: screenHeight2),
     decoration: BoxDecoration(
-      color: AppColors.lightGrey2,
-      borderRadius: BorderRadius.circular(12),
+      color: AppColors.lightGrey.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(14),
     ),
     child: Padding(
       padding: const EdgeInsets.only(left: 14),

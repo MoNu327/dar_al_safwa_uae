@@ -15,6 +15,7 @@ import 'package:get/get.dart';
 import '../../../view_model/localization_controller.dart';
 import '../../../view_model/login_controller.dart';
 import '../../../widgets/loader_widget.dart';
+import '../../../widgets/notification_navigation_widget.dart';
 import '../../search/screens/search_screen.dart';
 import '../widgets/custom_grid_widget.dart';
 
@@ -59,7 +60,7 @@ class HomeScreen extends StatelessWidget {
             actions: [
               LanguageTextButton(
                   localizationController: localizationController),
-              const Icon(Icons.notifications),
+              notificationNavigation(),
               Padding(
                 padding: const EdgeInsets.all(10),
                 child: PopupMenuButton<String>(
@@ -204,25 +205,27 @@ class HomeScreen extends StatelessWidget {
                                     arguments: {'propertyId': property.id});
                               },
                               child: CustomGridViewWidget(
-                                imageUrl: property.propertyImage,
+                                imageUrl: property.propertyImage ?? '',
                                 title: isArabic
-                                    ? property.propertyTitle.ar
-                                    : property.propertyTitle.en,
+                                    ? property.propertyTitle?.ar ?? ''
+                                    : property.propertyTitle?.en ?? '',
                                 price: isArabic
-                                    ? property.propertyPrice.formatted.ar
-                                    : property.propertyPrice.formatted.en,
+                                    ? property.propertyPrice?.formatted?.ar ??
+                                        ''
+                                    : property.propertyPrice?.formatted?.en ??
+                                        '',
                                 propertyDeal: isArabic
-                                    ? property.propertyDeal.ar
-                                    : property.propertyDeal.en,
+                                    ? property.propertyDeal?.ar ?? ''
+                                    : property.propertyDeal?.en ?? '',
                                 propertyType: isArabic
-                                    ? property.propertyType.ar
-                                    : property.propertyType.en,
+                                    ? property.propertyType?.ar ?? ''
+                                    : property.propertyType?.en ?? '',
                                 location: isArabic
-                                    ? property.propertyLocation.ar
-                                    : property.propertyLocation.en,
+                                    ? property.propertyLocation?.ar ?? ''
+                                    : property.propertyLocation?.en ?? '',
                                 address: isArabic
-                                    ? property.propertyAddress.ar
-                                    : property.propertyAddress.en,
+                                    ? property.propertyAddress?.ar ?? ''
+                                    : property.propertyAddress?.en ?? '',
                                 // bedrooms: property.propertyBed,
                                 // bathrooms: property.propertyBath,
                                 // area: isArabic
@@ -257,6 +260,14 @@ class HomeScreen extends StatelessWidget {
                             fontSize: tagTitle,
                           );
                         }
+                        // if (homeScreenController
+                        //     .featuredErrorMessage.value.isEmpty) {
+                        //   return CustomTextWidget(
+                        //     title:
+                        //         homeScreenController.popularErrorMessage.value,
+                        //     fontSize: tagTitle,
+                        //   );
+                        // }
 
                         final featuredProperties = homeScreenController
                                 .featuredProperties.value?.data ??

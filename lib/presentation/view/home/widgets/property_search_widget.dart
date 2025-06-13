@@ -34,6 +34,7 @@ class PropertySearchCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.all(Radius.circular(14)),
         color: Colors.white,
         boxShadow: [
           BoxShadow(
@@ -68,13 +69,15 @@ class PropertySearchCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? Colors.amber.shade200
+                              ? AppColors.secondaryColor
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: CustomTextWidget(
                           title: isArabic ? option.name.ar : option.name.en,
-                          color: Colors.black87,
+                          color: isSelected
+                              ? AppColors.white
+                              : AppColors.secondaryColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -121,7 +124,7 @@ class PropertySearchCard extends StatelessWidget {
             child: CustomButtonWidget(
               buttonShape: "rect",
               buttonTitle: localizationController.translate("search_property"),
-              buttonColor: AppColors.black,
+              buttonColor: AppColors.secondaryColor,
               onPressed: () {
                 if (searchController.isFormComplete) {
                   final params = {
@@ -189,7 +192,7 @@ class PropertySearchCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.black87),
+            Icon(icon, color: AppColors.secondaryColor),
             const SizedBox(width: 10),
             Expanded(
               child: DropdownButton<T>(

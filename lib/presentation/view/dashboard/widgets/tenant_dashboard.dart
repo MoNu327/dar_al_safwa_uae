@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:dar_al_safwa/presentation/controllers/bottom_navbar_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_property_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/custom_tenant_property_detail_widget.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/custom_tenant_property_list_widget.dart';
@@ -22,6 +23,9 @@ class TenantDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final BottomNavbarController navBarController =
+        Get.put(BottomNavbarController());
+
     final LocalizationController localizationController = Get.find();
     final LoginController loginController = Get.put(LoginController());
 
@@ -125,7 +129,9 @@ class TenantDashboard extends StatelessWidget {
                     buildMenuTile(
                       leading: Image.asset("assets/images/Profile.png"),
                       title: 'My Profile',
-                      onTap: () {},
+                      onTap: () {
+                        navBarController.selectedIndex(4);
+                      },
                     ),
                     buildMenuTile(
                       leading: Image.asset("assets/images/Properties.png"),
@@ -148,8 +154,10 @@ class TenantDashboard extends StatelessWidget {
                     ),
                     buildMenuTile(
                       leading: Image.asset("assets/images/Messages.png"),
-                      title: 'Messages',
-                      onTap: () {},
+                      title: "Messages",
+                      onTap: () {
+                        navBarController.selectedIndex(3);
+                      },
                     ),
                   ],
                 ),
@@ -158,7 +166,7 @@ class TenantDashboard extends StatelessWidget {
               kHeight(0.05),
 
               // Sign Out Button
-              commonSignOutButton(),
+              commonSignOutButton(loginController),
 
               kHeight(0.05),
             ],

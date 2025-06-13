@@ -39,24 +39,34 @@ class FeaturedPropertiesMessage {
 @JsonSerializable()
 class FeaturedProperty {
   final int? id;
+
   @JsonKey(name: 'property_title')
   final LocalizedText? title;
+
   @JsonKey(name: 'property_image')
   final String? image;
+
   @JsonKey(name: 'property_deal')
   final LocalizedText? dealType;
+
   @JsonKey(name: 'property_price')
   final FeaturedPropertyPrice? price;
+
   @JsonKey(name: 'property_type')
   final LocalizedText? type;
+
   @JsonKey(name: 'property_address')
   final LocalizedText? address;
+
   @JsonKey(name: 'property_location')
   final LocalizedText? location;
+
   @JsonKey(name: 'property_bed')
   final int? bedrooms;
+
   @JsonKey(name: 'property_bath')
   final int? bathrooms;
+
   @JsonKey(name: 'property_sqft')
   final LocalizedText? area;
 
@@ -101,7 +111,10 @@ class FeaturedPropertyPrice {
   final double? raw;
   final LocalizedText? formatted;
 
-  FeaturedPropertyPrice({this.raw, this.formatted});
+  FeaturedPropertyPrice({
+    this.raw,
+    this.formatted,
+  });
 
   factory FeaturedPropertyPrice.fromJson(Map<String, dynamic> json) =>
       _$FeaturedPropertyPriceFromJson(json);

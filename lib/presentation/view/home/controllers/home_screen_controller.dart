@@ -218,7 +218,8 @@ class HomeScreenController extends GetxController {
       final response = await apiService.getFeaturedProperties();
       debugPrint(
           '✅ [fetchFeaturedProperties] API call completed. Status: ${response.statusCode}');
-
+      print(
+          "✅ [fetchFeaturedProperties] API call completed. Status: ${response.statusCode}");
       debugPrint(
           '📦 [fetchFeaturedProperties] Raw response data: ${response.data}');
 
@@ -269,7 +270,7 @@ class HomeScreenController extends GetxController {
             PopularPropertiesResponse.fromJson(response.data);
         debugPrint('Popular properties : ${popularProperties.value}');
         debugPrint(
-            '🏠 [fetchPopularProperties] Received ${popularProperties.value?.data.length} properties');
+            '🏠 [fetchPopularProperties] Received ${popularProperties.value?.data?.length ?? "0"} properties');
       } else {
         throw DioException(
           requestOptions: response.requestOptions,

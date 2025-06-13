@@ -51,7 +51,7 @@ class CustomButtonWidget extends StatelessWidget {
                 )
               : null,
           backgroundColor: WidgetStateProperty.all<Color>(
-              buttonColor ?? AppColors.primaryColor),
+              buttonColor ?? AppColors.secondaryColor),
         ),
         child: childWidgetLoader
             ? Padding(

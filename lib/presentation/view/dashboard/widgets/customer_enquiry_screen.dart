@@ -87,31 +87,25 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
                 fontWeight: FontWeight.w500,
               ),
               tabs: const [
-                Expanded(
-                  child: Tab(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30), // adjust here
-                      child: Text('Total'),
-                    ),
+                Tab(
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 30), // adjust here
+                    child: Text('Total'),
                   ),
                 ),
-                Expanded(
-                  child: Tab(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 10), // adjust here
-                      child: Text('Pending'),
-                    ),
+                Tab(
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 10), // adjust here
+                    child: Text('Pending'),
                   ),
                 ),
-                Expanded(
-                  child: Tab(
-                    child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 10), // adjust here
-                      child: Text('In-Progress'),
-                    ),
+                Tab(
+                  child: Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 10), // adjust here
+                    child: Text('In-Progress'),
                   ),
                 ),
               ],

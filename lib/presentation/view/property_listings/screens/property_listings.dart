@@ -10,6 +10,7 @@ import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/loader_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:lottie/lottie.dart';
 
 class PropertyListings extends StatelessWidget {
   PropertyListings({super.key});
@@ -34,11 +35,18 @@ class PropertyListings extends StatelessWidget {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  SizedBox(
+                      height: screenHeight * 0.3,
+                      child: Lottie.asset(
+                          fit: BoxFit.cover,
+                          "assets/lottie/NotFoundLottie.json")),
+                  kHeight(0.02),
                   CustomTextWidget(
                     title: controller.searchResultErrorMessage.value,
                   ),
-                  kHeight(0.01),
+                  kHeight(0.03),
                   CustomButtonWidget(
                     buttonTitle: localizationController.translate('retry'),
                     onPressed: controller.fetchSearchResult,
@@ -53,8 +61,30 @@ class PropertyListings extends StatelessWidget {
           final properties = controller.searchResults.value?.data ?? [];
           if (properties.isEmpty) {
             return Center(
-              child: CustomTextWidget(
-                title: localizationController.translate('no_properties_found'),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                      height: screenHeight * 0.3,
+                      child: Lottie.asset(
+                          fit: BoxFit.cover,
+                          "assets/lottie/NotFoundLottie.json")),
+                  kHeight(0.02),
+                  CustomTextWidget(
+                    title:
+                        localizationController.translate('no_properties_found'),
+                  ),
+                  kHeight(0.02),
+                  CustomButtonWidget(
+                    buttonTitle: localizationController.translate('Go Back'),
+                    onPressed: () {
+                      Get.toNamed("'/search'");
+                    },
+                    buttonHeight: screenHeight * 0.06,
+                    buttonWidth: screenWidth * 0.40,
+                  )
+                ],
               ),
             );
           }

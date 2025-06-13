@@ -113,12 +113,45 @@ class SearchScreen extends StatelessWidget {
               );
             }
 
+            // if (searchScreenController
+            //     .searchDropdownErrorMessage.value.isEmpty) {
+            //   return Center(
+            //     child: Column(
+            //       mainAxisAlignment: MainAxisAlignment.center,
+            //       crossAxisAlignment: CrossAxisAlignment.center,
+            //       children: [
+            //         SizedBox(
+            //             height: screenHeight * 0.3,
+            //             child: Lottie.asset(
+            //                 fit: BoxFit.cover,
+            //                 "assets/lottie/NotFoundLottie.json")),
+            //         kHeight(0.01),
+            //         CustomTextWidget(
+            //           title: searchScreenController
+            //               .searchDropdownErrorMessage.value,
+            //         ),
+            //         ElevatedButton(
+            //             onPressed: searchScreenController.refreshSearchDropdown,
+            //             child: CustomTextWidget(
+            //               title: localizationController.translate('retry'),
+            //             ))
+            //       ],
+            //     ),
+            //   );
+            // }
+
             if (searchScreenController
                 .searchDropdownErrorMessage.value.isNotEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
+                    SizedBox(
+                        height: screenHeight * 0.2,
+                        child: Lottie.asset(
+                            fit: BoxFit.cover,
+                            "assets/lottie/NotFoundLottie.json")),
+                    kHeight(0.01),
                     CustomTextWidget(
                       title: searchScreenController
                           .searchDropdownErrorMessage.value,

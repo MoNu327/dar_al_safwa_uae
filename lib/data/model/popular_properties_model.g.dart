@@ -9,11 +9,13 @@ part of 'popular_properties_model.dart';
 PopularPropertiesResponse _$PopularPropertiesResponseFromJson(
         Map<String, dynamic> json) =>
     PopularPropertiesResponse(
-      success: json['success'] as bool,
-      message: PopularPropertiesMessage.fromJson(
-          json['message'] as Map<String, dynamic>),
-      data: (json['data'] as List<dynamic>)
-          .map((e) => PopularProperty.fromJson(e as Map<String, dynamic>))
+      success: json['success'] as bool?,
+      message: json['message'] == null
+          ? null
+          : PopularPropertiesMessage.fromJson(
+              json['message'] as Map<String, dynamic>),
+      data: (json['data'] as List<dynamic>?)
+          ?.map((e) => PopularProperty.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 
@@ -28,8 +30,8 @@ Map<String, dynamic> _$PopularPropertiesResponseToJson(
 PopularPropertiesMessage _$PopularPropertiesMessageFromJson(
         Map<String, dynamic> json) =>
     PopularPropertiesMessage(
-      en: json['en'] as String,
-      ar: json['ar'] as String,
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
     );
 
 Map<String, dynamic> _$PopularPropertiesMessageToJson(
@@ -41,24 +43,38 @@ Map<String, dynamic> _$PopularPropertiesMessageToJson(
 
 PopularProperty _$PopularPropertyFromJson(Map<String, dynamic> json) =>
     PopularProperty(
-      id: (json['id'] as num).toInt(),
-      propertyTitle: LocalizedText.fromJson(
-          json['property_title'] as Map<String, dynamic>),
-      propertyImage: json['property_image'] as String,
-      propertyDeal:
-          LocalizedText.fromJson(json['property_deal'] as Map<String, dynamic>),
-      propertyPrice: PropertyPrice.fromJson(
-          json['property_price'] as Map<String, dynamic>),
-      propertyType:
-          LocalizedText.fromJson(json['property_type'] as Map<String, dynamic>),
-      propertyAddress: LocalizedText.fromJson(
-          json['property_address'] as Map<String, dynamic>),
-      propertyLocation: LocalizedText.fromJson(
-          json['property_location'] as Map<String, dynamic>),
-      propertyBed: (json['property_bed'] as num).toInt(),
-      propertyBath: (json['property_bath'] as num).toInt(),
-      propertySqft:
-          LocalizedText.fromJson(json['property_sqft'] as Map<String, dynamic>),
+      id: (json['id'] as num?)?.toInt(),
+      propertyTitle: json['property_title'] == null
+          ? null
+          : LocalizedText.fromJson(
+              json['property_title'] as Map<String, dynamic>),
+      propertyImage: json['property_image'] as String?,
+      propertyDeal: json['property_deal'] == null
+          ? null
+          : LocalizedText.fromJson(
+              json['property_deal'] as Map<String, dynamic>),
+      propertyPrice: json['property_price'] == null
+          ? null
+          : PropertyPrice.fromJson(
+              json['property_price'] as Map<String, dynamic>),
+      propertyType: json['property_type'] == null
+          ? null
+          : LocalizedText.fromJson(
+              json['property_type'] as Map<String, dynamic>),
+      propertyAddress: json['property_address'] == null
+          ? null
+          : LocalizedText.fromJson(
+              json['property_address'] as Map<String, dynamic>),
+      propertyLocation: json['property_location'] == null
+          ? null
+          : LocalizedText.fromJson(
+              json['property_location'] as Map<String, dynamic>),
+      propertyBed: (json['property_bed'] as num?)?.toInt(),
+      propertyBath: (json['property_bath'] as num?)?.toInt(),
+      propertySqft: json['property_sqft'] == null
+          ? null
+          : LocalizedText.fromJson(
+              json['property_sqft'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$PopularPropertyToJson(PopularProperty instance) =>
@@ -78,8 +94,8 @@ Map<String, dynamic> _$PopularPropertyToJson(PopularProperty instance) =>
 
 LocalizedText _$LocalizedTextFromJson(Map<String, dynamic> json) =>
     LocalizedText(
-      en: json['en'] as String,
-      ar: json['ar'] as String,
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
     );
 
 Map<String, dynamic> _$LocalizedTextToJson(LocalizedText instance) =>
@@ -90,9 +106,10 @@ Map<String, dynamic> _$LocalizedTextToJson(LocalizedText instance) =>
 
 PropertyPrice _$PropertyPriceFromJson(Map<String, dynamic> json) =>
     PropertyPrice(
-      raw: (json['raw'] as num).toDouble(),
-      formatted:
-          LocalizedText.fromJson(json['formatted'] as Map<String, dynamic>),
+      raw: (json['raw'] as num?)?.toDouble(),
+      formatted: json['formatted'] == null
+          ? null
+          : LocalizedText.fromJson(json['formatted'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$PropertyPriceToJson(PropertyPrice instance) =>

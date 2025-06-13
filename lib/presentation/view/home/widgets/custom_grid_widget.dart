@@ -267,8 +267,10 @@ class CustomGridViewWidget extends StatelessWidget {
                               spacing: Get.width * 0.01,
                               runSpacing: Get.width * 0.01,
                               children: [
-                                CustomStackBoxWidget(title: propertyDeal),
-                                CustomStackBoxWidget(title: propertyType),
+                                CustomStackBoxWidget(
+                                    title: propertyDeal ?? "N/A"),
+                                CustomStackBoxWidget(
+                                    title: propertyType ?? "N/A"),
                               ],
                             ),
                           ),
@@ -286,14 +288,14 @@ class CustomGridViewWidget extends StatelessWidget {
                     children: [
                       // Price and Section
                       CustomTextWidget(
-                        title: price,
+                        title: price ?? "N/A",
                         fontSize: H18,
                         color: AppColors.secondaryColor,
                         fontWeight: FontWeight.w700,
                       ),
                       // Property Title
                       CustomTextWidget(
-                        title: title,
+                        title: title ?? "N/A",
                         fontSize: tagTitle,
                         fontWeight: FontWeight.w600,
                       ),
@@ -311,7 +313,7 @@ class CustomGridViewWidget extends StatelessWidget {
                           ),
                           Expanded(
                             child: CustomTextWidget(
-                              title: address,
+                              title: address ?? "N/A",
                               fontSize: detailContentTitle,
                               overflow: TextOverflow.ellipsis,
                             ),

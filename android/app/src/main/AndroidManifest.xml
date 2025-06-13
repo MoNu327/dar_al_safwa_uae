@@ -41,9 +41,13 @@
                <category android:name="android.intent.category.DEFAULT" />
                <category android:name="android.intent.category.BROWSABLE" />
                <data android:scheme="https" android:host="arvr.google.com" />
+
 </intent-filter>
         </activity>
        
+
+       <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+
        <!-- Firebase Messaging Service -->
         <service
             android:name=".MyFirebaseMessagingService"

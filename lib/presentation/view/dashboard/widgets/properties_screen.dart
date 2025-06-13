@@ -57,14 +57,14 @@ class PropertiesScreen extends StatelessWidget {
               height: Get.height * 0.05,
               margin: EdgeInsets.symmetric(horizontal: screenWidth4),
               decoration: BoxDecoration(
-                color: AppColors.lightGrey2,
+                color: AppColors.lightGrey.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
-                  BoxShadow(
-                    color: AppColors.lightGrey.withOpacity(0.3),
-                    blurRadius: 2,
-                    // offset: const Offset(0, 2),
-                  ),
+                  // BoxShadow(
+                  //   color: AppColors.lightGrey.withOpacity(0.3),
+                  //   blurRadius: 2,
+                  //   // offset: const Offset(0, 2),
+                  // ),
                 ],
               ),
               child: TextField(

@@ -21,7 +21,7 @@ class TestimonialSection extends StatelessWidget {
           ),
           kHeight(0.01),
           Divider(
-            color: AppColors.lightGrey,
+            color: AppColors.lightGrey.withValues(alpha: 0.2),
             indent: 20,
             thickness: 1,
             endIndent: 20,
@@ -30,26 +30,24 @@ class TestimonialSection extends StatelessWidget {
           // Horizontal scrolling section
           SizedBox(
             height: screenHeight * 0.28, // Fixed height for horizontal scroll
-            child: Expanded(
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  for (int i = 0; i < 4; i++) ...[
-                    SizedBox(
-                      width: screenWidth *
-                          0.4, // Fixed width for each testimonial card
-                      child: _buildTestimonialItem(
-                        i == 3
-                            ? 'We\'ve been using Untitled to kick start every new project...'
-                            : ['StayPlus', 'SpyPlus', 'Stopping'][i],
-                        isReview: i == 3,
-                      ),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (int i = 0; i < 4; i++) ...[
+                  SizedBox(
+                    width: screenWidth *
+                        0.4, // Fixed width for each testimonial card
+                    child: _buildTestimonialItem(
+                      i == 3
+                          ? 'We\'ve been using Untitled to kick start every new project...'
+                          : ['StayPlus', 'SpyPlus', 'Stopping'][i],
+                      isReview: i == 3,
                     ),
-                    if (i < 3)
-                      SizedBox(width: screenWidth4), // Spacing between items
-                  ],
+                  ),
+                  if (i < 3)
+                    SizedBox(width: screenWidth4), // Spacing between items
                 ],
-              ),
+              ],
             ),
           ),
         ],

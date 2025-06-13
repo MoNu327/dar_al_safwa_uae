@@ -1,14 +1,17 @@
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-Widget commonSignOutButton() {
+Widget commonSignOutButton(LoginController loginController) {
   return Container(
     margin: EdgeInsets.symmetric(horizontal: screenWidth5),
     width: screenWidth * 0.3,
     child: ElevatedButton(
-      onPressed: () {},
+      onPressed: () {
+        loginController.logout();
+      },
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.secondaryColor,
         foregroundColor: AppColors.white,

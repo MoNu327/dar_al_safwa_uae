@@ -78,11 +78,11 @@ class ProfileViewScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.white,
         automaticallyImplyLeading: false,
-        toolbarHeight: Get.height * 0.05,
+        toolbarHeight: Get.height * 0.04,
         title: Obx(() {
           return CustomTextWidget(
             title: localizationController.translate('My Profile'),
-            fontSize: Get.height * 0.025,
+            fontSize: appBarTitles,
             color: AppColors.black,
             fontWeight: FontWeight.w600,
           );
@@ -157,6 +157,7 @@ class ProfileViewScreen extends StatelessWidget {
 
                       // Professional Info Section (New)
                       _buildProfessionalInfo(),
+
                       kHeight(0.02),
                       // Stats Section (New)
                       _buildStatsRow(),
@@ -318,7 +319,7 @@ class ProfileViewScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: AppColors.black.withValues(alpha: 0.5),
+            color: AppColors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             spreadRadius: 2,
             offset: const Offset(4, 4),

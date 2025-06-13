@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:dar_al_safwa/presentation/controllers/bottom_navbar_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/agent_registered_property_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/agent_registered_property_list_widget.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
@@ -21,6 +22,9 @@ class AgentDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final LocalizationController localizationController = Get.find();
     final LoginController loginController = Get.put(LoginController());
+    final BottomNavbarController navbarController =
+        Get.put(BottomNavbarController());
+
     final AgentRegisteredPropertyController agentPropertyController =
         Get.put(AgentRegisteredPropertyController());
     final FirebaseAuth auth = FirebaseAuth.instance;
@@ -119,7 +123,9 @@ class AgentDashboard extends StatelessWidget {
                   buildMenuTile(
                     leading: Image.asset("assets/images/Profile.png"),
                     title: 'My Profile',
-                    onTap: () {},
+                    onTap: () {
+                      navbarController.selectedIndex(4);
+                    },
                   ),
                   buildMenuTile(
                     leading: Image.asset("assets/images/Profile.png"),
@@ -138,7 +144,9 @@ class AgentDashboard extends StatelessWidget {
                   buildMenuTile(
                     leading: Image.asset("assets/images/Messages.png"),
                     title: 'Messages',
-                    onTap: () {},
+                    onTap: () {
+                      navbarController.selectedIndex(3);
+                    },
                   ),
                 ],
               ),
@@ -147,7 +155,7 @@ class AgentDashboard extends StatelessWidget {
             kHeight(0.05),
 
             // Sign Out Button
-            commonSignOutButton(),
+            commonSignOutButton(loginController),
 
             kHeight(0.05),
           ],

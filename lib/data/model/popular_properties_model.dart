@@ -4,14 +4,14 @@ part 'popular_properties_model.g.dart';
 
 @JsonSerializable()
 class PopularPropertiesResponse {
-  final bool success;
-  final PopularPropertiesMessage message;
-  final List<PopularProperty> data;
+  final bool? success;
+  final PopularPropertiesMessage? message;
+  final List<PopularProperty>? data;
 
   PopularPropertiesResponse({
-    required this.success,
-    required this.message,
-    required this.data,
+    this.success,
+    this.message,
+    this.data,
   });
 
   factory PopularPropertiesResponse.fromJson(Map<String, dynamic> json) =>
@@ -22,12 +22,12 @@ class PopularPropertiesResponse {
 
 @JsonSerializable()
 class PopularPropertiesMessage {
-  final String en;
-  final String ar;
+  final String? en;
+  final String? ar;
 
   PopularPropertiesMessage({
-    required this.en,
-    required this.ar,
+    this.en,
+    this.ar,
   });
 
   factory PopularPropertiesMessage.fromJson(Map<String, dynamic> json) =>
@@ -38,40 +38,50 @@ class PopularPropertiesMessage {
 
 @JsonSerializable()
 class PopularProperty {
-  final int id;
+  final int? id;
+
   @JsonKey(name: 'property_title')
-  final LocalizedText propertyTitle;
+  final LocalizedText? propertyTitle;
+
   @JsonKey(name: 'property_image')
-  final String propertyImage;
+  final String? propertyImage;
+
   @JsonKey(name: 'property_deal')
-  final LocalizedText propertyDeal;
+  final LocalizedText? propertyDeal;
+
   @JsonKey(name: 'property_price')
-  final PropertyPrice propertyPrice;
+  final PropertyPrice? propertyPrice;
+
   @JsonKey(name: 'property_type')
-  final LocalizedText propertyType;
+  final LocalizedText? propertyType;
+
   @JsonKey(name: 'property_address')
-  final LocalizedText propertyAddress;
+  final LocalizedText? propertyAddress;
+
   @JsonKey(name: 'property_location')
-  final LocalizedText propertyLocation;
+  final LocalizedText? propertyLocation;
+
   @JsonKey(name: 'property_bed')
-  final int propertyBed;
+  final int? propertyBed;
+
   @JsonKey(name: 'property_bath')
-  final int propertyBath;
+  final int? propertyBath;
+
   @JsonKey(name: 'property_sqft')
-  final LocalizedText propertySqft;
+  final LocalizedText? propertySqft;
 
   PopularProperty({
-    required this.id,
-    required this.propertyTitle,
-    required this.propertyImage,
-    required this.propertyDeal,
-    required this.propertyPrice,
-    required this.propertyType,
-    required this.propertyAddress,
-    required this.propertyLocation,
-    required this.propertyBed,
-    required this.propertyBath,
-    required this.propertySqft,
+    this.id,
+    this.propertyTitle,
+    this.propertyImage,
+    this.propertyDeal,
+    this.propertyPrice,
+    this.propertyType,
+    this.propertyAddress,
+    this.propertyLocation,
+    this.propertyBed,
+    this.propertyBath,
+    this.propertySqft,
   });
 
   factory PopularProperty.fromJson(Map<String, dynamic> json) =>
@@ -82,12 +92,12 @@ class PopularProperty {
 
 @JsonSerializable()
 class LocalizedText {
-  final String en;
-  final String ar;
+  final String? en;
+  final String? ar;
 
   LocalizedText({
-    required this.en,
-    required this.ar,
+    this.en,
+    this.ar,
   });
 
   factory LocalizedText.fromJson(Map<String, dynamic> json) =>
@@ -98,12 +108,12 @@ class LocalizedText {
 
 @JsonSerializable()
 class PropertyPrice {
-  final double raw;
-  final LocalizedText formatted;
+  final double? raw;
+  final LocalizedText? formatted;
 
   PropertyPrice({
-    required this.raw,
-    required this.formatted,
+    this.raw,
+    this.formatted,
   });
 
   factory PropertyPrice.fromJson(Map<String, dynamic> json) =>
