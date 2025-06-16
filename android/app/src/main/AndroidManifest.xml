@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.ar" android:required="true" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     
     <application
         android:label="dar_al_safwa"
@@ -46,7 +47,7 @@
         </activity>
        
 
-       <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+       
 
        <!-- Firebase Messaging Service -->
         <service

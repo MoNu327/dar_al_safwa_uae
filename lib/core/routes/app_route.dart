@@ -25,6 +25,7 @@ import '../../presentation/view/agent/screens/approval_pending.dart';
 import '../../presentation/view/chat/screen/agent_chat_screen.dart';
 import '../../presentation/view/dashboard/widgets/tenant_properties_list.dart';
 import '../../presentation/view/dashboard/widgets/tenants_documents_widget.dart';
+import '../../presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart';
 import '../../presentation/view/property_details/controller/property_details_controller.dart';
 import '../../presentation/widgets/signup_warning_screen.dart';
 
@@ -55,6 +56,7 @@ class AppRoute {
   static const String enquiry = '/enquiry';
   static const String tenantPropertyList = '/tenantPropertyList';
   static const String tenantDocumentsList = '/tenantDocumentsList';
+  static const String tenantTicketDetails = '/tenantTicketDetails';
 
   static final routes = [
     GetPage(
@@ -125,6 +127,11 @@ class AppRoute {
       name: tenantDocumentsList,
       page: () => TenantsDocumentsWidget(),
     ),
+    //  GetPage(
+    //   name: tenantTicketDetails,
+    //   parameters: ,
+    //   page: () => TicketDetailsScreen(),
+    // ),
     GetPage(
       name: enquiry,
       page: () => CustomerEnquiryScreen(),

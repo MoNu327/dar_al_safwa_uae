@@ -9,9 +9,12 @@ Widget notificationNavigation() {
     onTap: () {
       // Get.toNamed("/notifications");
     },
-    child: SizedBox(
-      height: screenHeight * 0.03,
-      child: Image.asset('assets/images/Notifications.png'),
+    child: Padding(
+      padding: const EdgeInsets.all(10),
+      child: SizedBox(
+        height: screenHeight * 0.03,
+        child: Image.asset('assets/images/Notifications.png'),
+      ),
     ),
   );
 }

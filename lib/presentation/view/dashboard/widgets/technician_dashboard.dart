@@ -7,7 +7,6 @@ import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_prope
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/custom_tenant_property_detail_widget.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/custom_tenant_property_list_widget.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
 import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/common_signout_button.dart';
@@ -19,8 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 
-class TenantDashboard extends StatelessWidget {
-  const TenantDashboard({super.key});
+class TechnicianDashboard extends StatelessWidget {
+  const TechnicianDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -86,10 +85,6 @@ class TenantDashboard extends StatelessWidget {
                     ),
                   ),
                 ],
-                // child: const CircleAvatar(
-                //   radius: 20,
-                //   backgroundImage: AssetImage('assets/images/person.png'),
-                // ),
                 child: CircleAvatar(
                   radius: screenHeight * 0.025, // Adjust size as needed
                   backgroundColor:
@@ -135,32 +130,9 @@ class TenantDashboard extends StatelessWidget {
                       },
                     ),
                     buildMenuTile(
-                      leading: Image.asset("assets/images/Properties.png"),
-                      title: 'My Properties',
-                      onTap: () {
-                        Get.toNamed("/tenantPropertyList");
-                      },
-                    ),
-                    buildMenuTile(
-                      leading: Image.asset("assets/images/Documents.png"),
-                      title: 'My Documents',
-                      onTap: () {
-                        Get.toNamed("/tenantDocumentsList");
-                      },
-                    ),
-                    buildMenuTile(
                       leading: Image.asset("assets/images/Tickets.png"),
                       title: 'Tickets',
-                      onTap: () {
-                        Get.to(TenantsTicketsListWidget());
-                      },
-                    ),
-                    buildMenuTile(
-                      leading: Image.asset("assets/images/Messages.png"),
-                      title: "Messages",
-                      onTap: () {
-                        navBarController.selectedIndex(3);
-                      },
+                      onTap: () {},
                     ),
                   ],
                 ),

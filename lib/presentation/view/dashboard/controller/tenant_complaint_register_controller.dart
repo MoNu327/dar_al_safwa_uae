@@ -11,7 +11,7 @@ import '../../../widgets/custom_snackbar.dart';
 
 class TenantComplaintRegisterController extends GetxController {
   final ApiService apiService = ApiService();
-   var isLoadingSubmitCompliant = false.obs;
+  var isLoadingSubmitCompliant = false.obs;
   var isLoadingCompliantList = false.obs;
   var isLoadingSubtitleCompliantList = false.obs;
   late var complaintRespond = Rxn<ComplaintCategoriesResponse>();

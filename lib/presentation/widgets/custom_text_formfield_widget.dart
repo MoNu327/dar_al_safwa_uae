@@ -8,7 +8,13 @@ import 'custom_text_widget.dart';
 
 class CustomTextFieldWidget extends StatelessWidget {
   final String hintText;
-  final String labelText;
+  final String? labelText;
+  final int? maxLines;
+
+  final IconData? prefixIcon;
+  final bool? isBoldTextNeeded;
+  final bool? isBorderNeeded;
+
   final TextInputType keyboardType;
   final TextEditingController controller;
   final Function()? suffixIconOnTap;
@@ -23,7 +29,8 @@ class CustomTextFieldWidget extends StatelessWidget {
   const CustomTextFieldWidget({
     super.key,
     required this.hintText,
-    required this.labelText,
+    this.labelText,
+    this.isBorderNeeded = false,
     required this.keyboardType,
     required this.controller,
     this.readOnly = false,
@@ -31,8 +38,11 @@ class CustomTextFieldWidget extends StatelessWidget {
     this.inputFormatters,
     this.obscureText = false,
     this.suffixIcon = false,
+    this.prefixIcon,
     this.validator,
     this.onChanged,
+    this.maxLines = 1,
+    this.isBoldTextNeeded = false,
     this.labelTextColor, // Initialize onChanged
   });
 
@@ -43,14 +53,22 @@ class CustomTextFieldWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CustomTextWidget(
-            title: labelText,
-            color: labelTextColor ?? AppColors.black,
-            fontSize: popularPlaceTitle,
-            fontWeight: FontWeight.w500,
-          ),
+          if (labelText != null)
+            CustomTextWidget(
+              title: "$labelText*",
+              color: labelTextColor ?? AppColors.black,
+              fontSize: tagTitle,
+              fontWeight: FontWeight.w500,
+            ),
           SizedBox(height: screenHeight05),
           TextFormField(
+            maxLines: maxLines,
+            style: GoogleFonts.poppins(
+                color: AppColors.black,
+                fontSize: tagTitle,
+                fontWeight:
+                    isBoldTextNeeded! ? FontWeight.w600 : FontWeight.w500),
+
             readOnly: readOnly,
             inputFormatters: inputFormatters,
             controller: controller,
@@ -59,13 +77,15 @@ class CustomTextFieldWidget extends StatelessWidget {
             obscureText: obscureText,
             onChanged: onChanged, // Pass onChanged to TextFormField
             decoration: InputDecoration(
-              fillColor: AppColors.white,
+              prefixIcon:
+                  prefixIcon != null ? Icon(prefixIcon) : SizedBox.shrink(),
+              fillColor: AppColors.whiteLight,
               filled: true,
               hintText: hintText,
               hintStyle: GoogleFonts.poppins(
-                color: AppColors.lightGrey,
-                fontSize: popularPlaceTitle,
-              ),
+                  color: AppColors.darkGrey,
+                  fontSize: screenHeight * 0.015,
+                  fontWeight: FontWeight.w500),
               suffixIcon: suffixIcon
                   ? InkWell(
                       onTap: suffixIconOnTap,
@@ -76,15 +96,19 @@ class CustomTextFieldWidget extends StatelessWidget {
                   : null,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.black500,
+                borderSide: BorderSide(
+                  color: isBorderNeeded!
+                      ? AppColors.grey.withValues(alpha: 0.1)
+                      : AppColors.white,
                   width: 1,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: AppColors.black500,
+                borderSide: BorderSide(
+                  color: isBorderNeeded!
+                      ? AppColors.grey.withValues(alpha: 0.3)
+                      : AppColors.white,
                   width: 1.0,
                 ),
               ),
