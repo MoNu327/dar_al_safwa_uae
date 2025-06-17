@@ -3,6 +3,7 @@ import 'package:dar_al_safwa/presentation/view/dashboard/controller/agent_regist
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/custom_size.dart';
 
@@ -238,7 +239,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                             maxLines: 5,
                             decoration: InputDecoration(
                               hintText: 'Write your message here...',
-                              hintStyle: TextStyle(
+                              hintStyle: GoogleFonts.poppins(
                                 color: AppColors.darkGrey,
                                 fontSize: 14,
                               ),
@@ -267,7 +268,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       child: Container(
         height: screenHeight * 0.12,
         decoration: BoxDecoration(
-          color: AppColors.lightGrey2,
+          color: AppColors.whiteLight,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.lightGrey.withOpacity(0.3)),
         ),
@@ -307,7 +308,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.lightGrey2,
+        color: AppColors.whiteLight,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.lightGrey.withOpacity(0.3)),
       ),
@@ -337,7 +338,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.lightGrey2,
+        color: AppColors.whiteLight,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.lightGrey.withOpacity(0.3)),
       ),
@@ -378,7 +379,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       child: Container(
         padding: EdgeInsets.all(8),
         decoration: BoxDecoration(
-            color: AppColors.lightGrey2,
+            color: AppColors.whiteLight,
             borderRadius: BorderRadius.circular(14)),
         child: Row(
           mainAxisSize: MainAxisSize.min,

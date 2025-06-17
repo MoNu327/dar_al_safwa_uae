@@ -18,6 +18,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../../../data/model/property_details_model.dart';
 import '../../../view_model/localization_controller.dart';
+import 'price_bottom_sheet.dart';
 
 class AboutContent extends StatelessWidget {
   AboutContent({super.key});
@@ -35,6 +36,7 @@ class AboutContent extends StatelessWidget {
       return const Center(child: CustomLoaderWidget());
     }
     return Scaffold(
+      bottomSheet: CustomBottomSheet(),
       backgroundColor: AppColors.white,
       body: SingleChildScrollView(
         child: Padding(
@@ -79,6 +81,7 @@ class AboutContent extends StatelessWidget {
                 title: 'Nearby Locations',
                 child: _buildNearbyLocations(property.location?.nearby),
               ),
+
               kHeight(0.02)
             ],
           ),

@@ -147,55 +147,65 @@ class TechnicianProfileScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            const CustomTextWidget(
-                              title: '4.4',
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                            const Icon(Icons.star,
-                                color: Colors.amber, size: 24),
-                            CustomTextWidget(
-                              title: '(120 reviews)',
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ],
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: Get.width * 0.02,
+                              vertical: Get.height * 0.005),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              CustomTextWidget(
+                                title: '4.4 ',
+                                fontSize: screenHeight * 0.02,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.black,
+                              ),
+                              Icon(Icons.star,
+                                  color: Colors.amber,
+                                  size: screenHeight * 0.02),
+                              CustomTextWidget(
+                                title: '(120 reviews)',
+                                fontSize: screenHeight * 0.016,
+                                color: AppColors.darkGrey,
+                              ),
+                            ],
+                          ),
                         ),
-                        kHeight(0.01),
-                        const CustomTextWidget(
+                        kHeight(0.005),
+                        CustomTextWidget(
                           title: 'Based on 220 hits',
-                          fontSize: 14,
-                          color: Colors.grey,
+                          fontSize: screenHeight * 0.014,
+                          color: AppColors.darkGrey,
                         ),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const CustomTextWidget(
+                        CustomTextWidget(
                           title: '120+ jobs',
-                          fontSize: 18,
+                          fontSize: screenHeight * 0.018,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                         CustomTextWidget(
                           title: 'Jobs Completed',
-                          fontSize: 14,
+                          fontSize: screenHeight * 0.014,
                           color: Colors.grey[600],
                         ),
                         kHeight(0.01),
-                        const CustomTextWidget(
+                        CustomTextWidget(
                           title: '1.2 Hours',
-                          fontSize: 18,
+                          fontSize: screenHeight * 0.018,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                         CustomTextWidget(
                           title: 'Avg. Time Per Job',
-                          fontSize: 14,
+                          fontSize: screenHeight * 0.014,
                           color: Colors.grey[600],
                         ),
                       ],

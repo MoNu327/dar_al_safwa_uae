@@ -16,8 +16,10 @@ import '../../../view_model/localization_controller.dart';
 import '../../../view_model/login_controller.dart';
 import '../../../widgets/loader_widget.dart';
 import '../../../widgets/notification_navigation_widget.dart';
+import '../../search/controllers/search_screen_controller.dart';
 import '../../search/screens/search_screen.dart';
 import '../widgets/custom_grid_widget.dart';
+import '../widgets/property_search_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
@@ -25,6 +27,8 @@ class HomeScreen extends StatelessWidget {
   final LoginController loginController = Get.put(LoginController());
   final NetworkController networkController = Get.find<NetworkController>();
   final RxBool showPropertySearchCard = false.obs;
+  final SearchScreenController searchScreenController =
+      Get.put(SearchScreenController());
 
   final HomeScreenController homeScreenController =
       Get.put(HomeScreenController());
@@ -47,19 +51,23 @@ class HomeScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Obx(() {
-                  return CustomTextWidget(
-                    title: localizationController.translate('title'),
-                    fontSize: Get.height * 0.025,
-                    color: AppColors.secondaryColor,
-                    fontWeight: FontWeight.w600,
+                  return Row(
+                    children: [
+                      CustomTextWidget(
+                        title: localizationController.translate('title'),
+                        fontSize: Get.height * 0.025,
+                        color: AppColors.secondaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      LanguageTextButton(
+                          localizationController: localizationController),
+                    ],
                   );
                 }),
                 CustomLocationDropdown()
               ],
             ),
             actions: [
-              LanguageTextButton(
-                  localizationController: localizationController),
               notificationNavigation(),
               Padding(
                 padding: const EdgeInsets.all(10),
@@ -141,13 +149,35 @@ class HomeScreen extends StatelessWidget {
                         );
                       }),
 
+                      PropertySearchCard(
+                        propertyOptions: searchScreenController
+                                .searchDropdownResponse
+                                .value
+                                ?.data
+                                .propertyOptions ??
+                            [],
+                        propertyTypes: searchScreenController
+                                .searchDropdownResponse
+                                .value
+                                ?.data
+                                .propertyTypes ??
+                            [],
+                        propertyLocations: searchScreenController
+                                .searchDropdownResponse
+                                .value
+                                ?.data
+                                .propertyLocations ??
+                            [],
+                        propertyBedsBaths: searchScreenController
+                                .searchDropdownResponse
+                                .value
+                                ?.data
+                                .propertyBedsBaths ??
+                            [],
+                      ),
+                      kHeight(0.01),
                       // Banner Slider
                       Obx(() {
-                        // if (homeScreenController.isLoadingBanners.value) {
-                        //   return const Center(
-                        //     child: CustomLoaderWidget(),
-                        //   );
-                        // }
                         if (homeScreenController.errorMessage.isNotEmpty) {
                           return ErrorWidget(
                               homeScreenController.errorMessage.value);
@@ -157,6 +187,7 @@ class HomeScreen extends StatelessWidget {
                               homeScreenController.banners.value?.data ?? [],
                         );
                       }),
+
                       // popular properties
                       Obx(() {
                         return CustomTextWidget(
@@ -167,9 +198,6 @@ class HomeScreen extends StatelessWidget {
                         );
                       }),
                       SizedBox(child: Obx(() {
-                        // if (homeScreenController.isLoadingPopular.value) {
-                        //   return const Center(child: CustomLoaderWidget());
-                        // }
                         debugPrint(
                             homeScreenController.popularErrorMessage.value);
                         if (homeScreenController

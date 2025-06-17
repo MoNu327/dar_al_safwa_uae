@@ -77,6 +77,7 @@ class ProfileViewScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.white,
+        surfaceTintColor: AppColors.white,
         automaticallyImplyLeading: false,
         toolbarHeight: Get.height * 0.04,
         title: Obx(() {

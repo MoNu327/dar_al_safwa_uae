@@ -52,15 +52,12 @@ Widget buildPropertyCard({
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: H18,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.black,
-                          ),
-                        ),
-                      ),
+                          child: CustomTextWidget(
+                        title: title,
+                        fontSize: H18,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.black,
+                      )),
                       Icon(
                         Icons.more_vert,
                         color: AppColors.black,
@@ -78,12 +75,11 @@ Widget buildPropertyCard({
                   kHeight(0.01),
                   Row(
                     children: [
-                      Text(
-                        'Status: ',
-                        style: TextStyle(
-                          fontSize: tagTitle,
-                          color: AppColors.black600,
-                        ),
+                      CustomTextWidget(
+                        title: 'Status: ',
+                        fontSize: tagTitle,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.black800,
                       ),
                       Container(
                         padding: EdgeInsets.symmetric(
@@ -94,13 +90,11 @@ Widget buildPropertyCard({
                           color: statusColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
-                          status,
-                          style: TextStyle(
-                            fontSize: tagTitle * 0.9,
-                            color: statusColor,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: CustomTextWidget(
+                          title: status,
+                          fontSize: tagTitle * 0.9,
+                          fontWeight: FontWeight.w500,
+                          color: statusColor,
                         ),
                       ),
                     ],

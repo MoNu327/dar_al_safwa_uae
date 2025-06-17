@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
@@ -29,16 +30,17 @@ class LanguageTextButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min, // Adjust width to fit content
           children: [
             CustomTextWidget(
-                color: AppColors.secondaryColorLight,
+                color: AppColors.black,
                 fontWeight: FontWeight.w500,
                 title:
                     localizationController.currentLocale.value.languageCode ==
                             'en'
-                        ? 'English'
+                        ? 'En'
                         : 'العربية'),
-            const Icon(
+            Icon(
               Icons.language,
-              color: AppColors.secondaryColorLight,
+              size: screenHeight * 0.03,
+              color: AppColors.black,
             ),
           ],
         ),

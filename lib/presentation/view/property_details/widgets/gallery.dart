@@ -91,6 +91,7 @@ import '../../../../core/routes/app_route.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/loader_widget.dart';
 import '../controller/property_details_controller.dart';
+import 'price_bottom_sheet.dart';
 
 class Gallery extends StatelessWidget {
   Gallery({super.key});
@@ -104,6 +105,7 @@ class Gallery extends StatelessWidget {
         propertyDetailsController.property.value?.imageGallery;
 
     return Scaffold(
+      bottomSheet: CustomBottomSheet(),
       backgroundColor: AppColors.white,
       body: _buildGalleryContent(galleryImages),
     );
