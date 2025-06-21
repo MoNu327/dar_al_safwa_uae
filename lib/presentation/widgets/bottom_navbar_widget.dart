@@ -39,18 +39,18 @@ class BottomNavbarWidget extends StatelessWidget {
                     ),
                   ),
                 ),
-                SalomonBottomBarItem(
-                  icon: Icon(
-                    Icons.search,
-                    size: screenHeight * 0.018,
-                  ),
-                  title: Text(
-                    'Search',
-                    style: GoogleFonts.lato(
-                      fontSize: screenHeight * 0.011,
-                    ),
-                  ),
-                ),
+                // SalomonBottomBarItem(
+                //   icon: Icon(
+                //     Icons.search,
+                //     size: screenHeight * 0.018,
+                //   ),
+                //   title: Text(
+                //     'Search',
+                //     style: GoogleFonts.lato(
+                //       fontSize: screenHeight * 0.011,
+                //     ),
+                //   ),
+                // ),
                 SalomonBottomBarItem(
                   icon: Icon(
                     Icons.dashboard_outlined,

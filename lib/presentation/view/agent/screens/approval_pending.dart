@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
 
-
 class ApprovalPendingPage extends StatelessWidget {
   const ApprovalPendingPage({super.key});
 
@@ -27,7 +26,6 @@ class ApprovalPendingPage extends StatelessWidget {
                   reverse: true),
               kHeight(0.02),
               CustomTextWidget(
-                
                 title: "Your account is pending approval",
                 fontSize: popularPlaceTitle,
                 fontWeight: FontWeight.bold,

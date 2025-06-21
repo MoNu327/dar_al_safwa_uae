@@ -229,7 +229,7 @@ class InboxScreen extends StatelessWidget {
                   ? 'Messages'
                   : 'Messages', // Agent Inbox, My Inbox
               color: AppColors.black,
-              fontSize: screenHeight2,
+              fontSize: appBarTitles,
               fontWeight: FontWeight.w600,
             ),
           ),

@@ -131,7 +131,7 @@ class TenantDashboard extends StatelessWidget {
                       leading: Image.asset("assets/images/Profile.png"),
                       title: 'My Profile',
                       onTap: () {
-                        navBarController.selectedIndex(4);
+                        navBarController.selectedIndex(3);
                       },
                     ),
                     buildMenuTile(
@@ -159,7 +159,7 @@ class TenantDashboard extends StatelessWidget {
                       leading: Image.asset("assets/images/Messages.png"),
                       title: "Messages",
                       onTap: () {
-                        navBarController.selectedIndex(3);
+                        navBarController.selectedIndex(2);
                       },
                     ),
                   ],

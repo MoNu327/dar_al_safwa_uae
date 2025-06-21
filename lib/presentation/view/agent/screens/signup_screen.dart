@@ -24,6 +24,7 @@ class SignUpScreen extends StatelessWidget {
 
   final AuthService authService = Get.put(AuthService());
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -40,7 +41,6 @@ class SignUpScreen extends StatelessWidget {
                     child: Padding(
                       padding: EdgeInsets.symmetric(
                         horizontal: Get.width * 0.05,
-                        // vertical: Get.height * 0.05,
                       ),
                       child: Form(
                         key: _formKey,
@@ -66,11 +66,15 @@ class SignUpScreen extends StatelessWidget {
                               textAlign: TextAlign.center,
                               title: localizationController.translate(
                                   'create_an_account_with_easy_and_fast_methods'),
-                              color: AppColors.lightGrey,
+                              color: AppColors.darkGrey,
                               fontSize: Get.height * 0.018,
                             ),
                             SizedBox(height: Get.height * 0.03),
+
+                            // Full Name Field
                             CustomTextFieldWidget(
+                                isBorderNeeded: true,
+                                textFieldColor: AppColors.white,
                                 hintText: localizationController
                                     .translate('full_name'),
                                 labelText: localizationController
@@ -81,28 +85,27 @@ class SignUpScreen extends StatelessWidget {
                                   if (value == null || value.isEmpty) {
                                     return 'Name is required';
                                   }
-                                  //first letter should  not be space
                                   if (value.startsWith(' ')) {
                                     return 'Name should not start with a space';
                                   }
-                                  // Check for only letters (allowing spaces between names)
                                   if (!RegExp(r'^[a-zA-Z ]+$')
                                       .hasMatch(value)) {
                                     return 'Name should contain only letters and spaces';
                                   }
-
-                                  // Check minimum length (optional)
                                   if (value.length < 2) {
                                     return 'Name should be at least 2 characters';
                                   }
                                   return null;
                                 },
                                 onChanged: (value) {
-                                  // Trigger validation on change
                                   _formKey.currentState!.validate();
                                 },
                                 labelTextColor: AppColors.black),
+
+                            // Email Field
                             CustomTextFieldWidget(
+                                isBorderNeeded: true,
+                                textFieldColor: AppColors.white,
                                 hintText: localizationController
                                     .translate('email_address'),
                                 labelText: localizationController
@@ -113,9 +116,8 @@ class SignUpScreen extends StatelessWidget {
                                   if (value == null || value.isEmpty) {
                                     return 'Email is required';
                                   }
-                                  //first letter should  not be space
                                   if (value.startsWith(' ')) {
-                                    return 'Name should not start with a space';
+                                    return 'Email should not start with a space';
                                   }
                                   if (!RegExp(
                                           r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
@@ -125,7 +127,6 @@ class SignUpScreen extends StatelessWidget {
                                   return null;
                                 },
                                 onChanged: (value) {
-                                  // Trigger validation on change
                                   _formKey.currentState!.validate();
                                 },
                                 inputFormatters: [
@@ -133,7 +134,11 @@ class SignUpScreen extends StatelessWidget {
                                       RegExp(r'\s')),
                                 ],
                                 labelTextColor: AppColors.black),
+
+                            // Mobile Number Field
                             CustomTextFieldWidget(
+                                isBorderNeeded: true,
+                                textFieldColor: AppColors.white,
                                 hintText: localizationController
                                     .translate('mobile_number'),
                                 labelText: localizationController
@@ -144,9 +149,8 @@ class SignUpScreen extends StatelessWidget {
                                   if (value == null || value.isEmpty) {
                                     return 'Mobile number is required';
                                   }
-                                  //first letter should  not be space
                                   if (value.startsWith(' ')) {
-                                    return 'Name should not start with a space';
+                                    return 'Mobile number should not start with a space';
                                   }
                                   if (value.length != 10) {
                                     return 'Mobile number must be 10 digits';
@@ -154,7 +158,6 @@ class SignUpScreen extends StatelessWidget {
                                   return null;
                                 },
                                 onChanged: (value) {
-                                  // Trigger validation on change
                                   _formKey.currentState!.validate();
                                 },
                                 inputFormatters: [
@@ -164,8 +167,93 @@ class SignUpScreen extends StatelessWidget {
                                       RegExp(r'\s')),
                                 ],
                                 labelTextColor: AppColors.black),
+
+                            // Gender Selection Field
+                            _buildGenderSelection(),
+
+                            // Date of Birth Field
+                            _buildDateOfBirthField(),
+
+                            // Location Field
+                            CustomTextFieldWidget(
+                                isBorderNeeded: true,
+                                textFieldColor: AppColors.white,
+                                hintText: localizationController
+                                        .translate('location') ??
+                                    'Location',
+                                labelText: localizationController
+                                        .translate('location') ??
+                                    'Location',
+                                keyboardType: TextInputType.text,
+                                controller: authService.locationController,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Location is required';
+                                  }
+                                  if (value.startsWith(' ')) {
+                                    return 'Location should not start with a space';
+                                  }
+                                  if (value.length < 2) {
+                                    return 'Location should be at least 2 characters';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (value) {
+                                  _formKey.currentState!.validate();
+                                },
+                                labelTextColor: AppColors.black),
+
+                            // WhatsApp Availability Checkbox
+                            _buildWhatsAppAvailabilityField(),
+
+                            // Conditional WhatsApp Number Field
+                            Obx(() {
+                              return authService.selectedWhatsAppStatus.value
+                                  ? Container()
+                                  : CustomTextFieldWidget(
+                                      isBorderNeeded: true,
+                                      textFieldColor: AppColors.white,
+                                      hintText: localizationController
+                                              .translate('whatsapp_number') ??
+                                          'WhatsApp Number',
+                                      labelText: localizationController
+                                              .translate('whatsapp_number') ??
+                                          'WhatsApp Number',
+                                      keyboardType: TextInputType.phone,
+                                      controller:
+                                          authService.whatsAppNumberController,
+                                      validator: (value) {
+                                        if (!authService
+                                            .selectedWhatsAppStatus.value) {
+                                          if (value == null || value.isEmpty) {
+                                            return 'WhatsApp number is required';
+                                          }
+                                          if (value.startsWith(' ')) {
+                                            return 'WhatsApp number should not start with a space';
+                                          }
+                                          if (value.length != 10) {
+                                            return 'WhatsApp number must be 10 digits';
+                                          }
+                                        }
+                                        return null;
+                                      },
+                                      onChanged: (value) {
+                                        _formKey.currentState!.validate();
+                                      },
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                        LengthLimitingTextInputFormatter(10),
+                                        FilteringTextInputFormatter.deny(
+                                            RegExp(r'\s')),
+                                      ],
+                                      labelTextColor: AppColors.black);
+                            }),
+
+                            // Password Field
                             Obx(() {
                               return CustomTextFieldWidget(
+                                  isBorderNeeded: true,
+                                  textFieldColor: AppColors.white,
                                   hintText: localizationController
                                       .translate('password'),
                                   labelText: localizationController
@@ -185,23 +273,15 @@ class SignUpScreen extends StatelessWidget {
                                     if (value.length < 8) {
                                       return 'Password must be at least 8 characters';
                                     }
-                                    // Check for at least one lowercase letter
                                     if (!RegExp(r'[a-z]').hasMatch(value)) {
                                       return 'Password must contain at least one lowercase letter';
                                     }
-                                    // Check for at least one uppercase letter
-                                    // if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                                    //   return 'Password must contain at least one uppercase letter';
-                                    // }
-                                    // Check for at least one letter
                                     if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
                                       return 'Password must contain at least one letter';
                                     }
-                                    // Check for at least one number
                                     if (!RegExp(r'[0-9]').hasMatch(value)) {
                                       return 'Password must contain at least one number';
                                     }
-                                    // Check for at least one special character
                                     if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]')
                                         .hasMatch(value)) {
                                       return 'Password must contain at least one special character';
@@ -209,7 +289,6 @@ class SignUpScreen extends StatelessWidget {
                                     return null;
                                   },
                                   onChanged: (value) {
-                                    // Trigger validation on change
                                     _formKey.currentState!.validate();
                                   },
                                   inputFormatters: [
@@ -220,41 +299,12 @@ class SignUpScreen extends StatelessWidget {
                             }),
 
                             SizedBox(height: Get.height * 0.01),
-                            // Row(
-                            //   children: [
-                            //     Obx(
-                            //       () => Checkbox(
-                            //         value: signupController.isTermsAccepted.value,
-                            //         onChanged: (value) {
-                            //           signupController.toggleTermsAcceptance(value);
-                            //         },
-                            //         activeColor: AppColors.blueColor,
-                            //         checkColor: AppColors.white,
-                            //         splashRadius: 20,
-                            //         side: const BorderSide(
-                            //           width: 1,
-                            //           color: AppColors.lightGrey,
-                            //         ),
-                            //         materialTapTargetSize:
-                            //             MaterialTapTargetSize.shrinkWrap,
-                            //       ),
-                            //     ),
-                            //     Flexible(
-                            //         child: Text(
-                            //       localizationController
-                            //           .translate('accept_terms_and_conditions'),
-                            //       style: GoogleFonts.poppins(
-                            //         color: AppColors.black600,
-                            //         fontSize: Get.height * 0.018,
-                            //         fontWeight: FontWeight.w500,
-                            //       ),
-                            //     ))
-                            //   ],
-                            // ),
-                            kHeight(0.01),
+
+                            kHeight(0.03),
                             _buildSignupButton(),
                             kHeight(0.02),
                             _buildLoginTextButton(),
+                            kHeight(0.02),
                           ],
                         ),
                       ),
@@ -274,58 +324,195 @@ class SignUpScreen extends StatelessWidget {
     return LanguageTextButton(localizationController: localizationController);
   }
 
-  // // Reusable input field widget
-  // Widget _buildInputField({
-  //   required String label,
-  //   required String hintText,
-  //   TextInputType? keyboardType,
-  //   bool obscureText = false,
-  //   Widget? suffixIcon,
-  // }) {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       Text(
-  //         label,
-  //         style: GoogleFonts.poppins(
-  //           color: AppColors.black,
-  //           fontSize: Get.height * 0.02,
-  //           fontWeight: FontWeight.w400,
-  //         ),
-  //       ),
-  //       SizedBox(height: Get.height * 0.005),
-  //       TextField(
-  //         obscureText: obscureText,
-  //         keyboardType: keyboardType ?? TextInputType.text,
-  //         decoration: InputDecoration(
-  //           hintText: hintText,
-  //           hintStyle: GoogleFonts.poppins(color: AppColors.lightGrey),
-  //           contentPadding: EdgeInsets.symmetric(
-  //             vertical: Get.height * 0.015,
-  //             horizontal: Get.width * 0.05,
-  //           ),
-  //           border: OutlineInputBorder(
-  //             borderRadius: BorderRadius.circular(12),
-  //             borderSide: const BorderSide(color: AppColors.lightGrey),
-  //           ),
-  //           focusedBorder: OutlineInputBorder(
-  //             borderRadius: BorderRadius.circular(12),
-  //             borderSide: const BorderSide(color: AppColors.primaryColor),
-  //           ),
-  //           suffixIcon: suffixIcon,
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
+  // Gender Selection Widget
+  Widget _buildGenderSelection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: Get.height * 0.01),
+          child: Text(
+            localizationController.translate('gender'),
+            style: GoogleFonts.poppins(
+              color: AppColors.black,
+              fontSize: tagTitle,
+            ),
+          ),
+        ),
+        Obx(() => Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: Get.width * 0.04,
+                vertical: Get.height * 0.004,
+              ),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.lightGrey),
+                borderRadius: BorderRadius.circular(12),
+                color: AppColors.white,
+              ),
+              child: DropdownButton<String>(
+                value: authService.selectedGender.value.isEmpty
+                    ? null
+                    : authService.selectedGender.value,
+                hint: Text(
+                  localizationController.translate('select_gender') ??
+                      'Select Gender',
+                  style: GoogleFonts.poppins(
+                      color: AppColors.black,
+                      fontSize: tagTitle,
+                      fontWeight: FontWeight.w500),
+                ),
+                isExpanded: true,
+                underline: Container(),
+                items: ['Male', 'Female', 'Others']
+                    .map((gender) => DropdownMenuItem<String>(
+                          value: gender,
+                          child: Text(
+                            gender,
+                            style: GoogleFonts.poppins(
+                                color: AppColors.black,
+                                fontSize: tagTitle,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    authService.selectedGender.value = value;
+                  }
+                },
+              ),
+            )),
+        // SizedBox(height: Get.height * 0.01),
+      ],
+    );
+  }
+
+  // Date of Birth Selection Widget
+  Widget _buildDateOfBirthField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: Get.height * 0.01),
+          child: Text(
+            localizationController.translate('date_of_birth') ??
+                'Date of Birth',
+            style: GoogleFonts.poppins(
+              color: AppColors.black,
+              fontSize: tagTitle,
+            ),
+          ),
+        ),
+        Obx(() => GestureDetector(
+              onTap: () => _selectDate(),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: Get.width * 0.04,
+                  vertical: Get.height * 0.018,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.lightGrey),
+                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.white,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      authService.selectedDate.value.isEmpty
+                          ? (localizationController
+                                  .translate('select_date_of_birth') ??
+                              'Select Date of Birth')
+                          : authService.selectedDate.value,
+                      style: GoogleFonts.poppins(
+                          color: AppColors.black,
+                          fontSize: tagTitle,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    Icon(
+                      Icons.calendar_today,
+                      color: AppColors.lightGrey,
+                      size: Get.height * 0.02,
+                    ),
+                  ],
+                ),
+              ),
+            )),
+        SizedBox(height: Get.height * 0.01),
+      ],
+    );
+  }
+
+  // WhatsApp Availability Checkbox Widget
+  Widget _buildWhatsAppAvailabilityField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Obx(() => CheckboxListTile(
+              title: Text(
+                localizationController
+                        .translate('whatsapp_available_on_provided_phone') ??
+                    'Is WhatsApp available on the provided phone number?',
+                style: GoogleFonts.poppins(
+                  color: AppColors.black,
+                  fontSize: tagTitle,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              value: authService.selectedWhatsAppStatus.value,
+              onChanged: (value) {
+                authService.selectedWhatsAppStatus.value = value ?? false;
+                if (value == true) {
+                  // Clear WhatsApp number field if same number is used
+                  authService.whatsAppNumberController.clear();
+                }
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              activeColor: AppColors.secondaryColor,
+            )),
+        SizedBox(height: Get.height * 0.01),
+      ],
+    );
+  }
+
+  // Date Picker Function
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: Get.context!,
+      initialDate:
+          DateTime.now().subtract(Duration(days: 6570)), // 18 years ago
+      firstDate: DateTime(1950),
+      lastDate:
+          DateTime.now().subtract(Duration(days: 6570)), // Minimum 18 years
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primaryColor,
+              onPrimary: AppColors.white,
+              surface: AppColors.white,
+              onSurface: AppColors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      authService.selectedDate.value =
+          "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+    }
+  }
 
   // widget for mobile input field
   Widget _buildMobileInputField({
     required String label,
     required String hintText,
     required TextEditingController mobileNumberController,
-    // required String selectedCountryCode,
-    // required ValueChanged<String?> onCountryCodeChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,30 +598,50 @@ class SignUpScreen extends StatelessWidget {
         color: AppColors.black,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Obx(
-     () {
-          return CustomButtonWidget(
-            childWidgetLoader: authService.isRegisterAgent.value,
-            buttonTitle: localizationController.translate('sign_up'),
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
+      child: Obx(() {
+        return CustomButtonWidget(
+          childWidgetLoader: authService.isRegisterAgent.value,
+          buttonTitle: localizationController.translate('sign_up'),
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              // Additional validation for required fields
+              if (authService.selectedGender.value.isEmpty) {
+                Get.snackbar('Error', 'Please select gender');
+                return;
+              }
+              if (authService.selectedDate.value.isEmpty) {
+                Get.snackbar('Error', 'Please select date of birth');
+                return;
+              }
+
+              if (!authService.isRegisterAgent.value) {
+                FocusManager.instance.primaryFocus?.unfocus();
                 if (!authService.isRegisterAgent.value) {
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  if (!authService.isRegisterAgent.value) {
-                    authService.registerAgent();
-                  }
+                  // Call the setAgentRole method with all required parameters
+                  authService.registerAgent();
+                  // setAgentRole(
+                  //   authService.fullNameController.text,
+                  //   authService.mobileNoController.text,
+                  //   authService.selectedGender.value,
+                  //   authService.profilePictureUrl.value.isEmpty
+                  //       ? null
+                  //       : authService.profilePictureUrl.value,
+                  //   authService.selectedDate.value,
+                  //   authService.selectedWhatsAppStatus.value,
+                  //   authService.selectedWhatsAppStatus.value
+                  //       ? authService.mobileNoController.text
+                  //       : authService.whatsAppNumberController.text,
+                  //   authService.locationController.text,
+                  // );
                 }
               }
-              // authService.isRegisterAgent.value
-              //     ? null
-              //     : authService.registerAgent();
-            },
-            fontSize: packageTitle,
-            buttonTextColor: AppColors.white,
-            buttonColor: AppColors.black,
-          );
-        }
-      ),
+            }
+          },
+          fontSize: packageTitle,
+          buttonTextColor: AppColors.white,
+          buttonColor: AppColors.black,
+        );
+      }),
     );
   }
 
@@ -445,8 +652,9 @@ class SignUpScreen extends StatelessWidget {
       children: [
         CustomTextWidget(
           title: localizationController.translate('already_have_an_account'),
-          color: AppColors.lightGrey,
-          fontSize: popularPlaceTitle,
+          color: AppColors.black800,
+          fontWeight: FontWeight.w500,
+          fontSize: H18,
         ),
         kWidth(0.01),
         InkWell(
@@ -456,7 +664,7 @@ class SignUpScreen extends StatelessWidget {
           child: CustomTextWidget(
             title: localizationController.translate('login'),
             color: AppColors.blueColor,
-            fontSize: popularPlaceTitle,
+            fontSize: H18,
           ),
         )
       ],

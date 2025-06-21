@@ -2,8 +2,17 @@ import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../data/model/agent_properties_response_model.dart';
+import '../../../../data/repositories/api_services.dart';
+
 class AgentRegisteredPropertyController extends GetxController {
-  final agentProperties = <Map<String, dynamic>>[].obs;
+  final ApiService _apiService = Get.put(ApiService());
+
+  final agentProperties = <AgentProperty>[].obs;
+  final isLoading = false.obs;
+  final errorMessage = RxString('');
+  final count = 0.obs;
+
   final selectedCurrency = 'OMR'.obs;
   final selectedStatus = 'Available'.obs;
 
@@ -20,6 +29,45 @@ class AgentRegisteredPropertyController extends GetxController {
     'BHD'
   ];
 
+  @override
+  void onInit() {
+    super.onInit();
+    loadAgentProperties();
+  }
+
+  Future<void> loadAgentProperties() async {
+    try {
+      isLoading(true);
+      errorMessage('');
+
+      final response = await _apiService.getAgentPropertyList();
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseModel = AgentPropertyResponse.fromJson(response.data);
+
+        if (responseModel.success == true) {
+          agentProperties.assignAll(responseModel.properties ?? []);
+          count.value = responseModel.count ?? 0;
+        } else {
+          errorMessage(_getLocalizedMessage(responseModel.message));
+        }
+      } else {
+        errorMessage(response.statusMessage ?? 'Failed to load properties');
+      }
+    } catch (e) {
+      errorMessage(e.toString());
+    } finally {
+      isLoading(false);
+    }
+  }
+
+  String _getLocalizedMessage(LocalizedMessage? message) {
+    if (message == null) return 'Unknown error occurred';
+    return Get.locale?.languageCode == 'ar'
+        ? message.ar ?? message.en ?? 'Unknown error'
+        : message.en ?? 'Unknown error';
+  }
+
   void updateCurrency(String? value) {
     if (value != null) selectedCurrency.value = value;
   }
@@ -28,96 +76,24 @@ class AgentRegisteredPropertyController extends GetxController {
     selectedStatus.value = value;
   }
 
-  @override
-  void onInit() {
-    super.onInit();
-    loadAgentProperties();
-  }
-
-  void loadAgentProperties() {
-    final properties = [
-      {
-        'id': 1,
-        'imageUrl':
-            'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400',
-        'propertyName': 'Luxury Villa in Al Mouj',
-        'status': 'For sale',
-        'location': 'Al Mouj, Muscat',
-        'price': '450,000 KWD',
-        'area': '3,200 sq.ft',
-        'bedrooms': 5,
-        'bathrooms': 4,
-        'listedDate': '2023-01-10',
-        'description': 'Spacious luxury villa with private pool and garden',
-      },
-      {
-        'id': 2,
-        'imageUrl':
-            'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400',
-        'propertyName': 'Modern Apartment in Qurm',
-        'status': 'Sold out',
-        'location': 'Qurm, Muscat',
-        'price': '380,000 KWD',
-        'area': '2,100 sq.ft',
-        'bedrooms': 3,
-        'bathrooms': 2,
-        'listedDate': '2022-11-15',
-        'soldDate': '2023-03-20',
-        'description': 'Modern apartment with sea view and premium finishes',
-      },
-      {
-        'id': 3,
-        'imageUrl':
-            'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400',
-        'propertyName': 'Commercial Space in CBD Muscat',
-        'status': 'For sale',
-        'location': 'Muscat, Central Business District',
-        'price': '620,000 KWD',
-        'area': '5,500 sq.ft',
-        'listedDate': '2023-02-05',
-        'description': 'Prime commercial space ideal for offices or retail',
-      },
-      {
-        'id': 4,
-        'imageUrl':
-            'https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=400',
-        'propertyName': 'Penthouse in Shatti Al Qurum',
-        'status': 'For sale',
-        'location': 'Shatti Al Qurum, Muscat',
-        'price': '750,000 KWD',
-        'area': '4,800 sq.ft',
-        'bedrooms': 4,
-        'bathrooms': 3,
-        'listedDate': '2023-03-18',
-        'description': 'Luxury penthouse with panoramic sea views',
-      },
-    ];
-
-    agentProperties.assignAll(properties);
-  }
-
   /// Returns the appropriate color based on property status
   Color getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'for sale':
-      case 'available':
-        return AppColors.onlineGreen;
-      case 'sold out':
-      case 'sold':
-        return AppColors.redColor;
-      case 'under list':
-      case 'under listing':
-      case 'pending':
-        return AppColors.warning;
-      case 'rented':
-      case 'for rent':
-        return AppColors.blueColor;
-      case 'reserved':
-      case 'on hold':
-        return AppColors.secondaryColor;
-      default:
-        return AppColors.lightGrey;
+    final statusLower = status.toLowerCase();
+
+    if (statusLower.contains('available') || statusLower.contains('for sale')) {
+      return AppColors.onlineGreen;
+    } else if (statusLower.contains('sold')) {
+      return AppColors.redColor;
+    } else if (statusLower.contains('pending') ||
+        statusLower.contains('under')) {
+      return AppColors.warning;
+    } else if (statusLower.contains('rent')) {
+      return AppColors.blueColor;
+    } else if (statusLower.contains('reserved') ||
+        statusLower.contains('hold')) {
+      return AppColors.secondaryColor;
     }
+    return AppColors.lightGrey;
   }
 
   /// Returns the background color with opacity for status badges
@@ -126,12 +102,70 @@ class AgentRegisteredPropertyController extends GetxController {
   }
 
   /// Returns formatted status text (capitalize first letter)
-  String getFormattedStatus(String status) {
-    return status
+  String getFormattedStatus(LocalizedText? status) {
+    if (status == null) return 'N/A';
+
+    final rawStatus = Get.locale?.languageCode == 'ar'
+        ? status.ar ?? status.en ?? 'N/A'
+        : status.en ?? 'N/A';
+
+    return rawStatus
         .split(' ')
         .map((word) => word.isNotEmpty
             ? word[0].toUpperCase() + word.substring(1).toLowerCase()
             : word)
         .join(' ');
+  }
+
+  /// Helper to get localized address based on current locale
+  String getLocalizedAddress(LocalizedText? address) {
+    if (address == null) return 'No address';
+    return Get.locale?.languageCode == 'ar'
+        ? address.ar ?? address.en ?? 'No address'
+        : address.en ?? 'No address';
+  }
+
+  /// Helper to get formatted price with currency
+  String getFormattedPrice(AgentPropertyPrice? price) {
+    if (price == null) return '${selectedCurrency.value} 0';
+
+    final formatted = price.formatted;
+    final locale = Get.locale?.languageCode;
+
+    if (locale == 'ar' && formatted?.ar != null) {
+      return formatted!.ar!;
+    } else if (formatted?.en != null) {
+      return formatted!.en!;
+    }
+
+    return '${selectedCurrency.value} ${price.raw ?? '0'}';
+  }
+
+  /// Filter properties by status
+  List<AgentProperty> get filteredProperties {
+    if (selectedStatus.value == 'All') return agentProperties;
+
+    return agentProperties.where((property) {
+      final status = getFormattedStatus(property.status).toLowerCase();
+      return status.contains(selectedStatus.value.toLowerCase());
+    }).toList();
+  }
+
+  /// Sort properties by price (ascending or descending)
+  void sortPropertiesByPrice({bool ascending = true}) {
+    agentProperties.sort((a, b) {
+      final priceA = double.tryParse(a.price?.raw ?? '0') ?? 0;
+      final priceB = double.tryParse(b.price?.raw ?? '0') ?? 0;
+      return ascending ? priceA.compareTo(priceB) : priceB.compareTo(priceA);
+    });
+  }
+
+  /// Sort properties by assigned date (newest first)
+  void sortPropertiesByDate() {
+    agentProperties.sort((a, b) {
+      final dateA = DateTime.tryParse(a.assignedDate ?? '') ?? DateTime(1970);
+      final dateB = DateTime.tryParse(b.assignedDate ?? '') ?? DateTime(1970);
+      return dateB.compareTo(dateA);
+    });
   }
 }

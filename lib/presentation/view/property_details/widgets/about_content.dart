@@ -221,17 +221,24 @@ class AboutContent extends StatelessWidget {
     return Row(
       children: [
         CircleAvatar(
-          radius: Get.height * 0.035,
-          backgroundImage: const AssetImage('assets/images/agent.jpg'),
-          backgroundColor: AppColors.white,
-        ),
+            radius: Get.height * 0.035,
+            backgroundImage: NetworkImage(
+                "${propertyDetailsController.property?.value?.agent?.image}"),
+            backgroundColor: AppColors.whiteLight,
+            child: Icon(
+              Icons.person,
+              color: AppColors.secondaryColor,
+              size: Get.height * 0.03,
+            )),
         SizedBox(width: Get.width * 0.02),
         Column(
           spacing: Get.height * 0.005,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             CustomTextWidget(
-              title: 'Sudhaker Poojary',
+              title:
+                  "${propertyDetailsController.property?.value?.agent?.name?.en}" ??
+                      'Agent Name',
               fontSize: Get.height * 0.02,
               color: AppColors.black,
               fontWeight: FontWeight.w500,
@@ -239,7 +246,7 @@ class AboutContent extends StatelessWidget {
             CustomTextWidget(
               title: 'Real Estate Agent',
               fontSize: Get.height * 0.015,
-              color: AppColors.lightGrey,
+              color: AppColors.darkGrey,
               fontWeight: FontWeight.w400,
             ),
           ],

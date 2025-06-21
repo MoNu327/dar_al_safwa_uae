@@ -124,7 +124,7 @@ class AgentDashboard extends StatelessWidget {
                     leading: Image.asset("assets/images/Profile.png"),
                     title: 'My Profile',
                     onTap: () {
-                      navbarController.selectedIndex(4);
+                      navbarController.selectedIndex(3);
                     },
                   ),
                   buildMenuTile(
@@ -145,7 +145,7 @@ class AgentDashboard extends StatelessWidget {
                     leading: Image.asset("assets/images/Messages.png"),
                     title: 'Messages',
                     onTap: () {
-                      navbarController.selectedIndex(3);
+                      navbarController.selectedIndex(2);
                     },
                   ),
                 ],

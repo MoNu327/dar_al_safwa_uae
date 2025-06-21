@@ -13,7 +13,7 @@ class BottomNavbarController extends GetxController {
 
   final pages = [
     HomeScreen(),
-    SearchScreen(),
+    // SearchScreen(),
     DashboardScreen(),
     InboxScreen(),
     const ProfileScreen(),

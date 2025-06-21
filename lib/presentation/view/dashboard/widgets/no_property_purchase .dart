@@ -75,7 +75,7 @@ class NoPropertyPurchaseScreen extends StatelessWidget {
                 buttonTextColor: AppColors.black,
                 // borderColor: AppColors.warning,
                 onPressed: () {
-                  bottomNavbarController.goToNavbarIndex(1);
+                  bottomNavbarController.goToNavbarIndex(0);
                   // Get.offNamed(AppRoute.login);
                 },
               )

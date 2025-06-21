@@ -38,7 +38,7 @@ SizedBox kHeight(double factor) => SizedBox(height: screenHeightFactor(factor));
 SizedBox kWidth(double factor) => SizedBox(width: screenWidthFactor(factor));
 
 double get mainHeadTitle => screenHeight * 0.03;
-double get appBarTitles => screenHeight * 0.020;
+double get appBarTitles => screenHeight * 0.022;
 double get heading => screenHeight * 0.030;
 double get packageTitle => screenHeight * 0.02;
 double get popularPlaceTitle => screenHeight * 0.02;

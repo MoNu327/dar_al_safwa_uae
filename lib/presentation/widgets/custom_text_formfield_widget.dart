@@ -14,6 +14,7 @@ class CustomTextFieldWidget extends StatelessWidget {
   final IconData? prefixIcon;
   final bool? isBoldTextNeeded;
   final bool? isBorderNeeded;
+  final Color? textFieldColor;
 
   final TextInputType keyboardType;
   final TextEditingController controller;
@@ -30,6 +31,7 @@ class CustomTextFieldWidget extends StatelessWidget {
     super.key,
     required this.hintText,
     this.labelText,
+    this.textFieldColor = AppColors.whiteLight,
     this.isBorderNeeded = false,
     required this.keyboardType,
     required this.controller,
@@ -77,9 +79,8 @@ class CustomTextFieldWidget extends StatelessWidget {
             obscureText: obscureText,
             onChanged: onChanged, // Pass onChanged to TextFormField
             decoration: InputDecoration(
-              prefixIcon:
-                  prefixIcon != null ? Icon(prefixIcon) : SizedBox.shrink(),
-              fillColor: AppColors.whiteLight,
+              prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+              fillColor: textFieldColor,
               filled: true,
               hintText: hintText,
               hintStyle: GoogleFonts.poppins(

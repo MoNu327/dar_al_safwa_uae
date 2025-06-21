@@ -77,7 +77,9 @@ class PropertyBannerSlider extends StatelessWidget {
         if (showIndicators && banners.length > 1)
           Obx(() => Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(banners.length, (index) {
+                children: List.generate(
+                    banners.length <= 8 ? banners.length : 8, (index) {
+                  //banners.length
                   return Container(
                     width: 8,
                     height: 8,

@@ -5,12 +5,14 @@ class UserModel {
   final String role;
   final String status;
   final String? phoneNumber;
+  final String? location;
 
   UserModel({
     required this.uid,
     this.email,
     this.name,
     required this.role,
+    this.location,
     required this.status,
     this.phoneNumber,
   });
@@ -23,12 +25,14 @@ class UserModel {
     String? role,
     String? status,
     String? phoneNumber,
+    String? location,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
       email: email ?? this.email,
       name: name ?? this.name,
       role: role ?? this.role,
+      location: location ?? this.location,
       status: status ?? this.status,
       phoneNumber: phoneNumber ?? this.phoneNumber,
     );
@@ -40,6 +44,7 @@ class UserModel {
       uid: json['uid'] ?? '',
       email: json['email'],
       phoneNumber: json['phoneNumber'],
+      location: json['location'],
       name: json['name'] ?? '',
       role: json['role'] ?? 'user',
       status: json['status'] ?? 'pending',
@@ -54,5 +59,6 @@ class UserModel {
         'name': name,
         'role': role,
         'status': status,
+        'location': location,
       };
 }

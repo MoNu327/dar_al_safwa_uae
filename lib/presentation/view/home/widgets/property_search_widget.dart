@@ -34,15 +34,19 @@ class PropertySearchCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.all(Radius.circular(14)),
+        borderRadius: BorderRadius.all(Radius.circular(screenWidth6)),
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha((0.3 * 255).toInt()),
-            blurRadius: 15,
-            offset: const Offset(0, 10),
-          )
-        ],
+        border: Border.all(
+          color: AppColors.black800.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        // boxShadow: [
+        //   BoxShadow(
+        //     color: Colors.black.withAlpha((0.3 * 255).toInt()),
+        //     blurRadius: 10,
+        //     offset: const Offset(4, 4),
+        //   )
+        // ],
       ),
       child: Column(
         spacing: Get.height * 0.01,
@@ -52,45 +56,61 @@ class PropertySearchCard extends StatelessWidget {
           Obx(() {
             return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Row(
-                children: propertyOptions.map((option) {
-                  final isSelected =
-                      searchController.selectedPropertyOption.value?.id ==
-                          option.id;
-                  return Padding(
-                    padding: EdgeInsets.only(right: screenWidth * 0.015),
-                    child: GestureDetector(
-                      onTap: () =>
-                          searchController.selectPropertyOption(option),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: Get.width * 0.015,
-                          vertical: Get.height * 0.01,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.secondaryColor
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: CustomTextWidget(
-                          title: isArabic ? option.name.ar : option.name.en,
-                          color: isSelected
-                              ? AppColors.white
-                              : AppColors.secondaryColor,
-                          fontWeight: FontWeight.w600,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Get.width * 0.02,
+                  vertical: Get.height * 0.008,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.whiteLight,
+                  borderRadius: BorderRadius.circular(screenWidth4),
+                ),
+                child: Row(
+                  children: propertyOptions.map((option) {
+                    final isSelected =
+                        searchController.selectedPropertyOption.value?.id ==
+                            option.id;
+                    return Padding(
+                      padding: EdgeInsets.only(right: screenWidth * 0.015),
+                      child: GestureDetector(
+                        onTap: () =>
+                            searchController.selectPropertyOption(option),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Get.width * 0.030,
+                            vertical: Get.height * 0.005,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              width: 2,
+                              color: isSelected
+                                  ? AppColors.white
+                                  : Colors.transparent,
+                            ),
+                            color: isSelected
+                                ? AppColors.primaryColor
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(screenWidth3),
+                          ),
+                          child: CustomTextWidget(
+                            title: isArabic ? option.name.ar : option.name.en,
+                            color: isSelected
+                                ? AppColors.black
+                                : AppColors.darkGrey,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
             );
           }),
 
           // Property Type Dropdown
           Obx(() => _buildPropertyDropdown(
-                icon: Icons.home,
+                icon: Icons.home_outlined,
                 title: localizationController.translate("property"),
                 value: searchController.selectedPropertyType.value,
                 items: propertyTypes,
@@ -100,7 +120,7 @@ class PropertySearchCard extends StatelessWidget {
 
           // Location Dropdown
           Obx(() => _buildPropertyDropdown(
-                icon: Icons.location_on,
+                icon: Icons.location_on_outlined,
                 title: localizationController.translate("location"),
                 value: searchController.selectedPropertyLocation.value,
                 items: propertyLocations,
@@ -110,7 +130,7 @@ class PropertySearchCard extends StatelessWidget {
 
           // Beds & Baths Dropdown
           Obx(() => _buildPropertyDropdown(
-                icon: Icons.bathtub,
+                icon: Icons.bathtub_outlined,
                 title: localizationController.translate("beds_baths"),
                 value: searchController.selectedBedsBath.value,
                 items: propertyBedsBaths,
@@ -118,13 +138,16 @@ class PropertySearchCard extends StatelessWidget {
                 isArabic: isArabic,
               )),
 
+          kHeight(0.01),
+
           SizedBox(
             width: double.infinity,
             height: Get.height * 0.06,
             child: CustomButtonWidget(
               buttonShape: "rect",
               buttonTitle: localizationController.translate("search_property"),
-              buttonColor: AppColors.secondaryColor,
+              buttonColor: AppColors.primaryColor,
+              buttonTextColor: AppColors.black,
               onPressed: () {
                 if (searchController.isFormComplete) {
                   final params = {
@@ -192,7 +215,7 @@ class PropertySearchCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.secondaryColor),
+            Icon(icon, color: AppColors.black),
             const SizedBox(width: 10),
             Expanded(
               child: DropdownButton<T>(

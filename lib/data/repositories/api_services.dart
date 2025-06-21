@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../datasources/api_client.dart';
+import '../model/agent_properties_response_model.dart';
 import '../model/compliant_model.dart';
 import '../model/property_user_review_model.dart';
 import '../model/search_property_model.dart';
@@ -130,6 +131,34 @@ class ApiService {
         "propertyDetails/$propertyId",
         method: "get",
       );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> getAgentPropertyList() async {
+    try {
+      final response = await apiClient.request("agent-properties",
+          method: "post", data: {"uid": "jznkHrlfH5eFp2Vsc2Jvi7gSd5m2"});
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Response> getAgentPropertiesSearch() async {
+    // API Refining Needed
+    try {
+      final response = await apiClient
+          .request("agent-searchproperties", method: "post", data: {
+        "uid": "jznkHrlfH5eFp2Vsc2Jvi7gSd5m2",
+        "title": "b",
+        "city": "",
+        "state": "Muscat"
+      });
 
       return response;
     } catch (e) {

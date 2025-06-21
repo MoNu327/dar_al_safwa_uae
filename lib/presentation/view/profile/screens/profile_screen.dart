@@ -20,6 +20,7 @@ import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 import '../../search/screens/search_screen.dart';
 import '../controller/profile_controller.dart';
+import '../widgets/tenant_edit_profile_widget.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -79,7 +80,6 @@ class ProfileViewScreen extends StatelessWidget {
         backgroundColor: AppColors.white,
         surfaceTintColor: AppColors.white,
         automaticallyImplyLeading: false,
-        toolbarHeight: Get.height * 0.04,
         title: Obx(() {
           return CustomTextWidget(
             title: localizationController.translate('My Profile'),
@@ -89,14 +89,28 @@ class ProfileViewScreen extends StatelessWidget {
           );
         }),
         actions: [
-          TextButton(
-              onPressed: profileController.toggleEdit,
-              child: CustomTextWidget(
-                title: localizationController.translate('Edit'),
-                color: AppColors.black,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              )),
+          (profileController.displayName != "Guest" &&
+                  (authService.userRole.value == 'tenant' ||
+                      authService.userRole.value == 'user' ||
+                      authService.userRole.value == 'agent'))
+              ? TextButton(
+                  onPressed: () {
+                    if (authService.userRole.value == 'tenant' ||
+                        authService.userRole.value == 'user') {
+                      Get.to(EditTenantProfileScreen());
+                    } else {
+                      profileController.toggleEdit();
+                    }
+                  },
+                  child: CustomTextWidget(
+                    title: localizationController.translate('Edit'),
+                    color: AppColors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                )
+              : SizedBox.shrink()
+
           // LanguageTextButton(localizationController: localizationController),
         ],
       ),
@@ -156,45 +170,74 @@ class ProfileViewScreen extends StatelessWidget {
                         color: AppColors.black,
                       ),
 
-                      // Professional Info Section (New)
-                      _buildProfessionalInfo(),
+//  if (authService.userRole.value == 'agent') {
+//           return !networkController.isConnected.value
+//               ? NoInternetWidegt()
+//               : AgentDashboard();
+//         } else if (authService.userRole.value == 'tenant') {
+//           return !networkController.isConnected.value
+//               ? NoInternetWidegt()
+//               : TenantDashboard();
+//         } else if (authService.userRole.value == 'user') {
+//           return !networkController.isConnected.value
+//               ? NoInternetWidegt()
+//               : NoPropertyPurchaseScreen();
+//         } else {
+//           return !networkController.isConnected.value
+//               ? NoInternetWidegt()
+//               : SignupWarningScreen();
+//         }
+//                       // Professional Info Section (New)
+                      Obx(() {
+                        return profileController.isLoading.value
+                            ? LoadingAnimationWidget.threeRotatingDots(
+                                size: screenHeight2,
+                                color: AppColors.primaryColor,
+                              )
+                            : profileController.displayName != "Guest" &&
+                                    (authService.userRole.value == 'agent')
+                                ? Column(
+                                    children: [
+                                      _buildProfessionalInfo(),
+                                      kHeight(0.02),
+                                      _buildStatsRow(),
+                                      kHeight(0.02),
+                                      TestimonialSection(),
+                                      kHeight(0.01),
+                                    ],
+                                  )
+                                : SizedBox.shrink();
+                      }),
 
-                      kHeight(0.02),
-                      // Stats Section (New)
-                      _buildStatsRow(),
-
-                      kHeight(0.01),
-
-                      TestimonialSection(),
-                      kHeight(0.01),
-                      // Menu Items Section
                       _buildBottomTabs(),
 
                       SizedBox(height: Get.height * 0.02),
+                      if (profileController.displayName == "Guest")
 
-                      // Logout Button
-                      CustomButtonWidget(
-                        buttonTitle: localizationController.translate('logout'),
-                        buttonShape: "rect",
-                        buttonColor: AppColors.white,
-                        buttonWidth: screenWidth * 0.4,
-                        borderColor: AppColors.error,
-                        buttonTextColor: AppColors.secondaryColor,
-                        onPressed: () {
-                          Get.defaultDialog(
-                            title: "Logout",
-                            middleText: "Are you sure you want to log out?",
-                            textConfirm: "Yes",
-                            textCancel: "No",
-                            buttonColor: AppColors.secondaryColor,
-                            confirmTextColor: Colors.white,
-                            onConfirm: () {
-                              authService.signOut();
-                              Get.back();
-                            },
-                          );
-                        },
-                      ),
+                        // Logout Button
+                        CustomButtonWidget(
+                          buttonTitle:
+                              localizationController.translate('logout'),
+                          buttonShape: "rect",
+                          // buttonColor: AppColors.white,
+                          buttonWidth: screenWidth * 0.4,
+                          borderColor: AppColors.error,
+                          // buttonTextColor: AppColors.secondaryColor,
+                          onPressed: () {
+                            Get.defaultDialog(
+                              title: "Logout",
+                              middleText: "Are you sure you want to log out?",
+                              textConfirm: "Yes",
+                              textCancel: "No",
+                              buttonColor: AppColors.secondaryColor,
+                              confirmTextColor: Colors.white,
+                              onConfirm: () {
+                                authService.signOut();
+                                Get.back();
+                              },
+                            );
+                          },
+                        ),
 
                       SizedBox(height: Get.height * 0.02),
                     ],
@@ -299,7 +342,7 @@ class ProfileViewScreen extends StatelessWidget {
             ),
             kWidth(0.01),
             CustomTextWidget(
-              title: 'Kerala, India',
+              title: profileController.displayLocation,
               fontSize: tagTitle,
               fontWeight: FontWeight.bold,
               color: AppColors.black,

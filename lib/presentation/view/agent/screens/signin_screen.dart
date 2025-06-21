@@ -60,11 +60,13 @@ class SigninScreen extends StatelessWidget {
                             CustomTextWidget(
                               title: localizationController
                                   .translate('welcome_back'),
-                              color: AppColors.lightGrey,
+                              color: AppColors.darkGrey,
                               fontSize: Get.height * 0.018,
                             ),
                             kHeight(0.01),
                             CustomTextFieldWidget(
+                                textFieldColor: AppColors.white,
+                                isBorderNeeded: true,
                                 hintText: localizationController
                                     .translate('email_address'),
                                 labelText: localizationController
@@ -90,13 +92,11 @@ class SigninScreen extends StatelessWidget {
                                   FilteringTextInputFormatter.deny(
                                       RegExp(r'\s')),
                                 ],
-                                // obscureText: false,
-                                // suffixIcon: false,
-                                // validator: (value) {},
-                                // onChanged: (value) {},
                                 labelTextColor: AppColors.black),
                             Obx(() {
                               return CustomTextFieldWidget(
+                                  isBorderNeeded: true,
+                                  textFieldColor: AppColors.white,
                                   hintText: localizationController
                                       .translate('password'),
                                   labelText: localizationController
@@ -151,14 +151,14 @@ class SigninScreen extends StatelessWidget {
                             }),
 
                             Align(
-                              alignment: Alignment.topRight,
+                              alignment: Alignment.center,
                               child: TextButton(
                                 onPressed: () {},
                                 child: CustomTextWidget(
-                                  title: localizationController
-                                      .translate('forgot_password'),
+                                  title:
+                                      "${localizationController.translate('forgot_password')} !",
                                   color: AppColors.redColor,
-                                  fontSize: popularPlaceTitle,
+                                  fontSize: H18,
                                 ),
                               ),
                             ),
@@ -166,10 +166,11 @@ class SigninScreen extends StatelessWidget {
 
                             Obx(() {
                               return CustomButtonWidget(
+                                  buttonShape: 'rect',
                                   childWidgetLoader:
                                       authService.isSignInAgent.value,
                                   buttonColor: AppColors.black,
-                                  buttonTitle: 'Sign In',
+                                  buttonTitle: 'Login',
                                   onPressed: () {
                                     if (_formKey.currentState!.validate()) {
                                       if (!authService.isSignInAgent.value) {
@@ -291,8 +292,8 @@ class SigninScreen extends StatelessWidget {
       children: [
         CustomTextWidget(
           title: localizationController.translate('dont_have_an_account'),
-          color: AppColors.lightGrey,
-          fontSize: popularPlaceTitle,
+          color: AppColors.black800,
+          fontSize: H18,
         ),
         kWidth(0.01),
         InkWell(
@@ -300,7 +301,7 @@ class SigninScreen extends StatelessWidget {
           child: CustomTextWidget(
             title: localizationController.translate('sign_up'),
             color: AppColors.blueColor,
-            fontSize: popularPlaceTitle,
+            fontSize: H18,
           ),
         )
       ],

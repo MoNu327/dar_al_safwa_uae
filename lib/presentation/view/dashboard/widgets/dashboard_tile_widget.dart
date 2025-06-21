@@ -56,7 +56,7 @@ Widget buildMenuTile({
                   title,
                   style: TextStyle(
                     fontSize: H18,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.black,
                   ),
                 ),

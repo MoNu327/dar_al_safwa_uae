@@ -216,13 +216,6 @@ class TenantComplaintRegister extends StatelessWidget {
                       return;
                     }
 
-                    // Get.snackbar(
-                    //   'Error',
-                    //   'Please select:\n ${missingField.join('\n ')}.',
-                    //   backgroundColor: AppColors.warning,
-                    //   colorText: AppColors.white,
-                    // );
-
                     tenantComplaintRegisterController.submitCompliant();
                   },
                 ),

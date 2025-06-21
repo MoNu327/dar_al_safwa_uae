@@ -1,11 +1,14 @@
 // lib/services/auth_service.dart
 import 'dart:async';
+import 'dart:core';
+import 'dart:ffi';
 
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/model/agent_model.dart';
 import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -21,10 +24,17 @@ class AuthService extends GetxController {
   final Rxn<User> firebaseUser = Rxn<User>();
   final RxString userRole = RxString('');
   final RxString userTenantId = RxString('');
+  final RxString selectedGender = RxString('');
+  final RxString selectedDate = RxString('');
+  final RxBool selectedWhatsAppStatus = RxBool(false);
+  final RxString profilePictureUrl = RxString('');
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController mobileNoController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
+  final TextEditingController whatsAppNumberController =
+      TextEditingController();
 
   var isSignInAgent = false.obs;
   var isSignInTenant = false.obs;
@@ -314,18 +324,156 @@ class AuthService extends GetxController {
     }
   }
 
-  // Google Sign-In for Users/Tenants
+  // // Google Sign-In for Users/Tenants
+  // Future<UserCredential?> signInWithGoogle() async {
+  //   try {
+  //     isSignInGoogle(true);
+  //     debugPrint('Starting Google sign-in...');
+
+  //     // Trigger Google Sign-In flow
+  //     final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+  //     if (googleUser == null) return null;
+
+  //     final GoogleSignInAuthentication googleAuth =
+  //         await googleUser.authentication;
+
+  //     // Create credentials
+  //     final OAuthCredential credential = GoogleAuthProvider.credential(
+  //       accessToken: googleAuth.accessToken,
+  //       idToken: googleAuth.idToken,
+  //     );
+
+  //     // Sign in to Firebase
+  //     final UserCredential userCredential =
+  //         await auth.signInWithCredential(credential);
+
+  //     // Check if this is a new user
+  //     if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+  //       // New user - set default role as 'user'
+  //       await setUserRole(
+  //         'user',
+  //       );
+
+  //       final userDoc = await _firestore
+  //           .collection('users')
+  //           .doc(userCredential.user!.uid)
+  //           .get();
+
+  //       if (userDoc.exists) {
+  //         final role = userDoc.data()?['role'] ?? 'user';
+  //         userRole.value = role;
+
+  //         // Store user details for app-wide access
+  //         final userData = userDoc.data();
+  //         // Redirect based on role
+
+  //         final userModel = UserModel(
+  //           location: userData?['location'] ?? '',
+  //           phoneNumber: userData?['phoneNumber'] ?? '',
+  //           uid: userData?['uid'],
+  //           email: userData?['email'],
+  //           name: userData?['displayName'] ?? '',
+  //           role: userData?['role'] ?? 'user',
+  //           status: userData?['status'] ?? 'pending',
+  //           // Add other fields as needed
+  //         );
+
+  //         Get.find<UserController>().currentUser = userModel;
+  //         debugPrint('User details stored: ${userModel.toJson()}');
+
+  //         navigateToHome();
+  //       } else {}
+  //       // Redirect to complete profile or role selection
+  //       // Get.offAllNamed(AppRoute.completeProfile);
+  //     } else {
+  //       // Existing user - handle according to their role
+  //       await _handleExistingGoogleUser(userCredential.user!);
+  //     }
+
+  //     return userCredential;
+  //   } catch (e) {
+  //     Get.snackbar('Error', 'Google sign-in failed: ${e.toString()}');
+  //     debugPrint('Google sign-in error: $e');
+  //     if (e is FirebaseAuthException) {
+  //       if (e.code == 'account-exists-with-different-credential') {
+  //         Get.snackbar(
+  //             'Error', 'Account already exists with different credential');
+  //       } else if (e.code == 'operation-not-allowed') {
+  //         Get.snackbar('Error', 'Operation not allowed');
+  //       } else {
+  //         Get.snackbar('Error', 'Google sign-in failed: ${e.message}');
+  //       }
+  //     } else {
+  //       Get.snackbar('Error', 'An unexpected error occurred: ${e.toString()}');
+  //     }
+  //     return null;
+  //   } finally {
+  //     isSignInGoogle(false);
+  //   }
+  // }
+
+  // Future<void> _handleExistingGoogleUser(User user) async {
+  //   // Check user's role in Firestore
+  //   final userDoc = await _firestore.collection('users').doc(user.uid).get();
+
+  //   if (userDoc.exists) {
+  //     final role = userDoc.data()?['role'] ?? 'user';
+  //     userRole.value = role;
+
+  //     // Store user details for app-wide access
+  //     final userData = userDoc.data();
+  //     // Redirect based on role
+
+  //     final userModel = UserModel(
+  //       location: userData?['location'] ?? '',
+  //       phoneNumber: userData?['phoneNumber'] ?? '',
+  //       uid: userData?['uid'] ?? user.uid,
+  //       email: userData?['email'] ?? user.email,
+  //       name: userData?['displayName'] ?? '',
+  //       role: userData?['role'] ?? 'user',
+  //       status: userData?['status'] ?? 'pending',
+  //       // Add other fields as needed
+  //     );
+
+  //     Get.find<UserController>().currentUser = userModel;
+  //     debugPrint('User details stored: ${userModel.toJson()}');
+
+  //     navigateToHome();
+  //   } else {
+  //     // Legacy user - create record with default role
+  //     await setUserRole(
+  //       'user',
+  //     );
+  //     navigateToHome();
+  //   }
+  // }
+
+  // Google Sign-In for Users Only
   Future<UserCredential?> signInWithGoogle() async {
     try {
       isSignInGoogle(true);
       debugPrint('Starting Google sign-in...');
 
+      // Check if Google Play Services is available
+      if (!await _googleSignIn.isSignedIn()) {
+        // Force sign out to ensure clean state
+        await _googleSignIn.signOut();
+      }
+
       // Trigger Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
+      if (googleUser == null) {
+        debugPrint('Google sign-in cancelled by user');
+        return null; // User cancelled sign-in
+      }
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
+      // Validate tokens
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('Failed to get Google authentication tokens');
+      }
 
       // Create credentials
       final OAuthCredential credential = GoogleAuthProvider.credential(
@@ -337,101 +485,367 @@ class AuthService extends GetxController {
       final UserCredential userCredential =
           await auth.signInWithCredential(credential);
 
+      if (userCredential.user == null) {
+        throw Exception('Failed to authenticate with Firebase');
+      }
+
       // Check if this is a new user
       if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        // New user - set default role as 'user'
-        await setUserRole(
-          'user',
-        );
-
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .get();
-
-        if (userDoc.exists) {
-          final role = userDoc.data()?['role'] ?? 'user';
-          userRole.value = role;
-
-          // Store user details for app-wide access
-          final userData = userDoc.data();
-          // Redirect based on role
-
-          final userModel = UserModel(
-            uid: userData?['uid'],
-            email: userData?['email'],
-            name: userData?['displayName'] ?? '',
-            role: userData?['role'] ?? 'user',
-            status: userData?['status'] ?? 'pending',
-            // Add other fields as needed
-          );
-
-          Get.find<UserController>().currentUser = userModel;
-          debugPrint('User details stored: ${userModel.toJson()}');
-
-          navigateToHome();
-        } else {}
-        // Redirect to complete profile or role selection
-        // Get.offAllNamed(AppRoute.completeProfile);
+        debugPrint('New Google user detected');
+        // Don't automatically create account - show confirmation dialog
+        await _handleNewGoogleUser(userCredential.user!);
       } else {
-        // Existing user - handle according to their role
+        debugPrint('Existing Google user detected');
+        // Existing user - proceed with login
         await _handleExistingGoogleUser(userCredential.user!);
       }
 
       return userCredential;
+    } on PlatformException catch (e) {
+      debugPrint(
+          'Platform exception during Google sign-in: ${e.code} - ${e.message}');
+      _handlePlatformException(e);
+      return null;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Firebase auth exception: ${e.code} - ${e.message}');
+
+      _handleFirebaseAuthException(e);
+      return null;
     } catch (e) {
-      Get.snackbar('Error', 'Google sign-in failed: ${e.toString()}');
-      debugPrint('Google sign-in error: $e');
-      if (e is FirebaseAuthException) {
-        if (e.code == 'account-exists-with-different-credential') {
-          Get.snackbar(
-              'Error', 'Account already exists with different credential');
-        } else if (e.code == 'operation-not-allowed') {
-          Get.snackbar('Error', 'Operation not allowed');
-        } else {
-          Get.snackbar('Error', 'Google sign-in failed: ${e.message}');
-        }
-      } else {
-        Get.snackbar('Error', 'An unexpected error occurred: ${e.toString()}');
-      }
+      debugPrint('Unexpected error during Google sign-in: $e');
+      Get.snackbar(
+        'Error',
+        'Sign-in failed. Please try again.',
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+      );
       return null;
     } finally {
       isSignInGoogle(false);
     }
   }
 
+// Handle new Google user - ask for confirmation
+  Future<void> _handleNewGoogleUser(User user) async {
+    try {
+      // Check if user document already exists (edge case)
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+
+      if (userDoc.exists) {
+        // Document exists, treat as existing user
+        await _handleExistingGoogleUser(user);
+        return;
+      }
+
+      // Show confirmation dialog for new user registration
+      bool? shouldCreateAccount =
+          await _showRegistrationConfirmationDialog(user);
+
+      if (shouldCreateAccount == true) {
+        // User confirmed - create account
+        await _createUserAccount(user);
+      } else {
+        // User declined - sign out
+        await auth.signOut();
+        await _googleSignIn.signOut();
+        Get.snackbar(
+          'Registration Cancelled',
+          'You can sign in again anytime to create an account.',
+          backgroundColor: Colors.blue[100],
+          colorText: Colors.blue[800],
+        );
+      }
+    } catch (e) {
+      debugPrint('Error handling new Google user: $e');
+      await auth.signOut();
+      await _googleSignIn.signOut();
+      Get.snackbar('Error', 'Registration process failed. Please try again.');
+    }
+  }
+
+// Show confirmation dialog for new user registration
+  Future<bool?> _showRegistrationConfirmationDialog(User user) async {
+    return await Get.dialog<bool>(
+      AlertDialog(
+        title: const Text('Create Account'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundImage:
+                  user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+              child: user.photoURL == null
+                  ? const Icon(Icons.person, size: 30)
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Welcome, ${user.displayName ?? user.email ?? 'User'}!',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              user.email ?? 'No email provided',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Would you like to create a user account with this Google account?',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Create Account'),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+// Create user account after confirmation
+  Future<void> _createUserAccount(User user) async {
+    try {
+      // Create user document
+      final userData = {
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? '',
+        'role': 'user', // Fixed as user
+        'status': 'active', // Users are active by default
+        'profilePicture': user.photoURL,
+        'provider': 'google',
+        'location': '',
+        'phoneNumber': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'registrationCompleted': true,
+      };
+
+      await _firestore.collection('users').doc(user.uid).set(userData);
+
+      // Update local state
+      userRole.value = 'user';
+
+      // Create user model
+      final userModel = UserModel(
+        location: '',
+        phoneNumber: '',
+        uid: user.uid,
+        email: user.email ?? '',
+        name: user.displayName ?? '',
+        role: 'user',
+        status: 'active',
+        // profilePicture: user.photoURL,
+      );
+
+      // Store user in controller
+      Get.find<UserController>().currentUser = userModel;
+      debugPrint('New user account created: ${userModel.toJson()}');
+
+      // Show success message
+      Get.snackbar(
+        'Account Created',
+        'Welcome! Your account has been created successfully.',
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[800],
+      );
+
+      navigateToHome();
+
+      // Navigate to home or complete profile if needed
+      // if (user.displayName?.isEmpty ?? true) {
+      //   Get.offAllNamed(AppRoute.completeProfile);
+      // } else {
+      //   navigateToHome();
+      // }
+    } catch (e) {
+      debugPrint('Error creating user account: $e');
+      Get.snackbar('Error', 'Failed to create account. Please try again.');
+      await auth.signOut();
+      await _googleSignIn.signOut();
+    }
+  }
+
+// Handle existing Google user
   Future<void> _handleExistingGoogleUser(User user) async {
-    // Check user's role in Firestore
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    try {
+      // Check user's data in Firestore
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
-    if (userDoc.exists) {
-      final role = userDoc.data()?['role'] ?? 'user';
-      userRole.value = role;
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final status = userData['status'] ?? 'active';
 
-      // Store user details for app-wide access
-      final userData = userDoc.data();
-      // Redirect based on role
+        userRole.value = 'user';
+
+        // Check if account is active
+        if (status == 'suspended' || status == 'banned') {
+          await auth.signOut();
+          await _googleSignIn.signOut();
+          Get.snackbar(
+            'Account Suspended',
+            'Your account has been suspended. Please contact support.',
+            backgroundColor: Colors.orange[100],
+            colorText: Colors.orange[800],
+          );
+          return;
+        }
+
+        // Create user model
+        final userModel = UserModel(
+          location: userData['location'] ?? '',
+          phoneNumber: userData['phoneNumber'] ?? '',
+          uid: user.uid,
+          email: user.email ?? userData['email'] ?? '',
+          name: userData['displayName'] ?? user.displayName ?? '',
+          role: 'user',
+          status: status,
+
+          // profilePicture: userData['profilePicture'] ?? user.photoURL,
+        );
+
+        // Store user in controller
+        Get.find<UserController>().currentUser = userModel;
+        debugPrint('Existing user logged in: ${userModel.toJson()}');
+
+        // Navigate to home
+        navigateToHome();
+      } else {
+        debugPrint('User document not found for existing user');
+        // This shouldn't happen, but handle gracefully
+        await _handleLegacyGoogleUser(user);
+      }
+    } catch (e) {
+      debugPrint('Error handling existing Google user: $e');
+      Get.snackbar('Error', 'Failed to load user data. Please try again.');
+      await auth.signOut();
+      await _googleSignIn.signOut();
+    }
+  }
+
+// Handle legacy users (existing Firebase users without proper user documents)
+  Future<void> _handleLegacyGoogleUser(User user) async {
+    try {
+      // Create user document with default values
+      final userData = {
+        'uid': user.uid,
+        'email': user.email ?? '',
+        'displayName': user.displayName ?? '',
+        'role': 'user',
+        'status': 'active',
+        'profilePicture': user.photoURL,
+        'provider': 'google',
+        'location': '',
+        'phoneNumber': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'isLegacyUser': true,
+        'registrationCompleted': true,
+      };
+
+      await _firestore.collection('users').doc(user.uid).set(userData);
+      userRole.value = 'user';
 
       final userModel = UserModel(
-        uid: userData?['uid'] ?? user.uid,
-        email: userData?['email'] ?? user.email,
-        name: userData?['displayName'] ?? '',
-        role: userData?['role'] ?? 'user',
-        status: userData?['status'] ?? 'pending',
-        // Add other fields as needed
+        location: '',
+        phoneNumber: '',
+        uid: user.uid,
+        email: user.email ?? '',
+        name: user.displayName ?? '',
+        role: 'user',
+        status: 'active',
+        //  : user.photoURL,
       );
 
       Get.find<UserController>().currentUser = userModel;
-      debugPrint('User details stored: ${userModel.toJson()}');
+
+      Get.snackbar(
+        'Welcome Back',
+        'Your account has been updated successfully.',
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[800],
+      );
 
       navigateToHome();
-    } else {
-      // Legacy user - create record with default role
-      await setUserRole(
-        'user',
-      );
-      navigateToHome();
+    } catch (e) {
+      debugPrint('Error handling legacy Google user: $e');
+      Get.snackbar('Error', 'Account setup failed. Please try again.');
+      await auth.signOut();
+      await _googleSignIn.signOut();
     }
+  }
+
+// Handle platform-specific exceptions
+  void _handlePlatformException(PlatformException e) {
+    String message;
+
+    switch (e.code) {
+      case 'sign_in_failed':
+        message = 'Google sign-in failed. Please try again.';
+        break;
+      case 'network_error':
+        message = 'Network error. Please check your internet connection.';
+        break;
+      case 'sign_in_canceled':
+        return; // Don't show error for user cancellation
+      default:
+        message = 'Sign-in failed. Please try again.';
+    }
+
+    Get.snackbar(
+      'Sign-in Error',
+      message,
+      backgroundColor: Colors.red[100],
+      colorText: Colors.red[800],
+    );
+  }
+
+// Handle Firebase Auth exceptions
+  void _handleFirebaseAuthException(FirebaseAuthException e) {
+    String message;
+
+    switch (e.code) {
+      case 'account-exists-with-different-credential':
+        message =
+            'An account already exists with this email using a different sign-in method.';
+        break;
+      case 'operation-not-allowed':
+        message = 'Google sign-in is not enabled. Please contact support.';
+        break;
+      case 'user-disabled':
+        message = 'This account has been disabled. Please contact support.';
+        break;
+      case 'invalid-credential':
+        message = 'Invalid credentials. Please try again.';
+        break;
+      case 'too-many-requests':
+        message = 'Too many failed attempts. Please try again later.';
+        break;
+      default:
+        message = 'Sign-in failed. Please try again.';
+    }
+
+    Get.snackbar(
+      'Sign-in Error',
+      message,
+      backgroundColor: Colors.red[100],
+      colorText: Colors.red[800],
+    );
   }
 
 // Agent Registration with Email/Password
@@ -469,6 +883,16 @@ class AuthService extends GetxController {
         await setAgentRole(
           fullNameController.text,
           mobileNoController.text,
+          selectedGender.value,
+          profilePictureUrl.value.isNotEmpty ? profilePictureUrl.value : null,
+          selectedDate.value.isNotEmpty ? selectedDate.value : null,
+          selectedWhatsAppStatus.value,
+          selectedWhatsAppStatus.value
+              ? mobileNoController.text
+              : whatsAppNumberController.text.isNotEmpty
+                  ? whatsAppNumberController.text
+                  : null,
+          locationController.text.isNotEmpty ? locationController.text : null,
         );
       }
       Get.snackbar('Success', 'Agent registration submitted for approval');
@@ -522,6 +946,9 @@ class AuthService extends GetxController {
         // Store user details for app-wide access
         final userData = userDoc.data();
         final userModel = AgentModel(
+          dob: userData?['dob'] ?? '',
+          gender: userData?['gender'] ?? '',
+          location: userData?['location'] ?? '',
           uid: credential.user!.uid,
           email: credential.user!.email!,
           name: userData?['displayName'] ?? '',
@@ -581,6 +1008,12 @@ class AuthService extends GetxController {
   Future<void> setAgentRole(
     String fullName,
     String mobileNo,
+    String gender,
+    String? profilePicUrl,
+    String? dob,
+    bool? isWhatsAppAvalable,
+    String? whatsAppNumber,
+    String? location,
   ) async {
     final user = auth.currentUser;
     if (user == null) {
@@ -624,6 +1057,11 @@ class AuthService extends GetxController {
             'email': user.email,
             'displayName': fullName,
             'mobile': mobileNo,
+            'profilePic': "",
+            'gender': gender,
+            'dob': dob,
+            'location': location,
+            'whatsAppNumber': whatsAppNumber,
             'role': 'agent',
             'status': 'pending', // pending/approved/rejected
             'createdAt': FieldValue.serverTimestamp(),

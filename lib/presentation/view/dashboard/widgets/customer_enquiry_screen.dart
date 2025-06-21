@@ -63,7 +63,7 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
             padding: EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppColors.primaryColor,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(screenWidth4),
             ),
             child: TabBar(
               tabAlignment: TabAlignment.fill,
@@ -90,7 +90,7 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
                 Tab(
                   child: Padding(
                     padding:
-                        EdgeInsets.symmetric(horizontal: 30), // adjust here
+                        EdgeInsets.symmetric(horizontal: 20), // adjust here
                     child: Text('Total'),
                   ),
                 ),
@@ -219,7 +219,7 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
 
           CustomTextWidget(
             title: 'May 15,2023',
-            fontSize: detailContentTitle,
+            fontSize: tagTitle,
             color: AppColors.darkGrey,
           ),
           kHeight(0.008),
@@ -227,7 +227,7 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
           CustomTextWidget(
             title: customer.apartment,
             fontWeight: FontWeight.w600,
-            fontSize: detailContentTitle,
+            fontSize: tagTitle,
             color: AppColors.black,
           ),
           kHeight(0.008),
@@ -238,14 +238,14 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
                 child: CustomTextWidget(
                   title: "Recent Deal",
                   fontWeight: FontWeight.w600,
-                  fontSize: detailContentTitle,
+                  fontSize: tagTitle,
                   color: AppColors.darkGrey,
                 ),
               ),
               CustomTextWidget(
                 title: customer.phone,
                 fontWeight: FontWeight.w600,
-                fontSize: detailContentTitle,
+                fontSize: tagTitle,
                 color: AppColors.black,
               ),
             ],
@@ -256,22 +256,29 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildActionButton(
-                'Call',
-                Icons.call,
-                AppColors.blueColor,
+              Expanded(
+                child: _buildActionButton(
+                  'Call',
+                  Icons.call,
+                  AppColors.blueColor,
+                ),
               ),
-              kWidth(0.03),
-              _buildActionButton(
-                'WhatsApp',
-                Icons.chat,
-                AppColors.onlineGreen,
+              kWidth(0.01),
+              Expanded(
+                child: _buildActionButton(
+                  'WhatsApp',
+                  Icons.chat,
+                  AppColors.onlineGreen,
+                ),
               ),
-              kWidth(0.03),
-              _buildActionButton(
-                'Message',
-                Icons.message,
-                AppColors.grey,
+              kWidth(0.01),
+              // kWidth(0.03),
+              Expanded(
+                child: _buildActionButton(
+                  'Message',
+                  Icons.message,
+                  AppColors.grey,
+                ),
               ),
             ],
           ),
@@ -286,7 +293,7 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
       borderRadius: BorderRadius.circular(screenWidth2),
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: screenWidth6,
+          horizontal: screenWidth1,
           vertical: screenHeight1,
         ),
         decoration: BoxDecoration(
@@ -298,7 +305,7 @@ class _CustomerEnquiryScreenState extends State<CustomerEnquiryScreen>
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CustomTextWidget(
               title: text,

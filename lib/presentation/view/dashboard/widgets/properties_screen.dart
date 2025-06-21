@@ -2,6 +2,7 @@ import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/agent_registered_property_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -15,7 +16,7 @@ class PropertiesScreen extends StatelessWidget {
     final AgentRegisteredPropertyController agentPropertyController =
         Get.put(AgentRegisteredPropertyController());
     return Scaffold(
-      backgroundColor: AppColors.whiteLight,
+      backgroundColor: AppColors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -45,7 +46,8 @@ class PropertiesScreen extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: AppColors.black,
                   )),
-                  addPropertyButton(),
+                  notificationNavigation(),
+                  // addPropertyButton(),
                 ],
               ),
             ),
@@ -57,18 +59,19 @@ class PropertiesScreen extends StatelessWidget {
               height: Get.height * 0.05,
               margin: EdgeInsets.symmetric(horizontal: screenWidth4),
               decoration: BoxDecoration(
-                color: AppColors.lightGrey.withValues(alpha: 0.1),
+                color: AppColors.whiteLight,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  // BoxShadow(
-                  //   color: AppColors.lightGrey.withOpacity(0.3),
-                  //   blurRadius: 2,
-                  //   // offset: const Offset(0, 2),
-                  // ),
-                ],
               ),
               child: TextField(
                 decoration: InputDecoration(
+                  enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                          color: AppColors.lightGrey.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(screenWidth4)),
+                  disabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(
+                          color: AppColors.lightGrey.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(screenWidth4)),
                   fillColor: AppColors.darkGrey,
                   hintText: 'Search property by name, location...',
                   hintStyle: TextStyle(
@@ -118,18 +121,34 @@ class PropertiesScreen extends StatelessWidget {
                     itemCount: agentPropertyController.agentProperties.length,
                     itemBuilder: (context, index) {
                       final property =
-                          agentPropertyController.agentProperties[index];
-                      final color = agentPropertyController
-                          .getStatusColor(property['status']);
+                          agentPropertyController.filteredProperties[index];
+                      final statusText = agentPropertyController
+                          .getFormattedStatus(property.status);
+                      final color =
+                          agentPropertyController.getStatusColor(statusText);
                       return buildPropertyCard(
-                          imageUrl: property['imageUrl'],
-                          title: property['propertyName'],
-                          location: property['location'],
-                          status: property['status'],
-                          statusColor:
-                              color, // Status Color Section Must be defined
-                          listedDate: property["listedDate"],
-                          price: property['price']);
+                        onTap: () {
+                          Get.toNamed(
+                            '/propertyDetails',
+                            arguments: {
+                              "propertyId":
+                                  int.tryParse(property.propertyId!) ?? 0,
+                            },
+                          );
+                        },
+
+                        imageUrl: property.image ??
+                            "https://via.placeholder.com/300x200.png?text=No+Image+Available", // You'll need to add imageUrl to your model if needed
+                        title: property.title ?? "No Title",
+                        location: agentPropertyController
+                            .getLocalizedAddress(property.address),
+                        status: statusText,
+                        statusColor: color,
+                        // statusBackgroundColor: color.withOpacity(0.1),
+                        listedDate: property.assignedDate ?? 'N/A',
+                        price: agentPropertyController
+                            .getFormattedPrice(property.price),
+                      );
                     },
                   ),
                 );

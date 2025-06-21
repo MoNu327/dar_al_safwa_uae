@@ -145,6 +145,7 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Obx(() {
                         return CustomTextWidget(
+                          fontStyle: FontStyle.italic,
                           title: localizationController.translate('welcome'),
                         );
                       }),
@@ -254,11 +255,6 @@ class HomeScreen extends StatelessWidget {
                                 address: isArabic
                                     ? property.propertyAddress?.ar ?? ''
                                     : property.propertyAddress?.en ?? '',
-                                // bedrooms: property.propertyBed,
-                                // bathrooms: property.propertyBath,
-                                // area: isArabic
-                                //     ? property.propertySqft.ar
-                                //     : property.propertySqft.en,
                               ),
                             );
                           },

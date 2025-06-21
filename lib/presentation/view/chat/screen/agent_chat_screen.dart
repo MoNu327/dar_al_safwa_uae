@@ -11,7 +11,7 @@ import '../../../widgets/no_internet_widegt.dart';
 
 class AgentChatScreen extends StatelessWidget {
   final AgentChatController controller = Get.put(AgentChatController());
-final NetworkController networkController = Get.find<NetworkController>();
+  final NetworkController networkController = Get.find<NetworkController>();
   AgentChatScreen({super.key});
 
   @override
@@ -22,7 +22,7 @@ final NetworkController networkController = Get.find<NetworkController>();
           final agent = !controller.isAgent.value
               ? controller.chatData['agent'] ?? {}
               : controller.chatData['user'] ?? {};
-          return  Row(
+          return Row(
             children: [
               CircleAvatar(
                 backgroundColor: AppColors.white,
@@ -53,12 +53,6 @@ final NetworkController networkController = Get.find<NetworkController>();
             ],
           );
         }),
-        // actions: [
-        //   IconButton(
-        //     onPressed: () {},
-        //     icon: const Icon(Icons.more_vert),
-        //   ),
-        // ],
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
