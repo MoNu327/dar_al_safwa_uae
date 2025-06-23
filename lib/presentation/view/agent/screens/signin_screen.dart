@@ -22,6 +22,7 @@ class SigninScreen extends StatelessWidget {
   final SigninController signinController = Get.put(SigninController());
   final AuthService authService = Get.put(AuthService());
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final isAgentSignIn = Get.arguments?['isAgentSignIn'] ?? false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,7 +64,17 @@ class SigninScreen extends StatelessWidget {
                               color: AppColors.darkGrey,
                               fontSize: Get.height * 0.018,
                             ),
+                            // kHeight(0.005),
+                            !isAgentSignIn
+                                ? CustomTextWidget(
+                                    title: localizationController
+                                        .translate('Technician Login'),
+                                    color: AppColors.secondaryColor,
+                                    fontSize: Get.height * 0.018,
+                                  )
+                                : SizedBox.shrink(),
                             kHeight(0.01),
+                            // authService.userRole == 'technician' ?
                             CustomTextFieldWidget(
                                 textFieldColor: AppColors.white,
                                 isBorderNeeded: true,
@@ -169,22 +180,39 @@ class SigninScreen extends StatelessWidget {
                                   buttonShape: 'rect',
                                   childWidgetLoader:
                                       authService.isSignInAgent.value,
-                                  buttonColor: AppColors.black,
+                                  buttonColor: !isAgentSignIn
+                                      ? AppColors.secondaryColor
+                                      : AppColors.black,
                                   buttonTitle: 'Login',
                                   onPressed: () {
                                     if (_formKey.currentState!.validate()) {
-                                      if (!authService.isSignInAgent.value) {
-                                        FocusManager.instance.primaryFocus
-                                            ?.unfocus();
+                                      // Always unfocus keyboard first
+                                      FocusManager.instance.primaryFocus
+                                          ?.unfocus();
+
+                                      if (isAgentSignIn) {
                                         if (!authService.isSignInAgent.value) {
                                           authService.signInAsAgent();
+                                        } else {
+                                          // Handle case where agent is already signed in
+                                          // Get.snackbar('Info', 'Agent already signed in');
+                                        }
+                                      } else {
+                                        if (!authService
+                                            .isSignInTechnician.value) {
+                                          authService.signInAsTechnician();
+                                        } else {
+                                          // Handle case where technician is already signed in
+                                          // Get.snackbar('Info', 'Technician already signed in');
                                         }
                                       }
                                     }
                                   });
                             }),
                             kHeight(0.01),
-                            _buildSignupTextButton()
+                            !isAgentSignIn
+                                ? SizedBox.shrink()
+                                : _buildSignupTextButton()
                           ],
                         ),
                       ),

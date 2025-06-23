@@ -241,6 +241,7 @@ class ProfileController extends GetxController {
             role: userData['role'] ?? 'user',
             location: userData['location'] ?? '',
             status: userData['status'] ?? 'active',
+            imageUrl: userData['photoUrl'] ?? '',
           );
 
           // Populate reactive variables with user data
@@ -288,7 +289,7 @@ class ProfileController extends GetxController {
     gender.value = userData['gender'] ?? '';
     dateOfBirth.value = userData['dob'] ?? '';
     location.value = userData['location'] ?? '';
-    profilePicUrl.value = userData['profilePic'] ?? '';
+    profilePicUrl.value = userData['imageUrl'] ?? '';
   }
 
   // Date picker function

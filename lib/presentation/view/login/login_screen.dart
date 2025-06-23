@@ -15,6 +15,7 @@ class LoginScreen extends StatelessWidget {
   final LocalizationController localizationController = Get.find();
   final LoginController loginController = Get.put(LoginController());
   final AuthService authService = Get.put(AuthService());
+ 
   @override
   Widget build(BuildContext context) {
     // Set the status bar icon color
@@ -91,16 +92,35 @@ class LoginScreen extends StatelessWidget {
                         ),
                 );
               }),
-              CustomButton(
-                title: "Continue As Guest",
-                textSize: H18,
-                onPressed: () {
-                  authService.navigateGuestToHome();
-                },
-                customIconWidget: const Icon(Icons.person),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: CustomButton(
+                      iconSize: 14,
+                      title: "Continue As Guest",
+                      textSize: tagTitle,
+                      onPressed: () {
+                        authService.navigateGuestToHome();
+                      },
+                      customIconWidget: const Icon(Icons.person),
+                    ),
+                  ),
+                  Expanded(
+                      child: CustomButton(
+                          iconSize: 14,
+                          customIconWidget: Icon(Icons.build),
+                          title: "Technician Login",
+                          textSize: tagTitle,
+                          onPressed: () {
+                            loginController.navigateToTechnicianLogin();
+                          }))
+                ],
               ),
               kHeight(0.005),
               _buildSignupTextButton(),
+              kHeight(0.005),
             ],
           ),
         ),
@@ -123,7 +143,7 @@ class LoginScreen extends StatelessWidget {
             loginController.navigateToAgentLogin();
           },
           child: CustomTextWidget(
-            title: " [Log In / Sign Up]",
+            title: "  Log In / Sign Up",
             color: AppColors.blueColor,
             fontSize: Get.height * 0.015,
           ),
@@ -138,6 +158,7 @@ class CustomButton extends StatelessWidget {
   final VoidCallback onPressed;
   final Color? color;
   final double? textSize;
+  final double? iconSize;
   final Color? titleColor;
   final Widget? customIconWidget;
 
@@ -148,6 +169,7 @@ class CustomButton extends StatelessWidget {
       this.color,
       this.titleColor,
       this.customIconWidget,
+      this.iconSize = 20,
       this.textSize});
 
   @override
@@ -176,8 +198,11 @@ class CustomButton extends StatelessWidget {
                 // width: 28,
                 // height: 28,
                 clipBehavior: Clip.none,
-                child:
-                    customIconWidget ?? const Icon(Icons.phone_android_rounded),
+                child: customIconWidget ??
+                    Icon(
+                      Icons.phone_android_rounded,
+                      size: iconSize,
+                    ),
               ),
               const SizedBox(width: 3),
               CustomTextWidget(

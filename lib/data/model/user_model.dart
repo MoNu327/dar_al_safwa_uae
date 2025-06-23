@@ -6,6 +6,7 @@ class UserModel {
   final String status;
   final String? phoneNumber;
   final String? location;
+  final String? imageUrl;
 
   UserModel({
     required this.uid,
@@ -15,6 +16,7 @@ class UserModel {
     this.location,
     required this.status,
     this.phoneNumber,
+    this.imageUrl,
   });
 
   // Add this copyWith method
@@ -35,6 +37,7 @@ class UserModel {
       location: location ?? this.location,
       status: status ?? this.status,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 
@@ -48,6 +51,7 @@ class UserModel {
       name: json['name'] ?? '',
       role: json['role'] ?? 'user',
       status: json['status'] ?? 'pending',
+      imageUrl: json['photoUrl'] ?? '',
     );
   }
 
@@ -60,5 +64,6 @@ class UserModel {
         'role': role,
         'status': status,
         'location': location,
+        'photoUrl': imageUrl,
       };
 }

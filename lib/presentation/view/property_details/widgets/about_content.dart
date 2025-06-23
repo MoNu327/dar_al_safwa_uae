@@ -13,11 +13,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:video_player/video_player.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../../../data/model/property_details_model.dart';
 import '../../../view_model/localization_controller.dart';
+import '../../../widgets/maps_widget.dart';
 import 'price_bottom_sheet.dart';
 
 class AboutContent extends StatelessWidget {
@@ -53,6 +55,13 @@ class AboutContent extends StatelessWidget {
                 _buildDescriptionSection(isArabic
                     ? property.description?.ar ?? ""
                     : property.description?.en ?? ""),
+              ),
+              _buildSection(
+                title: "Directions",
+                child: LocationPreview(
+                  location: LatLng(23.5880, 58.3829),
+                  previewHeight: 200, 
+                ),
               ),
 
               _buildSection(

@@ -58,7 +58,8 @@ class PropertyDetailsScreen extends StatelessWidget {
                 ),
                 ElevatedButton(
                   onPressed: () =>
-                      propertyDetailsController.fetchPropertyDetails(1),
+                      propertyDetailsController.fetchPropertyDetails(
+                          propertyDetailsController.idParams.value),
                   child: const Text('Retry'),
                 ),
               ],

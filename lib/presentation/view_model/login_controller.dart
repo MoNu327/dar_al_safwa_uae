@@ -74,6 +74,10 @@ class LoginController extends GetxController {
   }
 
   void navigateToAgentLogin() {
-    Get.toNamed(AppRoute.signin);
+    Get.toNamed(AppRoute.signin, arguments: {'isAgentSignIn': true});
+  }
+
+  void navigateToTechnicianLogin() {
+    Get.toNamed(AppRoute.signin, arguments: {'isAgentSignIn': false});
   }
 }

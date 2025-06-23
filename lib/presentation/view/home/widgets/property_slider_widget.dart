@@ -53,7 +53,14 @@ class PropertyBannerSlider extends StatelessWidget {
           itemCount: banners.length,
           itemBuilder: (context, index, _) {
             final banner = banners[index];
+            debugPrint(
+                'Banner ID: ${banner.id}, Image: ${banner.propertyImage}');
             return BannerCard(
+              onTap: () {
+                Get.toNamed('/propertyDetails', arguments: {
+                  'propertyId': banner.id,
+                });
+              },
               imageUrl: banner.propertyImage ?? '',
               title: (isArabic
                       ? banner.propertyTitle?.ar
@@ -104,6 +111,7 @@ class BannerCard extends StatelessWidget {
   final String price;
   final String location;
   final String features;
+  final VoidCallback onTap;
 
   const BannerCard({
     super.key,
@@ -112,74 +120,78 @@ class BannerCard extends StatelessWidget {
     required this.price,
     required this.location,
     required this.features,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 3),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            CachedNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => Container(color: Colors.grey[200]),
-              errorWidget: (_, __, ___) => Container(color: Colors.grey[300]),
-            ),
+    return InkWell(
+      onTap: () => onTap(),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(color: Colors.grey[200]),
+                errorWidget: (_, __, ___) => Container(color: Colors.grey[300]),
+              ),
 
-            // Gradient overlay
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.7),
+              // Gradient overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Content
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 16,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomTextWidget(
+                      title: title,
+                      color: AppColors.white,
+                      fontSize: popularPlaceTitle,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    CustomTextWidget(
+                      title: price,
+                      color: AppColors.white,
+                      fontSize: tagTitle,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    CustomTextWidget(
+                      title: location,
+                      color: AppColors.white,
+                      fontSize: tagTitle,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    CustomTextWidget(
+                      title: features,
+                      color: AppColors.white,
+                      fontSize: tagTitle,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ],
                 ),
               ),
-            ),
-
-            // Content
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomTextWidget(
-                    title: title,
-                    color: AppColors.white,
-                    fontSize: popularPlaceTitle,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  CustomTextWidget(
-                    title: price,
-                    color: AppColors.white,
-                    fontSize: tagTitle,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  CustomTextWidget(
-                    title: location,
-                    color: AppColors.white,
-                    fontSize: tagTitle,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  CustomTextWidget(
-                    title: features,
-                    color: AppColors.white,
-                    fontSize: tagTitle,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

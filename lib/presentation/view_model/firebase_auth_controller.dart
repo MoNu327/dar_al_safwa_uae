@@ -5,7 +5,9 @@ import 'dart:ffi';
 
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/model/agent_model.dart';
+import 'package:dar_al_safwa/data/model/technician_model.dart';
 import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
+import 'package:dar_al_safwa/domain/controller/technician_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -38,6 +40,7 @@ class AuthService extends GetxController {
 
   var isSignInAgent = false.obs;
   var isSignInTenant = false.obs;
+  var isSignInTechnician = false.obs;
   var isSignInGoogle = false.obs;
   var isSignInPhone = false.obs;
   var isVerifyPhone = false.obs;
@@ -975,6 +978,84 @@ class AuthService extends GetxController {
     } on FirebaseAuthException catch (e) {
       debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
       Get.snackbar('Error', 'Agent login failed: ${e.message}');
+      return null;
+    } catch (e) {
+      debugPrint('Unexpected Error: $e');
+      Get.snackbar('Error', 'An unexpected error occurred');
+      return null;
+    } finally {
+      isSignInAgent(false);
+      debugPrint('Sign in process completed');
+    }
+  }
+
+  Future<UserCredential?> signInAsTechnician() async {
+    try {
+      isSignInAgent(true);
+      debugPrint('Attempting technician sign in...');
+      final String email = emailController.text.trim();
+      final String password = passwordController.text.trim();
+
+      debugPrint('Email: $email');
+      debugPrint(
+          'Password: ${'*' * password.length}'); // Don't print actual password
+
+      final credential = await auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      debugPrint(
+          'Firebase authentication successful, verifying Technician role...');
+      debugPrint('User UID: ${credential.user?.uid}');
+
+      // Verify this is actually an agent
+      final userDoc = await _firestore
+          .collection('technicians')
+          .doc(credential.user?.uid)
+          .get();
+
+      if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
+        debugPrint('Technician verification successful');
+        userRole.value = 'technician';
+        // Store user details for app-wide access
+        final userData = userDoc.data();
+        final userModel = TechnicianProfile(
+          fullName: userData?['fullName'] ?? '',
+          profession: userData?['profession'] ?? '',
+          phoneNumber: userData?['phoneNumber'] ?? '',
+          id: userData?['id'] ?? '',
+          skills: userData?['skills'] ?? '',
+          rating: userData?['rating'] ?? 0.0,
+          totalReviews: userData?['totalReviews'] ?? 0,
+          completedJobs: userData?['completedJobs'] ?? 0,
+          jobsAvailable: userData?['jobsAvailable'] ?? 0,
+
+          location: userData?['location'] ?? '',
+
+          email: credential.user!.email!,
+
+          // Add other fields as needed
+        );
+
+        // Assuming you have a user service or controller to store this
+        Get.find<TechnicianController>().currentUser = userModel;
+        debugPrint('Technician details stored: ${userModel.toJson()}');
+
+        // Navigate to home
+        navigateToHome();
+        debugPrint('Navigation to technicain home completed');
+
+        return credential;
+      } else {
+        debugPrint('Account is not registered as an agent');
+        await auth.signOut();
+        Get.snackbar('Error', 'This account is not registered as an agent');
+        return null;
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
+      Get.snackbar('Error', 'Technician login failed: ${e.message}');
       return null;
     } catch (e) {
       debugPrint('Unexpected Error: $e');
