@@ -1,3 +1,5 @@
+import 'package:dar_al_safwa/core/constants/custom_size.dart';
+import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -19,22 +21,21 @@ class CustomBottomSheet extends StatelessWidget {
     this.onWhatsAppPressed,
     this.onCallPressed,
     this.backgroundColor = Colors.white,
-    this.textColor = AppColors.black,
+    this.textColor = Colors.black,
     this.buttonColor = const Color(0xFF25D366),
     this.height = 80.0,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    print("Building CustomBottomSheet with height: $height"); // Debug
+
     return Container(
       height: height,
       width: double.infinity,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.circular(screenWidth4),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -43,71 +44,70 @@ class CustomBottomSheet extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Price Section
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Total Price',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: textColor.withOpacity(0.6),
-                      fontWeight: FontWeight.w500,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Price Section
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'Total Price',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: textColor.withOpacity(0.6),
+                      ),
                     ),
+                    const SizedBox(height: 4),
+
+                    CustomTextWidget(
+                      title: '$totalPrice / $period',
+                      color: AppColors.secondaryColor,
+                      fontSize: H18,
+                      fontWeight: FontWeight.w600,
+                    )
+                    // Text(
+                    //   '$totalPrice / $period',
+                    //   style: TextStyle(
+                    //     fontSize: 18,
+                    //     fontWeight: FontWeight.bold,
+                    //     color: textColor,
+                    //   ),
+                    //   overflow: TextOverflow.ellipsis,
+                    // ),
+                  ],
+                ),
+              ),
+              // Action Buttons
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildActionButton(
+                    icon: Icons.message,
+                    backgroundColor: AppColors.primaryColor,
+                    onPressed: onWhatsAppPressed ??
+                        () {
+                          print("WhatsApp pressed - no callback provided");
+                        },
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        totalPrice,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.secondaryColor,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '/ $period',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: textColor.withOpacity(0.7),
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(width: 12),
+                  _buildActionButton(
+                    icon: Icons.phone,
+                    backgroundColor: AppColors.primaryColor,
+                    onPressed: onCallPressed ??
+                        () {
+                          print("Call pressed - no callback provided");
+                        },
                   ),
                 ],
               ),
-            ),
-            // Action Buttons
-            Row(
-              children: [
-                // WhatsApp Button
-                _buildActionButton(
-                  icon: Icons.message,
-                  backgroundColor: AppColors.primaryColor,
-                  onPressed: onWhatsAppPressed,
-                ),
-                const SizedBox(width: 12),
-                // Call Button
-                _buildActionButton(
-                  icon: Icons.phone_outlined,
-                  backgroundColor: AppColors.primaryColor,
-                  onPressed: onCallPressed,
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -116,70 +116,29 @@ class CustomBottomSheet extends StatelessWidget {
   Widget _buildActionButton({
     required IconData icon,
     required Color backgroundColor,
-    required VoidCallback? onPressed,
+    required VoidCallback onPressed,
   }) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(14),
-          // shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: backgroundColor.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          color: AppColors.black,
-          size: 24,
+    return Material(
+      color: backgroundColor,
+      borderRadius: BorderRadius.circular(14),
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          print("Button pressed: $icon"); // Debug
+          onPressed();
+        },
+        child: Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          child: Icon(
+            icon,
+            color: AppColors.black,
+            size: 24,
+          ),
         ),
       ),
-    );
-  }
-}
-
-// Usage Example and Helper Methods
-class BottomSheetHelper {
-  // Method to show the bottom sheet as a modal
-  static void showCustomBottomSheet({
-    required BuildContext context,
-    String totalPrice = "3000 OMR",
-    String period = "month",
-    VoidCallback? onWhatsAppPressed,
-    VoidCallback? onCallPressed,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => CustomBottomSheet(
-        totalPrice: totalPrice,
-        period: period,
-        onWhatsAppPressed: onWhatsAppPressed,
-        onCallPressed: onCallPressed,
-      ),
-    );
-  }
-
-  // Method to create a persistent bottom sheet
-  static Widget buildPersistentBottomSheet({
-    String totalPrice = "3000 OMR",
-    String period = "month",
-    VoidCallback? onWhatsAppPressed,
-    VoidCallback? onCallPressed,
-  }) {
-    return CustomBottomSheet(
-      totalPrice: totalPrice,
-      period: period,
-      onWhatsAppPressed: onWhatsAppPressed,
-      onCallPressed: onCallPressed,
     );
   }
 }

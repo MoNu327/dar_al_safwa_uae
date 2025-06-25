@@ -1,31 +1,36 @@
+// lib/presentation/widgets/location_preview.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_colors.dart';
+import '../view_model/maps_controller.dart';
 
 class LocationPreview extends StatelessWidget {
-  final LatLng location;
+  final LatLng initialLocation;
   final double previewHeight;
 
   const LocationPreview({
     Key? key,
-    required this.location,
+    required this.initialLocation,
     this.previewHeight = 150,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final MapsController mapsController = Get.put(
+      MapsController(initialLocation: initialLocation),
+      tag: 'location_preview_${initialLocation.hashCode}',
+    );
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Preview Container
-        _buildMapPreview(context),
+        _buildMapPreview(mapsController),
         const SizedBox(height: 8),
-        // Open in Maps Button
         TextButton.icon(
-          onPressed: _openInNativeMaps,
+          onPressed: mapsController.openInNativeMaps,
           icon: const Icon(Icons.open_in_new),
           label: const Text('View larger map'),
         ),
@@ -33,96 +38,114 @@ class LocationPreview extends StatelessWidget {
     );
   }
 
-  Widget _buildMapPreview(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _showFullScreenMap(context),
-      child: Container(
-        height: previewHeight,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            children: [
-              FlutterMap(
-                options: MapOptions(
-                  initialCenter: location,
-                  initialZoom: 15.0,
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.all, // Disable gestures
-                  ),
+  Widget _buildMapPreview(MapsController controller) {
+    return Obx(() => GestureDetector(
+          onTap: () => _showFullScreenMap(controller),
+          child: Container(
+            height: previewHeight,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
                 ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.example.app',
-                    maxZoom: 19,
-                  ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: location,
-                        child: const Icon(
-                          Icons.location_pin,
-                          color: Colors.red,
-                          size: 30,
-                        ),
+                  FlutterMap(
+                    options: MapOptions(
+                      initialCenter: controller.location.value,
+                      initialZoom: controller.zoomLevel.value,
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.none,
+                      ),
+                    ),
+                    children: [
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.example.app',
+                        maxZoom: 19,
+                      ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: controller.location.value,
+                            child: const Icon(
+                              Icons.location_pin,
+                              color: Colors.red,
+                              size: 30,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-              // Tap overlay indicator
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Tap to expand',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'Tap to expand',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
-  void _showFullScreenMap(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Location'),
-            backgroundColor: AppColors.secondaryColor,
-            foregroundColor: Colors.white,
-            elevation: 0,
-          ),
-          body: FlutterMap(
+  void _showFullScreenMap(MapsController controller) {
+    controller.toggleFullScreen(true);
+    Get.to(
+      () => FullScreenMap(controller: controller),
+      transition: Transition.cupertino,
+    );
+  }
+}
+
+class FullScreenMap extends StatelessWidget {
+  final MapsController controller;
+
+  const FullScreenMap({Key? key, required this.controller}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Location'),
+        backgroundColor: AppColors.secondaryColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            controller.toggleFullScreen(false);
+            Get.back();
+          },
+        ),
+      ),
+      body: Obx(() => FlutterMap(
             options: MapOptions(
-              initialCenter: location,
-              initialZoom: 15.0,
+              initialCenter: controller.location.value,
+              initialZoom: controller.zoomLevel.value,
             ),
             children: [
               TileLayer(
@@ -133,7 +156,7 @@ class LocationPreview extends StatelessWidget {
               MarkerLayer(
                 markers: [
                   Marker(
-                    point: location,
+                    point: controller.location.value,
                     child: const Icon(
                       Icons.location_pin,
                       size: 40,
@@ -143,48 +166,13 @@ class LocationPreview extends StatelessWidget {
                 ],
               ),
             ],
-          ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: _openInNativeMaps,
-            tooltip: 'Open in Maps',
-            child: const Icon(Icons.open_in_new),
-          ),
-        ),
+          )),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.secondaryColor,
+        onPressed: controller.openInNativeMaps,
+        tooltip: 'Open in Maps',
+        child: const Icon(Icons.open_in_new),
       ),
     );
-  }
-
-  Future<void> _openInNativeMaps() async {
-    // Try multiple map providers for better compatibility
-    final List<String> mapUrls = [
-      // Google Maps (mobile apps)
-      'https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}',
-      // Apple Maps (iOS)
-      'https://maps.apple.com/?q=${location.latitude},${location.longitude}',
-      // OpenStreetMap (web fallback)
-      'https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=16/${location.latitude}/${location.longitude}',
-    ];
-
-    bool launched = false;
-
-    for (String url in mapUrls) {
-      try {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          launched = await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
-          if (launched) break;
-        }
-      } catch (e) {
-        // Continue to next URL if current one fails
-        continue;
-      }
-    }
-
-    if (!launched) {
-      throw Exception('Could not launch any map application');
-    }
   }
 }

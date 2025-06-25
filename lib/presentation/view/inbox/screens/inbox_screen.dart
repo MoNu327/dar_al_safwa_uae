@@ -218,41 +218,44 @@ class InboxScreen extends StatelessWidget {
           showExitConfirmation();
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppColors.white,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Obx(
-            () => CustomTextWidget(
-              title: controller.isAgent.value
-                  ? 'Messages'
-                  : 'Messages', // Agent Inbox, My Inbox
-              color: AppColors.black,
-              fontSize: appBarTitles,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          centerTitle: false,
-          actions: [
-            IconButton(
-              onPressed: controller.refreshConversations,
-              icon: const Icon(
-                Icons.refresh,
-                color: AppColors.secondaryColor,
+      child: SafeArea(
+        child: Scaffold(
+          appBar: AppBar(
+            surfaceTintColor: AppColors.white,
+            backgroundColor: AppColors.white,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            title: Obx(
+              () => CustomTextWidget(
+                title: controller.isAgent.value
+                    ? 'Messages'
+                    : 'Messages', // Agent Inbox, My Inbox
+                color: AppColors.black,
+                fontSize: appBarTitles,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            notificationNavigation(),
-            kWidth(0.04)
-          ],
+            centerTitle: false,
+            actions: [
+              IconButton(
+                onPressed: controller.refreshConversations,
+                icon: const Icon(
+                  Icons.refresh,
+                  color: AppColors.secondaryColor,
+                ),
+              ),
+              notificationNavigation(),
+              kWidth(0.04)
+            ],
+          ),
+          body: Obx(() {
+            if (networkController.isConnected.value) {
+              return _buildBody();
+            } else {
+              return NoInternetWidegt();
+            }
+          }),
         ),
-        body: Obx(() {
-          if (networkController.isConnected.value) {
-            return _buildBody();
-          } else {
-            return NoInternetWidegt();
-          }
-        }),
       ),
     );
   }

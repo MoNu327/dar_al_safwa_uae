@@ -6,13 +6,28 @@ part of 'search_property_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+PropertySearchResultRequest _$PropertySearchResultRequestFromJson(
+        Map<String, dynamic> json) =>
+    PropertySearchResultRequest(
+      propertyOptions: (json['property_options'] as num).toInt(),
+      propertyTypes: (json['property_types'] as num).toInt(),
+      propertyLocations: (json['property_locations'] as num).toInt(),
+      propertyBedsBath: (json['property_beds_bath'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$PropertySearchResultRequestToJson(
+        PropertySearchResultRequest instance) =>
+    <String, dynamic>{
+      'property_options': instance.propertyOptions,
+      'property_types': instance.propertyTypes,
+      'property_locations': instance.propertyLocations,
+      'property_beds_bath': instance.propertyBedsBath,
+    };
+
 SearchPropertyResponse _$SearchPropertyResponseFromJson(
         Map<String, dynamic> json) =>
     SearchPropertyResponse(
       success: json['success'] as bool,
-      message: json['message'] == null
-          ? null
-          : Message.fromJson(json['message'] as Map<String, dynamic>),
       data: (json['data'] as List<dynamic>?)
           ?.map((e) => Property.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -22,94 +37,61 @@ Map<String, dynamic> _$SearchPropertyResponseToJson(
         SearchPropertyResponse instance) =>
     <String, dynamic>{
       'success': instance.success,
-      'message': instance.message,
       'data': instance.data,
-    };
-
-Message _$MessageFromJson(Map<String, dynamic> json) => Message(
-      english: json['en'] as String?,
-      arabic: json['ar'] as String?,
-    );
-
-Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
     };
 
 Property _$PropertyFromJson(Map<String, dynamic> json) => Property(
       id: (json['id'] as num?)?.toInt(),
-      propertyTitle: json['property_title'] == null
+      title: json['title'] == null
           ? null
-          : PropertyTitle.fromJson(
-              json['property_title'] as Map<String, dynamic>),
-      propertyImage: json['property_image'] as String?,
-      propertyDeal: json['property_deal'] == null
+          : LocalizedText.fromJson(json['title'] as Map<String, dynamic>),
+      dealType: json['deal_type'] == null
           ? null
-          : PropertyDeal.fromJson(
-              json['property_deal'] as Map<String, dynamic>),
-      propertyPrice: json['property_price'] == null
+          : LocalizedText.fromJson(json['deal_type'] as Map<String, dynamic>),
+      price: json['price'] == null
           ? null
-          : PropertyPrice.fromJson(
-              json['property_price'] as Map<String, dynamic>),
-      propertyType: json['property_type'] == null
+          : PropertyPrice.fromJson(json['price'] as Map<String, dynamic>),
+      features: json['features'] == null
           ? null
-          : PropertyType.fromJson(
-              json['property_type'] as Map<String, dynamic>),
-      propertyLocation: json['property_location'] == null
+          : Features.fromJson(json['features'] as Map<String, dynamic>),
+      type: json['type'] == null
           ? null
-          : PropertyLocation.fromJson(
-              json['property_location'] as Map<String, dynamic>),
-      propertyBed: (json['property_bed'] as num?)?.toInt(),
-      propertyBath: (json['property_bath'] as num?)?.toInt(),
-      propertySqft: json['property_sqft'] == null
+          : LocalizedText.fromJson(json['type'] as Map<String, dynamic>),
+      location: json['location'] == null
           ? null
-          : PropertySqft.fromJson(
-              json['property_sqft'] as Map<String, dynamic>),
-      propertyRating: json['property_rating'] as String?,
-      propertyReviews: (json['property_reviews'] as num?)?.toInt(),
-      ratingDetails: json['rating_details'] == null
+          : LocalizedText.fromJson(json['location'] as Map<String, dynamic>),
+      specs: json['specs'] == null
           ? null
-          : RatingDetails.fromJson(
-              json['rating_details'] as Map<String, dynamic>),
+          : Specs.fromJson(json['specs'] as Map<String, dynamic>),
+      image: json['image'] as String?,
+      rating: json['rating'] == null
+          ? null
+          : Rating.fromJson(json['rating'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$PropertyToJson(Property instance) => <String, dynamic>{
       'id': instance.id,
-      'property_title': instance.propertyTitle,
-      'property_image': instance.propertyImage,
-      'property_deal': instance.propertyDeal,
-      'property_price': instance.propertyPrice,
-      'property_type': instance.propertyType,
-      'property_location': instance.propertyLocation,
-      'property_bed': instance.propertyBed,
-      'property_bath': instance.propertyBath,
-      'property_sqft': instance.propertySqft,
-      'property_rating': instance.propertyRating,
-      'property_reviews': instance.propertyReviews,
-      'rating_details': instance.ratingDetails,
+      'title': instance.title,
+      'deal_type': instance.dealType,
+      'price': instance.price,
+      'features': instance.features,
+      'type': instance.type,
+      'location': instance.location,
+      'specs': instance.specs,
+      'image': instance.image,
+      'rating': instance.rating,
     };
 
-PropertyTitle _$PropertyTitleFromJson(Map<String, dynamic> json) =>
-    PropertyTitle(
-      english: json['en'] as String?,
-      arabic: json['ar'] as String?,
+LocalizedText _$LocalizedTextFromJson(Map<String, dynamic> json) =>
+    LocalizedText(
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
     );
 
-Map<String, dynamic> _$PropertyTitleToJson(PropertyTitle instance) =>
+Map<String, dynamic> _$LocalizedTextToJson(LocalizedText instance) =>
     <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
-    };
-
-PropertyDeal _$PropertyDealFromJson(Map<String, dynamic> json) => PropertyDeal(
-      english: json['en'] as String?,
-      arabic: json['ar'] as String?,
-    );
-
-Map<String, dynamic> _$PropertyDealToJson(PropertyDeal instance) =>
-    <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
+      'en': instance.en,
+      'ar': instance.ar,
     };
 
 PropertyPrice _$PropertyPriceFromJson(Map<String, dynamic> json) =>
@@ -128,58 +110,54 @@ Map<String, dynamic> _$PropertyPriceToJson(PropertyPrice instance) =>
 
 FormattedPrice _$FormattedPriceFromJson(Map<String, dynamic> json) =>
     FormattedPrice(
-      english: json['en'],
-      arabic: json['ar'] as String?,
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
     );
 
 Map<String, dynamic> _$FormattedPriceToJson(FormattedPrice instance) =>
     <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
+      'en': instance.en,
+      'ar': instance.ar,
     };
 
-PropertyType _$PropertyTypeFromJson(Map<String, dynamic> json) => PropertyType(
-      english: json['en'] as String?,
-      arabic: json['ar'] as String?,
+Features _$FeaturesFromJson(Map<String, dynamic> json) => Features(
+      balcony: json['balcony'] as bool?,
+      maidRoom: json['maid_room'] as bool?,
+      parking: json['parking'] as bool?,
+      seaView: json['sea_view'] as bool?,
+      furnished: json['furnished'] as bool?,
     );
 
-Map<String, dynamic> _$PropertyTypeToJson(PropertyType instance) =>
-    <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
+Map<String, dynamic> _$FeaturesToJson(Features instance) => <String, dynamic>{
+      'balcony': instance.balcony,
+      'maid_room': instance.maidRoom,
+      'parking': instance.parking,
+      'sea_view': instance.seaView,
+      'furnished': instance.furnished,
     };
 
-PropertyLocation _$PropertyLocationFromJson(Map<String, dynamic> json) =>
-    PropertyLocation(
-      english: json['en'] as String?,
-      arabic: json['ar'] as String?,
+Specs _$SpecsFromJson(Map<String, dynamic> json) => Specs(
+      beds: (json['beds'] as num?)?.toInt(),
+      baths: (json['baths'] as num?)?.toInt(),
+      area: json['area'] == null
+          ? null
+          : LocalizedText.fromJson(json['area'] as Map<String, dynamic>),
     );
 
-Map<String, dynamic> _$PropertyLocationToJson(PropertyLocation instance) =>
-    <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
+Map<String, dynamic> _$SpecsToJson(Specs instance) => <String, dynamic>{
+      'beds': instance.beds,
+      'baths': instance.baths,
+      'area': instance.area,
     };
 
-PropertySqft _$PropertySqftFromJson(Map<String, dynamic> json) => PropertySqft(
-      english: json['en'] as String?,
-      arabic: json['ar'] as String?,
+Rating _$RatingFromJson(Map<String, dynamic> json) => Rating(
+      average: (json['average'] as num?)?.toDouble(),
+      averageArabic: json['average_arabic'] as String?,
+      count: (json['count'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$PropertySqftToJson(PropertySqft instance) =>
-    <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
-    };
-
-RatingDetails _$RatingDetailsFromJson(Map<String, dynamic> json) =>
-    RatingDetails(
-      english: json['en'] as String?,
-      arabic: json['ar'] as String?,
-    );
-
-Map<String, dynamic> _$RatingDetailsToJson(RatingDetails instance) =>
-    <String, dynamic>{
-      'en': instance.english,
-      'ar': instance.arabic,
+Map<String, dynamic> _$RatingToJson(Rating instance) => <String, dynamic>{
+      'average': instance.average,
+      'average_arabic': instance.averageArabic,
+      'count': instance.count,
     };

@@ -53,6 +53,10 @@ Property _$PropertyFromJson(Map<String, dynamic> json) => Property(
       imageGallery: (json['image_gallery'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
+      youtubeVideo: json['youtube_video'] == null
+          ? null
+          : YoutubeVideo.fromJson(
+              json['youtube_video'] as Map<String, dynamic>),
       title: json['title'] == null
           ? null
           : Message.fromJson(json['title'] as Map<String, dynamic>),
@@ -65,25 +69,28 @@ Property _$PropertyFromJson(Map<String, dynamic> json) => Property(
       price: json['price'] == null
           ? null
           : Price.fromJson(json['price'] as Map<String, dynamic>),
-      overview: json['overview'] == null
-          ? null
-          : Overview.fromJson(json['overview'] as Map<String, dynamic>),
       description: json['description'] == null
           ? null
           : Message.fromJson(json['description'] as Map<String, dynamic>),
+      overview: json['overview'] == null
+          ? null
+          : Overview.fromJson(json['overview'] as Map<String, dynamic>),
       propertyFeatures: json['property_features'] == null
           ? null
           : PropertyFeatures.fromJson(
               json['property_features'] as Map<String, dynamic>),
-      unitTypes: (json['unit_types'] as List<dynamic>?)
-          ?.map((e) => UnitType.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      unitTypes: json['unit_types'] == null
+          ? null
+          : UnitTypes.fromJson(json['unit_types'] as Map<String, dynamic>),
       agent: json['agent'] == null
           ? null
           : Agent.fromJson(json['agent'] as Map<String, dynamic>),
       regulations: json['regulations'] == null
           ? null
           : Regulations.fromJson(json['regulations'] as Map<String, dynamic>),
+      nearbyTypes: (json['nearbytype'] as List<dynamic>?)
+          ?.map((e) => NearbyType.fromJson(e as Map<String, dynamic>))
+          .toList(),
       reviews: json['reviews'] == null
           ? null
           : Reviews.fromJson(json['reviews'] as Map<String, dynamic>),
@@ -93,31 +100,40 @@ Map<String, dynamic> _$PropertyToJson(Property instance) => <String, dynamic>{
       'id': instance.id,
       'highlight_images': instance.highlightImages,
       'image_gallery': instance.imageGallery,
+      'youtube_video': instance.youtubeVideo,
       'title': instance.title,
       'deal_type': instance.dealType,
       'location': instance.location,
       'price': instance.price,
-      'overview': instance.overview,
       'description': instance.description,
+      'overview': instance.overview,
       'property_features': instance.propertyFeatures,
       'unit_types': instance.unitTypes,
       'agent': instance.agent,
       'regulations': instance.regulations,
+      'nearbytype': instance.nearbyTypes,
       'reviews': instance.reviews,
+    };
+
+YoutubeVideo _$YoutubeVideoFromJson(Map<String, dynamic> json) => YoutubeVideo(
+      url: json['url'] as String?,
+      thumbnail: json['thumbnail'] as String?,
+    );
+
+Map<String, dynamic> _$YoutubeVideoToJson(YoutubeVideo instance) =>
+    <String, dynamic>{
+      'url': instance.url,
+      'thumbnail': instance.thumbnail,
     };
 
 Location _$LocationFromJson(Map<String, dynamic> json) => Location(
       address: json['address'] == null
           ? null
           : Address.fromJson(json['address'] as Map<String, dynamic>),
-      nearby: (json['nearby'] as List<dynamic>?)
-          ?.map((e) => Nearby.fromJson(e as Map<String, dynamic>))
-          .toList(),
     );
 
 Map<String, dynamic> _$LocationToJson(Location instance) => <String, dynamic>{
       'address': instance.address,
-      'nearby': instance.nearby,
     };
 
 Address _$AddressFromJson(Map<String, dynamic> json) => Address(
@@ -130,6 +146,9 @@ Address _$AddressFromJson(Map<String, dynamic> json) => Address(
       full: json['full'] == null
           ? null
           : Message.fromJson(json['full'] as Map<String, dynamic>),
+      coordinates: json['coordinates'] == null
+          ? null
+          : Coordinates.fromJson(json['coordinates'] as Map<String, dynamic>),
       icon: json['icon'] as String?,
     );
 
@@ -137,23 +156,19 @@ Map<String, dynamic> _$AddressToJson(Address instance) => <String, dynamic>{
       'building': instance.building,
       'street': instance.street,
       'full': instance.full,
+      'coordinates': instance.coordinates,
       'icon': instance.icon,
     };
 
-Nearby _$NearbyFromJson(Map<String, dynamic> json) => Nearby(
-      type: json['type'] as String?,
-      name: json['name'] == null
-          ? null
-          : Message.fromJson(json['name'] as Map<String, dynamic>),
-      distance: json['distance'] as String?,
-      icon: json['icon'] as String?,
+Coordinates _$CoordinatesFromJson(Map<String, dynamic> json) => Coordinates(
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
 
-Map<String, dynamic> _$NearbyToJson(Nearby instance) => <String, dynamic>{
-      'type': instance.type,
-      'name': instance.name,
-      'distance': instance.distance,
-      'icon': instance.icon,
+Map<String, dynamic> _$CoordinatesToJson(Coordinates instance) =>
+    <String, dynamic>{
+      'latitude': instance.latitude,
+      'longitude': instance.longitude,
     };
 
 Price _$PriceFromJson(Map<String, dynamic> json) => Price(
@@ -169,16 +184,16 @@ Map<String, dynamic> _$PriceToJson(Price instance) => <String, dynamic>{
     };
 
 Overview _$OverviewFromJson(Map<String, dynamic> json) => Overview(
-      sectionTitle: json['section_title'] == null
-          ? null
-          : Message.fromJson(json['section_title'] as Map<String, dynamic>),
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
       items: (json['items'] as List<dynamic>?)
           ?.map((e) => OverviewItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 
 Map<String, dynamic> _$OverviewToJson(Overview instance) => <String, dynamic>{
-      'section_title': instance.sectionTitle,
+      'en': instance.en,
+      'ar': instance.ar,
       'items': instance.items,
     };
 
@@ -197,22 +212,6 @@ Map<String, dynamic> _$OverviewItemToJson(OverviewItem instance) =>
       'icon': instance.icon,
     };
 
-AreaValue _$AreaValueFromJson(Map<String, dynamic> json) => AreaValue(
-      number: (json['number'] as num?)?.toDouble(),
-      unit: json['unit'] == null
-          ? null
-          : Message.fromJson(json['unit'] as Map<String, dynamic>),
-      formatted: json['formatted'] == null
-          ? null
-          : Message.fromJson(json['formatted'] as Map<String, dynamic>),
-    );
-
-Map<String, dynamic> _$AreaValueToJson(AreaValue instance) => <String, dynamic>{
-      'number': instance.number,
-      'unit': instance.unit,
-      'formatted': instance.formatted,
-    };
-
 PropertyFeatures _$PropertyFeaturesFromJson(Map<String, dynamic> json) =>
     PropertyFeatures(
       sectionTitle: json['section_title'] == null
@@ -229,19 +228,82 @@ Map<String, dynamic> _$PropertyFeaturesToJson(PropertyFeatures instance) =>
       'items': instance.items,
     };
 
-UnitType _$UnitTypeFromJson(Map<String, dynamic> json) => UnitType(
-      type: json['type'] == null
+UnitTypes _$UnitTypesFromJson(Map<String, dynamic> json) => UnitTypes(
+      mainTitle: json['main_title'] == null
           ? null
-          : Message.fromJson(json['type'] as Map<String, dynamic>),
-      totalUnits: (json['total_units'] as num?)?.toInt(),
+          : Message.fromJson(json['main_title'] as Map<String, dynamic>),
+      data: (json['data'] as List<dynamic>?)
+          ?.map((e) => UnitTypeData.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+
+Map<String, dynamic> _$UnitTypesToJson(UnitTypes instance) => <String, dynamic>{
+      'main_title': instance.mainTitle,
+      'data': instance.data,
+    };
+
+UnitTypeData _$UnitTypeDataFromJson(Map<String, dynamic> json) => UnitTypeData(
+      id: (json['id'] as num?)?.toInt(),
+      beds: (json['beds'] as num?)?.toInt(),
+      baths: (json['baths'] as num?)?.toInt(),
+      area: json['area'] == null
+          ? null
+          : Message.fromJson(json['area'] as Map<String, dynamic>),
+      baseRentAmount: json['base_rent_amount'] == null
+          ? null
+          : BaseRentAmount.fromJson(
+              json['base_rent_amount'] as Map<String, dynamic>),
+      unitType: json['unit_type'] == null
+          ? null
+          : UnitType.fromJson(json['unit_type'] as Map<String, dynamic>),
+      youtubeUrl: json['youtube_url'] as String?,
+    );
+
+Map<String, dynamic> _$UnitTypeDataToJson(UnitTypeData instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'beds': instance.beds,
+      'baths': instance.baths,
+      'area': instance.area,
+      'base_rent_amount': instance.baseRentAmount,
+      'unit_type': instance.unitType,
+      'youtube_url': instance.youtubeUrl,
+    };
+
+BaseRentAmount _$BaseRentAmountFromJson(Map<String, dynamic> json) =>
+    BaseRentAmount(
+      raw: (json['raw'] as num?)?.toDouble(),
+      formatted: json['formatted'] == null
+          ? null
+          : Message.fromJson(json['formatted'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$BaseRentAmountToJson(BaseRentAmount instance) =>
+    <String, dynamic>{
+      'raw': instance.raw,
+      'formatted': instance.formatted,
+    };
+
+UnitType _$UnitTypeFromJson(Map<String, dynamic> json) => UnitType(
+      id: (json['id'] as num?)?.toInt(),
+      code: json['code'] as String?,
+      name: json['name'] == null
+          ? null
+          : Message.fromJson(json['name'] as Map<String, dynamic>),
+      description: json['description'] == null
+          ? null
+          : Message.fromJson(json['description'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$UnitTypeToJson(UnitType instance) => <String, dynamic>{
-      'type': instance.type,
-      'total_units': instance.totalUnits,
+      'id': instance.id,
+      'code': instance.code,
+      'name': instance.name,
+      'description': instance.description,
     };
 
 Agent _$AgentFromJson(Map<String, dynamic> json) => Agent(
+      uid: json['uid'] as String?,
       name: json['name'] == null
           ? null
           : Message.fromJson(json['name'] as Map<String, dynamic>),
@@ -251,6 +313,7 @@ Agent _$AgentFromJson(Map<String, dynamic> json) => Agent(
     );
 
 Map<String, dynamic> _$AgentToJson(Agent instance) => <String, dynamic>{
+      'uid': instance.uid,
       'name': instance.name,
       'phone': instance.phone,
       'email': instance.email,
@@ -286,6 +349,23 @@ Map<String, dynamic> _$RegulationDataToJson(RegulationData instance) =>
       'value': instance.value,
     };
 
+NearbyType _$NearbyTypeFromJson(Map<String, dynamic> json) => NearbyType(
+      type: json['type'] == null
+          ? null
+          : Message.fromJson(json['type'] as Map<String, dynamic>),
+      name: json['name'] == null
+          ? null
+          : Message.fromJson(json['name'] as Map<String, dynamic>),
+      distance: json['distance'] as String?,
+    );
+
+Map<String, dynamic> _$NearbyTypeToJson(NearbyType instance) =>
+    <String, dynamic>{
+      'type': instance.type,
+      'name': instance.name,
+      'distance': instance.distance,
+    };
+
 Reviews _$ReviewsFromJson(Map<String, dynamic> json) => Reviews(
       overall: json['overall'] == null
           ? null
@@ -316,7 +396,7 @@ RecentReview _$RecentReviewFromJson(Map<String, dynamic> json) => RecentReview(
       user: json['user'] == null
           ? null
           : User.fromJson(json['user'] as Map<String, dynamic>),
-      rating: (json['rating'] as num?)?.toInt(),
+      rating: (json['rating'] as num?)?.toDouble(),
       comment: json['comment'] as String?,
       date: json['date'] as String?,
     );

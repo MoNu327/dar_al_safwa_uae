@@ -32,7 +32,7 @@ class PropertyDetailsController extends GetxController {
       debugPrint(idParams.value.toString());
       fetchPropertyDetails(idParams.value);
     } else {
-      fetchPropertyDetails(1);
+      fetchPropertyDetails(idParams.value);
     }
   }
 

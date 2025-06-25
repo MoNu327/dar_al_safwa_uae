@@ -1,10 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/routes/app_route.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../widgets/custom_snackbar.dart';
 import '../../../widgets/loader_widget.dart';
 import '../controller/property_details_controller.dart';
 import 'price_bottom_sheet.dart';
@@ -15,13 +17,36 @@ class Gallery extends StatelessWidget {
   final PropertyDetailsController propertyDetailsController =
       Get.find<PropertyDetailsController>();
 
+  final FirebaseAuth auth = FirebaseAuth.instance;
+
   @override
   Widget build(BuildContext context) {
     final galleryImages =
         propertyDetailsController.property.value?.imageGallery;
+    final property = propertyDetailsController.property.value;
 
     return Scaffold(
-      bottomSheet: CustomBottomSheet(),
+      bottomSheet: CustomBottomSheet(
+        onCallPressed: () {
+          propertyDetailsController.callToAgent(property?.agent?.phone ?? "");
+        },
+        onWhatsAppPressed: () {
+          auth.currentUser == null
+              ? Get.toNamed(AppRoute.signupWarning)
+              : auth.currentUser != null &&
+                      auth.currentUser?.displayName != null
+                  ? propertyDetailsController.navigateToAgentChat(
+                      "${property?.agent?.email ?? "teat@gmail.com"}",
+                      "${property?.title?.en}")
+                  : auth.currentUser?.email == null
+                      ? propertyDetailsController.navigateToAgentChat(
+                          "teat@gmail.com", "Riverview Retreat")
+                      : CustomSnackbar.show(
+                          title: "Failed",
+                          message:
+                              "Currently, the agent is unable to connect.");
+        },
+      ),
       backgroundColor: AppColors.white,
       body: _buildGalleryContent(galleryImages),
     );
@@ -47,11 +72,13 @@ class Gallery extends StatelessWidget {
 
     return SingleChildScrollView(
       padding: EdgeInsets.only(
-        bottom: screenHeight * 0.01,
+        bottom: screenHeight * 0.02,
         left: screenWidth2,
         right: screenWidth2,
       ),
       child: GridView.builder(
+        padding:
+            EdgeInsets.only(bottom: Get.height * 0.1, top: Get.height * 0.015),
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

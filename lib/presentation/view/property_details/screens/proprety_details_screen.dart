@@ -25,199 +25,204 @@ class PropertyDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Obx(() {
-        final isLoading = propertyDetailsController.isLoading.value;
-        final errorMessage = propertyDetailsController.errorMessage.value;
-        final property = propertyDetailsController.property.value;
+    return SafeArea(
+      child: Scaffold(
+        body: Obx(() {
+          final isLoading = propertyDetailsController.isLoading.value;
+          final errorMessage = propertyDetailsController.errorMessage.value;
+          final property = propertyDetailsController.property.value;
 
-        // Loading state
-        if (isLoading) {
-          return const Center(child: CustomLoaderWidget());
-        }
-        // Error state
-        if (errorMessage != null) {
-          return _buildErrorState(errorMessage);
-        }
-        // Error state
-        if (propertyDetailsController.errorMessage.value != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                CustomTextWidget(
-                  title: 'Failed to load property details',
-                  fontSize: tagTitle,
-                ),
-                CustomTextWidget(
-                  title: propertyDetailsController.errorMessage.value ??
-                      'Unknown error',
-                  fontSize: tagTitle,
-                  textAlign: TextAlign.center,
-                ),
-                ElevatedButton(
-                  onPressed: () =>
-                      propertyDetailsController.fetchPropertyDetails(
-                          propertyDetailsController.idParams.value),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        // Success state
-        if (property != null) {
-          return SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: Get.width * 0.03,
-                vertical: Get.height * 0.02,
-              ),
+          // Loading state
+          if (isLoading) {
+            return const Center(child: CustomLoaderWidget());
+          }
+          // Error state
+          if (errorMessage != null) {
+            return _buildErrorState(errorMessage);
+          }
+          // Error state
+          if (propertyDetailsController.errorMessage.value != null) {
+            return Center(
               child: Column(
-                spacing: screenHeight * 0.01,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(
-                      top: screenHeight3,
-                      bottom: screenHeight1,
-                    ),
-                    child: _buildHeader(
-                        (isArabic ? property.title?.ar : property.title?.en) ??
-                            "Unknown"),
-                  ),
-                  Stack(
-                    children: [
-                      // Main Image Display
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: CachedNetworkImage(
-                          imageUrl: (property.highlightImages != null &&
-                                  property.highlightImages!.isNotEmpty
-                              ? property.highlightImages![
-                                  propertyDetailsController.currentIndex.value]
-                              : propertyDetailsController.imageUrls[
-                                  propertyDetailsController
-                                      .currentIndex.value]),
-                          width: double.infinity,
-                          height: screenHeight * 0.25,
-                          fit: BoxFit.fill,
-                          placeholder: (context, url) => Container(
-                            color: AppColors.white,
-                            child: const Center(
-                              child: CustomLoaderWidget(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: AppColors.white,
-                            child: const Icon(Icons.error),
-                          ),
-                        ),
-                      ),
-
-                      // Thumbnail List
-                      if ((property.highlightImages != null &&
-                              property.highlightImages!.length > 1) ||
-                          (property.highlightImages == null &&
-                              propertyDetailsController.imageUrls.length > 1))
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.01,
-                              vertical: screenHeight * 0.01,
-                            ),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.02,
-                                vertical: screenHeight * 0.005,
-                              ),
-                              decoration: const BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius:
-                                    BorderRadius.all(Radius.circular(12)),
-                              ),
-                              height: Get.height * 0.06,
-                              child: const ImageListView(),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          // _buildTagContainer(
-                          //   label: localizationController
-                          //       .translate('property_type'),
-                          // ),
-                          // kWidth(0.02),
-                          _buildTagContainer(
-                            label: isArabic
-                                ? property.dealType?.ar
-                                : property.dealType?.en ??
-                                    localizationController
-                                        .translate('property_status'),
-                          )
-                        ],
-                      ),
-                      Row(
-                        spacing: screenWidth * 0.005,
-                        children: [
-                          Icon(
-                            Icons.star,
-                            color: AppColors.primaryColor,
-                            size: screenHeight2,
-                          ),
-                          _buildReviewTextWidget(
-                              label: property.reviews?.overall?.rating
-                                      ?.toString() ??
-                                  '0'),
-                          _buildReviewTextWidget(
-                              label: property.reviews?.overall?.count != null ||
-                                      property.reviews?.overall?.count == 0
-                                  ? '(${property.reviews?.overall?.count?.toString()} Reviews)'
-                                  : '(No Reviews)')
-                        ],
-                      )
-                    ],
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  CustomTextWidget(
+                    title: 'Failed to load property details',
+                    fontSize: tagTitle,
                   ),
                   CustomTextWidget(
-                    title: isArabic
-                        ? property.title?.ar
-                        : property.title?.en ?? "Unknown",
-                    color: AppColors.secondaryColor,
-                    fontSize: Get.height * 0.02,
-                    fontWeight: FontWeight.w500,
+                    title: propertyDetailsController.errorMessage.value ??
+                        'Unknown error',
+                    fontSize: tagTitle,
+                    textAlign: TextAlign.center,
                   ),
-                  CustomTextWidget(
-                    title: isArabic
-                        ? property.location?.address?.full?.ar
-                        : property.location?.address?.full?.en ??
-                            localizationController.translate('address'),
-                    color: AppColors.lightGrey,
-                    fontSize: Get.height * 0.015,
-                    fontWeight: FontWeight.w500,
+                  ElevatedButton(
+                    onPressed: () =>
+                        propertyDetailsController.fetchPropertyDetails(
+                            propertyDetailsController.idParams.value),
+                    child: const Text('Retry'),
                   ),
-                  CustomTabBar(tabs: [
-                    localizationController.translate('about'),
-                    localizationController.translate('gallery'),
-                    localizationController.translate('360view'),
-                    localizationController.translate('review'),
-                  ])
                 ],
               ),
-            ),
-          );
-        }
-        return _buildEmptyState();
-      }),
+            );
+          }
+
+          // Success state
+          if (property != null) {
+            return SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: Get.width * 0.03,
+                  vertical: Get.height * 0.02,
+                ),
+                child: Column(
+                  spacing: screenHeight * 0.01,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(
+                        top: screenHeight3,
+                        bottom: screenHeight1,
+                      ),
+                      child: _buildHeader((isArabic
+                              ? property.title?.ar
+                              : property.title?.en) ??
+                          "Unknown"),
+                    ),
+                    Stack(
+                      children: [
+                        // Main Image Display
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CachedNetworkImage(
+                            imageUrl: (property.highlightImages != null &&
+                                    property.highlightImages!.isNotEmpty
+                                ? property.highlightImages![
+                                    propertyDetailsController
+                                        .currentIndex.value]
+                                : propertyDetailsController.imageUrls[
+                                    propertyDetailsController
+                                        .currentIndex.value]),
+                            width: double.infinity,
+                            height: screenHeight * 0.25,
+                            fit: BoxFit.fill,
+                            placeholder: (context, url) => Container(
+                              color: AppColors.white,
+                              child: const Center(
+                                child: CustomLoaderWidget(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: AppColors.white,
+                              child: const Icon(Icons.error),
+                            ),
+                          ),
+                        ),
+
+                        // Thumbnail List
+                        if ((property.highlightImages != null &&
+                                property.highlightImages!.length > 1) ||
+                            (property.highlightImages == null &&
+                                propertyDetailsController.imageUrls.length > 1))
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.01,
+                                vertical: screenHeight * 0.01,
+                              ),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenWidth * 0.02,
+                                  vertical: screenHeight * 0.005,
+                                ),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.white,
+                                  borderRadius:
+                                      BorderRadius.all(Radius.circular(12)),
+                                ),
+                                height: Get.height * 0.06,
+                                child: const ImageListView(),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            // _buildTagContainer(
+                            //   label: localizationController
+                            //       .translate('property_type'),
+                            // ),
+                            // kWidth(0.02),
+                            _buildTagContainer(
+                              label: isArabic
+                                  ? property.dealType?.ar
+                                  : property.dealType?.en ??
+                                      localizationController
+                                          .translate('property_status'),
+                            )
+                          ],
+                        ),
+                        Row(
+                          spacing: screenWidth * 0.005,
+                          children: [
+                            Icon(
+                              Icons.star,
+                              color: AppColors.primaryColor,
+                              size: screenHeight2,
+                            ),
+                            _buildReviewTextWidget(
+                                label: property.reviews?.overall?.rating
+                                        ?.toString() ??
+                                    '0'),
+                            _buildReviewTextWidget(
+                                label: property.reviews?.overall?.count !=
+                                            null ||
+                                        property.reviews?.overall?.count == 0
+                                    ? '(${property.reviews?.overall?.count?.toString()} Reviews)'
+                                    : '(No Reviews)')
+                          ],
+                        )
+                      ],
+                    ),
+                    CustomTextWidget(
+                      title: isArabic
+                          ? property.title?.ar
+                          : property.title?.en ?? "Unknown",
+                      color: AppColors.secondaryColor,
+                      fontSize: Get.height * 0.02,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    CustomTextWidget(
+                      title: isArabic
+                          ? property.location?.address?.full?.ar
+                          : property.location?.address?.full?.en ??
+                              localizationController.translate('address'),
+                      color: AppColors.lightGrey,
+                      fontSize: Get.height * 0.015,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    CustomTabBar(tabs: [
+                      localizationController.translate('about'),
+                      localizationController.translate('gallery'),
+                      localizationController.translate('360view'),
+                      localizationController.translate('review'),
+                    ])
+                  ],
+                ),
+              ),
+            );
+          }
+          return _buildEmptyState();
+        }),
+      ),
     );
   }
 

@@ -16,83 +16,85 @@ class AgentChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Obx(() {
-          final agent = !controller.isAgent.value
-              ? controller.chatData['agent'] ?? {}
-              : controller.chatData['user'] ?? {};
-          return Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: AppColors.white,
-                backgroundImage: NetworkImage(agent['avatar']?.toString() ??
-                    'https://via.placeholder.com/150'),
-                radius: 20,
-              ),
-              SizedBox(width: Get.width * 0.01),
-              Column(
-                spacing: screenHeight05,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CustomTextWidget(
-                    title: agent['name']?.toString() ?? 'Agent',
-                    color: AppColors.black,
-                    fontSize: Get.height * 0.02,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  Obx(
-                    () => CustomTextWidget(
-                      title: controller.agentStatus.value,
-                      color: AppColors.onlineGreen,
-                      fontSize: Get.height * 0.013,
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(
+          title: Obx(() {
+            final agent = !controller.isAgent.value
+                ? controller.chatData['agent'] ?? {}
+                : controller.chatData['user'] ?? {};
+            return Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppColors.white,
+                  backgroundImage: NetworkImage(agent['avatar']?.toString() ??
+                      'https://via.placeholder.com/150'),
+                  radius: 20,
+                ),
+                SizedBox(width: Get.width * 0.01),
+                Column(
+                  spacing: screenHeight05,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomTextWidget(
+                      title: agent['name']?.toString() ?? 'Agent',
+                      color: AppColors.black,
+                      fontSize: Get.height * 0.02,
+                      fontWeight: FontWeight.w600,
                     ),
-                  )
-                ],
-              )
+                    Obx(
+                      () => CustomTextWidget(
+                        title: controller.agentStatus.value,
+                        color: AppColors.onlineGreen,
+                        fontSize: Get.height * 0.013,
+                      ),
+                    )
+                  ],
+                )
+              ],
+            );
+          }),
+        ),
+        body: Obx(() {
+          if (controller.isLoading.value) {
+            return Center(
+              child: LoadingAnimationWidget.twistingDots(
+                leftDotColor: AppColors.secondaryColor,
+                rightDotColor: AppColors.primaryColor,
+                size: 30,
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Expanded(
+                child: Container(
+                  color: AppColors.white,
+                  child: ListView.builder(
+                    reverse: true,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth3,
+                      vertical: screenHeight2,
+                    ),
+                    itemCount: controller.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = controller.messages[index];
+                      return ChatBubble(
+                        message: message['text']?.toString() ?? '',
+                        isUser: message['sender'] == 'user',
+                        time: controller
+                            .formatTime(message['timestamp']?.toString() ?? ''),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              _buildMessageInput(),
             ],
           );
         }),
       ),
-      body: Obx(() {
-        if (controller.isLoading.value) {
-          return Center(
-            child: LoadingAnimationWidget.twistingDots(
-              leftDotColor: AppColors.secondaryColor,
-              rightDotColor: AppColors.primaryColor,
-              size: 30,
-            ),
-          );
-        }
-
-        return Column(
-          children: [
-            Expanded(
-              child: Container(
-                color: AppColors.white,
-                child: ListView.builder(
-                  reverse: true,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth3,
-                    vertical: screenHeight2,
-                  ),
-                  itemCount: controller.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = controller.messages[index];
-                    return ChatBubble(
-                      message: message['text']?.toString() ?? '',
-                      isUser: message['sender'] == 'user',
-                      time: controller
-                          .formatTime(message['timestamp']?.toString() ?? ''),
-                    );
-                  },
-                ),
-              ),
-            ),
-            _buildMessageInput(),
-          ],
-        );
-      }),
     );
   }
 

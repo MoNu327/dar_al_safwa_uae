@@ -191,7 +191,7 @@ class PropertyListings extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: CachedNetworkImage(
-                imageUrl: property.propertyImage ?? '',
+                imageUrl: property.image ?? '',
                 width: Get.width * 0.35,
                 height: Get.height * 0.23,
                 fit: BoxFit.cover,
@@ -230,16 +230,12 @@ class PropertyListings extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomTextWidget(
-          title: isArabic
-              ? property.propertyTitle?.arabic
-              : property.propertyTitle?.english,
+          title: isArabic ? property.title?.ar : property.title?.en,
           fontWeight: FontWeight.w600,
           color: AppColors.secondaryColor,
         ),
         CustomTextWidget(
-          title: isArabic
-              ? property.propertyType?.arabic
-              : property.propertyType?.english,
+          title: isArabic ? property.type?.ar : property.type?.en,
           fontWeight: FontWeight.w600,
           color: AppColors.black,
         ),
@@ -253,9 +249,7 @@ class PropertyListings extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomTextWidget(
-          title: isArabic
-              ? property.propertyLocation?.arabic
-              : property.propertyLocation?.english,
+          title: isArabic ? property.location?.ar : property.location?.en,
           fontWeight: FontWeight.w400,
           color: AppColors.black500,
         ),
@@ -269,7 +263,7 @@ class PropertyListings extends StatelessWidget {
             SizedBox(width: Get.width * 0.02),
             CustomTextWidget(
               title:
-                  '${isArabic ? property.propertySqft?.arabic : property.propertySqft?.english ?? '0'} ${localizationController.translate('sq_ft')}',
+                  '${isArabic ? property.specs?.area?.ar : property.specs?.area?.en ?? '0'} ${localizationController.translate('sq_ft')}',
               fontWeight: FontWeight.w500,
               color: AppColors.black600,
             ),
@@ -284,7 +278,7 @@ class PropertyListings extends StatelessWidget {
             ),
             SizedBox(width: Get.width * 0.02),
             CustomTextWidget(
-              title: '${property.propertyBed}',
+              title: '${property.specs?.beds ?? 0}',
               fontWeight: FontWeight.w500,
               color: AppColors.black600,
             ),
@@ -296,7 +290,7 @@ class PropertyListings extends StatelessWidget {
             ),
             SizedBox(width: Get.width * 0.02),
             CustomTextWidget(
-              title: '${property.propertyBath}',
+              title: '${property.specs?.baths ?? 0}',
               fontWeight: FontWeight.w500,
               color: AppColors.black600,
             ),
@@ -343,14 +337,14 @@ class PropertyListings extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CustomTextWidget(
-                title: '${property.propertyRating ?? '0.0'}/5',
+                title: '${property.rating?.average ?? '0.0'}/5', //
                 fontSize: screenHeight * 0.015,
                 color: AppColors.black,
                 fontWeight: FontWeight.w600,
               ),
               CustomTextWidget(
                 title:
-                    '(${property.propertyReviews ?? 0} ${localizationController.translate('review')})',
+                    '(${property.rating?.count ?? 0} ${localizationController.translate('review')})', //property.propertyReviews ??
                 fontSize: screenHeight1,
                 color: AppColors.black,
                 fontWeight: FontWeight.w500,
@@ -363,13 +357,13 @@ class PropertyListings extends StatelessWidget {
   }
 
   Widget _buildPriceSection(Property property, bool isArabic) {
-    final price = property.propertyPrice;
+    final price = property.price;
     final formattedPrice = isArabic
-        ? (price?.formatted?.arabic?.isNotEmpty ?? false
-            ? price!.formatted!.arabic
+        ? (price?.formatted?.ar?.isNotEmpty ?? false
+            ? price!.formatted!.ar
             : '${price?.raw ?? 0} OMR')
-        : (price?.formatted?.english?.isNotEmpty ?? false
-            ? price!.formatted!.english
+        : (price?.formatted?.en?.isNotEmpty ?? false
+            ? price!.formatted!.en
             : '${price?.raw ?? 0} OMR');
 
     return Column(

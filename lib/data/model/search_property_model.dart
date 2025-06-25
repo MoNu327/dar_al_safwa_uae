@@ -2,6 +2,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'search_property_model.g.dart';
 
+@JsonSerializable()
 class PropertySearchResultRequest {
   @JsonKey(name: 'property_options')
   final int propertyOptions;
@@ -22,36 +23,19 @@ class PropertySearchResultRequest {
     required this.propertyBedsBath,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'property_options': propertyOptions,
-      'property_types': propertyTypes,
-      'property_locations': propertyLocations,
-      'property_beds_bath': propertyBedsBath,
-    };
-  }
+  factory PropertySearchResultRequest.fromJson(Map<String, dynamic> json) =>
+      _$PropertySearchResultRequestFromJson(json);
 
-  factory PropertySearchResultRequest.fromJson(Map<String, dynamic> json) {
-    return PropertySearchResultRequest(
-      propertyOptions: json['property_options'] as int,
-      propertyTypes: json['property_types'] as int,
-      propertyLocations: json['property_locations'] as int,
-      propertyBedsBath: json['property_beds_bath'] as int,
-    );
-  }
+  Map<String, dynamic> toJson() => _$PropertySearchResultRequestToJson(this);
 }
-
-//response class
 
 @JsonSerializable()
 class SearchPropertyResponse {
   final bool success;
-  final Message? message;
   final List<Property>? data;
 
   SearchPropertyResponse({
     required this.success,
-    this.message,
     this.data,
   });
 
@@ -62,65 +46,30 @@ class SearchPropertyResponse {
 }
 
 @JsonSerializable()
-class Message {
-  @JsonKey(name: 'en')
-  final String? english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
-
-  Message({
-    this.english,
-    this.arabic,
-  });
-
-  factory Message.fromJson(Map<String, dynamic> json) =>
-      _$MessageFromJson(json);
-
-  Map<String, dynamic> toJson() => _$MessageToJson(this);
-}
-
-@JsonSerializable()
 class Property {
   final int? id;
-  @JsonKey(name: 'property_title')
-  final PropertyTitle? propertyTitle;
-  @JsonKey(name: 'property_image')
-  final String? propertyImage;
-  @JsonKey(name: 'property_deal')
-  final PropertyDeal? propertyDeal;
-  @JsonKey(name: 'property_price')
-  final PropertyPrice? propertyPrice;
-  @JsonKey(name: 'property_type')
-  final PropertyType? propertyType;
-  @JsonKey(name: 'property_location')
-  final PropertyLocation? propertyLocation;
-  @JsonKey(name: 'property_bed')
-  final int? propertyBed;
-  @JsonKey(name: 'property_bath')
-  final int? propertyBath;
-  @JsonKey(name: 'property_sqft')
-  final PropertySqft? propertySqft;
-  @JsonKey(name: 'property_rating')
-  final String? propertyRating;
-  @JsonKey(name: 'property_reviews')
-  final int? propertyReviews;
-  @JsonKey(name: 'rating_details')
-  final RatingDetails? ratingDetails;
+  final LocalizedText? title;
+  @JsonKey(name: 'deal_type')
+  final LocalizedText? dealType;
+  final PropertyPrice? price;
+  final Features? features;
+  final LocalizedText? type;
+  final LocalizedText? location;
+  final Specs? specs;
+  final String? image;
+  final Rating? rating; 
 
   Property({
     this.id,
-    this.propertyTitle,
-    this.propertyImage,
-    this.propertyDeal,
-    this.propertyPrice,
-    this.propertyType,
-    this.propertyLocation,
-    this.propertyBed,
-    this.propertyBath,
-    this.propertySqft,
-    this.propertyRating,
-    this.propertyReviews,
-    this.ratingDetails,
+    this.title,
+    this.dealType,
+    this.price,
+    this.features,
+    this.type,
+    this.location,
+    this.specs,
+    this.image,
+    this.rating
   });
 
   factory Property.fromJson(Map<String, dynamic> json) =>
@@ -130,39 +79,16 @@ class Property {
 }
 
 @JsonSerializable()
-class PropertyTitle {
-  @JsonKey(name: 'en')
-  final String? english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
+class LocalizedText {
+  final String? en;
+  final String? ar;
 
-  PropertyTitle({
-    this.english,
-    this.arabic,
-  });
+  LocalizedText({this.en, this.ar});
 
-  factory PropertyTitle.fromJson(Map<String, dynamic> json) =>
-      _$PropertyTitleFromJson(json);
+  factory LocalizedText.fromJson(Map<String, dynamic> json) =>
+      _$LocalizedTextFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PropertyTitleToJson(this);
-}
-
-@JsonSerializable()
-class PropertyDeal {
-  @JsonKey(name: 'en')
-  final String? english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
-
-  PropertyDeal({
-    this.english,
-    this.arabic,
-  });
-
-  factory PropertyDeal.fromJson(Map<String, dynamic> json) =>
-      _$PropertyDealFromJson(json);
-
-  Map<String, dynamic> toJson() => _$PropertyDealToJson(this);
+  Map<String, dynamic> toJson() => _$LocalizedTextToJson(this);
 }
 
 @JsonSerializable()
@@ -170,10 +96,7 @@ class PropertyPrice {
   final int? raw;
   final FormattedPrice? formatted;
 
-  PropertyPrice({
-    this.raw,
-    this.formatted,
-  });
+  PropertyPrice({this.raw, this.formatted});
 
   factory PropertyPrice.fromJson(Map<String, dynamic> json) =>
       _$PropertyPriceFromJson(json);
@@ -183,15 +106,10 @@ class PropertyPrice {
 
 @JsonSerializable()
 class FormattedPrice {
-  @JsonKey(name: 'en')
-  final dynamic english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
+  final String? en;
+  final String? ar;
 
-  FormattedPrice({
-    this.english,
-    this.arabic,
-  });
+  FormattedPrice({this.en, this.ar});
 
   factory FormattedPrice.fromJson(Map<String, dynamic> json) =>
       _$FormattedPriceFromJson(json);
@@ -200,73 +118,62 @@ class FormattedPrice {
 }
 
 @JsonSerializable()
-class PropertyType {
-  @JsonKey(name: 'en')
-  final String? english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
+class Features {
+  @JsonKey(name: 'balcony')
+  final bool? balcony;
+  @JsonKey(name: 'maid_room')
+  final bool? maidRoom;
+  @JsonKey(name: 'parking')
+  final bool? parking;
+  @JsonKey(name: 'sea_view')
+  final bool? seaView;
+  @JsonKey(name: 'furnished')
+  final bool? furnished;
 
-  PropertyType({
-    this.english,
-    this.arabic,
-  });
+  Features(
+      {this.balcony,
+      this.maidRoom,
+      this.parking,
+      this.seaView,
+      this.furnished});
 
-  factory PropertyType.fromJson(Map<String, dynamic> json) =>
-      _$PropertyTypeFromJson(json);
+  factory Features.fromJson(Map<String, dynamic> json) =>
+      _$FeaturesFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PropertyTypeToJson(this);
+  Map<String, dynamic> toJson() => _$FeaturesToJson(this);
 }
 
 @JsonSerializable()
-class PropertyLocation {
-  @JsonKey(name: 'en')
-  final String? english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
+class Specs {
+  final int? beds;
+  final int? baths;
+  final LocalizedText? area;
 
-  PropertyLocation({
-    this.english,
-    this.arabic,
-  });
+  Specs({this.beds, this.baths, this.area});
 
-  factory PropertyLocation.fromJson(Map<String, dynamic> json) =>
-      _$PropertyLocationFromJson(json);
+  factory Specs.fromJson(Map<String, dynamic> json) => _$SpecsFromJson(json);
 
-  Map<String, dynamic> toJson() => _$PropertyLocationToJson(this);
+  Map<String, dynamic> toJson() => _$SpecsToJson(this);
 }
 
-@JsonSerializable()
-class PropertySqft {
-  @JsonKey(name: 'en')
-  final String? english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
-
-  PropertySqft({
-    this.english,
-    this.arabic,
-  });
-
-  factory PropertySqft.fromJson(Map<String, dynamic> json) =>
-      _$PropertySqftFromJson(json);
-
-  Map<String, dynamic> toJson() => _$PropertySqftToJson(this);
-}
 
 @JsonSerializable()
-class RatingDetails {
-  @JsonKey(name: 'en')
-  final String? english;
-  @JsonKey(name: 'ar')
-  final String? arabic;
+class Rating {
+  final double? average;
 
-  RatingDetails({
-    this.english,
-    this.arabic,
+  @JsonKey(name: 'average_arabic')
+  final String? averageArabic;
+
+  final int? count;
+
+  Rating({
+    this.average,
+    this.averageArabic,
+    this.count,
   });
 
-  factory RatingDetails.fromJson(Map<String, dynamic> json) =>
-      _$RatingDetailsFromJson(json);
+  factory Rating.fromJson(Map<String, dynamic> json) =>
+      _$RatingFromJson(json);
 
-  Map<String, dynamic> toJson() => _$RatingDetailsToJson(this);
+  Map<String, dynamic> toJson() => _$RatingToJson(this);
 }

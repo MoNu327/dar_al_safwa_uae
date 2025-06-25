@@ -201,12 +201,12 @@ class PropertyListingController extends GetxController {
 
         searchResults.value = SearchPropertyResponse.fromJson(response.data);
 
-        debugPrint('📊 [fetchSearchResult] Parsed Search Results:');
-        debugPrint('Success: ${searchResults.value?.success}');
-        debugPrint('Message (en): ${searchResults.value?.message?.english}');
-        debugPrint('Message (ar): ${searchResults.value?.message?.arabic}');
-        debugPrint(
-            'Properties found: ${searchResults.value?.data?.length ?? 0}');
+        // debugPrint('📊 [fetchSearchResult] Parsed Search Results:');
+        // debugPrint('Success: ${searchResults.value?.success}');
+        // debugPrint('Message (en): ${searchResults.value?.message?.english}');
+        // debugPrint('Message (ar): ${searchResults.value?.message?.arabic}');
+        // debugPrint(
+        //     'Properties found: ${searchResults.value?.data?.length ?? 0}');
 
         debugPrint(
             '📊 [fetchSearchResult] Received Search Results: ${(searchResults.value)?.toJson()}');
@@ -223,12 +223,12 @@ class PropertyListingController extends GetxController {
 
         // Only show properties if they exist
         for (var property in searchResults.value!.data!) {
-          debugPrint('🏠 Property ID: ${property.id}');
-          debugPrint('   Title (en): ${property.propertyTitle?.english}');
-          debugPrint('   Title (ar): ${property.propertyTitle?.arabic}');
-          debugPrint('   Price: ${property.propertyPrice?.raw}');
-          debugPrint('   Type (en): ${property.propertyType?.english}');
-          debugPrint('   Location (en): ${property.propertyLocation?.english}');
+          // debugPrint('🏠 Property ID: ${property.id}');
+          // debugPrint('   Title (en): ${property.propertyTitle?.english}');
+          // debugPrint('   Title (ar): ${property.propertyTitle?.arabic}');
+          // debugPrint('   Price: ${property.propertyPrice?.raw}');
+          // debugPrint('   Type (en): ${property.propertyType?.english}');
+          // debugPrint('   Location (en): ${property.propertyLocation?.english}');
         }
       } else {
         debugPrint('📄 Search response: ${response.data}');
@@ -299,13 +299,13 @@ class PropertyListingController extends GetxController {
     // Debug print the property details before navigation
     debugPrint('🏠 Property Details to Pass:');
     debugPrint('ID: ${property.id}');
-    debugPrint('Title (en): ${property.propertyTitle?.english}');
-    debugPrint('Title (ar): ${property.propertyTitle?.arabic}');
-    debugPrint('Price: ${property.propertyPrice?.raw} OMR');
-    debugPrint('Type: ${property.propertyType?.english}');
-    debugPrint('Location: ${property.propertyLocation?.english}');
-    debugPrint(
-        'Beds: ${property.propertyBed}, Baths: ${property.propertyBath}');
+    // debugPrint('Title (en): ${property.propertyTitle?.english}');
+    // debugPrint('Title (ar): ${property.propertyTitle?.arabic}');
+    // debugPrint('Price: ${property.propertyPrice?.raw} OMR');
+    // debugPrint('Type: ${property.propertyType?.english}');
+    // debugPrint('Location: ${property.propertyLocation?.english}');
+    // debugPrint(
+    //     'Beds: ${property.propertyBed}, Baths: ${property.propertyBath}');
 
     Get.toNamed(
       AppRoute.propertyDetails,

@@ -15,7 +15,7 @@ class LoginScreen extends StatelessWidget {
   final LocalizationController localizationController = Get.find();
   final LoginController loginController = Get.put(LoginController());
   final AuthService authService = Get.put(AuthService());
- 
+
   @override
   Widget build(BuildContext context) {
     // Set the status bar icon color
@@ -93,8 +93,7 @@ class LoginScreen extends StatelessWidget {
                 );
               }),
               Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.max,
                 children: [
                   Expanded(
                     child: CustomButton(
@@ -107,15 +106,20 @@ class LoginScreen extends StatelessWidget {
                       customIconWidget: const Icon(Icons.person),
                     ),
                   ),
+                  SizedBox(
+                      width:
+                          10), // Don't use kWidth(0.1) if it gives fractional pixel
                   Expanded(
-                      child: CustomButton(
-                          iconSize: 14,
-                          customIconWidget: Icon(Icons.build),
-                          title: "Technician Login",
-                          textSize: tagTitle,
-                          onPressed: () {
-                            loginController.navigateToTechnicianLogin();
-                          }))
+                    child: CustomButton(
+                      iconSize: 14,
+                      customIconWidget: Icon(Icons.build),
+                      title: "Technician Login",
+                      textSize: tagTitle,
+                      onPressed: () {
+                        loginController.navigateToTechnicianLogin();
+                      },
+                    ),
+                  ),
                 ],
               ),
               kHeight(0.005),
@@ -177,7 +181,7 @@ class CustomButton extends StatelessWidget {
     return InkWell(
       onTap: onPressed,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16),
         child: Container(
           width: double.infinity,
           height: Get.height * 0.07,
@@ -190,7 +194,6 @@ class CustomButton extends StatelessWidget {
             ),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -207,7 +210,7 @@ class CustomButton extends StatelessWidget {
               const SizedBox(width: 3),
               CustomTextWidget(
                 title: title,
-                fontSize: textSize ?? Get.height * 0.02,
+                fontSize: textSize ?? Get.height * 0.03,
                 color: titleColor ?? AppColors.black,
                 fontWeight: FontWeight.w700,
               ),
