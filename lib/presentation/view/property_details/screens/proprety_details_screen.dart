@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+
 class PropertyDetailsScreen extends StatelessWidget {
   PropertyDetailsScreen({super.key});
 
@@ -476,7 +477,6 @@ class _CustomTabBarState extends State<CustomTabBar>
               // 360 view tab
               View360(
                 videoUrls: [
-                  "https://videos.pexels.com/video-files/12931062/12931062-sd_640_360_30fps.mp4",
                   "https://videos.pexels.com/video-files/10677884/10677884-sd_640_360_30fps.mp4",
                   "https://videos.pexels.com/video-files/15353502/15353502-sd_640_360_24fps.mp4"
                 ],

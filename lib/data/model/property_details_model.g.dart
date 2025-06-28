@@ -201,15 +201,33 @@ OverviewItem _$OverviewItemFromJson(Map<String, dynamic> json) => OverviewItem(
       title: json['title'] == null
           ? null
           : Message.fromJson(json['title'] as Map<String, dynamic>),
-      value: json['value'],
+      value: overviewValueFromJson(json['value']),
       icon: json['icon'] as String?,
     );
 
 Map<String, dynamic> _$OverviewItemToJson(OverviewItem instance) =>
     <String, dynamic>{
       'title': instance.title,
-      'value': instance.value,
+      'value': overviewValueToJson(instance.value),
       'icon': instance.icon,
+    };
+
+OverviewValue _$OverviewValueFromJson(Map<String, dynamic> json) =>
+    OverviewValue(
+      number: (json['number'] as num?)?.toInt(),
+      unit: json['unit'] == null
+          ? null
+          : Message.fromJson(json['unit'] as Map<String, dynamic>),
+      formatted: json['formatted'] == null
+          ? null
+          : Message.fromJson(json['formatted'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$OverviewValueToJson(OverviewValue instance) =>
+    <String, dynamic>{
+      'number': instance.number,
+      'unit': instance.unit,
+      'formatted': instance.formatted,
     };
 
 PropertyFeatures _$PropertyFeaturesFromJson(Map<String, dynamic> json) =>

@@ -1,3 +1,4 @@
 {
-  "cmake.sourceDirectory": "C:/Users/HP/Desktop/flutter/dar_al_safwa/linux"
+  "cmake.sourceDirectory": "C:/Users/HP/Desktop/flutter/dar_al_safwa/linux",
+  "dart.flutterSdkPath": ".fvm/versions/3.27.0"
 }

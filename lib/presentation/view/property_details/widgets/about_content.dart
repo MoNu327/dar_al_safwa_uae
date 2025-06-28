@@ -94,8 +94,9 @@ class AboutContent extends StatelessWidget {
                   // Take a video tour
                   _buildTitle(
                       'Take a video tour',
-                      YoutubeViewerSection(
-                          youtubeUrl: "${property.youtubeVideo?.url}")),
+                      OptimizedYoutubePlayer(
+                          thumbnailUrl: "${property.youtubeVideo?.thumbnail}",
+                          videoUrl: "${property.youtubeVideo?.url}")),
                   // RepaintBoundary(
                   //   child: _buildYoutubeViewerSection(
                   //       property.youtubeVideo?.url ?? ''),
@@ -137,7 +138,7 @@ class AboutContent extends StatelessWidget {
                                   auth.currentUser?.displayName != null
                               ? propertyDetailsController.navigateToAgentChat(
                                   "${property.agent?.email ?? "teat@gmail.com"}",
-                                  "${property?.title?.en}")
+                                  "${property?.id}")
                               : auth.currentUser?.email == null
                                   ? propertyDetailsController
                                       .navigateToAgentChat(
@@ -328,7 +329,7 @@ class AboutContent extends StatelessWidget {
 
     final gmail = property?.agent?.email ?? "teat@gmail.com";
     final phone = property?.agent?.phone ?? "9544418765";
-    final propertyName = property?.title ?? "Building";
+    final propertyId = property?.id ?? "Building";
 
     return Row(
       spacing: Get.width * 0.02,
@@ -340,7 +341,7 @@ class AboutContent extends StatelessWidget {
                 : auth.currentUser != null &&
                         auth.currentUser?.displayName != null
                     ? propertyDetailsController.navigateToAgentChat(
-                        "$gmail", "$propertyName")
+                        "$gmail", "$propertyId")
                     : auth.currentUser?.email == null
                         ? propertyDetailsController.navigateToAgentChat(
                             "teat@gmail.com", "Riverview Retreat")
@@ -377,41 +378,41 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoTourSection() {
-    return Container(
-      width: double.infinity,
-      height: Get.height * 0.25,
-      decoration: BoxDecoration(
-        color: AppColors.redColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
-          Obx(() => videoController.isInitialized.value
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: VideoPlayer(videoController.videoPlayerController),
-                )
-              : const Center(child: CircularProgressIndicator())),
-          Positioned(
-            bottom: 5,
-            left: 8,
-            child: ElevatedButton(
-              onPressed: () {},
-              child: const Text("View All"),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: CustomTextWidget(
-              title: "Watch the video for taking your\n decision easily.",
-              color: AppColors.white,
-            ),
-          )
-        ],
-      ),
-    );
-  }
+  // Widget _buildVideoTourSection() {
+  //   return Container(
+  //     width: double.infinity,
+  //     height: Get.height * 0.25,
+  //     decoration: BoxDecoration(
+  //       color: AppColors.redColor,
+  //       borderRadius: BorderRadius.circular(16),
+  //     ),
+  //     child: Stack(
+  //       children: [
+  //         Obx(() => videoController.isInitialized.value
+  //             ? ClipRRect(
+  //                 borderRadius: BorderRadius.circular(16),
+  //                 child: VideoPlayer(videoController.videoPlayerController),
+  //               )
+  //             : const Center(child: CircularProgressIndicator())),
+  //         Positioned(
+  //           bottom: 5,
+  //           left: 8,
+  //           child: ElevatedButton(
+  //             onPressed: () {},
+  //             child: const Text("View All"),
+  //           ),
+  //         ),
+  //         const Padding(
+  //           padding: EdgeInsets.all(16),
+  //           child: CustomTextWidget(
+  //             title: "Watch the video for taking your\n decision easily.",
+  //             color: AppColors.white,
+  //           ),
+  //         )
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // Widget _buildYoutubeViewerSection(String youtubeUrl) {
   //   final videoController = Get.find<VideoController>();
