@@ -138,11 +138,13 @@ class AboutContent extends StatelessWidget {
                                   auth.currentUser?.displayName != null
                               ? propertyDetailsController.navigateToAgentChat(
                                   "${property.agent?.email ?? "teat@gmail.com"}",
-                                  "${property?.id}")
+                                  property?.id,
+                                  "${property?.title?.en}",
+                                  "${property.unitTypes?.data?.first.unitType?.name?.en}")
                               : auth.currentUser?.email == null
                                   ? propertyDetailsController
-                                      .navigateToAgentChat(
-                                          "teat@gmail.com", "Riverview Retreat")
+                                      .navigateToAgentChat("teat@gmail.com",
+                                          41, "Riverview Retreat", "")
                                   : CustomSnackbar.show(
                                       title: "Failed",
                                       message:
@@ -324,54 +326,93 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  Widget _buildAgentActions(PropertyDetailsController controler) {
-    final property = controler.property.value;
+  // Widget _buildAgentActions(PropertyDetailsController controler) {
+  //   final property = controler.property.value;
 
-    final gmail = property?.agent?.email ?? "teat@gmail.com";
+  //   final gmail = property?.agent?.email ?? "teat@gmail.com";
+  //   final phone = property?.agent?.phone ?? "9544418765";
+  //   final propertyId = property?.id ?? "0";
+  //   final propertyName = property?.title?.en ?? "0";
+  //   final unitId = property?.unitTypes?.data?.first.unitType?.name?.en ?? "0";
+
+  //   return Row(
+  //     spacing: Get.width * 0.02,
+  //     children: [
+  //       InkWell(
+  //         onTap: () {
+  //           auth.currentUser == null
+  //               ? Get.toNamed(AppRoute.signupWarning)
+  //               : auth.currentUser != null &&
+  //                       auth.currentUser?.displayName != null
+  //                   ? propertyDetailsController.navigateToAgentChat(
+  //                       "$gmail", "$propertyId", "$propertyName", "$unitId")
+  //                   : auth.currentUser?.email == null
+  //                       ? propertyDetailsController.navigateToAgentChat(
+  //                           "teat@gmail.com", "0", "Riverview Retreat", "")
+  //                       : CustomSnackbar.show(
+  //                           title: "Failed",
+  //                           message:
+  //                               "Currently, the agent is unable to connect.");
+  //         },
+  //         child: CircleAvatar(
+  //           backgroundColor: AppColors.whiteLight,
+  //           radius: Get.height * 0.026,
+  //           child: Icon(
+  //             Icons.message,
+  //             color: AppColors.secondaryColor,
+  //             size: Get.height * 0.023,
+  //           ),
+  //         ),
+  //       ),
+  //       InkWell(
+  //         onTap: () {
+  //           propertyDetailsController.callToAgent(phone);
+  //         },
+  //         child: CircleAvatar(
+  //           backgroundColor: AppColors.whiteLight,
+  //           radius: Get.height * 0.026,
+  //           child: Icon(
+  //             Icons.call,
+  //             color: AppColors.secondaryColor,
+  //             size: Get.height * 0.023,
+  //           ),
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
+
+  Widget _buildAgentActions(PropertyDetailsController controller) {
+    final property = controller.property.value;
+    final gmail = property?.agent?.email ?? "test@gmail.com";
     final phone = property?.agent?.phone ?? "9544418765";
-    final propertyId = property?.id ?? "Building";
+    final propertyId = property?.id as int ?? 0;
+    final propertyName = property?.title?.en ?? "0";
 
     return Row(
       spacing: Get.width * 0.02,
       children: [
         InkWell(
           onTap: () {
-            auth.currentUser == null
-                ? Get.toNamed(AppRoute.signupWarning)
-                : auth.currentUser != null &&
-                        auth.currentUser?.displayName != null
-                    ? propertyDetailsController.navigateToAgentChat(
-                        "$gmail", "$propertyId")
-                    : auth.currentUser?.email == null
-                        ? propertyDetailsController.navigateToAgentChat(
-                            "teat@gmail.com", "Riverview Retreat")
-                        : CustomSnackbar.show(
-                            title: "Failed",
-                            message:
-                                "Currently, the agent is unable to connect.");
+            // For chat
+            controller.showUnitTypeBottomSheetForChat(
+                gmail, propertyId, propertyName);
           },
           child: CircleAvatar(
             backgroundColor: AppColors.whiteLight,
             radius: Get.height * 0.026,
-            child: Icon(
-              Icons.message,
-              color: AppColors.secondaryColor,
-              size: Get.height * 0.023,
-            ),
+            child: Icon(Icons.message, color: AppColors.secondaryColor),
           ),
         ),
         InkWell(
           onTap: () {
-            propertyDetailsController.callToAgent(phone);
+            // For call
+            controller.showUnitTypeBottomSheetForCall(phone, propertyId);
           },
           child: CircleAvatar(
             backgroundColor: AppColors.whiteLight,
             radius: Get.height * 0.026,
-            child: Icon(
-              Icons.call,
-              color: AppColors.secondaryColor,
-              size: Get.height * 0.023,
-            ),
+            child: Icon(Icons.call, color: AppColors.secondaryColor),
           ),
         ),
       ],

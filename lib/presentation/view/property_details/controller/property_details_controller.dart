@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,11 @@ class PropertyDetailsController extends GetxController {
   final isLoading = false.obs;
   final property = Rx<Property?>(null);
   final errorMessage = Rx<String?>(null);
+
+  // Bottom sheet state variables
+  final RxInt selectedUnitTypeIndex = (-1).obs;
+  final RxInt selectedCount = 1.obs;
+  final RxBool isBottomSheetForCall = false.obs;
 
   @override
   void onInit() {
@@ -67,6 +74,41 @@ class PropertyDetailsController extends GetxController {
     } finally {
       isLoading(false);
       debugPrint('fetchPropertyDetails completed');
+    }
+  }
+
+  Future<void> postPropertyInterest(int propertyId, int unitType, int count,
+      String comments, int enqtype, String mobileNumber) async {
+    try {
+      isLoading(true);
+      errorMessage(null);
+
+      debugPrint('Posting property interest for ID: $propertyId');
+      final response = await apiService.postPropertyInterest(
+          propertyId, unitType, count, comments, enqtype, mobileNumber);
+      debugPrint('🎉 API response: ${response.statusCode}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final interestResponse = jsonDecode(response.data);
+        debugPrint("🔔 interest response: ${interestResponse.data}");
+        property(interestResponse.data);
+        debugPrint(
+            '👌interest posted  successfully: ${interestResponse.data["unit_type"]}');
+      } else {
+        debugPrint('😔 Failed to post interest: ${response.statusMessage}');
+        throw Exception("Failed to post interest details");
+      }
+    } catch (e) {
+      debugPrint('😔 Error in Post Interest Details: $e');
+      errorMessage(e.toString());
+      // Get.snackbar(
+      //   "Error",
+      //   "Failed to fetch property details: ${e.toString()}",
+      //   snackPosition: SnackPosition.BOTTOM,
+      // );
+    } finally {
+      isLoading(false);
+      debugPrint('postPropertyInterest completed');
     }
   }
 
@@ -201,13 +243,365 @@ class PropertyDetailsController extends GetxController {
   }
 
 // In your PropertyDetailsController
-  void navigateToAgentChat(String agentEmail, String? propertyId) {
+  void navigateToAgentChat(String agentEmail, int? propertyId,
+      String? propertyName, String? unitId) {
     Get.toNamed(
       AppRoute.agent,
       arguments: {
         'email': agentEmail,
-        'propertyId': propertyId ?? "Riverview Retreat",
+        'propertyId': propertyId ?? "0",
+        'propertyName': propertyName ?? "",
+        'unitId': unitId ?? "0",
       }, // Pass the agent's email as argument
     );
+  }
+
+  // Bottom sheet methods
+  void showUnitTypeBottomSheetForChat(
+      String gmail, int propertyId, String propertyName) {
+    final unitTypes = property.value?.unitTypes?.data ?? [];
+
+    if (unitTypes.isEmpty) {
+      Get.snackbar(
+        "No Unit Types",
+        "No unit types available for this property.",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    isBottomSheetForCall.value = false;
+    selectedUnitTypeIndex.value = -1;
+    selectedCount.value = 1;
+
+    Get.bottomSheet(
+      _buildUnitTypeBottomSheet(unitTypes, () {
+        _handleUnitTypeSelectionForChat(gmail, propertyId, propertyName);
+      }),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  void showUnitTypeBottomSheetForCall(String phone, int propertyId) {
+    final unitTypes = property.value?.unitTypes?.data ?? [];
+
+    if (unitTypes.isEmpty) {
+      Get.snackbar(
+        "No Unit Types",
+        "No unit types available for this property.",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    isBottomSheetForCall.value = true;
+    selectedUnitTypeIndex.value = -1;
+    selectedCount.value = 1;
+
+    Get.bottomSheet(
+      _buildUnitTypeBottomSheet(unitTypes, () {
+        _handleUnitTypeSelectionForCall(phone, propertyId);
+      }),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  Widget _buildUnitTypeBottomSheet(
+      List<dynamic> unitTypes, VoidCallback onContinue) {
+    return Container(
+      height: Get.height * 0.7,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            height: 4,
+            width: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Obx(() => Text(
+                      isBottomSheetForCall.value
+                          ? "Select Unit Type for Call"
+                          : "Select Unit Type",
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    )),
+                IconButton(
+                  onPressed: () => Get.back(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // Content
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Unit Type Selection
+                  const Text(
+                    "Choose Unit Type:",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  ...unitTypes.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final unitType = entry.value;
+                    final title = unitType.unitType?.name?.en ?? "Unknown";
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: Obx(() => InkWell(
+                            onTap: () {
+                              selectedUnitTypeIndex.value = index;
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: selectedUnitTypeIndex.value == index
+                                      ? Colors.blue
+                                      : Colors.grey[300]!,
+                                  width: selectedUnitTypeIndex.value == index
+                                      ? 2
+                                      : 1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                color: selectedUnitTypeIndex.value == index
+                                    ? Colors.blue.withOpacity(0.1)
+                                    : Colors.white,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    selectedUnitTypeIndex.value == index
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_unchecked,
+                                    color: selectedUnitTypeIndex.value == index
+                                        ? Colors.blue
+                                        : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight:
+                                            selectedUnitTypeIndex.value == index
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                        color:
+                                            selectedUnitTypeIndex.value == index
+                                                ? Colors.blue
+                                                : Colors.black87,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )),
+                    );
+                  }).toList(),
+
+                  Obx(() => selectedUnitTypeIndex.value != -1
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 24),
+                            const Text(
+                              "Select Quantity:",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: List.generate(10, (index) {
+                                final count = index + 1;
+                                return Obx(() => InkWell(
+                                      onTap: () {
+                                        selectedCount.value = count;
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: selectedCount.value == count
+                                                ? Colors.blue
+                                                : Colors.grey[300]!,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          color: selectedCount.value == count
+                                              ? Colors.blue
+                                              : Colors.white,
+                                        ),
+                                        child: Text(
+                                          count.toString(),
+                                          style: TextStyle(
+                                            color: selectedCount.value == count
+                                                ? Colors.white
+                                                : Colors.black87,
+                                            fontWeight:
+                                                selectedCount.value == count
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    ));
+                              }),
+                            ),
+                          ],
+                        )
+                      : const SizedBox()),
+                ],
+              ),
+            ),
+          ),
+
+          // Bottom action button
+          Obx(() => selectedUnitTypeIndex.value != -1
+              ? Container(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        onContinue();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Obx(() {
+                        final selectedUnitType =
+                            unitTypes[selectedUnitTypeIndex.value];
+                        final unitTypeName =
+                            selectedUnitType.unitType?.name?.en ?? 'Selection';
+                        return Text(
+                          isBottomSheetForCall.value
+                              ? "Call Agent for $unitTypeName (${selectedCount.value})"
+                              : "Continue with $unitTypeName (${selectedCount.value})",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                )
+              : const SizedBox()),
+        ],
+      ),
+    );
+  }
+
+  void _handleUnitTypeSelectionForChat(
+      String gmail, int propertyId, String propertyName) async {
+    try {
+      final unitTypes = property.value?.unitTypes?.data ?? [];
+      final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
+      final unitTypeId = selectedUnitType.unitType?.id ?? 0;
+      final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
+
+      // Post property interest with enquiry type as 1 for chat
+      await postPropertyInterest(
+       propertyId,
+        unitTypeId,
+        selectedCount.value,
+        "Interested in $unitTypeName", // Comments
+        1, // Enquiry type set to 1 for chat
+        "", // Mobile number - you can get from auth if needed
+      );
+
+      // Navigate to agent chat after successful API call
+      navigateToAgentChat(gmail, propertyId, propertyName, unitTypeName);
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to submit interest: ${e.toString()}",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  void _handleUnitTypeSelectionForCall(String phone, int propertyId) async {
+    try {
+      final unitTypes = property.value?.unitTypes?.data ?? [];
+      final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
+      final unitTypeId = selectedUnitType.unitType?.id ?? 0;
+      final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
+
+      // Post property interest with enquiry type as 0 for call
+      await postPropertyInterest(
+     propertyId,
+        unitTypeId,
+        selectedCount.value,
+        "Interested in $unitTypeName - Call request", // Comments
+        0, // Enquiry type set to 0 for call
+        "", // Mobile number - you can get from auth if needed
+      );
+
+      // Make the call after successful API call
+      await callToAgent(phone);
+
+      Get.snackbar(
+        "Success",
+        "Interest logged successfully! Initiating call...",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar(
+        "Error",
+        "Failed to submit interest: ${e.toString()}",
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
   }
 }

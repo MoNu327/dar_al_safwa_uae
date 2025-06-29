@@ -37,10 +37,15 @@ class Gallery extends StatelessWidget {
                       auth.currentUser?.displayName != null
                   ? propertyDetailsController.navigateToAgentChat(
                       "${property?.agent?.email ?? "teat@gmail.com"}",
-                      "${property?.id}")
+                      property?.id,
+                      "${property?.title?.en}",
+                      "${property?.unitTypes?.data?.first.unitType?.name?.en}")
                   : auth.currentUser?.email == null
                       ? propertyDetailsController.navigateToAgentChat(
-                          "teat@gmail.com", "${property?.id}")
+                          "teat@gmail.com",
+                          property?.id,
+                          "${property?.title?.en}",
+                          "${property?.unitTypes?.data?.first.unitType?.name?.en}")
                       : CustomSnackbar.show(
                           title: "Failed",
                           message:

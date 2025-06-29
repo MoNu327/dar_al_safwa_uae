@@ -35,8 +35,8 @@ class LanguageTextButton extends StatelessWidget {
                 title:
                     localizationController.currentLocale.value.languageCode ==
                             'en'
-                        ? 'En'
-                        : 'العربية'),
+                        ? 'العربية'
+                        : 'En'),
             Icon(
               Icons.language,
               size: screenHeight * 0.03,
