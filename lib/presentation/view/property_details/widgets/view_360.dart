@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
@@ -13,8 +14,13 @@ class View360 extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(VR360Controller());
+    final propertiesController = Get.put(PropertyDetailsController());
     if (videoUrls.isNotEmpty) {
-      controller.videoUrls.value = videoUrls;
+      controller.videoUrls.value = [
+        propertiesController
+                .property?.value?.unitTypes?.data?.first?.youtubeUrl ??
+            ""
+      ];
     }
 
     return Scaffold(

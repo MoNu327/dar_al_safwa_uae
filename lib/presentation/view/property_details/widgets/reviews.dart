@@ -1,8 +1,11 @@
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/controller/review_controller.dart';
+import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
+import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_snackbar.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:get/get.dart';
@@ -12,10 +15,11 @@ import '../controller/property_details_controller.dart';
 
 class Reviews extends StatelessWidget {
   final ReviewController reviewController = Get.put(ReviewController());
+  final AuthService authService = Get.find<AuthService>();
   final TextEditingController commentController = TextEditingController();
   final RxDouble userRating = 0.0.obs;
   Reviews({super.key});
-
+  FirebaseAuth auth = FirebaseAuth.instance;
   final PropertyDetailsController propertyDetailsController =
       Get.find<PropertyDetailsController>();
 
@@ -35,18 +39,18 @@ class Reviews extends StatelessWidget {
                     itemCount: reviewController.reviews.length,
                     itemBuilder: (context, index) {
                       final review = reviewController.reviews[index];
-                      final date = DateTime.parse(review['timestamp']);
+                      final date = DateTime.parse(review.date ?? "");
                       final formattedDate =
                           DateFormat('MMM dd, yyyy').format(date);
 
                       return Padding(
                         padding: EdgeInsets.only(bottom: screenHeight1),
                         child: ReviewCard(
-                          userName: review['userName'],
-                          userImage: review['userImage'],
-                          rating: review['rating'],
+                          userName: review.user?.name ?? "User",
+                          userImage: review.user?.avatar ?? "",
+                          rating: review.rating ?? 0.0,
                           date: formattedDate,
-                          description: review['description'],
+                          description: review.comment ?? "",
                         ),
                       );
                     },
@@ -55,13 +59,16 @@ class Reviews extends StatelessWidget {
           ),
 
           // Add Review Section
-          _buildAddReviewSection(),
+          authService.userRole.value == 'agent'
+              ? SizedBox.shrink()
+              : _buildAddReviewSection(),
         ],
       ),
     );
   }
 
   Widget _buildAddReviewSection() {
+    final currentUser = auth.currentUser;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -90,10 +97,13 @@ class Reviews extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 20,
                 backgroundImage: NetworkImage(
-                    'https://randomuser.me/api/portraits/men/1.jpg'),
+                  currentUser?.photoURL != null
+                      ? currentUser!.photoURL!
+                      : 'https://randomuser.me/api/portraits/men/1.jpg',
+                ),
               ),
               kWidth(0.03),
               Expanded(
@@ -192,19 +202,30 @@ class Reviews extends StatelessWidget {
                   onPressed: () {
                     if (userRating.value > 0 &&
                         commentController.text.isNotEmpty) {
-                      reviewController.reviews.insert(
-                        0,
-                        {
-                          'id':
-                              DateTime.now().millisecondsSinceEpoch.toString(),
-                          'userName': 'You',
-                          'userImage':
-                              'https://randomuser.me/api/portraits/men/1.jpg',
-                          'rating': userRating.value,
-                          'timestamp': DateTime.now().toIso8601String(),
-                          'description': commentController.text,
-                        },
-                      );
+                      String comments = commentController.text.trim();
+                      double rating = userRating.value.toDouble();
+                      int? propertyId =
+                          propertyDetailsController.property.value?.id;
+
+                      String currentUserId = auth.currentUser!.uid;
+                      reviewController.postReview(
+                          uid: currentUserId,
+                          propertyId: propertyId ?? 0,
+                          rating: rating,
+                          comments: comments);
+                      // reviewController.reviews.insert(
+                      //   0,
+                      //   {
+                      //     'id':
+                      //         DateTime.now().millisecondsSinceEpoch.toString(),
+                      //     'userName': 'You',
+                      //     'userImage':
+                      //         'https://randomuser.me/api/portraits/men/1.jpg',
+                      //     'rating': userRating.value,
+                      //     'timestamp': DateTime.now().toIso8601String(),
+                      //     'description': commentController.text,
+                      //   },
+                      // );
                       commentController.clear();
                       userRating.value = 0.0;
                     } else {

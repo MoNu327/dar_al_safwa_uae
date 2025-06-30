@@ -25,7 +25,10 @@ class AgentChatController extends GetxController {
   String? currentChatId;
   String? agentId;
   var agentEmail = ''.obs;
-  var propertyId = ''.obs;
+  RxInt propertyId = 0.obs;
+  var propertyName = ''.obs;
+  var unitId = ''.obs;
+
   var isSendMessageLoading = false.obs;
 
   @override
@@ -37,9 +40,12 @@ class AgentChatController extends GetxController {
     final args = Get.arguments as Map<String, dynamic>? ?? {};
 
     agentEmail.value = args['email'] ?? '';
-    propertyId.value = args['propertyId'] ?? '';
+    propertyId.value = int.tryParse(args['propertyId'] ?? '') ?? 0;
+    propertyName.value = args["propertyName"] ?? '';
+    unitId.value = args["unitId"] ?? '';
+
     debugPrint(
-        'Agent Email: ${agentEmail.value}, Property ID: ${propertyId.value}');
+        'Agent Email: ${agentEmail.value}, Property ID: ${propertyId.value}, property Name : ${propertyName.value}, Unit Id: ${unitId.value}');
     // Determine if current user is agent
     // checkAgentRole().then((_) {
     //   debugPrint('User is ${isAgent.value ? 'Agent' : 'User'}');
@@ -73,7 +79,7 @@ class AgentChatController extends GetxController {
         isAgent.value = false;
         debugPrint(
             'Regular user detected - Email: ${agentEmail.value}, Property ID: ${propertyId.value}');
-        await initializeChat(propertyId: propertyId.value);
+        await initializeChat(propertyId: propertyId.value.toString());
         return;
       }
 
@@ -286,7 +292,7 @@ class AgentChatController extends GetxController {
         // Send initial greeting message
         await _sendSystemMessage(
             "Hello! You're now connected with ${agentData['displayName']}. "
-            "How can I help you with ${propertyId ?? 'this '}property?",
+            "How can I help you with  ${unitId ?? '1bhk'} , ${propertyName ?? 'this '} property?",
             agentId: agentId);
       }
 

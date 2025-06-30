@@ -10,7 +10,8 @@ class PropertyResponse {
 
   PropertyResponse({this.success, this.message, this.data});
 
-  factory PropertyResponse.fromJson(Map<String, dynamic> json) => _$PropertyResponseFromJson(json);
+  factory PropertyResponse.fromJson(Map<String, dynamic> json) =>
+      _$PropertyResponseFromJson(json);
   Map<String, dynamic> toJson() => _$PropertyResponseToJson(this);
 }
 
@@ -21,7 +22,8 @@ class Message {
 
   Message({this.en, this.ar});
 
-  factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
+  factory Message.fromJson(Map<String, dynamic> json) =>
+      _$MessageFromJson(json);
   Map<String, dynamic> toJson() => _$MessageToJson(this);
 }
 
@@ -31,7 +33,8 @@ class PropertyData {
 
   PropertyData({this.property});
 
-  factory PropertyData.fromJson(Map<String, dynamic> json) => _$PropertyDataFromJson(json);
+  factory PropertyData.fromJson(Map<String, dynamic> json) =>
+      _$PropertyDataFromJson(json);
   Map<String, dynamic> toJson() => _$PropertyDataToJson(this);
 }
 
@@ -80,7 +83,8 @@ class Property {
     this.reviews,
   });
 
-  factory Property.fromJson(Map<String, dynamic> json) => _$PropertyFromJson(json);
+  factory Property.fromJson(Map<String, dynamic> json) =>
+      _$PropertyFromJson(json);
   Map<String, dynamic> toJson() => _$PropertyToJson(this);
 }
 
@@ -91,7 +95,8 @@ class YoutubeVideo {
 
   YoutubeVideo({this.url, this.thumbnail});
 
-  factory YoutubeVideo.fromJson(Map<String, dynamic> json) => _$YoutubeVideoFromJson(json);
+  factory YoutubeVideo.fromJson(Map<String, dynamic> json) =>
+      _$YoutubeVideoFromJson(json);
   Map<String, dynamic> toJson() => _$YoutubeVideoToJson(this);
 }
 
@@ -101,7 +106,8 @@ class Location {
 
   Location({this.address});
 
-  factory Location.fromJson(Map<String, dynamic> json) => _$LocationFromJson(json);
+  factory Location.fromJson(Map<String, dynamic> json) =>
+      _$LocationFromJson(json);
   Map<String, dynamic> toJson() => _$LocationToJson(this);
 }
 
@@ -115,7 +121,8 @@ class Address {
 
   Address({this.building, this.street, this.full, this.coordinates, this.icon});
 
-  factory Address.fromJson(Map<String, dynamic> json) => _$AddressFromJson(json);
+  factory Address.fromJson(Map<String, dynamic> json) =>
+      _$AddressFromJson(json);
   Map<String, dynamic> toJson() => _$AddressToJson(this);
 }
 
@@ -126,7 +133,8 @@ class Coordinates {
 
   Coordinates({this.latitude, this.longitude});
 
-  factory Coordinates.fromJson(Map<String, dynamic> json) => _$CoordinatesFromJson(json);
+  factory Coordinates.fromJson(Map<String, dynamic> json) =>
+      _$CoordinatesFromJson(json);
   Map<String, dynamic> toJson() => _$CoordinatesToJson(this);
 }
 
@@ -149,20 +157,55 @@ class Overview {
 
   Overview({this.en, this.ar, this.items});
 
-  factory Overview.fromJson(Map<String, dynamic> json) => _$OverviewFromJson(json);
+  factory Overview.fromJson(Map<String, dynamic> json) =>
+      _$OverviewFromJson(json);
   Map<String, dynamic> toJson() => _$OverviewToJson(this);
 }
 
 @JsonSerializable()
 class OverviewItem {
   final Message? title;
-  final dynamic value;
+
+  @JsonKey(fromJson: overviewValueFromJson, toJson: overviewValueToJson)
+  final Object? value;
+
   final String? icon;
 
   OverviewItem({this.title, this.value, this.icon});
 
-  factory OverviewItem.fromJson(Map<String, dynamic> json) => _$OverviewItemFromJson(json);
+  factory OverviewItem.fromJson(Map<String, dynamic> json) =>
+      _$OverviewItemFromJson(json);
   Map<String, dynamic> toJson() => _$OverviewItemToJson(this);
+}
+
+/// Polymorphic parsing for OverviewItem.value
+Object? overviewValueFromJson(dynamic json) {
+  if (json is Map<String, dynamic>) {
+    return OverviewValue.fromJson(json);
+  } else {
+    return json;
+  }
+}
+
+dynamic overviewValueToJson(Object? value) {
+  if (value is OverviewValue) {
+    return value.toJson();
+  } else {
+    return value;
+  }
+}
+
+@JsonSerializable()
+class OverviewValue {
+  final int? number;
+  final Message? unit;
+  final Message? formatted;
+
+  OverviewValue({this.number, this.unit, this.formatted});
+
+  factory OverviewValue.fromJson(Map<String, dynamic> json) =>
+      _$OverviewValueFromJson(json);
+  Map<String, dynamic> toJson() => _$OverviewValueToJson(this);
 }
 
 @JsonSerializable()
@@ -173,7 +216,8 @@ class PropertyFeatures {
 
   PropertyFeatures({this.sectionTitle, this.items});
 
-  factory PropertyFeatures.fromJson(Map<String, dynamic> json) => _$PropertyFeaturesFromJson(json);
+  factory PropertyFeatures.fromJson(Map<String, dynamic> json) =>
+      _$PropertyFeaturesFromJson(json);
   Map<String, dynamic> toJson() => _$PropertyFeaturesToJson(this);
 }
 
@@ -185,7 +229,8 @@ class UnitTypes {
 
   UnitTypes({this.mainTitle, this.data});
 
-  factory UnitTypes.fromJson(Map<String, dynamic> json) => _$UnitTypesFromJson(json);
+  factory UnitTypes.fromJson(Map<String, dynamic> json) =>
+      _$UnitTypesFromJson(json);
   Map<String, dynamic> toJson() => _$UnitTypesToJson(this);
 }
 
@@ -202,9 +247,18 @@ class UnitTypeData {
   @JsonKey(name: 'youtube_url')
   final String? youtubeUrl;
 
-  UnitTypeData({this.id, this.beds, this.baths, this.area, this.baseRentAmount, this.unitType, this.youtubeUrl});
+  UnitTypeData({
+    this.id,
+    this.beds,
+    this.baths,
+    this.area,
+    this.baseRentAmount,
+    this.unitType,
+    this.youtubeUrl,
+  });
 
-  factory UnitTypeData.fromJson(Map<String, dynamic> json) => _$UnitTypeDataFromJson(json);
+  factory UnitTypeData.fromJson(Map<String, dynamic> json) =>
+      _$UnitTypeDataFromJson(json);
   Map<String, dynamic> toJson() => _$UnitTypeDataToJson(this);
 }
 
@@ -215,7 +269,8 @@ class BaseRentAmount {
 
   BaseRentAmount({this.raw, this.formatted});
 
-  factory BaseRentAmount.fromJson(Map<String, dynamic> json) => _$BaseRentAmountFromJson(json);
+  factory BaseRentAmount.fromJson(Map<String, dynamic> json) =>
+      _$BaseRentAmountFromJson(json);
   Map<String, dynamic> toJson() => _$BaseRentAmountToJson(this);
 }
 
@@ -228,7 +283,8 @@ class UnitType {
 
   UnitType({this.id, this.code, this.name, this.description});
 
-  factory UnitType.fromJson(Map<String, dynamic> json) => _$UnitTypeFromJson(json);
+  factory UnitType.fromJson(Map<String, dynamic> json) =>
+      _$UnitTypeFromJson(json);
   Map<String, dynamic> toJson() => _$UnitTypeToJson(this);
 }
 
@@ -254,7 +310,8 @@ class Regulations {
 
   Regulations({this.mainTitle, this.data});
 
-  factory Regulations.fromJson(Map<String, dynamic> json) => _$RegulationsFromJson(json);
+  factory Regulations.fromJson(Map<String, dynamic> json) =>
+      _$RegulationsFromJson(json);
   Map<String, dynamic> toJson() => _$RegulationsToJson(this);
 }
 
@@ -265,7 +322,8 @@ class RegulationData {
 
   RegulationData({this.title, this.value});
 
-  factory RegulationData.fromJson(Map<String, dynamic> json) => _$RegulationDataFromJson(json);
+  factory RegulationData.fromJson(Map<String, dynamic> json) =>
+      _$RegulationDataFromJson(json);
   Map<String, dynamic> toJson() => _$RegulationDataToJson(this);
 }
 
@@ -277,7 +335,8 @@ class NearbyType {
 
   NearbyType({this.type, this.name, this.distance});
 
-  factory NearbyType.fromJson(Map<String, dynamic> json) => _$NearbyTypeFromJson(json);
+  factory NearbyType.fromJson(Map<String, dynamic> json) =>
+      _$NearbyTypeFromJson(json);
   Map<String, dynamic> toJson() => _$NearbyTypeToJson(this);
 }
 
@@ -289,7 +348,8 @@ class Reviews {
 
   Reviews({this.overall, this.recentReviews});
 
-  factory Reviews.fromJson(Map<String, dynamic> json) => _$ReviewsFromJson(json);
+  factory Reviews.fromJson(Map<String, dynamic> json) =>
+      _$ReviewsFromJson(json);
   Map<String, dynamic> toJson() => _$ReviewsToJson(this);
 }
 
@@ -300,7 +360,8 @@ class OverallRating {
 
   OverallRating({this.rating, this.count});
 
-  factory OverallRating.fromJson(Map<String, dynamic> json) => _$OverallRatingFromJson(json);
+  factory OverallRating.fromJson(Map<String, dynamic> json) =>
+      _$OverallRatingFromJson(json);
   Map<String, dynamic> toJson() => _$OverallRatingToJson(this);
 }
 
@@ -313,7 +374,8 @@ class RecentReview {
 
   RecentReview({this.user, this.rating, this.comment, this.date});
 
-  factory RecentReview.fromJson(Map<String, dynamic> json) => _$RecentReviewFromJson(json);
+  factory RecentReview.fromJson(Map<String, dynamic> json) =>
+      _$RecentReviewFromJson(json);
   Map<String, dynamic> toJson() => _$RecentReviewToJson(this);
 }
 

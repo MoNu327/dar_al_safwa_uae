@@ -94,8 +94,9 @@ class AboutContent extends StatelessWidget {
                   // Take a video tour
                   _buildTitle(
                       'Take a video tour',
-                      YoutubeViewerSection(
-                          youtubeUrl: "${property.youtubeVideo?.url}")),
+                      OptimizedYoutubePlayer(
+                          thumbnailUrl: "${property.youtubeVideo?.thumbnail}",
+                          videoUrl: "${property.youtubeVideo?.url}")),
                   // RepaintBoundary(
                   //   child: _buildYoutubeViewerSection(
                   //       property.youtubeVideo?.url ?? ''),
@@ -127,21 +128,31 @@ class AboutContent extends StatelessWidget {
 
                   CustomBottomSheet(
                     onCallPressed: () {
-                      propertyDetailsController
-                          .callToAgent(property.agent?.phone ?? "");
+                      propertyDetailsController.showUnitTypeBottomSheetForCall(
+                          property?.agent?.phone ?? "9544418765",
+                          property?.id as int ?? 0);
+                      // propertyDetailsController
+                      //     .callToAgent(property.agent?.phone ?? "");
                     },
+                    // For chat
                     onWhatsAppPressed: () {
                       auth.currentUser == null
                           ? Get.toNamed(AppRoute.signupWarning)
                           : auth.currentUser != null &&
                                   auth.currentUser?.displayName != null
-                              ? propertyDetailsController.navigateToAgentChat(
-                                  "${property.agent?.email ?? "teat@gmail.com"}",
-                                  "${property?.title?.en}")
+                              ? propertyDetailsController
+                                  .showUnitTypeBottomSheetForChat(
+                                      property?.agent?.email ??
+                                          "test@gmail.com",
+                                      property?.id as int ?? 0,
+                                      property?.title?.en ?? "")
                               : auth.currentUser?.email == null
                                   ? propertyDetailsController
-                                      .navigateToAgentChat(
-                                          "teat@gmail.com", "Riverview Retreat")
+                                      .showUnitTypeBottomSheetForChat(
+                                          property?.agent?.email ??
+                                              "test@gmail.com",
+                                          41,
+                                          property?.title?.en ?? "")
                                   : CustomSnackbar.show(
                                       title: "Failed",
                                       message:
@@ -323,27 +334,84 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  Widget _buildAgentActions(PropertyDetailsController controler) {
-    final property = controler.property.value;
+  // Widget _buildAgentActions(PropertyDetailsController controler) {
+  //   final property = controler.property.value;
 
-    final gmail = property?.agent?.email ?? "teat@gmail.com";
+  //   final gmail = property?.agent?.email ?? "teat@gmail.com";
+  //   final phone = property?.agent?.phone ?? "9544418765";
+  //   final propertyId = property?.id ?? "0";
+  //   final propertyName = property?.title?.en ?? "0";
+  //   final unitId = property?.unitTypes?.data?.first.unitType?.name?.en ?? "0";
+
+  //   return Row(
+  //     spacing: Get.width * 0.02,
+  //     children: [
+  //       InkWell(
+  //         onTap: () {
+  //           auth.currentUser == null
+  //               ? Get.toNamed(AppRoute.signupWarning)
+  //               : auth.currentUser != null &&
+  //                       auth.currentUser?.displayName != null
+  //                   ? propertyDetailsController.navigateToAgentChat(
+  //                       "$gmail", "$propertyId", "$propertyName", "$unitId")
+  //                   : auth.currentUser?.email == null
+  //                       ? propertyDetailsController.navigateToAgentChat(
+  //                           "teat@gmail.com", "0", "Riverview Retreat", "")
+  //                       : CustomSnackbar.show(
+  //                           title: "Failed",
+  //                           message:
+  //                               "Currently, the agent is unable to connect.");
+  //         },
+  //         child: CircleAvatar(
+  //           backgroundColor: AppColors.whiteLight,
+  //           radius: Get.height * 0.026,
+  //           child: Icon(
+  //             Icons.message,
+  //             color: AppColors.secondaryColor,
+  //             size: Get.height * 0.023,
+  //           ),
+  //         ),
+  //       ),
+  //       InkWell(
+  //         onTap: () {
+  //           propertyDetailsController.callToAgent(phone);
+  //         },
+  //         child: CircleAvatar(
+  //           backgroundColor: AppColors.whiteLight,
+  //           radius: Get.height * 0.026,
+  //           child: Icon(
+  //             Icons.call,
+  //             color: AppColors.secondaryColor,
+  //             size: Get.height * 0.023,
+  //           ),
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
+
+  Widget _buildAgentActions(PropertyDetailsController controller) {
+    final property = controller.property.value;
+    final gmail = property?.agent?.email ?? "test@gmail.com";
     final phone = property?.agent?.phone ?? "9544418765";
-    final propertyName = property?.title ?? "Building";
+    final propertyId = property?.id as int ?? 0;
+    final propertyName = property?.title?.en ?? "0";
 
     return Row(
       spacing: Get.width * 0.02,
       children: [
         InkWell(
           onTap: () {
+            // For chat
             auth.currentUser == null
                 ? Get.toNamed(AppRoute.signupWarning)
                 : auth.currentUser != null &&
                         auth.currentUser?.displayName != null
-                    ? propertyDetailsController.navigateToAgentChat(
-                        "$gmail", "$propertyName")
+                    ? controller.showUnitTypeBottomSheetForChat(
+                        gmail, propertyId, propertyName)
                     : auth.currentUser?.email == null
-                        ? propertyDetailsController.navigateToAgentChat(
-                            "teat@gmail.com", "Riverview Retreat")
+                        ? controller.showUnitTypeBottomSheetForChat(
+                            gmail, 41, propertyName)
                         : CustomSnackbar.show(
                             title: "Failed",
                             message:
@@ -352,66 +420,59 @@ class AboutContent extends StatelessWidget {
           child: CircleAvatar(
             backgroundColor: AppColors.whiteLight,
             radius: Get.height * 0.026,
-            child: Icon(
-              Icons.message,
-              color: AppColors.secondaryColor,
-              size: Get.height * 0.023,
-            ),
+            child: Icon(Icons.message, color: AppColors.secondaryColor),
           ),
         ),
         InkWell(
           onTap: () {
-            propertyDetailsController.callToAgent(phone);
+            // For call
+            controller.showUnitTypeBottomSheetForCall(phone, propertyId);
           },
           child: CircleAvatar(
             backgroundColor: AppColors.whiteLight,
             radius: Get.height * 0.026,
-            child: Icon(
-              Icons.call,
-              color: AppColors.secondaryColor,
-              size: Get.height * 0.023,
-            ),
+            child: Icon(Icons.call, color: AppColors.secondaryColor),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildVideoTourSection() {
-    return Container(
-      width: double.infinity,
-      height: Get.height * 0.25,
-      decoration: BoxDecoration(
-        color: AppColors.redColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Stack(
-        children: [
-          Obx(() => videoController.isInitialized.value
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: VideoPlayer(videoController.videoPlayerController),
-                )
-              : const Center(child: CircularProgressIndicator())),
-          Positioned(
-            bottom: 5,
-            left: 8,
-            child: ElevatedButton(
-              onPressed: () {},
-              child: const Text("View All"),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: CustomTextWidget(
-              title: "Watch the video for taking your\n decision easily.",
-              color: AppColors.white,
-            ),
-          )
-        ],
-      ),
-    );
-  }
+  // Widget _buildVideoTourSection() {
+  //   return Container(
+  //     width: double.infinity,
+  //     height: Get.height * 0.25,
+  //     decoration: BoxDecoration(
+  //       color: AppColors.redColor,
+  //       borderRadius: BorderRadius.circular(16),
+  //     ),
+  //     child: Stack(
+  //       children: [
+  //         Obx(() => videoController.isInitialized.value
+  //             ? ClipRRect(
+  //                 borderRadius: BorderRadius.circular(16),
+  //                 child: VideoPlayer(videoController.videoPlayerController),
+  //               )
+  //             : const Center(child: CircularProgressIndicator())),
+  //         Positioned(
+  //           bottom: 5,
+  //           left: 8,
+  //           child: ElevatedButton(
+  //             onPressed: () {},
+  //             child: const Text("View All"),
+  //           ),
+  //         ),
+  //         const Padding(
+  //           padding: EdgeInsets.all(16),
+  //           child: CustomTextWidget(
+  //             title: "Watch the video for taking your\n decision easily.",
+  //             color: AppColors.white,
+  //           ),
+  //         )
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // Widget _buildYoutubeViewerSection(String youtubeUrl) {
   //   final videoController = Get.find<VideoController>();

@@ -62,13 +62,6 @@
   "360view": "360 View",
   "review": "Review",
   "retry": "Retry",
-  "dummyFeaturesJson": [
-    { "name": "Jacuzzi", "icon": "bathtub" },
-    { "name": "Sauna", "icon": "spa" },
-    { "name": "Centrally Air Conditioned", "icon": "ac_unit" },
-    { "name": "Storage Area", "icon": "storage" },
-    { "name": "Lobby in Building", "icon": "business_center" }
-  ],
 
 
   "terms_and_condition": "Terms and Conditions",
