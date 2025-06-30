@@ -128,23 +128,31 @@ class AboutContent extends StatelessWidget {
 
                   CustomBottomSheet(
                     onCallPressed: () {
-                      propertyDetailsController
-                          .callToAgent(property.agent?.phone ?? "");
+                      propertyDetailsController.showUnitTypeBottomSheetForCall(
+                          property?.agent?.phone ?? "9544418765",
+                          property?.id as int ?? 0);
+                      // propertyDetailsController
+                      //     .callToAgent(property.agent?.phone ?? "");
                     },
+                    // For chat
                     onWhatsAppPressed: () {
                       auth.currentUser == null
                           ? Get.toNamed(AppRoute.signupWarning)
                           : auth.currentUser != null &&
                                   auth.currentUser?.displayName != null
-                              ? propertyDetailsController.navigateToAgentChat(
-                                  "${property.agent?.email ?? "teat@gmail.com"}",
-                                  property?.id,
-                                  "${property?.title?.en}",
-                                  "${property.unitTypes?.data?.first.unitType?.name?.en}")
+                              ? propertyDetailsController
+                                  .showUnitTypeBottomSheetForChat(
+                                      property?.agent?.email ??
+                                          "test@gmail.com",
+                                      property?.id as int ?? 0,
+                                      property?.title?.en ?? "")
                               : auth.currentUser?.email == null
                                   ? propertyDetailsController
-                                      .navigateToAgentChat("teat@gmail.com",
-                                          41, "Riverview Retreat", "")
+                                      .showUnitTypeBottomSheetForChat(
+                                          property?.agent?.email ??
+                                              "test@gmail.com",
+                                          41,
+                                          property?.title?.en ?? "")
                                   : CustomSnackbar.show(
                                       title: "Failed",
                                       message:
@@ -395,8 +403,19 @@ class AboutContent extends StatelessWidget {
         InkWell(
           onTap: () {
             // For chat
-            controller.showUnitTypeBottomSheetForChat(
-                gmail, propertyId, propertyName);
+            auth.currentUser == null
+                ? Get.toNamed(AppRoute.signupWarning)
+                : auth.currentUser != null &&
+                        auth.currentUser?.displayName != null
+                    ? controller.showUnitTypeBottomSheetForChat(
+                        gmail, propertyId, propertyName)
+                    : auth.currentUser?.email == null
+                        ? controller.showUnitTypeBottomSheetForChat(
+                            gmail, 41, propertyName)
+                        : CustomSnackbar.show(
+                            title: "Failed",
+                            message:
+                                "Currently, the agent is unable to connect.");
           },
           child: CircleAvatar(
             backgroundColor: AppColors.whiteLight,

@@ -1,11 +1,13 @@
 import 'dart:convert';
 
+import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../data/model/property_details_model.dart';
 
 class PropertyDetailsController extends GetxController {
@@ -77,7 +79,7 @@ class PropertyDetailsController extends GetxController {
     }
   }
 
-  Future<void> postPropertyInterest(int propertyId, int unitType, int count,
+  Future postPropertyInterest(int propertyId, int unitType, int count,
       String comments, int enqtype, String mobileNumber) async {
     try {
       isLoading(true);
@@ -89,11 +91,13 @@ class PropertyDetailsController extends GetxController {
       debugPrint('🎉 API response: ${response.statusCode}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final interestResponse = jsonDecode(response.data);
-        debugPrint("🔔 interest response: ${interestResponse.data}");
-        property(interestResponse.data);
+        // ✅ Use the response data directly (don't decode it again)
+        final interestResponse = response.data;
+        debugPrint("🔔 interest response: ${interestResponse["data"]}");
+        // property(interestResponse["data"]);
+
         debugPrint(
-            '👌interest posted  successfully: ${interestResponse.data["unit_type"]}');
+            '👌interest posted successfully: ${interestResponse["data"]["unit_type"]}');
       } else {
         debugPrint('😔 Failed to post interest: ${response.statusMessage}');
         throw Exception("Failed to post interest details");
@@ -101,11 +105,6 @@ class PropertyDetailsController extends GetxController {
     } catch (e) {
       debugPrint('😔 Error in Post Interest Details: $e');
       errorMessage(e.toString());
-      // Get.snackbar(
-      //   "Error",
-      //   "Failed to fetch property details: ${e.toString()}",
-      //   snackPosition: SnackPosition.BOTTOM,
-      // );
     } finally {
       isLoading(false);
       debugPrint('postPropertyInterest completed');
@@ -345,7 +344,7 @@ class PropertyDetailsController extends GetxController {
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                        color: AppColors.secondaryColor,
                       ),
                     )),
                 IconButton(
@@ -511,10 +510,10 @@ class PropertyDetailsController extends GetxController {
                         onContinue();
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
+                        backgroundColor: AppColors.secondaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(screenWidth4),
                         ),
                       ),
                       child: Obx(() {
@@ -552,7 +551,7 @@ class PropertyDetailsController extends GetxController {
 
       // Post property interest with enquiry type as 1 for chat
       await postPropertyInterest(
-       propertyId,
+        propertyId,
         unitTypeId,
         selectedCount.value,
         "Interested in $unitTypeName", // Comments
@@ -561,6 +560,7 @@ class PropertyDetailsController extends GetxController {
       );
 
       // Navigate to agent chat after successful API call
+
       navigateToAgentChat(gmail, propertyId, propertyName, unitTypeName);
     } catch (e) {
       Get.snackbar(
@@ -580,7 +580,7 @@ class PropertyDetailsController extends GetxController {
 
       // Post property interest with enquiry type as 0 for call
       await postPropertyInterest(
-     propertyId,
+        propertyId,
         unitTypeId,
         selectedCount.value,
         "Interested in $unitTypeName - Call request", // Comments

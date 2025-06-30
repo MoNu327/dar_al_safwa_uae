@@ -25,7 +25,7 @@ class AgentChatController extends GetxController {
   String? currentChatId;
   String? agentId;
   var agentEmail = ''.obs;
-  var propertyId = ''.obs;
+  RxInt propertyId = 0.obs;
   var propertyName = ''.obs;
   var unitId = ''.obs;
 
@@ -40,7 +40,7 @@ class AgentChatController extends GetxController {
     final args = Get.arguments as Map<String, dynamic>? ?? {};
 
     agentEmail.value = args['email'] ?? '';
-    propertyId.value = args['propertyId'] ?? '';
+    propertyId.value = int.tryParse(args['propertyId'] ?? '') ?? 0;
     propertyName.value = args["propertyName"] ?? '';
     unitId.value = args["unitId"] ?? '';
 
@@ -79,7 +79,7 @@ class AgentChatController extends GetxController {
         isAgent.value = false;
         debugPrint(
             'Regular user detected - Email: ${agentEmail.value}, Property ID: ${propertyId.value}');
-        await initializeChat(propertyId: propertyId.value);
+        await initializeChat(propertyId: propertyId.value.toString());
         return;
       }
 
