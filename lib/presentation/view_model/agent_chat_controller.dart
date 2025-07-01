@@ -25,7 +25,7 @@ class AgentChatController extends GetxController {
   String? currentChatId;
   String? agentId;
   var agentEmail = ''.obs;
-  RxInt propertyId = 0.obs;
+  RxString propertyId = ''.obs;
   var propertyName = ''.obs;
   var unitId = ''.obs;
 
@@ -40,7 +40,7 @@ class AgentChatController extends GetxController {
     final args = Get.arguments as Map<String, dynamic>? ?? {};
 
     agentEmail.value = args['email'] ?? '';
-    propertyId.value = int.tryParse(args['propertyId'] ?? '') ?? 0;
+    propertyId.value = args['propertyId'] ?? "";
     propertyName.value = args["propertyName"] ?? '';
     unitId.value = args["unitId"] ?? '';
 

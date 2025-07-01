@@ -79,7 +79,7 @@ class PropertyDetailsController extends GetxController {
     }
   }
 
-  Future postPropertyInterest(int propertyId, int unitType, int count,
+  Future postPropertyInterest(String propertyId, int unitType, int count,
       String comments, int enqtype, String mobileNumber) async {
     try {
       isLoading(true);
@@ -242,7 +242,7 @@ class PropertyDetailsController extends GetxController {
   }
 
 // In your PropertyDetailsController
-  void navigateToAgentChat(String agentEmail, int? propertyId,
+  void navigateToAgentChat(String agentEmail, String? propertyId,
       String? propertyName, String? unitId) {
     Get.toNamed(
       AppRoute.agent,
@@ -257,7 +257,7 @@ class PropertyDetailsController extends GetxController {
 
   // Bottom sheet methods
   void showUnitTypeBottomSheetForChat(
-      String gmail, int propertyId, String propertyName) {
+      String gmail, String propertyId, String propertyName) {
     final unitTypes = property.value?.unitTypes?.data ?? [];
 
     if (unitTypes.isEmpty) {
@@ -282,7 +282,7 @@ class PropertyDetailsController extends GetxController {
     );
   }
 
-  void showUnitTypeBottomSheetForCall(String phone, int propertyId) {
+  void showUnitTypeBottomSheetForCall(String phone, String propertyId) {
     final unitTypes = property.value?.unitTypes?.data ?? [];
 
     if (unitTypes.isEmpty) {
@@ -542,7 +542,7 @@ class PropertyDetailsController extends GetxController {
   }
 
   void _handleUnitTypeSelectionForChat(
-      String gmail, int propertyId, String propertyName) async {
+      String gmail, String propertyId, String propertyName) async {
     try {
       final unitTypes = property.value?.unitTypes?.data ?? [];
       final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
@@ -571,7 +571,7 @@ class PropertyDetailsController extends GetxController {
     }
   }
 
-  void _handleUnitTypeSelectionForCall(String phone, int propertyId) async {
+  void _handleUnitTypeSelectionForCall(String phone, String propertyId) async {
     try {
       final unitTypes = property.value?.unitTypes?.data ?? [];
       final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];

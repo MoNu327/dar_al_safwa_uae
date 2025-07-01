@@ -166,7 +166,7 @@ class ApiService {
     }
   }
 
-  Future<Response> postPropertyInterest(int PropertyId, int unitType, int count,
+  Future<Response> postPropertyInterest(String PropertyId, int unitType, int count,
       String comments, int enqtype, String mobileNumber) async {
     // API Refining Needed
     try {

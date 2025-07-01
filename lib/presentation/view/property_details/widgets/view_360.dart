@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:video_player/video_player.dart';
 import 'package:vr_player/vr_player.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../controller/vr_360_controller.dart';
 
 class View360 extends StatelessWidget {
@@ -15,84 +17,348 @@ class View360 extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(VR360Controller());
     final propertiesController = Get.put(PropertyDetailsController());
-    if (videoUrls.isNotEmpty) {
-      controller.videoUrls.value = [
-        propertiesController
-                .property?.value?.unitTypes?.data?.first?.youtubeUrl ??
-            ""
-      ];
+
+    // Always check for property video URL first
+    final videoUrl = propertiesController
+            .property?.value?.unitTypes?.data?.first?.youtubeUrl ??
+        "";
+
+    // Set video URLs based on available data
+    if (videoUrl.isNotEmpty) {
+      controller.videoUrls.value = [videoUrl];
+    } else if (videoUrls.isNotEmpty) {
+      controller.videoUrls.value = videoUrls;
     }
 
     return Scaffold(
-      body: Obx(() => controller.videoUrls.isEmpty
-          ? const Center(child: Text('No VR videos available'))
-          : GridView.builder(
-              padding: const EdgeInsets.all(14),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.9,
-              ),
-              itemCount: controller.videoUrls.length,
-              itemBuilder: (context, index) {
-                // Initialize controller if not already done
-                if (!controller.gridVideoControllers.containsKey(index)) {
-                  controller.initializeGridVideoController(index);
-                }
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        surfaceTintColor: AppColors.white,
+        actions: [
+          Obx(() => IconButton(
+                icon: Icon(
+                  controller.lowDataMode.value
+                      ? Icons.data_saver_on
+                      : Icons.data_saver_off,
+                  color: controller.lowDataMode.value
+                      ? AppColors.secondaryColor
+                      : AppColors.grey,
+                ),
+                onPressed: () {
+                  controller.lowDataMode.toggle();
+                  Get.snackbar(
+                    'Data Mode',
+                    controller.lowDataMode.value
+                        ? 'Low data mode enabled'
+                        : 'Low data mode disabled',
+                    snackPosition: SnackPosition.BOTTOM,
+                  );
+                },
+              )),
+        ],
+      ),
+      body: Obx(() {
+        if (!controller.isConnected.value) {
+          return _buildNoConnectionState();
+        }
 
-                return GestureDetector(
-                  onTap: () =>
-                      _openVRPlayer(context, controller.videoUrls[index]),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Stack(
-                      fit: StackFit.expand,
+        if (controller.videoUrls.isEmpty) {
+          return _buildNoVideosState();
+        }
+
+        return NotificationListener<ScrollNotification>(
+          onNotification: (scrollInfo) {
+            // Update visible range for lazy loading
+            if (scrollInfo is ScrollUpdateNotification) {
+              final RenderBox renderBox =
+                  context.findRenderObject() as RenderBox;
+              final viewportHeight = renderBox.size.height;
+              final scrollOffset = scrollInfo.metrics.pixels;
+
+              // Calculate visible indices (approximate)
+              final itemHeight = viewportHeight / 2; // Assuming 2 items per row
+              final startIndex = (scrollOffset / itemHeight)
+                  .floor()
+                  .clamp(0, controller.videoUrls.length - 1);
+              final endIndex = ((scrollOffset + viewportHeight) / itemHeight)
+                  .ceil()
+                  .clamp(0, controller.videoUrls.length - 1);
+
+              controller.updateVisibleRange(startIndex, endIndex);
+            }
+            return false;
+          },
+          child: GridView.builder(
+            padding: const EdgeInsets.all(14),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: controller.lowDataMode.value ? 1 : 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: controller.lowDataMode.value ? 1.5 : 0.9,
+            ),
+            itemCount: controller.videoUrls.length,
+            itemBuilder: (context, index) {
+              return _buildVideoItem(context, controller, index);
+            },
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildVideoItem(
+      BuildContext context, VR360Controller controller, int index) {
+    return GestureDetector(
+      onTap: () => _openVRPlayer(context, controller.videoUrls[index]),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background/Thumbnail
+            Container(
+              color: Colors.grey[800],
+              child: _buildVideoPreview(controller, index),
+            ),
+
+            // Loading overlay
+            Obx(() {
+              if (controller.isVideoLoading(index)) {
+                return Container(
+                  color: Colors.black54,
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Video Player Preview
-                        Obx(() {
-                          final videoController =
-                              controller.gridVideoControllers[index];
-                          if (videoController?.value.isInitialized ?? false) {
-                            return AspectRatio(
-                              aspectRatio: videoController!.value.aspectRatio,
-                              child: VideoPlayer(videoController),
-                            );
-                          }
-                          return Container(
-                            color: Colors.grey[300],
-                            child: const Center(
-                                child: CircularProgressIndicator()),
-                          );
-                        }),
-
-                        // Semi-transparent overlay with play button
-                        Center(
-                          child: Icon(
-                            Icons.play_circle_fill,
-                            size: 50,
-                            color: Colors.white.withOpacity(0.7),
-                          ),
-                        ),
-
-                        // Video title overlay
-                        Align(
-                          alignment: Alignment.bottomLeft,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            color: Colors.black54,
-                            child: Text(
-                              'VR Tour ${index + 1}',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
+                        CircularProgressIndicator(color: Colors.white),
+                        SizedBox(height: 8),
+                        Text(
+                          'Loading...',
+                          style: TextStyle(color: Colors.white),
                         ),
                       ],
                     ),
                   ),
                 );
-              },
-            )),
+              }
+              return const SizedBox.shrink();
+            }),
+
+            // Error overlay
+            Obx(() {
+              if (controller.hasVideoError(index)) {
+                return Container(
+                  color: Colors.red.withOpacity(0.7),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline,
+                            color: Colors.white, size: 40),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Failed to load',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () =>
+                              controller.initializeGridVideoController(index),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+
+            // Play button overlay
+            if (!controller.isVideoLoading(index) &&
+                !controller.hasVideoError(index))
+              Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black54,
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Icon(
+                    Icons.play_arrow,
+                    size: 40,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+            // VR Mode indicator
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '360°',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+            // Video title overlay
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.8),
+                    ],
+                  ),
+                ),
+                child: Text(
+                  'VR Tour ${index + 1}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoPreview(VR360Controller controller, int index) {
+    return Obx(() {
+      // Try to show thumbnail first
+      final thumbnailUrl =
+          controller.getThumbnailUrl(controller.videoUrls[index]);
+      if (thumbnailUrl != null && controller.lowDataMode.value) {
+        return CachedNetworkImage(
+          imageUrl: thumbnailUrl,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            color: Colors.grey[800],
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+          errorWidget: (context, url, error) => Container(
+            color: Colors.grey[800],
+            child: const Icon(Icons.broken_image, color: Colors.white54),
+          ),
+        );
+      }
+
+      // Show video preview if loaded
+      if (controller.isVideoLoaded(index)) {
+        final videoController = controller.gridVideoControllers[index]!;
+        return AspectRatio(
+          aspectRatio: videoController.value.aspectRatio,
+          child: VideoPlayer(videoController),
+        );
+      }
+
+      // Initialize video controller on demand
+      if (!controller.isVideoLoading(index) &&
+          !controller.hasVideoError(index)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.initializeGridVideoController(index);
+        });
+      }
+
+      // Default placeholder
+      return Container(
+        color: Colors.grey[800],
+        child: const Center(
+          child: Icon(
+            Icons.video_library,
+            color: Colors.white54,
+            size: 50,
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildNoConnectionState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.wifi_off,
+            size: 80,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No Internet Connection',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[400],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please check your connection and try again',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed:
+                () {}, // => Get.find<VR360Controller>()._detectLowDataMode(),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoVideosState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.video_library_outlined,
+            size: 80,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No VR Videos Available',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[400],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'VR content will appear here when available',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
+      ),
     );
   }
 
@@ -119,6 +385,7 @@ class VRPlayerScreen extends StatelessWidget {
     final controller = Get.find<VR360Controller>();
 
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Obx(() => Stack(
             children: [
               // VR Player
@@ -133,66 +400,141 @@ class VRPlayerScreen extends StatelessWidget {
                   },
                 ),
 
-              // Error message
+              // Error state
               if (controller.hasError.value)
-                const Center(
-                  child: Text(
-                    'Failed to load VR video',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-
-              // Loading indicator
-              if (controller.isLoading.value)
-                const Center(child: CircularProgressIndicator()),
-
-              // Controls overlay
-              if (!controller.isLoading.value && !controller.hasError.value)
-                Positioned(
-                  bottom: 20,
-                  left: 0,
-                  right: 0,
-                  child: Row(
+                Center(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Play/Pause button
-                      IconButton(
-                        icon: Icon(controller.isPlaying.value
-                            ? Icons.pause
-                            : Icons.play_arrow),
-                        color: Colors.white,
-                        onPressed: controller.togglePlayPause,
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
+                        size: 80,
                       ),
-
-                      // VR Mode toggle
-                      IconButton(
-                        icon: Icon(controller.isVRMode.value
-                            ? Icons.vrpano
-                            : Icons.vrpano_rounded),
-                        color: Colors.white,
-                        onPressed: controller.toggleVRMode,
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Failed to Load VR Video',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-
-                      // Orientation toggle
-                      IconButton(
-                        icon: Icon(controller.isLandscape.value
-                            ? Icons.screen_lock_portrait
-                            : Icons.screen_lock_landscape),
-                        color: Colors.white,
-                        onPressed: controller.toggleOrientation,
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          controller.errorMessage.value,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                       ),
-
-                      // Close button
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        color: Colors.white,
-                        onPressed: () => Navigator.pop(context),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () => controller.retryVRPlayer(videoUrl),
+                            child: const Text('Retry'),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey[800],
+                            ),
+                            child: const Text('Close'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+
+              // Loading state
+              if (controller.isLoading.value)
+                Container(
+                  color: Colors.black54,
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Colors.white),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading VR Video...',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Controls overlay
+              if (!controller.isLoading.value && !controller.hasError.value)
+                Positioned(
+                  bottom: 40,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildControlButton(
+                          icon: controller.isPlaying.value
+                              ? Icons.pause
+                              : Icons.play_arrow,
+                          onPressed: controller.togglePlayPause,
+                          tooltip:
+                              controller.isPlaying.value ? 'Pause' : 'Play',
+                        ),
+                        _buildControlButton(
+                          icon: controller.isVRMode.value
+                              ? Icons.vrpano
+                              : Icons.vrpano_outlined,
+                          onPressed: controller.toggleVRMode,
+                          tooltip: 'Toggle VR Mode',
+                        ),
+                        _buildControlButton(
+                          icon: controller.isLandscape.value
+                              ? Icons.screen_lock_portrait
+                              : Icons.screen_lock_landscape,
+                          onPressed: controller.toggleOrientation,
+                          tooltip: 'Rotate Screen',
+                        ),
+                        _buildControlButton(
+                          icon: Icons.close,
+                          onPressed: () => Navigator.pop(context),
+                          tooltip: 'Close',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           )),
+    );
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: IconButton(
+          icon: Icon(icon, color: Colors.white),
+          onPressed: onPressed,
+          iconSize: 28,
+        ),
+      ),
     );
   }
 }

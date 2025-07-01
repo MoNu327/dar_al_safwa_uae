@@ -130,7 +130,7 @@ class AboutContent extends StatelessWidget {
                     onCallPressed: () {
                       propertyDetailsController.showUnitTypeBottomSheetForCall(
                           property?.agent?.phone ?? "9544418765",
-                          property?.id as int ?? 0);
+                          property?.id.toString() ?? "0");
                       // propertyDetailsController
                       //     .callToAgent(property.agent?.phone ?? "");
                     },
@@ -144,14 +144,14 @@ class AboutContent extends StatelessWidget {
                                   .showUnitTypeBottomSheetForChat(
                                       property?.agent?.email ??
                                           "test@gmail.com",
-                                      property?.id as int ?? 0,
+                                      property?.id.toString() ?? "",
                                       property?.title?.en ?? "")
                               : auth.currentUser?.email == null
                                   ? propertyDetailsController
                                       .showUnitTypeBottomSheetForChat(
                                           property?.agent?.email ??
                                               "test@gmail.com",
-                                          41,
+                                          "41",
                                           property?.title?.en ?? "")
                                   : CustomSnackbar.show(
                                       title: "Failed",
@@ -394,7 +394,7 @@ class AboutContent extends StatelessWidget {
     final property = controller.property.value;
     final gmail = property?.agent?.email ?? "test@gmail.com";
     final phone = property?.agent?.phone ?? "9544418765";
-    final propertyId = property?.id as int ?? 0;
+    final propertyId = property?.id.toString() ?? "";
     final propertyName = property?.title?.en ?? "0";
 
     return Row(
@@ -411,7 +411,7 @@ class AboutContent extends StatelessWidget {
                         gmail, propertyId, propertyName)
                     : auth.currentUser?.email == null
                         ? controller.showUnitTypeBottomSheetForChat(
-                            gmail, 41, propertyName)
+                            gmail, "41", propertyName)
                         : CustomSnackbar.show(
                             title: "Failed",
                             message:

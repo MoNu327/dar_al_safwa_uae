@@ -29,7 +29,8 @@ class Gallery extends StatelessWidget {
       bottomSheet: CustomBottomSheet(
         onCallPressed: () {
           propertyDetailsController.showUnitTypeBottomSheetForCall(
-              property?.agent?.phone ?? "9544418765", property?.id as int ?? 0);
+              property?.agent?.phone ?? "9544418765",
+              property?.id.toString() ?? "0");
           // propertyDetailsController
           //     .callToAgent(property.agent?.phone ?? "");
         },
@@ -40,13 +41,13 @@ class Gallery extends StatelessWidget {
                       auth.currentUser?.displayName != null
                   ? propertyDetailsController.showUnitTypeBottomSheetForChat(
                       property?.agent?.email ?? "test@gmail.com",
-                      property?.id as int ?? 0,
+                      property?.id.toString() ?? "0",
                       property?.title?.en ?? "")
                   : auth.currentUser?.email == null
                       ? propertyDetailsController
                           .showUnitTypeBottomSheetForChat(
                               property?.agent?.email ?? "test@gmail.com",
-                              41,
+                              "41",
                               property?.title?.en ?? "")
                       : CustomSnackbar.show(
                           title: "Failed",
