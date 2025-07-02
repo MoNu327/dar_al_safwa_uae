@@ -25,7 +25,7 @@ class VR360Controller extends GetxController {
   final RxBool isConnected = true.obs;
   final RxString connectionType = 'unknown'.obs;
   final RxBool lowDataMode = false.obs;
-  
+
   // Lazy loading
   final RxInt visibleStartIndex = 0.obs;
   final RxInt visibleEndIndex = 4.obs;
@@ -60,11 +60,14 @@ class VR360Controller extends GetxController {
 
   // Setup connectivity monitoring
   void _setupConnectivityListener() {
-    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
-      final result = results.isNotEmpty ? results.first : ConnectivityResult.none;
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
+      final result =
+          results.isNotEmpty ? results.first : ConnectivityResult.none;
       isConnected.value = result != ConnectivityResult.none;
       connectionType.value = result.toString();
-      
+
       // Enable low data mode on mobile networks
       lowDataMode.value = result == ConnectivityResult.mobile;
     });
@@ -82,7 +85,7 @@ class VR360Controller extends GetxController {
   void updateVisibleRange(int startIndex, int endIndex) {
     visibleStartIndex.value = startIndex;
     visibleEndIndex.value = endIndex;
-    
+
     // Dispose controllers outside visible range
     _disposeInvisibleControllers();
   }
@@ -90,14 +93,14 @@ class VR360Controller extends GetxController {
   // Dispose controllers outside visible range
   void _disposeInvisibleControllers() {
     final controllersToDispose = <int>[];
-    
+
     for (var index in gridVideoControllers.keys) {
-      if (index < visibleStartIndex.value - 1 || 
+      if (index < visibleStartIndex.value - 1 ||
           index > visibleEndIndex.value + 1) {
         controllersToDispose.add(index);
       }
     }
-    
+
     for (var index in controllersToDispose) {
       gridVideoControllers[index]?.dispose();
       gridVideoControllers.remove(index);
@@ -108,7 +111,7 @@ class VR360Controller extends GetxController {
 
   // Initialize grid video controller with optimization
   Future<void> initializeGridVideoController(int index) async {
-    if (gridVideoControllers.containsKey(index) || 
+    if (gridVideoControllers.containsKey(index) ||
         gridVideoLoading[index] == true) return;
 
     // Check if we should load based on data mode
@@ -121,8 +124,8 @@ class VR360Controller extends GetxController {
       gridVideoError[index] = false;
 
       // Validate URL
-      if (index >= videoUrls.length || 
-          videoUrls[index].isEmpty || 
+      if (index >= videoUrls.length ||
+          videoUrls[index].isEmpty ||
           !_isValidVideoUrl(videoUrls[index])) {
         throw Exception('Invalid video URL');
       }
@@ -144,7 +147,7 @@ class VR360Controller extends GetxController {
       );
 
       gridVideoControllers[index] = controller;
-      
+
       // Configure for preview
       controller.setVolume(0);
       controller.setLooping(true);
@@ -152,11 +155,10 @@ class VR360Controller extends GetxController {
       await controller.pause();
 
       gridVideoLoading[index] = false;
-      
     } catch (e) {
       gridVideoLoading[index] = false;
       gridVideoError[index] = true;
-      
+
       // Don't show snackbar for every error, just log
       print('Failed to load video preview $index: ${e.toString()}');
     }
@@ -165,17 +167,17 @@ class VR360Controller extends GetxController {
   // Check if should load in low data mode
   bool _shouldLoadInLowDataMode(int index) {
     // Only load videos in visible range + 1 buffer
-    return index >= visibleStartIndex.value - 1 && 
-           index <= visibleEndIndex.value + 1;
+    return index >= visibleStartIndex.value - 1 &&
+        index <= visibleEndIndex.value + 1;
   }
 
   // Validate video URL
   bool _isValidVideoUrl(String url) {
     try {
       final uri = Uri.parse(url);
-      return uri.isAbsolute && 
-             (uri.scheme == 'http' || uri.scheme == 'https') &&
-             (url.toLowerCase().contains('.mp4') || 
+      return uri.isAbsolute &&
+          (uri.scheme == 'http' || uri.scheme == 'https') &&
+          (url.toLowerCase().contains('.mp4') ||
               url.toLowerCase().contains('.mov') ||
               url.toLowerCase().contains('youtube') ||
               url.toLowerCase().contains('vimeo'));
@@ -217,15 +219,14 @@ class VR360Controller extends GetxController {
 
       isLoading.value = false;
       isPlaying.value = true;
-      
     } catch (e) {
       isLoading.value = false;
       hasError.value = true;
       errorMessage.value = e.toString();
-      
+
       // Show user-friendly error message
       Get.snackbar(
-        'VR Video Error', 
+        'VR Video Error',
         _getUserFriendlyErrorMessage(e.toString()),
         snackPosition: SnackPosition.BOTTOM,
         duration: const Duration(seconds: 3),
@@ -314,7 +315,7 @@ class VR360Controller extends GetxController {
   // Preload next video for smoother experience
   Future<void> preloadNextVideo(int currentIndex) async {
     final nextIndex = currentIndex + 1;
-    if (nextIndex < videoUrls.length && 
+    if (nextIndex < videoUrls.length &&
         !gridVideoControllers.containsKey(nextIndex)) {
       await initializeGridVideoController(nextIndex);
     }
@@ -344,7 +345,7 @@ class VR360Controller extends GetxController {
   // Check if video is already loaded
   bool isVideoLoaded(int index) {
     return gridVideoControllers.containsKey(index) &&
-           gridVideoControllers[index]!.value.isInitialized;
+        gridVideoControllers[index]!.value.isInitialized;
   }
 
   // Check if video is loading
