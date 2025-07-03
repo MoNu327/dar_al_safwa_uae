@@ -3,10 +3,12 @@ import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/about_content.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/gallery.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/reviews.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_details_submission.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/view_360.dart';
 import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/video_controller.dart';
+import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/widgets/loader_widget.dart';
@@ -149,6 +151,27 @@ class PropertyDetailsScreen extends StatelessWidget {
                               ),
                             ),
                           ),
+
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.01,
+                                vertical: screenHeight * 0.01,
+                              ),
+                              child: CustomButtonWidget(
+                                onPressed: () {
+                                  Get.to(UserDetailsSubmission());
+                                },
+                                borderColor: AppColors.white,
+                                buttonTextColor: AppColors.secondaryColor,
+                                buttonHeight: screenHeight * 0.04,
+                                buttonWidth: screenWidth * 0.35,
+                                buttonTitle: "Book Now !",
+                                buttonColor: AppColors.primaryColor,
+                              )),
+                        ),
                       ],
                     ),
                     Row(
@@ -477,8 +500,8 @@ class _CustomTabBarState extends State<CustomTabBar>
               View360(
                 videoUrls: [
                   "https://videos.pexels.com/video-files/7578554/7578554-uhd_2560_1440_30fps.mp4",
-                  "https://videos.pexels.com/video-files/15887134/15887134-uhd_2560_1440_30fps.mp4"
-                  // "https://videos.pexels.com/video-files/15353502/15353502-sd_640_360_24fps.mp4"
+                  // "https://videos.pexels.com/video-files/15887134/15887134-uhd_2560_1440_30fps.mp4"
+                  "https://videos.pexels.com/video-files/15353502/15353502-sd_640_360_24fps.mp4"
                 ],
               ),
 

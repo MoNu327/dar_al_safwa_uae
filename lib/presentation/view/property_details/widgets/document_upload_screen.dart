@@ -26,6 +26,14 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+          automaticallyImplyLeading: false,
+          leading: IconButton(
+            onPressed: () {
+              Get.back();
+            },
+            icon: Icon(Icons.arrow_back),
+            color: AppColors.white,
+          ),
           backgroundColor: AppColors.secondaryColor,
           title: CustomTextWidget(
             color: AppColors.white,
@@ -41,11 +49,13 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
         child: Column(
           // spacing: screenHeight * 0.1,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             CustomTextWidget(
-              title: "Upload Required Documents",
-              fontSize: H18,
+              title: "Upload Required Documents *",
+              fontSize: tagTitle,
               fontWeight: FontWeight.bold,
+              fontStyle: FontStyle.italic,
               overflow: TextOverflow.ellipsis,
             ),
             kHeight(0.02),
@@ -66,58 +76,56 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     final uploadedFiles = _uploadedFiles[index] ?? [];
     final canUploadMore = uploadedFiles.length < field.maxFiles;
 
-    return Center(
-      child: Container(
-        margin: EdgeInsets.only(bottom: screenHeight3),
-        padding: EdgeInsets.all(screenWidth3),
-        decoration: BoxDecoration(
-          color: AppColors.whiteLight,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.lightGrey),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      margin: EdgeInsets.only(bottom: screenHeight3),
+      padding: EdgeInsets.all(screenWidth3),
+      decoration: BoxDecoration(
+        color: AppColors.whiteLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.lightGrey),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            field.title,
+            style: TextStyle(
+              fontSize: packageTitle,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black,
+            ),
+          ),
+          if (field.description.isNotEmpty) ...[
+            kHeight(0.01),
             Text(
-              field.title,
+              field.description,
               style: TextStyle(
-                fontSize: packageTitle,
-                fontWeight: FontWeight.w600,
-                color: AppColors.black,
+                fontSize: detailContentTitle,
+                color: AppColors.black600,
               ),
             ),
-            if (field.description.isNotEmpty) ...[
-              kHeight(0.01),
-              Text(
-                field.description,
-                style: TextStyle(
-                  fontSize: detailContentTitle,
-                  color: AppColors.black600,
-                ),
-              ),
-            ],
-            kHeight(0.02),
-            if (uploadedFiles.isNotEmpty) ...[
-              ...uploadedFiles
-                  .map((filePath) => _buildUploadedFileItem(filePath)),
-              kHeight(0.02),
-            ],
-            if (canUploadMore)
-              _buildUploadButton(
-                index: index,
-                field: field,
-                isFirstUpload: uploadedFiles.isEmpty,
-              ),
-            if (field.maxFiles > 1 && uploadedFiles.isNotEmpty && canUploadMore)
-              Text(
-                'You can upload ${field.maxFiles - uploadedFiles.length} more ${field.maxFiles - uploadedFiles.length == 1 ? 'file' : 'files'}',
-                style: TextStyle(
-                  fontSize: expandedContentTitle,
-                  color: AppColors.black500,
-                ),
-              ),
           ],
-        ),
+          kHeight(0.02),
+          if (uploadedFiles.isNotEmpty) ...[
+            ...uploadedFiles
+                .map((filePath) => _buildUploadedFileItem(filePath)),
+            kHeight(0.02),
+          ],
+          if (canUploadMore)
+            _buildUploadButton(
+              index: index,
+              field: field,
+              isFirstUpload: uploadedFiles.isEmpty,
+            ),
+          if (field.maxFiles > 1 && uploadedFiles.isNotEmpty && canUploadMore)
+            Text(
+              'You can upload ${field.maxFiles - uploadedFiles.length} more ${field.maxFiles - uploadedFiles.length == 1 ? 'file' : 'files'}',
+              style: TextStyle(
+                fontSize: expandedContentTitle,
+                color: AppColors.black500,
+              ),
+            ),
+        ],
       ),
     );
   }

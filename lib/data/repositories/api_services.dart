@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/data/model/user_data_submission_model.dart';
 import 'package:dio/dio.dart';
 import '../datasources/api_client.dart';
 import '../model/agent_properties_response_model.dart';
@@ -166,8 +167,8 @@ class ApiService {
     }
   }
 
-  Future<Response> postPropertyInterest(String PropertyId, int unitType, int count,
-      String comments, int enqtype, String mobileNumber) async {
+  Future<Response> postPropertyInterest(String PropertyId, int unitType,
+      int count, String comments, int enqtype, String mobileNumber) async {
     // API Refining Needed
     try {
       final response =
@@ -212,6 +213,22 @@ class ApiService {
         "properties/search",
         method: "post",
         data: propertySearchResultRequest.toJson(),
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Submit User Details for Booking result
+  Future<Response> submitUserDetailsAndDoc(
+      UserDataSubmissionModel userDataSubmission) async {
+    try {
+      final response = await apiClient.request(
+        "storebooking",
+        method: "post",
+        data: userDataSubmission.toJson(),
       );
 
       return response;
