@@ -1,9 +1,14 @@
+import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:io';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../data/model/document_submission_model.dart';
+import '../controller/user_data_submission_controller.dart';
 
 class DocumentUploadScreen extends StatefulWidget {
   final String screenTitle;
@@ -20,7 +25,10 @@ class DocumentUploadScreen extends StatefulWidget {
 }
 
 class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
-  final Map<int, List<String>> _uploadedFiles = {};
+  final Map<int, List<File>> _uploadedFiles = {};
+  bool _isSubmitting = false;
+  final controler = Get.find<UserDataSubmissionController>();
+  final user = Get.put(AuthService());
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +55,6 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           vertical: screenHeight2,
         ),
         child: Column(
-          // spacing: screenHeight * 0.1,
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -107,8 +114,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           ],
           kHeight(0.02),
           if (uploadedFiles.isNotEmpty) ...[
-            ...uploadedFiles
-                .map((filePath) => _buildUploadedFileItem(filePath)),
+            ...uploadedFiles.map((file) => _buildUploadedFileItem(file, index)),
             kHeight(0.02),
           ],
           if (canUploadMore)
@@ -130,7 +136,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     );
   }
 
-  Widget _buildUploadedFileItem(String filePath) {
+  Widget _buildUploadedFileItem(File file, int fieldIndex) {
     return Container(
       margin: EdgeInsets.only(bottom: screenHeight1),
       padding: EdgeInsets.symmetric(
@@ -152,7 +158,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           kWidth(0.02),
           Expanded(
             child: Text(
-              filePath.split('/').last,
+              file.path.split('/').last,
               style: TextStyle(
                 fontSize: detailContentTitle,
                 color: AppColors.black,
@@ -163,16 +169,11 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           IconButton(
             icon: Icon(Icons.close, size: smallIconSize),
             onPressed: () {
-              // Find and remove the file from the uploaded files map
               setState(() {
-                _uploadedFiles.forEach((key, value) {
-                  if (value.contains(filePath)) {
-                    value.remove(filePath);
-                    if (value.isEmpty) {
-                      _uploadedFiles.remove(key);
-                    }
-                  }
-                });
+                _uploadedFiles[fieldIndex]?.remove(file);
+                if (_uploadedFiles[fieldIndex]?.isEmpty ?? false) {
+                  _uploadedFiles.remove(fieldIndex);
+                }
               });
             },
           ),
@@ -242,7 +243,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: allFieldsFilled
+          backgroundColor: allFieldsFilled && !_isSubmitting
               ? AppColors.secondaryColor
               : AppColors.secondaryColor.withOpacity(0.5),
           padding: EdgeInsets.symmetric(vertical: screenHeight2),
@@ -250,54 +251,143 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        onPressed: allFieldsFilled ? _submitDocuments : null,
-        child: Text(
-          'Submit Documents',
-          style: TextStyle(
-            fontSize: packageTitle,
-            color: AppColors.white,
-          ),
-        ),
+        onPressed: allFieldsFilled && !_isSubmitting ? _submitDocuments : null,
+        child: _isSubmitting
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: AppColors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : Text(
+                'Submit Documents',
+                style: TextStyle(
+                  fontSize: packageTitle,
+                  color: AppColors.white,
+                ),
+              ),
       ),
     );
   }
 
   Future<void> _handleFileUpload(int index, DocumentField field) async {
-    // In a real app, you would implement file picking here
-    // For demonstration, we'll simulate a file picker
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.any, //widget.documentFields[index].allowedTypes.
+        allowedExtensions: _getAllowedExtensions(field.allowedTypes),
+        allowMultiple: field.maxFiles > 1,
+      );
 
-    // Simulate file picking delay
-    await Future.delayed(const Duration(milliseconds: 300));
+      if (result != null) {
+        final files = result.paths.map((path) => File(path!)).toList();
 
-    // Generate a fake file path for demonstration
-    final fakeFilePath =
-        'path/to/${field.title.toLowerCase().replaceAll(' ', '')}${_uploadedFiles[index]?.length ?? 0}.${field.allowedTypes == FileType.image ? 'jpg' : 'pdf'}';
+        setState(() {
+          if (_uploadedFiles.containsKey(index)) {
+            // Add to existing files, respecting maxFiles limit
+            final currentFiles = _uploadedFiles[index]!;
+            final remainingSlots = field.maxFiles - currentFiles.length;
+            final filesToAdd = files.take(remainingSlots).toList();
+            _uploadedFiles[index]!.addAll(filesToAdd);
+          } else {
+            // First upload for this field
+            _uploadedFiles[index] = files.take(field.maxFiles).toList();
+          }
+        });
 
-    setState(() {
-      _uploadedFiles.putIfAbsent(index, () => []).add(fakeFilePath);
-    });
+        if (files.length > field.maxFiles) {
+          Get.snackbar(
+            'Upload Limit',
+            'Only ${field.maxFiles} files can be uploaded for ${field.title}',
+            backgroundColor: AppColors.warning,
+            colorText: AppColors.white,
+          );
+        }
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Upload Error',
+        'Failed to upload file: ${e.toString()}',
+        backgroundColor: AppColors.error,
+        colorText: AppColors.white,
+      );
+    }
   }
 
-  void _submitDocuments() {
-    // Process the uploaded files
-    final allFiles = <String, List<String>>{};
-    for (var entry in _uploadedFiles.entries) {
-      final fieldIndex = entry.key;
-      final files = entry.value;
-      final fieldTitle = widget.documentFields[fieldIndex].title;
-      allFiles[fieldTitle] = files;
+  // FileType _getFileType(FileTypeEnum allowedTypes) {
+  //   switch (allowedTypes) {
+  //     case FileTypeEnum.image:
+  //       return FileType.image;
+  //     case FileTypeEnum.pdf:
+  //       return FileType.custom;
+  //     case FileTypeEnum.any:
+  //     default:
+  //       return FileType.any;
+  //   }
+  // }
+
+  List<String>? _getAllowedExtensions(FileTypeEnum allowedTypes) {
+    switch (allowedTypes) {
+      case FileTypeEnum.pdf:
+        return ['pdf'];
+      case FileTypeEnum.image:
+        return null; // Let FilePicker handle image extensions
+      case FileTypeEnum.any:
+      default:
+        return null;
     }
+  }
 
-    // In a real app, you would upload these files to your backend
-    Get.snackbar(
-      'Documents Submitted',
-      '${allFiles.values.fold<int>(0, (sum, files) => sum + files.length)} files uploaded successfully',
-      backgroundColor: AppColors.onlineGreen,
-      colorText: AppColors.white,
-    );
+  Future<void> _submitDocuments() async {
+    setState(() {
+      _isSubmitting = true;
+    });
 
-    // For demo, just print the files
-    debugPrint('Submitted files: $allFiles');
+    try {
+      // Create DocumentSubmission objects from uploaded files
+      final List<DocumentSubmission> uploadedDocs = [];
+
+      for (var entry in _uploadedFiles.entries) {
+        final fieldIndex = entry.key;
+        final files = entry.value;
+        final fieldTitle = widget.documentFields[fieldIndex].title;
+
+        for (var file in files) {
+          uploadedDocs.add(DocumentSubmission(
+            title: fieldTitle,
+            file: file.path,
+          ));
+        }
+      }
+
+      // Add documents to user fields
+      controler.user.value.fields.addAll(uploadedDocs);
+      // controler.user.update((user) {});
+      // Submit user data and documents
+      await controler.submitUserDataAndDocs(controler.user.value);
+
+      Get.snackbar(
+        'Success',
+        'Documents submitted successfully!',
+        backgroundColor: AppColors.onlineGreen,
+        colorText: AppColors.white,
+      );
+
+      // Navigate back or to next screen
+      Get.back();
+    } catch (e) {
+      Get.snackbar(
+        'Submission Error',
+        'Failed to submit documents: ${e.toString()}',
+        backgroundColor: AppColors.error,
+        colorText: AppColors.white,
+      );
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
   }
 }
 
@@ -305,17 +395,17 @@ class DocumentField {
   final String title;
   final String description;
   final int maxFiles;
-  final FileType allowedTypes;
+  final FileTypeEnum allowedTypes;
 
   const DocumentField({
     required this.title,
     this.description = '',
     this.maxFiles = 1,
-    this.allowedTypes = FileType.any,
+    this.allowedTypes = FileTypeEnum.any,
   });
 }
 
-enum FileType {
+enum FileTypeEnum {
   image,
   pdf,
   any,

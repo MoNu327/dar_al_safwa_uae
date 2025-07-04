@@ -9,27 +9,33 @@ part of 'user_data_submission_model.dart';
 UserDataSubmissionModel _$UserDataSubmissionModelFromJson(
         Map<String, dynamic> json) =>
     UserDataSubmissionModel(
-      firstName: json['firstName'] as String,
-      lastName: json['lastName'] as String,
+      uid: json['uid'] as String,
+      firstName: json['first_name'] as String,
+      lastName: json['last_name'] as String,
       address: json['address'] as String,
       poNo: json['poNo'] as String,
       nationality: json['nationality'] as String,
       email: json['email'] as String,
       mobile: json['mobile'] as String,
-      passportNo: json['passportNo'] as String,
-      visaNo: json['visaNo'] as String,
+      passportNo: json['passport_no'] as String,
+      visaNo: json['visa_no'] as String,
+      fields: (json['fields'] as List<dynamic>)
+          .map((e) => DocumentSubmission.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
 
 Map<String, dynamic> _$UserDataSubmissionModelToJson(
         UserDataSubmissionModel instance) =>
     <String, dynamic>{
-      'firstName': instance.firstName,
-      'lastName': instance.lastName,
+      'uid': instance.uid,
+      'first_name': instance.firstName,
+      'last_name': instance.lastName,
       'address': instance.address,
       'poNo': instance.poNo,
       'nationality': instance.nationality,
       'email': instance.email,
       'mobile': instance.mobile,
-      'passportNo': instance.passportNo,
-      'visaNo': instance.visaNo,
+      'passport_no': instance.passportNo,
+      'visa_no': instance.visaNo,
+      'fields': instance.fields,
     };

@@ -1,22 +1,16 @@
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:video_player/video_player.dart';
-import 'package:vr_player/vr_player.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
-class VR360Controller extends GetxController {
-  // For grid view videos
-  final RxList<String> videoUrls = <String>[].obs;
-  final RxMap<int, VideoPlayerController> gridVideoControllers =
-      <int, VideoPlayerController>{}.obs;
-  final RxMap<int, bool> gridVideoLoading = <int, bool>{}.obs;
-  final RxMap<int, bool> gridVideoError = <int, bool>{}.obs;
+class Panorama360Controller extends GetxController {
+  // For grid view images
+  final RxList<String> imageUrls = <String>[].obs;
+  final RxMap<int, bool> gridImageLoading = <int, bool>{}.obs;
+  final RxMap<int, bool> gridImageError = <int, bool>{}.obs;
+  final RxMap<int, bool> gridImageLoaded = <int, bool>{}.obs;
 
-  // For VR player
-  final Rx<VrPlayerController?> vrController = Rx<VrPlayerController?>(null);
+  // For panorama viewer
   final RxBool isLoading = true.obs;
-  final RxBool isPlaying = false.obs;
-  final RxBool isVRMode = false.obs;
   final RxBool hasError = false.obs;
   final RxBool isLandscape = true.obs;
   final RxString errorMessage = ''.obs;
@@ -40,17 +34,10 @@ class VR360Controller extends GetxController {
 
   @override
   void onClose() {
-    // Dispose all grid video controllers
-    for (var controller in gridVideoControllers.values) {
-      controller.dispose();
-    }
-    gridVideoControllers.clear();
-    gridVideoLoading.clear();
-    gridVideoError.clear();
-
-    // Dispose VR controller
-    vrController.value?.dispose();
-    vrController.value = null;
+    // Clear all image loading states
+    gridImageLoading.clear();
+    gridImageError.clear();
+    gridImageLoaded.clear();
 
     // Reset orientation
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -86,33 +73,32 @@ class VR360Controller extends GetxController {
     visibleStartIndex.value = startIndex;
     visibleEndIndex.value = endIndex;
 
-    // Dispose controllers outside visible range
-    _disposeInvisibleControllers();
+    // Clear loading states for images outside visible range
+    _clearInvisibleImageStates();
   }
 
-  // Dispose controllers outside visible range
-  void _disposeInvisibleControllers() {
-    final controllersToDispose = <int>[];
+  // Clear loading states for images outside visible range
+  void _clearInvisibleImageStates() {
+    final statesToClear = <int>[];
 
-    for (var index in gridVideoControllers.keys) {
+    for (var index in gridImageLoading.keys) {
       if (index < visibleStartIndex.value - 1 ||
           index > visibleEndIndex.value + 1) {
-        controllersToDispose.add(index);
+        statesToClear.add(index);
       }
     }
 
-    for (var index in controllersToDispose) {
-      gridVideoControllers[index]?.dispose();
-      gridVideoControllers.remove(index);
-      gridVideoLoading.remove(index);
-      gridVideoError.remove(index);
+    for (var index in statesToClear) {
+      gridImageLoading.remove(index);
+      gridImageError.remove(index);
+      gridImageLoaded.remove(index);
     }
   }
 
-  // Initialize grid video controller with optimization
-  Future<void> initializeGridVideoController(int index) async {
-    if (gridVideoControllers.containsKey(index) ||
-        gridVideoLoading[index] == true) return;
+  // Preload grid image with optimization
+  Future<void> preloadGridImage(int index) async {
+    if (gridImageLoaded[index] == true ||
+        gridImageLoading[index] == true) return;
 
     // Check if we should load based on data mode
     if (lowDataMode.value && !_shouldLoadInLowDataMode(index)) {
@@ -120,166 +106,63 @@ class VR360Controller extends GetxController {
     }
 
     try {
-      gridVideoLoading[index] = true;
-      gridVideoError[index] = false;
+      gridImageLoading[index] = true;
+      gridImageError[index] = false;
 
       // Validate URL
-      if (index >= videoUrls.length ||
-          videoUrls[index].isEmpty ||
-          !_isValidVideoUrl(videoUrls[index])) {
-        throw Exception('Invalid video URL');
+      if (index >= imageUrls.length ||
+          imageUrls[index].isEmpty ||
+          !isValidImageUrl(imageUrls[index])) {
+        throw Exception('Invalid image URL');
       }
 
-      final controller = VideoPlayerController.network(
-        videoUrls[index],
-        videoPlayerOptions: VideoPlayerOptions(
-          mixWithOthers: true,
-          allowBackgroundPlayback: false,
-        ),
-      );
-
-      // Set timeout for initialization
-      await controller.initialize().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Video initialization timeout');
-        },
-      );
-
-      gridVideoControllers[index] = controller;
-
-      // Configure for preview
-      controller.setVolume(0);
-      controller.setLooping(true);
-      await controller.seekTo(Duration.zero);
-      await controller.pause();
-
-      gridVideoLoading[index] = false;
+      // The image will be loaded by CachedNetworkImage
+      // We just mark it as loaded for state management
+      gridImageLoaded[index] = true;
+      gridImageLoading[index] = false;
     } catch (e) {
-      gridVideoLoading[index] = false;
-      gridVideoError[index] = true;
+      gridImageLoading[index] = false;
+      gridImageError[index] = true;
 
       // Don't show snackbar for every error, just log
-      print('Failed to load video preview $index: ${e.toString()}');
+      print('Failed to load image preview $index: ${e.toString()}');
     }
   }
 
   // Check if should load in low data mode
   bool _shouldLoadInLowDataMode(int index) {
-    // Only load videos in visible range + 1 buffer
+    // Only load images in visible range + 1 buffer
     return index >= visibleStartIndex.value - 1 &&
         index <= visibleEndIndex.value + 1;
   }
 
-  // Validate video URL
-  bool _isValidVideoUrl(String url) {
+  // Validate image URL
+  bool isValidImageUrl(String url) {
     try {
       final uri = Uri.parse(url);
       return uri.isAbsolute &&
           (uri.scheme == 'http' || uri.scheme == 'https') &&
-          (url.toLowerCase().contains('.mp4') ||
-              url.toLowerCase().contains('.mov') ||
-              url.toLowerCase().contains('youtube') ||
-              url.toLowerCase().contains('vimeo'));
+          (url.toLowerCase().contains('.jpg') ||
+              url.toLowerCase().contains('.jpeg') ||
+              url.toLowerCase().contains('.png') ||
+              url.toLowerCase().contains('.webp') ||
+              url.toLowerCase().contains('.gif') ||
+              url.toLowerCase().contains('image'));
     } catch (e) {
       return false;
     }
   }
 
-  // Initialize VR player with better error handling
-  Future<void> initializeVRPlayer(
-      String videoUrl, VrPlayerController controller) async {
-    try {
-      isLoading.value = true;
-      hasError.value = false;
-      errorMessage.value = '';
-
-      // Check connection
-      if (!isConnected.value) {
-        throw Exception('No internet connection');
-      }
-
-      // Validate URL
-      if (!_isValidVideoUrl(videoUrl)) {
-        throw Exception('Invalid video URL format');
-      }
-
-      vrController.value = controller;
-
-      // Load video with timeout
-      await controller.loadVideo(videoUrl: videoUrl).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw Exception('VR video loading timeout');
-        },
-      );
-
-      // Start playing
-      await controller.play();
-
-      isLoading.value = false;
-      isPlaying.value = true;
-    } catch (e) {
-      isLoading.value = false;
-      hasError.value = true;
-      errorMessage.value = e.toString();
-
-      // Show user-friendly error message
-      Get.snackbar(
-        'VR Video Error',
-        _getUserFriendlyErrorMessage(e.toString()),
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 3),
-      );
-    }
-  }
-
   // Get user-friendly error message
-  String _getUserFriendlyErrorMessage(String error) {
+  String getUserFriendlyErrorMessage(String error) {
     if (error.contains('timeout')) {
-      return 'Video loading took too long. Please check your connection.';
+      return 'Image loading took too long. Please check your connection.';
     } else if (error.contains('connection') || error.contains('network')) {
       return 'Network error. Please check your internet connection.';
     } else if (error.contains('Invalid')) {
-      return 'Invalid video format or URL.';
+      return 'Invalid image format or URL.';
     } else {
-      return 'Unable to load video. Please try again.';
-    }
-  }
-
-  // Retry VR player initialization
-  Future<void> retryVRPlayer(String videoUrl) async {
-    if (vrController.value != null) {
-      await initializeVRPlayer(videoUrl, vrController.value!);
-    }
-  }
-
-  // Toggle play/pause with error handling
-  Future<void> togglePlayPause() async {
-    if (vrController.value == null) return;
-
-    try {
-      if (isPlaying.value) {
-        await vrController.value!.pause();
-      } else {
-        await vrController.value!.play();
-      }
-      isPlaying.toggle();
-    } catch (e) {
-      print('Error toggling play/pause: $e');
-    }
-  }
-
-  // Toggle VR mode with error handling
-  Future<void> toggleVRMode() async {
-    if (vrController.value == null) return;
-
-    try {
-      await vrController.value!.toggleVRMode();
-      isVRMode.toggle();
-    } catch (e) {
-      print('Error toggling VR mode: $e');
-      Get.snackbar('Error', 'Failed to toggle VR mode');
+      return 'Unable to load image. Please try again.';
     }
   }
 
@@ -301,60 +184,64 @@ class VR360Controller extends GetxController {
     }
   }
 
-  // Pause all grid videos
-  void pauseAllGridVideos() {
-    for (var controller in gridVideoControllers.values) {
-      try {
-        controller.pause();
-      } catch (e) {
-        print('Error pausing video: $e');
-      }
-    }
-  }
-
-  // Preload next video for smoother experience
-  Future<void> preloadNextVideo(int currentIndex) async {
+  // Preload next image for smoother experience
+  Future<void> preloadNextImage(int currentIndex) async {
     final nextIndex = currentIndex + 1;
-    if (nextIndex < videoUrls.length &&
-        !gridVideoControllers.containsKey(nextIndex)) {
-      await initializeGridVideoController(nextIndex);
+    if (nextIndex < imageUrls.length &&
+        gridImageLoaded[nextIndex] != true) {
+      await preloadGridImage(nextIndex);
     }
   }
 
-  // Get thumbnail URL for faster loading
-  String? getThumbnailUrl(String videoUrl) {
-    if (videoUrl.contains('youtube')) {
-      final videoId = _extractYouTubeVideoId(videoUrl);
-      if (videoId != null) {
-        return 'https://img.youtube.com/vi/$videoId/maxresdefault.jpg';
-      }
+  // Get thumbnail URL for faster loading (if applicable)
+  String? getThumbnailUrl(String imageUrl) {
+    // For regular images, we can return a lower resolution version
+    // This is a basic implementation - you might want to use a service
+    // that provides different image sizes
+    if (imageUrl.contains('?')) {
+      return '$imageUrl&w=300&h=200';
+    } else {
+      return '$imageUrl?w=300&h=200';
     }
-    return null;
   }
 
-  // Extract YouTube video ID
-  String? _extractYouTubeVideoId(String url) {
-    final regExp = RegExp(
-      r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/)([^&\n?#]+)',
-      caseSensitive: false,
-    );
-    final match = regExp.firstMatch(url);
-    return match?.group(1);
+  // Check if image is already loaded
+  bool isImageLoaded(int index) {
+    return gridImageLoaded[index] ?? false;
   }
 
-  // Check if video is already loaded
-  bool isVideoLoaded(int index) {
-    return gridVideoControllers.containsKey(index) &&
-        gridVideoControllers[index]!.value.isInitialized;
+  // Check if image is loading
+  bool isImageLoading(int index) {
+    return gridImageLoading[index] ?? false;
   }
 
-  // Check if video is loading
-  bool isVideoLoading(int index) {
-    return gridVideoLoading[index] ?? false;
+  // Check if image has error
+  bool hasImageError(int index) {
+    return gridImageError[index] ?? false;
   }
 
-  // Check if video has error
-  bool hasVideoError(int index) {
-    return gridVideoError[index] ?? false;
+  // Clear all image states
+  void clearAllImageStates() {
+    gridImageLoading.clear();
+    gridImageError.clear();
+    gridImageLoaded.clear();
+  }
+
+  // Refresh image at specific index
+  Future<void> refreshImage(int index) async {
+    gridImageLoading[index] = false;
+    gridImageError[index] = false;
+    gridImageLoaded[index] = false;
+    await preloadGridImage(index);
+  }
+
+  // Get image quality based on data mode
+  String getImageQuality() {
+    return lowDataMode.value ? 'low' : 'high';
+  }
+
+  // Check if image should be preloaded based on connection
+  bool shouldPreloadImage() {
+    return isConnected.value && !lowDataMode.value;
   }
 }

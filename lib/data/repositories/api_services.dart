@@ -236,4 +236,19 @@ class ApiService {
       rethrow;
     }
   }
+
+  // Submit User Details for Booking result
+  Future<Response> fetchingAgentChatReports(String uid) async {
+    try {
+      final response = await apiClient.request(
+        "chatListByAgent",
+        method: "post",
+        data: {"uid": uid},
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

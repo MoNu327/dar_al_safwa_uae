@@ -498,11 +498,14 @@ class _CustomTabBarState extends State<CustomTabBar>
 
               // 360 view tab
               View360(
-                videoUrls: [
-                  "https://videos.pexels.com/video-files/7578554/7578554-uhd_2560_1440_30fps.mp4",
-                  // "https://videos.pexels.com/video-files/15887134/15887134-uhd_2560_1440_30fps.mp4"
-                  "https://videos.pexels.com/video-files/15353502/15353502-sd_640_360_24fps.mp4"
+                imageUrls: [
+                  "https://media.istockphoto.com/id/2214948492/video/kitchen-renovation-before-and-after.mp4?s=mp4-640x640-is&k=20&c=XHAhvly5dK0UyfMa8BVL7ROf-6ZprI-hcTPnBMgml3s="
                 ],
+                // videoUrls: [
+                //   "https://videos.pexels.com/video-files/7578554/7578554-uhd_2560_1440_30fps.mp4",
+                //   // "https://videos.pexels.com/video-files/15887134/15887134-uhd_2560_1440_30fps.mp4"
+                //   "https://videos.pexels.com/video-files/15353502/15353502-sd_640_360_24fps.mp4"
+                // ],
               ),
 
               // Review Tab

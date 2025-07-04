@@ -60,6 +60,7 @@ dependencies:
   cached_network_image: ^3.4.1
   carousel_slider: ^5.0.0
   firebase_messaging: ^15.2.5
+  file_picker: ^10.2.0
   flutter_local_notifications: ^19.1.0
   cloud_functions: ^5.5.0
   flutter_pdfview: ^1.4.0+1

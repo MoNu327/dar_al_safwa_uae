@@ -1,11 +1,13 @@
 import 'package:dar_al_safwa/presentation/view/property_details/controller/user_data_submission_controller.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/document_upload_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validator.dart';
+import '../../../../data/model/user_data_submission_model.dart';
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_formfield_widget.dart';
 import '../../../widgets/custom_text_widget.dart';
@@ -18,6 +20,8 @@ class UserDetailsSubmission extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.put(UserDataSubmissionController());
+
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
@@ -29,7 +33,11 @@ class UserDetailsSubmission extends StatelessWidget {
         ),
         backgroundColor: AppColors.white,
         elevation: 0,
-        leading: Icon(Icons.arrow_back, color: AppColors.black),
+        leading: InkWell(
+            onTap: () {
+              Get.back();
+            },
+            child: Icon(Icons.arrow_back, color: AppColors.black)),
         actions: [
           TextButton(
             onPressed: () {
@@ -107,7 +115,7 @@ class UserDetailsSubmission extends StatelessWidget {
                     ),
                     CustomTextFieldWidget(
                       hintText: 'Enter Address',
-                      controller: controller.emailCtrl,
+                      controller: controller.addressCtrl,
                       readOnly: !controller.isEditMode.value,
                       keyboardType: TextInputType.text,
                       validator: Validator.validateAddress,
@@ -191,24 +199,51 @@ class UserDetailsSubmission extends StatelessWidget {
                       buttonTitle: "Proceed",
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
+                          controller.user.value = UserDataSubmissionModel(
+                            uid: FirebaseAuth.instance.currentUser?.uid ?? "",
+                            firstName: controller.firstNameCtrl.text,
+                            lastName: controller.lastNameCtrl.text,
+                            address: controller.addressCtrl.text,
+                            poNo: controller.poNoCtrl.text,
+                            nationality: controller.nationalityCtrl.text,
+                            email: controller.emailCtrl.text,
+                            mobile: controller.mobileCtrl.text,
+                            passportNo: controller.passportCtrl.text,
+                            visaNo: controller.visaCtrl.text,
+                            fields: [],
+                          );
+                          Get.to(
+                            DocumentUploadScreen(
+                              screenTitle: "Upload Documents",
+                              documentFields: [
+                                DocumentField(
+                                    title: "Passport",
+                                    allowedTypes: FileTypeEnum.any,
+                                    maxFiles: 1),
+                                DocumentField(
+                                    title: "Visa",
+                                    allowedTypes: FileTypeEnum.image,
+                                    maxFiles: 1),
+                              ],
+                            ),
+                            // arguments: {
+                            //   "firstName": controller.firstNameCtrl.text,
+                            //   "lastName": controller.lastNameCtrl.text,
+                            //   "address": controller.addressCtrl.text,
+                            //   "poNo": controller.poNoCtrl.text,
+                            //   "nationality": controller.nationalityCtrl.text,
+                            //   "email": controller.emailCtrl.text,
+                            //   "mobileNo": controller.mobileCtrl.text,
+                            //   "passportNo": controller.passportCtrl.text,
+                            //   "visa": controller.visaCtrl.text,
+                            // },
+                          );
                           Get.snackbar(
                             "Success",
                             "Form submitted successfully",
                             backgroundColor: Colors.green.shade100,
                             colorText: Colors.black,
                           );
-                          Get.to(DocumentUploadScreen(
-                              screenTitle: "Upload Documnents",
-                              documentFields: [
-                                DocumentField(
-                                    title: "Passport",
-                                    allowedTypes: FileType.any,
-                                    maxFiles: 1),
-                                DocumentField(
-                                    title: "Visa",
-                                    allowedTypes: FileType.image,
-                                    maxFiles: 1)
-                              ]));
                         } else {
                           Get.snackbar(
                             "Warning!",

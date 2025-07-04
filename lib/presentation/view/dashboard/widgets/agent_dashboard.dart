@@ -3,7 +3,6 @@ import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/controllers/bottom_navbar_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/agent_registered_property_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/agent_registered_property_list_widget.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
 import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
@@ -14,6 +13,7 @@ import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'agent_reports.dart';
 
 class AgentDashboard extends StatelessWidget {
   AgentDashboard({super.key});
@@ -76,10 +76,6 @@ class AgentDashboard extends StatelessWidget {
                   ),
                 ),
               ],
-              // child: const CircleAvatar(
-              //   radius: 20,
-              //   backgroundImage: AssetImage('assets/images/person.png'),
-              // ),
               child: CircleAvatar(
                 radius: screenHeight * 0.025, // Adjust size as needed
                 backgroundColor:
@@ -128,17 +124,24 @@ class AgentDashboard extends StatelessWidget {
                     },
                   ),
                   buildMenuTile(
-                    leading: Image.asset("assets/images/Profile.png"),
+                    leading: Image.asset("assets/images/Properties.png"),
                     title: 'Properties',
                     onTap: () {
                       Get.toNamed('/properties');
                     },
                   ),
+                  // buildMenuTile(
+                  //   leading: Image.asset("assets/images/Enquiry.png"),
+                  //   title: 'Enquiry',
+                  //   onTap: () {
+                  //     Get.toNamed('/enquiry');
+                  //   },
+                  // ),
                   buildMenuTile(
                     leading: Image.asset("assets/images/Enquiry.png"),
                     title: 'Enquiry',
                     onTap: () {
-                      Get.toNamed('/enquiry');
+                      Get.to(PropertyInteractionPage());
                     },
                   ),
                   buildMenuTile(

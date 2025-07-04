@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:video_player/video_player.dart';
-import 'package:vr_player/vr_player.dart';
+import 'package:panorama_viewer/panorama_viewer.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
 
@@ -12,26 +11,25 @@ import '../../../../core/theme/app_colors.dart';
 import '../controller/vr_360_controller.dart';
 
 class View360 extends StatelessWidget {
-  final List<String> videoUrls;
+  final List<String> imageUrls;
 
-  const View360({super.key, this.videoUrls = const []});
+  const View360({super.key, this.imageUrls = const []});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(VR360Controller());
+    final controller = Get.put(Panorama360Controller());
     final propertiesController = Get.put(PropertyDetailsController());
 
-    // Always check for property video URL first
-    final videoUrl = propertiesController
+    // Always check for property image URL first
+    final imageUrl = propertiesController
             .property?.value?.unitTypes?.data?.first?.youtubeUrl ??
         "";
 
-    // Set video URLs based on available data
-    if (videoUrl.isNotEmpty) {
-      controller.videoUrls.value = videoUrls;
-      // controller.videoUrls.value = [videoUrl];
-    } else if (videoUrls.isNotEmpty) {
-      controller.videoUrls.value = videoUrls;
+    // Set image URLs based on available data
+    if (imageUrl.isNotEmpty) {
+      controller.imageUrls.value = [imageUrl];
+    } else if (imageUrls.isNotEmpty) {
+      controller.imageUrls.value = imageUrls;
     }
 
     return Scaffold(
@@ -68,8 +66,8 @@ class View360 extends StatelessWidget {
           return _buildNoConnectionState();
         }
 
-        if (controller.videoUrls.isEmpty) {
-          return _buildNoVideosState();
+        if (controller.imageUrls.isEmpty) {
+          return _buildNoImagesState();
         }
 
         return NotificationListener<ScrollNotification>(
@@ -85,10 +83,10 @@ class View360 extends StatelessWidget {
               final itemHeight = viewportHeight / 2; // Assuming 2 items per row
               final startIndex = (scrollOffset / itemHeight)
                   .floor()
-                  .clamp(0, controller.videoUrls.length - 1);
+                  .clamp(0, controller.imageUrls.length - 1);
               final endIndex = ((scrollOffset + viewportHeight) / itemHeight)
                   .ceil()
-                  .clamp(0, controller.videoUrls.length - 1);
+                  .clamp(0, controller.imageUrls.length - 1);
 
               controller.updateVisibleRange(startIndex, endIndex);
             }
@@ -102,9 +100,9 @@ class View360 extends StatelessWidget {
               mainAxisSpacing: 16,
               childAspectRatio: controller.lowDataMode.value ? 1.5 : 0.9,
             ),
-            itemCount: controller.videoUrls.length,
+            itemCount: controller.imageUrls.length,
             itemBuilder: (context, index) {
-              return _buildVideoItem(context, controller, index);
+              return _buildImageItem(context, controller, index);
             },
           ),
         );
@@ -112,10 +110,10 @@ class View360 extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoItem(
-      BuildContext context, VR360Controller controller, int index) {
+  Widget _buildImageItem(
+      BuildContext context, Panorama360Controller controller, int index) {
     return GestureDetector(
-      onTap: () => _openVRPlayer(context, controller.videoUrls[index]),
+      onTap: () => _openPanoramaViewer(context, controller.imageUrls[index]),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Stack(
@@ -124,12 +122,12 @@ class View360 extends StatelessWidget {
             // Background/Thumbnail
             Container(
               color: Colors.grey[800],
-              child: _buildVideoPreview(controller, index),
+              child: _buildImagePreview(controller, index),
             ),
 
             // Loading overlay
             Obx(() {
-              if (controller.isVideoLoading(index)) {
+              if (controller.isImageLoading(index)) {
                 return Container(
                   color: Colors.black54,
                   child: const Center(
@@ -152,7 +150,7 @@ class View360 extends StatelessWidget {
 
             // Error overlay
             Obx(() {
-              if (controller.hasVideoError(index)) {
+              if (controller.hasImageError(index)) {
                 return Container(
                   color: Colors.red.withOpacity(0.7),
                   child: Center(
@@ -168,8 +166,7 @@ class View360 extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         ElevatedButton(
-                          onPressed: () =>
-                              controller.initializeGridVideoController(index),
+                          onPressed: () => controller.preloadGridImage(index),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -180,9 +177,9 @@ class View360 extends StatelessWidget {
               return const SizedBox.shrink();
             }),
 
-            // Play button overlay
-            if (!controller.isVideoLoading(index) &&
-                !controller.hasVideoError(index))
+            // View button overlay
+            if (!controller.isImageLoading(index) &&
+                !controller.hasImageError(index))
               Center(
                 child: Container(
                   decoration: BoxDecoration(
@@ -191,14 +188,14 @@ class View360 extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Icon(
-                    Icons.play_arrow,
+                    Icons.panorama_photosphere,
                     size: 40,
                     color: Colors.white,
                   ),
                 ),
               ),
 
-            // VR Mode indicator
+            // 360° Mode indicator
             Positioned(
               top: 8,
               right: 8,
@@ -219,7 +216,7 @@ class View360 extends StatelessWidget {
               ),
             ),
 
-            // Video title overlay
+            // Image title overlay
             Positioned(
               bottom: 0,
               left: 0,
@@ -237,7 +234,7 @@ class View360 extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'VR Tour ${index + 1}',
+                  'Panorama ${index + 1}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -251,14 +248,12 @@ class View360 extends StatelessWidget {
     );
   }
 
-  Widget _buildVideoPreview(VR360Controller controller, int index) {
+  Widget _buildImagePreview(Panorama360Controller controller, int index) {
     return Obx(() {
-      // Try to show thumbnail first
-      final thumbnailUrl =
-          controller.getThumbnailUrl(controller.videoUrls[index]);
-      if (thumbnailUrl != null && controller.lowDataMode.value) {
+      // Show cached image
+      if (controller.isImageLoaded(index)) {
         return CachedNetworkImage(
-          imageUrl: thumbnailUrl,
+          imageUrl: controller.imageUrls[index],
           fit: BoxFit.cover,
           placeholder: (context, url) => Container(
             color: Colors.grey[800],
@@ -271,20 +266,11 @@ class View360 extends StatelessWidget {
         );
       }
 
-      // Show video preview if loaded
-      if (controller.isVideoLoaded(index)) {
-        final videoController = controller.gridVideoControllers[index]!;
-        return AspectRatio(
-          aspectRatio: videoController.value.aspectRatio,
-          child: VideoPlayer(videoController),
-        );
-      }
-
-      // Initialize video controller on demand
-      if (!controller.isVideoLoading(index) &&
-          !controller.hasVideoError(index)) {
+      // Initialize image loading on demand
+      if (!controller.isImageLoading(index) &&
+          !controller.hasImageError(index)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          controller.initializeGridVideoController(index);
+          controller.preloadGridImage(index);
         });
       }
 
@@ -293,7 +279,7 @@ class View360 extends StatelessWidget {
         color: Colors.grey[800],
         child: const Center(
           child: Icon(
-            Icons.video_library,
+            Icons.panorama_photosphere,
             color: Colors.white54,
             size: 50,
           ),
@@ -329,8 +315,7 @@ class View360 extends StatelessWidget {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () {
-              // final controller = Get.find<VR360Controller>();
-              // controller._detectLowDataMode();
+              // Retry connection
             },
             child: const Text('Retry'),
           ),
@@ -339,19 +324,19 @@ class View360 extends StatelessWidget {
     );
   }
 
-  Widget _buildNoVideosState() {
+  Widget _buildNoImagesState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.video_library_outlined,
+            Icons.panorama_photosphere_outlined,
             size: 80,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            'No VR Videos Available',
+            'No Panoramic Images Available',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -360,7 +345,7 @@ class View360 extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'VR content will appear here when available',
+            'Panoramic content will appear here when available',
             style: TextStyle(color: Colors.grey[600]),
           ),
         ],
@@ -368,76 +353,70 @@ class View360 extends StatelessWidget {
     );
   }
 
-  void _openVRPlayer(BuildContext context, String videoUrl) {
-    final controller = Get.find<VR360Controller>();
-    controller.pauseAllGridVideos();
-
+  void _openPanoramaViewer(BuildContext context, String imageUrl) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => VRPlayerScreen(videoUrl: videoUrl),
+        builder: (context) => PanoramaViewerScreen(imageUrl: imageUrl),
       ),
     );
   }
 }
 
-class VRPlayerScreen extends StatefulWidget {
-  final String videoUrl;
+class PanoramaViewerScreen extends StatefulWidget {
+  final String imageUrl;
 
-  const VRPlayerScreen({super.key, required this.videoUrl});
+  const PanoramaViewerScreen({super.key, required this.imageUrl});
 
   @override
-  State<VRPlayerScreen> createState() => _VRPlayerScreenState();
+  State<PanoramaViewerScreen> createState() => _PanoramaViewerScreenState();
 }
 
-class _VRPlayerScreenState extends State<VRPlayerScreen> {
-  late VR360Controller controller;
-  bool _vrSupported = true;
-  VideoPlayerController? _fallbackController;
+class _PanoramaViewerScreenState extends State<PanoramaViewerScreen> {
+  late Panorama360Controller controller;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    controller = Get.find<VR360Controller>();
-    _checkVRSupport();
+    controller = Get.find<Panorama360Controller>();
+    _initializePanorama();
   }
 
-  @override
-  void dispose() {
-    _fallbackController?.dispose();
-    super.dispose();
-  }
-
-  Future<void> _checkVRSupport() async {
+  Future<void> _initializePanorama() async {
     try {
-      // Test VR initialization with timeout
-      await Future.delayed(const Duration(milliseconds: 500));
-      // If VR fails to initialize in 5 seconds, fallback to regular video
-      Timer(const Duration(seconds: 5), () {
-        if (controller.isLoading.value && !controller.hasError.value) {
-          setState(() {
-            _vrSupported = false;
-          });
-          _initializeFallbackPlayer();
-        }
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+        _errorMessage = '';
+      });
+
+      // Validate image URL
+      if (!controller.isValidImageUrl(widget.imageUrl)) {
+        throw Exception('Invalid image URL format');
+      }
+
+      // Preload the image
+      await precacheImage(NetworkImage(widget.imageUrl), context);
+
+      setState(() {
+        _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _vrSupported = false;
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = controller.getUserFriendlyErrorMessage(e.toString());
       });
-      _initializeFallbackPlayer();
-    }
-  }
 
-  Future<void> _initializeFallbackPlayer() async {
-    try {
-      _fallbackController = VideoPlayerController.network(widget.videoUrl);
-      await _fallbackController!.initialize();
-      await _fallbackController!.setLooping(true);
-      await _fallbackController!.play();
-      setState(() {});
-    } catch (e) {
-      print('Fallback player failed: $e');
+      Get.snackbar(
+        'Panorama Error',
+        _errorMessage,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+      );
     }
   }
 
@@ -447,210 +426,145 @@ class _VRPlayerScreenState extends State<VRPlayerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // VR Player (if supported)
-          if (_vrSupported)
-            Obx(() => Stack(
+          // Panorama Viewer
+          if (!_isLoading && !_hasError)
+            PanoramaViewer(
+              child: Image.network(
+                widget.imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : null,
+                      color: Colors.white,
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[800],
+                    child: const Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        color: Colors.white54,
+                        size: 80,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // Loading state
+          if (_isLoading)
+            Container(
+              color: Colors.black,
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (!controller.hasError.value)
-                      VrPlayer(
-                        x: 0,
-                        y: 0,
-                        width: MediaQuery.of(context).size.width,
-                        height: MediaQuery.of(context).size.height,
-                        onCreated: (vrController, _) {
-                          controller.initializeVRPlayer(
-                              widget.videoUrl, vrController);
-                        },
-                      ),
-
-                    // VR Error state
-                    if (controller.hasError.value)
-                      Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 80,
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'VR Player Not Supported',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Switching to regular video player...',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _vrSupported = false;
-                                });
-                                _initializeFallbackPlayer();
-                              },
-                              child: const Text('Use Regular Player'),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // VR Loading state
-                    if (controller.isLoading.value)
-                      Container(
-                        color: Colors.black54,
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: Colors.white),
-                              SizedBox(height: 16),
-                              Text(
-                                'Loading VR Video...',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                    // VR Controls overlay
-                    if (!controller.isLoading.value &&
-                        !controller.hasError.value)
-                      Positioned(
-                        bottom: 40,
-                        left: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _buildControlButton(
-                                icon: controller.isPlaying.value
-                                    ? Icons.pause
-                                    : Icons.play_arrow,
-                                onPressed: controller.togglePlayPause,
-                                tooltip: controller.isPlaying.value
-                                    ? 'Pause'
-                                    : 'Play',
-                              ),
-                              _buildControlButton(
-                                icon: controller.isVRMode.value
-                                    ? Icons.vrpano
-                                    : Icons.vrpano_outlined,
-                                onPressed: controller.toggleVRMode,
-                                tooltip: 'Toggle VR Mode',
-                              ),
-                              _buildControlButton(
-                                icon: Icons.video_library,
-                                onPressed: () {
-                                  setState(() {
-                                    _vrSupported = false;
-                                  });
-                                  _initializeFallbackPlayer();
-                                },
-                                tooltip: 'Regular Player',
-                              ),
-                              _buildControlButton(
-                                icon: Icons.close,
-                                onPressed: () => Navigator.pop(context),
-                                tooltip: 'Close',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading Panoramic Image...',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ],
-                )),
+                ),
+              ),
+            ),
 
-          // Fallback Video Player
-          if (!_vrSupported)
-            Stack(
-              children: [
-                if (_fallbackController != null &&
-                    _fallbackController!.value.isInitialized)
-                  Center(
-                    child: AspectRatio(
-                      aspectRatio: _fallbackController!.value.aspectRatio,
-                      child: VideoPlayer(_fallbackController!),
+          // Error state
+          if (_hasError)
+            Container(
+              color: Colors.black,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 80,
                     ),
-                  )
-                else
-                  const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: Colors.white),
-                        SizedBox(height: 16),
-                        Text(
-                          'Loading Video...',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Fallback Controls
-                if (_fallbackController != null &&
-                    _fallbackController!.value.isInitialized)
-                  Positioned(
-                    bottom: 40,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildControlButton(
-                            icon: _fallbackController!.value.isPlaying
-                                ? Icons.pause
-                                : Icons.play_arrow,
-                            onPressed: () {
-                              setState(() {
-                                if (_fallbackController!.value.isPlaying) {
-                                  _fallbackController!.pause();
-                                } else {
-                                  _fallbackController!.play();
-                                }
-                              });
-                            },
-                            tooltip: _fallbackController!.value.isPlaying
-                                ? 'Pause'
-                                : 'Play',
-                          ),
-                          _buildControlButton(
-                            icon: Icons.fullscreen,
-                            onPressed: () {
-                              SystemChrome.setPreferredOrientations([
-                                DeviceOrientation.landscapeLeft,
-                                DeviceOrientation.landscapeRight,
-                              ]);
-                            },
-                            tooltip: 'Fullscreen',
-                          ),
-                          _buildControlButton(
-                            icon: Icons.close,
-                            onPressed: () {
-                              SystemChrome.setPreferredOrientations(
-                                  [DeviceOrientation.portraitUp]);
-                              Navigator.pop(context);
-                            },
-                            tooltip: 'Close',
-                          ),
-                        ],
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Failed to Load Panoramic Image',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: 8),
+                    Text(
+                      _errorMessage,
+                      style: const TextStyle(color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _initializePanorama,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Controls overlay
+          if (!_isLoading && !_hasError)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildControlButton(
+                      icon: Icons.panorama_photosphere,
+                      onPressed: () {
+                        Get.snackbar(
+                          'Info',
+                          'Drag to look around in 360°',
+                          snackPosition: SnackPosition.BOTTOM,
+                        );
+                      },
+                      tooltip: 'Panorama Mode',
+                    ),
+                    _buildControlButton(
+                      icon: Icons.fullscreen,
+                      onPressed: () {
+                        SystemChrome.setPreferredOrientations([
+                          DeviceOrientation.landscapeLeft,
+                          DeviceOrientation.landscapeRight,
+                        ]);
+                      },
+                      tooltip: 'Fullscreen',
+                    ),
+                    _buildControlButton(
+                      icon: Icons.refresh,
+                      onPressed: _initializePanorama,
+                      tooltip: 'Refresh',
+                    ),
+                    _buildControlButton(
+                      icon: Icons.close,
+                      onPressed: () {
+                        SystemChrome.setPreferredOrientations(
+                            [DeviceOrientation.portraitUp]);
+                        Navigator.pop(context);
+                      },
+                      tooltip: 'Close',
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
       ),
