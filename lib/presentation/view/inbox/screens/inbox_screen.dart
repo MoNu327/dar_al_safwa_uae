@@ -194,9 +194,12 @@
 // }
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
 import 'package:dar_al_safwa/presentation/view/inbox/controller/inbox_controller.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/no_internet_widegt.dart';
+import 'package:dar_al_safwa/presentation/widgets/periodic_text_swapper_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -207,6 +210,7 @@ import '../../search/screens/search_screen.dart';
 
 class InboxScreen extends StatelessWidget {
   final ChatController controller = Get.put(ChatController());
+
   final NetworkController networkController = Get.find<NetworkController>();
   InboxScreen({super.key});
   @override
@@ -291,6 +295,9 @@ class InboxScreen extends StatelessWidget {
           itemCount: controller.conversations.length,
           itemBuilder: (context, index) {
             final chat = controller.conversations[index];
+            final id = int.tryParse(chat["propertyId"]);
+            // propertyDetailsController.fetchPropertyDetails(id ?? 0);
+
             final otherUser = chat['otherUser'] as Map<String, dynamic>;
             final unreadCount = (chat['unreadCount']
                     as Map?)?[controller.auth.currentUser?.uid] ??
@@ -325,6 +332,16 @@ class InboxScreen extends StatelessWidget {
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // PeriodicTextSwapperWidget(
+                        //   text1: otherUser['displayName'] ?? 'Unknown',
+                        //   text2: propertyDetailsController
+                        //           .property.value?.title?.en ??
+                        //       'Unknown Property',
+                        //   key: ValueKey(chat['id'].toString() ?? index),
+                        //   interval: const Duration(seconds: 30),
+                        //   enableFade: true,
+                        // ),
+
                         CustomTextWidget(
                           title: otherUser['displayName'] ?? 'Unknown',
                           color: AppColors.black,

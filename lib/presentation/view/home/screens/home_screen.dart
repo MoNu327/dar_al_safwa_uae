@@ -230,6 +230,8 @@ class HomeScreen extends StatelessWidget {
                             final property = popularProperties[index];
                             return GestureDetector(
                               onTap: () {
+                                debugPrint(
+                                    "Property Id from popuar properties ==> ${property.id}");
                                 Get.toNamed('/propertyDetails',
                                     arguments: {'propertyId': property.id});
                               },

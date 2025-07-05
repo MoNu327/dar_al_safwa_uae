@@ -15,7 +15,7 @@ class PropertyDetailsController extends GetxController {
   var featuresAndAmenities = <Map<String, dynamic>>[].obs;
   var regulatoryInfo = <Map<String, String>>[].obs;
   var nearbyLocations = <Map<String, dynamic>>[].obs;
-  var idParams = 1.obs;
+  var idParams = 0.obs;
   final ApiService apiService = ApiService();
   final isLoading = false.obs;
   final property = Rx<Property?>(null);
@@ -37,10 +37,12 @@ class PropertyDetailsController extends GetxController {
 
     final arguments = Get.arguments;
     if (arguments != null && arguments['propertyId'] != null) {
+      debugPrint("Id from Params ${arguments['propertyId'].toString()}");
       idParams.value = arguments['propertyId'];
-      debugPrint(idParams.value.toString());
+      debugPrint("Id from Params ${idParams.value.toString()}");
       fetchPropertyDetails(idParams.value);
     } else {
+      debugPrint("Else Id from Params ${idParams.value.toString()}");
       fetchPropertyDetails(idParams.value);
     }
   }

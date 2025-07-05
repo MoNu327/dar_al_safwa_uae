@@ -1,4 +1,5 @@
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/property_interests_controller.dart';
+import 'package:dar_al_safwa/presentation/view/inbox/controller/inbox_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/loader_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class _PropertyInteractionPageState extends State<PropertyInteractionPage> {
 
   PropertyInterestController _controller =
       Get.put(PropertyInterestController());
+  final ChatController chatController = Get.find<ChatController>();
   // AuthService _authService = Get.put(AuthService());
 
   @override
@@ -786,6 +788,16 @@ class _PropertyInteractionPageState extends State<PropertyInteractionPage> {
                             size: smallIconSize,
                           ),
                           onPressed: () {
+                            final agentEmail =
+                                FirebaseAuth.instance.currentUser?.email ?? "";
+                            ''; // Get email from otherUser data
+                            // final propertyName = chat['propertyId'] ??
+                            //     'Unknown Property'; // Get property name
+
+                            debugPrint('Chat ID: ${interest.firebaseChatId}');
+                            chatController.navigateToAgentChat(agentEmail,
+                                propertyId: interest.propertyId,
+                                chatId: interest.firebaseChatId);
                             // Navigate to chat detail page
                             // You can use interest.firebaseChatId for navigation
                           },

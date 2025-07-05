@@ -10,10 +10,11 @@ class Panorama360Controller extends GetxController {
   final RxMap<int, bool> gridImageLoaded = <int, bool>{}.obs;
 
   // For panorama viewer
-  final RxBool isLoading = true.obs;
-  final RxBool hasError = false.obs;
-  final RxBool isLandscape = true.obs;
-  final RxString errorMessage = ''.obs;
+  final RxBool panoramaLoading = true.obs;
+  final RxBool panoramaError = false.obs;
+  final RxBool isLandscape = false.obs;
+  final RxString panoramaErrorMessage = ''.obs;
+  final RxString currentImageUrl = ''.obs;
 
   // Performance optimizations
   final RxBool isConnected = true.obs;
@@ -34,18 +35,13 @@ class Panorama360Controller extends GetxController {
 
   @override
   void onClose() {
-    // Clear all image loading states
     gridImageLoading.clear();
     gridImageError.clear();
     gridImageLoaded.clear();
-
-    // Reset orientation
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-
     super.onClose();
   }
 
-  // Setup connectivity monitoring
   void _setupConnectivityListener() {
     Connectivity()
         .onConnectivityChanged
@@ -54,13 +50,10 @@ class Panorama360Controller extends GetxController {
           results.isNotEmpty ? results.first : ConnectivityResult.none;
       isConnected.value = result != ConnectivityResult.none;
       connectionType.value = result.toString();
-
-      // Enable low data mode on mobile networks
       lowDataMode.value = result == ConnectivityResult.mobile;
     });
   }
 
-  // Detect low data mode based on connection
   void _detectLowDataMode() async {
     final connectivityResult = await Connectivity().checkConnectivity();
     isConnected.value = connectivityResult != ConnectivityResult.none;
@@ -68,16 +61,12 @@ class Panorama360Controller extends GetxController {
     lowDataMode.value = connectivityResult == ConnectivityResult.mobile;
   }
 
-  // Update visible range for lazy loading
   void updateVisibleRange(int startIndex, int endIndex) {
     visibleStartIndex.value = startIndex;
     visibleEndIndex.value = endIndex;
-
-    // Clear loading states for images outside visible range
     _clearInvisibleImageStates();
   }
 
-  // Clear loading states for images outside visible range
   void _clearInvisibleImageStates() {
     final statesToClear = <int>[];
 
@@ -95,12 +84,30 @@ class Panorama360Controller extends GetxController {
     }
   }
 
-  // Preload grid image with optimization
-  Future<void> preloadGridImage(int index) async {
-    if (gridImageLoaded[index] == true ||
-        gridImageLoading[index] == true) return;
+  Future<void> initializePanorama(String imageUrl) async {
+    try {
+      panoramaLoading.value = true;
+      panoramaError.value = false;
+      panoramaErrorMessage.value = '';
+      currentImageUrl.value = imageUrl;
 
-    // Check if we should load based on data mode
+      if (!isValidImageUrl(imageUrl)) {
+        throw Exception('Invalid image URL format');
+      }
+
+      // The actual image loading will be handled by the Image.network widget
+      panoramaLoading.value = false;
+    } catch (e) {
+      panoramaLoading.value = false;
+      panoramaError.value = true;
+      panoramaErrorMessage.value = getUserFriendlyErrorMessage(e.toString());
+    }
+  }
+
+  Future<void> preloadGridImage(int index) async {
+    if (gridImageLoaded[index] == true || gridImageLoading[index] == true)
+      return;
+
     if (lowDataMode.value && !_shouldLoadInLowDataMode(index)) {
       return;
     }
@@ -109,34 +116,26 @@ class Panorama360Controller extends GetxController {
       gridImageLoading[index] = true;
       gridImageError[index] = false;
 
-      // Validate URL
       if (index >= imageUrls.length ||
           imageUrls[index].isEmpty ||
           !isValidImageUrl(imageUrls[index])) {
         throw Exception('Invalid image URL');
       }
 
-      // The image will be loaded by CachedNetworkImage
-      // We just mark it as loaded for state management
       gridImageLoaded[index] = true;
       gridImageLoading[index] = false;
     } catch (e) {
       gridImageLoading[index] = false;
       gridImageError[index] = true;
-
-      // Don't show snackbar for every error, just log
       print('Failed to load image preview $index: ${e.toString()}');
     }
   }
 
-  // Check if should load in low data mode
   bool _shouldLoadInLowDataMode(int index) {
-    // Only load images in visible range + 1 buffer
     return index >= visibleStartIndex.value - 1 &&
         index <= visibleEndIndex.value + 1;
   }
 
-  // Validate image URL
   bool isValidImageUrl(String url) {
     try {
       final uri = Uri.parse(url);
@@ -153,7 +152,6 @@ class Panorama360Controller extends GetxController {
     }
   }
 
-  // Get user-friendly error message
   String getUserFriendlyErrorMessage(String error) {
     if (error.contains('timeout')) {
       return 'Image loading took too long. Please check your connection.';
@@ -166,7 +164,6 @@ class Panorama360Controller extends GetxController {
     }
   }
 
-  // Toggle screen orientation
   Future<void> toggleOrientation() async {
     try {
       if (isLandscape.value) {
@@ -184,20 +181,14 @@ class Panorama360Controller extends GetxController {
     }
   }
 
-  // Preload next image for smoother experience
   Future<void> preloadNextImage(int currentIndex) async {
     final nextIndex = currentIndex + 1;
-    if (nextIndex < imageUrls.length &&
-        gridImageLoaded[nextIndex] != true) {
+    if (nextIndex < imageUrls.length && gridImageLoaded[nextIndex] != true) {
       await preloadGridImage(nextIndex);
     }
   }
 
-  // Get thumbnail URL for faster loading (if applicable)
   String? getThumbnailUrl(String imageUrl) {
-    // For regular images, we can return a lower resolution version
-    // This is a basic implementation - you might want to use a service
-    // that provides different image sizes
     if (imageUrl.contains('?')) {
       return '$imageUrl&w=300&h=200';
     } else {
@@ -205,29 +196,24 @@ class Panorama360Controller extends GetxController {
     }
   }
 
-  // Check if image is already loaded
   bool isImageLoaded(int index) {
     return gridImageLoaded[index] ?? false;
   }
 
-  // Check if image is loading
   bool isImageLoading(int index) {
     return gridImageLoading[index] ?? false;
   }
 
-  // Check if image has error
   bool hasImageError(int index) {
     return gridImageError[index] ?? false;
   }
 
-  // Clear all image states
   void clearAllImageStates() {
     gridImageLoading.clear();
     gridImageError.clear();
     gridImageLoaded.clear();
   }
 
-  // Refresh image at specific index
   Future<void> refreshImage(int index) async {
     gridImageLoading[index] = false;
     gridImageError[index] = false;
@@ -235,12 +221,10 @@ class Panorama360Controller extends GetxController {
     await preloadGridImage(index);
   }
 
-  // Get image quality based on data mode
   String getImageQuality() {
     return lowDataMode.value ? 'low' : 'high';
   }
 
-  // Check if image should be preloaded based on connection
   bool shouldPreloadImage() {
     return isConnected.value && !lowDataMode.value;
   }

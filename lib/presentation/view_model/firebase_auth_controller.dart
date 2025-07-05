@@ -943,7 +943,9 @@ class AuthService extends GetxController {
       final userDoc =
           await _firestore.collection('agents').doc(credential.user?.uid).get();
 
-      if (userDoc.exists && userDoc.data()?['role'] == 'agent') {
+      if (userDoc.exists &&
+          userDoc.data()?['role'] == 'agent' &&
+          userDoc.data()?['status'] == 'approved') {
         debugPrint('Agent verification successful');
         userRole.value = 'agent';
         // Store user details for app-wide access
@@ -972,7 +974,8 @@ class AuthService extends GetxController {
       } else {
         debugPrint('Account is not registered as an agent');
         await auth.signOut();
-        Get.snackbar('Error', 'This account is not registered as an agent');
+        Get.snackbar('Error',
+            '"Sorry! Your account isn’t registered as an agent yet or still needs approval. Please contact support if you think this is a mistake."');
         return null;
       }
     } on FirebaseAuthException catch (e) {

@@ -363,211 +363,163 @@ class View360 extends StatelessWidget {
   }
 }
 
-class PanoramaViewerScreen extends StatefulWidget {
+class PanoramaViewerScreen extends StatelessWidget {
   final String imageUrl;
 
   const PanoramaViewerScreen({super.key, required this.imageUrl});
 
   @override
-  State<PanoramaViewerScreen> createState() => _PanoramaViewerScreenState();
-}
-
-class _PanoramaViewerScreenState extends State<PanoramaViewerScreen> {
-  late Panorama360Controller controller;
-  bool _isLoading = true;
-  bool _hasError = false;
-  String _errorMessage = '';
-
-  @override
-  void initState() {
-    super.initState();
-    controller = Get.find<Panorama360Controller>();
-    _initializePanorama();
-  }
-
-  Future<void> _initializePanorama() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _hasError = false;
-        _errorMessage = '';
-      });
-
-      // Validate image URL
-      if (!controller.isValidImageUrl(widget.imageUrl)) {
-        throw Exception('Invalid image URL format');
-      }
-
-      // Preload the image
-      await precacheImage(NetworkImage(widget.imageUrl), context);
-
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-        _errorMessage = controller.getUserFriendlyErrorMessage(e.toString());
-      });
-
-      Get.snackbar(
-        'Panorama Error',
-        _errorMessage,
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 3),
-      );
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final controller = Get.find<Panorama360Controller>();
+    controller.initializePanorama(imageUrl);
+
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Panorama Viewer
-          if (!_isLoading && !_hasError)
-            PanoramaViewer(
-              child: Image.network(
-                widget.imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                      color: Colors.white,
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[800],
-                    child: const Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        color: Colors.white54,
+      body: Obx(() {
+        return Stack(
+          children: [
+            // Panorama Viewer
+            if (!controller.panoramaLoading.value &&
+                !controller.panoramaError.value)
+              PanoramaViewer(
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                        color: Colors.white,
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[800],
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image,
+                          color: Colors.white54,
+                          size: 80,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // Loading state
+            if (controller.panoramaLoading.value)
+              Container(
+                color: Colors.black,
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: Colors.white),
+                      SizedBox(height: 16),
+                      Text(
+                        'Loading Panoramic Image...',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Error state
+            if (controller.panoramaError.value)
+              Container(
+                color: Colors.black,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.red,
                         size: 80,
                       ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-          // Loading state
-          if (_isLoading)
-            Container(
-              color: Colors.black,
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: Colors.white),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading Panoramic Image...',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Error state
-          if (_hasError)
-            Container(
-              color: Colors.black,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                      size: 80,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Failed to Load Panoramic Image',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Failed to Load Panoramic Image',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _errorMessage,
-                      style: const TextStyle(color: Colors.grey),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: _initializePanorama,
-                      child: const Text('Retry'),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Text(
+                        controller.panoramaErrorMessage.value,
+                        style: const TextStyle(color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () =>
+                            controller.initializePanorama(imageUrl),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-          // Controls overlay
-          if (!_isLoading && !_hasError)
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildControlButton(
-                      icon: Icons.panorama_photosphere,
-                      onPressed: () {
-                        Get.snackbar(
-                          'Info',
-                          'Drag to look around in 360°',
-                          snackPosition: SnackPosition.BOTTOM,
-                        );
-                      },
-                      tooltip: 'Panorama Mode',
-                    ),
-                    _buildControlButton(
-                      icon: Icons.fullscreen,
-                      onPressed: () {
-                        SystemChrome.setPreferredOrientations([
-                          DeviceOrientation.landscapeLeft,
-                          DeviceOrientation.landscapeRight,
-                        ]);
-                      },
-                      tooltip: 'Fullscreen',
-                    ),
-                    _buildControlButton(
-                      icon: Icons.refresh,
-                      onPressed: _initializePanorama,
-                      tooltip: 'Refresh',
-                    ),
-                    _buildControlButton(
-                      icon: Icons.close,
-                      onPressed: () {
-                        SystemChrome.setPreferredOrientations(
-                            [DeviceOrientation.portraitUp]);
-                        Navigator.pop(context);
-                      },
-                      tooltip: 'Close',
-                    ),
-                  ],
+            // Controls overlay
+            if (!controller.panoramaLoading.value &&
+                !controller.panoramaError.value)
+              Positioned(
+                bottom: 40,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildControlButton(
+                        icon: Icons.panorama_photosphere,
+                        onPressed: () {
+                          Get.snackbar(
+                            'Info',
+                            'Drag to look around in 360°',
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        },
+                        tooltip: 'Panorama Mode',
+                      ),
+                      _buildControlButton(
+                        icon: Icons.fullscreen,
+                        onPressed: controller.toggleOrientation,
+                        tooltip: 'Fullscreen',
+                      ),
+                      _buildControlButton(
+                        icon: Icons.refresh,
+                        onPressed: () =>
+                            controller.initializePanorama(imageUrl),
+                        tooltip: 'Refresh',
+                      ),
+                      _buildControlButton(
+                        icon: Icons.close,
+                        onPressed: () {
+                          SystemChrome.setPreferredOrientations(
+                              [DeviceOrientation.portraitUp]);
+                          Navigator.pop(context);
+                        },
+                        tooltip: 'Close',
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
-      ),
+          ],
+        );
+      }),
     );
   }
 

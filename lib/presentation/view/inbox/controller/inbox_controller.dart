@@ -62,6 +62,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -198,6 +199,30 @@ class ChatController extends GetxController {
   Future<void> refreshConversations() async {
     await _fetchConversations();
   }
+
+  // Future<void> refreshConversations() async {
+  //   isLoading(true);
+  //   errorMessage('');
+  //   try {
+  //     final fetchedChats = await _fetchConversations();
+
+  //     // 🟢 Enrich conversations with property titles
+  //     for (var chat in conversations) {
+  //       final id = int.tryParse(chat["propertyId"]);
+  //       if (id != null) {
+  //         await controller.fetchPropertyDetails(id);
+  //         chat['propertyTitle'] = controller.property.value?.title?.en ??
+  //             'Unknown Property'; // ✅ add it dynamically
+  //       } else {
+  //         chat['propertyTitle'] = 'Unknown Property'; // fallback
+  //       }
+  //     }
+  //   } catch (e) {
+  //     errorMessage(e.toString());
+  //   } finally {
+  //     isLoading(false);
+  //   }
+  // }
 
   // In your PropertyDetailsController
   void navigateToAgentChat(String agentEmail,

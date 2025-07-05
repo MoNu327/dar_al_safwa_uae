@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/utils/core.dart';
+
 class CustomTextWidget extends StatelessWidget {
   const CustomTextWidget({
     super.key,
@@ -63,7 +65,9 @@ class CustomTextWidget extends StatelessWidget {
       combinedDecoration = TextDecoration.underline;
     }
     return Text(
-      title ?? "",
+      capitalizeFirstLetter(
+        title ?? "",
+      ),
       style: GoogleFonts.lato(
         color: color ?? AppColors.black,
         fontSize: calculatedFontSize,
