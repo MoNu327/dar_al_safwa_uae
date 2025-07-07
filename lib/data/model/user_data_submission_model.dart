@@ -13,6 +13,12 @@ class UserDataSubmissionModel {
   @JsonKey(name: 'last_name')
   final String lastName;
 
+  @JsonKey(name: 'propertyid')
+  final String propertyId;
+
+  @JsonKey(name: 'unitid')
+  final String unitId;
+
   @JsonKey(name: 'address')
   final String address;
 
@@ -35,6 +41,8 @@ class UserDataSubmissionModel {
     required this.nationality,
     required this.email,
     required this.mobile,
+    required this.propertyId,
+    required this.unitId,
     required this.passportNo,
     required this.visaNo,
     required this.fields,

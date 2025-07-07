@@ -17,6 +17,8 @@ UserDataSubmissionModel _$UserDataSubmissionModelFromJson(
       nationality: json['nationality'] as String,
       email: json['email'] as String,
       mobile: json['mobile'] as String,
+      propertyId: json['propertyid'] as String,
+      unitId: json['unitid'] as String,
       passportNo: json['passport_no'] as String,
       visaNo: json['visa_no'] as String,
       fields: (json['fields'] as List<dynamic>)
@@ -30,6 +32,8 @@ Map<String, dynamic> _$UserDataSubmissionModelToJson(
       'uid': instance.uid,
       'first_name': instance.firstName,
       'last_name': instance.lastName,
+      'propertyid': instance.propertyId,
+      'unitid': instance.unitId,
       'address': instance.address,
       'poNo': instance.poNo,
       'nationality': instance.nationality,

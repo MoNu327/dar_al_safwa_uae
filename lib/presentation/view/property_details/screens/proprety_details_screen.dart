@@ -16,12 +16,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../view_model/firebase_auth_controller.dart';
+import '../widgets/property_unit_selector_widget.dart';
+
 class PropertyDetailsScreen extends StatelessWidget {
   PropertyDetailsScreen({super.key});
 
   final LocalizationController localizationController = Get.find();
   final PropertyDetailsController propertyDetailsController =
       Get.put(PropertyDetailsController());
+
+  final AuthService auth = Get.find();
   final VideoController videoController = Get.put(VideoController());
   final isArabic = Get.locale?.languageCode == 'ar';
 
@@ -33,7 +38,6 @@ class PropertyDetailsScreen extends StatelessWidget {
           final isLoading = propertyDetailsController.isLoading.value;
           final errorMessage = propertyDetailsController.errorMessage.value;
           final property = propertyDetailsController.property.value;
-
           // Loading state
           if (isLoading) {
             return const Center(child: CustomLoaderWidget());
@@ -152,26 +156,64 @@ class PropertyDetailsScreen extends StatelessWidget {
                             ),
                           ),
 
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: screenWidth * 0.01,
-                                vertical: screenHeight * 0.01,
+                        auth.userRole == "agent"
+                            ? SizedBox.shrink()
+                            : Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.01,
+                                      vertical: screenHeight * 0.01,
+                                    ),
+                                    child: CustomButtonWidget(
+                                      onPressed: () {
+                                        Get.to(
+                                          UserDetailsSubmission(),
+                                          arguments: {
+                                            'propertyId':
+                                                property?.id?.toString() ?? '0',
+                                            'unitId': "1",
+                                          },
+                                        );
+                                        // if (property.unitTypes?.data == null ||
+                                        //     property.unitTypes!.data!.isEmpty) {
+                                        //   Get.snackbar(
+                                        //     'No Units Available',
+                                        //     'There are no units available for booking.',
+                                        //     snackPosition: SnackPosition.BOTTOM,
+                                        //   );
+                                        // } else {
+                                        //   Get.dialog(
+                                        //     UnitTypeSelector(
+                                        //       unitTypes:
+                                        //           property.unitTypes!.data!,
+                                        //       initialSelection: property
+                                        //           .unitTypes!.data!.first.id!,
+                                        //       onSelectionConfirmed:
+                                        //           (selectedId) {
+                                        //         Get.to(
+                                        //           UserDetailsSubmission(),
+                                        //           arguments: {
+                                        //             'propertyId': property.id,
+                                        //             'unitId': selectedId,
+                                        //           },
+                                        //         );
+                                        //       },
+                                        //     ),
+                                        //     barrierDismissible:
+                                        //         false, // Force user to make a selection
+                                        //   );
+                                        // }
+                                      },
+                                      borderColor: AppColors.white,
+                                      buttonTextColor: AppColors.secondaryColor,
+                                      buttonHeight: screenHeight * 0.04,
+                                      buttonWidth: screenWidth * 0.35,
+                                      buttonTitle: "Book Now !",
+                                      buttonColor: AppColors.primaryColor,
+                                    )),
                               ),
-                              child: CustomButtonWidget(
-                                onPressed: () {
-                                  Get.to(UserDetailsSubmission());
-                                },
-                                borderColor: AppColors.white,
-                                buttonTextColor: AppColors.secondaryColor,
-                                buttonHeight: screenHeight * 0.04,
-                                buttonWidth: screenWidth * 0.35,
-                                buttonTitle: "Book Now !",
-                                buttonColor: AppColors.primaryColor,
-                              )),
-                        ),
                       ],
                     ),
                     Row(

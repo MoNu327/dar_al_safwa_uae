@@ -9,6 +9,8 @@ class UserDataSubmissionController extends GetxController {
   RxBool isEditMode = true.obs;
 
   Rx<UserDataSubmissionModel> user = UserDataSubmissionModel(
+      propertyId: '',
+      unitId: '',
       uid: '',
       firstName: '',
       lastName: '',
@@ -44,6 +46,8 @@ class UserDataSubmissionController extends GetxController {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
     if (args != null && args is Map<String, dynamic>) {
       user.value = UserDataSubmissionModel(
+        propertyId: '',
+        unitId: '',
         uid: uid,
         firstName: args['firstName'] ?? '',
         lastName: args['lastName'] ?? '',

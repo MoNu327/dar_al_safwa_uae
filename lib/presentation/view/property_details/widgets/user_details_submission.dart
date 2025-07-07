@@ -21,6 +21,9 @@ class UserDetailsSubmission extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(UserDataSubmissionController());
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    final propertyId = args['propertyId']?.toString() ?? '0';
+    final unitId = args['unitId']?.toString() ?? '0';
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -200,6 +203,8 @@ class UserDetailsSubmission extends StatelessWidget {
                       onPressed: () {
                         if (_formKey.currentState!.validate()) {
                           controller.user.value = UserDataSubmissionModel(
+                            propertyId: propertyId,
+                            unitId: unitId,
                             uid: FirebaseAuth.instance.currentUser?.uid ?? "",
                             firstName: controller.firstNameCtrl.text,
                             lastName: controller.lastNameCtrl.text,

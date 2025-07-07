@@ -39,6 +39,19 @@ class ApiService {
     }
   }
 
+  Future<Response> getDynamicImage() async {
+    try {
+      final response = await apiClient.request(
+        "app-image",
+        method: "get",
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // register complaint
   Future<Response> insertComplaint(
       CreateComplaintRequest createComplaintRequest) async {

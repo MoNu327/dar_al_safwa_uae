@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
@@ -31,12 +32,31 @@ class LoginScreen extends StatelessWidget {
           child: Column(
             spacing: Get.height * 0.01,
             children: [
-              Image.asset(
-                "assets/images/apartment5.jpg",
-                width: double.infinity,
-                height: Get.height * 0.5,
-                fit: BoxFit.cover,
-              ),
+              Obx(() {
+                final imageUrl = loginController.image.value;
+                if (imageUrl == null || imageUrl.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    height: Get.height * 0.5,
+                    color: Colors.grey.shade300,
+                    child: const Center(child: Icon(Icons.image_not_supported)),
+                  );
+                }
+
+                return CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: double.infinity,
+                  height: Get.height * 0.5,
+                  fit: BoxFit.cover,
+                );
+              }),
+
+              // Image.asset(
+              //   "assets/images/apartment5.jpg",
+              //   width: double.infinity,
+              //   height: Get.height * 0.5,
+              //   fit: BoxFit.cover,
+              // ),
               Stack(
                 children: [
                   Center(
