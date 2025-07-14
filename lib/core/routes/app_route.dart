@@ -13,6 +13,7 @@ import 'package:dar_al_safwa/presentation/view/agent/screens/signin_screen.dart'
 import 'package:dar_al_safwa/presentation/view/agent/screens/signup_screen.dart';
 import 'package:dar_al_safwa/presentation/view/profile/screens/profile_screen.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/screens/proprety_details_screen.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_details_submission.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/view_gallery.dart';
 import 'package:dar_al_safwa/presentation/view/property_listings/screens/property_listings.dart';
 import 'package:dar_al_safwa/presentation/view/search/screens/search_screen.dart';
@@ -57,6 +58,9 @@ class AppRoute {
   static const String tenantPropertyList = '/tenantPropertyList';
   static const String tenantDocumentsList = '/tenantDocumentsList';
   static const String tenantTicketDetails = '/tenantTicketDetails';
+  static const String userDetailsSubmission = '/userDetailsSubmission';
+
+
 
   static final routes = [
     GetPage(
@@ -167,5 +171,10 @@ class AppRoute {
       name: error,
       page: () => const ErrorScreen(),
     ),
+    GetPage(
+  name: userDetailsSubmission,
+  page: () => UserDetailsSubmission(),
+),
+
   ];
 }

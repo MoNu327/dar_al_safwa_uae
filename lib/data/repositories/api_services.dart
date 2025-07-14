@@ -184,16 +184,20 @@ class ApiService {
       int count, String comments, int enqtype, String mobileNumber) async {
     // API Refining Needed
     try {
-      final response =
-          await apiClient.request("storeenquiry", method: "post", data: {
-        "uid": "A17flMQDsuQeN8FDchWup1AG2XI2",
-        "propertyid": PropertyId,
-        "unittype": unitType,
-        "count": count,
-        "comments": comments,
-        "enqtype": enqtype,
-        "mobile": mobileNumber
-      });
+      final response = await apiClient.request(
+  "storeenquiry", 
+  method: "post",
+  data: {
+    "uid": "A17flMQDsuQeN8FDchWup1AG2XI2",
+    "propertyid": PropertyId,
+    "unittype": unitType,
+    "count": count,
+    "comments": comments,
+    "enqtype": enqtype,
+    "mobile": mobileNumber
+  },
+);
+
 
       return response;
     } catch (e) {

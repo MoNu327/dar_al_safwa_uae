@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +20,7 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     // Set the status bar icon color
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark.copyWith(
       statusBarColor: Colors.black,

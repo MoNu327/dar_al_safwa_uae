@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
+import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/about_content.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/gallery.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/reviews.dart';
@@ -7,6 +8,7 @@ import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_det
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/view_360.dart';
 import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/video_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
@@ -166,53 +168,46 @@ class PropertyDetailsScreen extends StatelessWidget {
                                       horizontal: screenWidth * 0.01,
                                       vertical: screenHeight * 0.01,
                                     ),
-                                    child: CustomButtonWidget(
-                                      onPressed: () {
-                                        Get.to(
-                                          UserDetailsSubmission(),
-                                          arguments: {
-                                            'propertyId':
-                                                property?.id?.toString() ?? '0',
-                                            'unitId': "1",
-                                          },
-                                        );
-                                        // if (property.unitTypes?.data == null ||
-                                        //     property.unitTypes!.data!.isEmpty) {
-                                        //   Get.snackbar(
-                                        //     'No Units Available',
-                                        //     'There are no units available for booking.',
-                                        //     snackPosition: SnackPosition.BOTTOM,
-                                        //   );
-                                        // } else {
-                                        //   Get.dialog(
-                                        //     UnitTypeSelector(
-                                        //       unitTypes:
-                                        //           property.unitTypes!.data!,
-                                        //       initialSelection: property
-                                        //           .unitTypes!.data!.first.id!,
-                                        //       onSelectionConfirmed:
-                                        //           (selectedId) {
-                                        //         Get.to(
-                                        //           UserDetailsSubmission(),
-                                        //           arguments: {
-                                        //             'propertyId': property.id,
-                                        //             'unitId': selectedId,
-                                        //           },
-                                        //         );
-                                        //       },
-                                        //     ),
-                                        //     barrierDismissible:
-                                        //         false, // Force user to make a selection
-                                        //   );
-                                        // }
-                                      },
-                                      borderColor: AppColors.white,
-                                      buttonTextColor: AppColors.secondaryColor,
-                                      buttonHeight: screenHeight * 0.04,
-                                      buttonWidth: screenWidth * 0.35,
-                                      buttonTitle: "Book Now !",
-                                      buttonColor: AppColors.primaryColor,
-                                    )),
+                                      child: CustomButtonWidget(
+  onPressed: () {
+    if (auth.userRole == null || auth.userRole == "guest") {
+      // Show Snackbar
+      Get.snackbar(
+        "Login Required",
+        "You are a guest. Please login to book this property.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.shade100,
+        colorText: Colors.black,
+        duration: const Duration(seconds: 5),
+        margin: const EdgeInsets.all(12),
+      );
+
+      // Set redirect and navigate to login
+      final loginController = Get.put(LoginController());
+      loginController.postLoginRedirectArgs = {
+        'redirectToBooking': true,
+        'propertyId': property?.id ?? 0,
+      };
+      Get.toNamed(AppRoute.login);
+    } else {
+      // User is logged in, proceed to booking
+      Get.to(
+        () => UserDetailsSubmission(),
+        arguments: {
+          'propertyId': property?.id?.toString() ?? '0',
+          'unitId': "1",
+        },
+      );
+    }
+  },
+  borderColor: AppColors.white,
+  buttonTextColor: AppColors.secondaryColor,
+  buttonHeight: screenHeight * 0.04,
+  buttonWidth: screenWidth * 0.35,
+  buttonTitle: "Book Now !",
+  buttonColor: AppColors.primaryColor,
+)
+),
                               ),
                       ],
                     ),

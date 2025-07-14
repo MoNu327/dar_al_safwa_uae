@@ -8,6 +8,8 @@ import 'package:dar_al_safwa/data/model/agent_model.dart';
 import 'package:dar_al_safwa/data/model/technician_model.dart';
 import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
 import 'package:dar_al_safwa/domain/controller/technician_controller.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -451,82 +453,85 @@ class AuthService extends GetxController {
   //   }
   // }
 
-  // Google Sign-In for Users Only
-  Future<UserCredential?> signInWithGoogle() async {
-    try {
-      isSignInGoogle(true);
-      debugPrint('Starting Google sign-in...');
+// Google Sign-In for Users Only
+Future<UserCredential?> signInWithGoogle() async {
+  try {
+    isSignInGoogle(true);
+    debugPrint('Starting Google sign-in...');
 
-      // Check if Google Play Services is available
-      if (!await _googleSignIn.isSignedIn()) {
-        // Force sign out to ensure clean state
-        await _googleSignIn.signOut();
-      }
-
-      // Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        debugPrint('Google sign-in cancelled by user');
-        return null; // User cancelled sign-in
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      // Validate tokens
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        throw Exception('Failed to get Google authentication tokens');
-      }
-
-      // Create credentials
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Sign in to Firebase
-      final UserCredential userCredential =
-          await auth.signInWithCredential(credential);
-
-      if (userCredential.user == null) {
-        throw Exception('Failed to authenticate with Firebase');
-      }
-
-      // Check if this is a new user
-      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        debugPrint('New Google user detected');
-        // Don't automatically create account - show confirmation dialog
-        await _handleNewGoogleUser(userCredential.user!);
-      } else {
-        debugPrint('Existing Google user detected');
-        // Existing user - proceed with login
-        await _handleExistingGoogleUser(userCredential.user!);
-      }
-
-      return userCredential;
-    } on PlatformException catch (e) {
-      debugPrint(
-          'Platform exception during Google sign-in: ${e.code} - ${e.message}');
-      _handlePlatformException(e);
-      return null;
-    } on FirebaseAuthException catch (e) {
-      debugPrint('Firebase auth exception: ${e.code} - ${e.message}');
-
-      _handleFirebaseAuthException(e);
-      return null;
-    } catch (e) {
-      debugPrint('Unexpected error during Google sign-in: $e');
-      Get.snackbar(
-        'Error',
-        'Sign-in failed. Please try again.',
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[800],
-      );
-      return null;
-    } finally {
-      isSignInGoogle(false);
+    // Check if Google Play Services is available
+    if (!await _googleSignIn.isSignedIn()) {
+      // Force sign out to ensure clean state
+      await _googleSignIn.signOut();
     }
+
+    // Trigger Google Sign-In flow
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) {
+      debugPrint('Google sign-in cancelled by user');
+      return null; // User cancelled sign-in
+    }
+
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    // Validate tokens
+    if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+      throw Exception('Failed to get Google authentication tokens');
+    }
+
+    // Create credentials
+    final OAuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    // Sign in to Firebase
+    final UserCredential userCredential =
+        await auth.signInWithCredential(credential);
+
+    if (userCredential.user == null) {
+      throw Exception('Failed to authenticate with Firebase');
+    }
+
+    // Check if this is a new user
+    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+      debugPrint('New Google user detected');
+      // Don’t automatically create account – show confirmation dialog
+      await _handleNewGoogleUser(userCredential.user!);
+    } else {
+      debugPrint('Existing Google user detected');
+      // Existing user – proceed with login
+      await _handleExistingGoogleUser(userCredential.user!);
+    }
+
+    // ✅ Trigger post-login redirect logic
+    final loginController = Get.find<LoginController>();
+    loginController.handlePostLogin();
+
+    return userCredential;
+  } on PlatformException catch (e) {
+    debugPrint(
+        'Platform exception during Google sign-in: ${e.code} - ${e.message}');
+    _handlePlatformException(e);
+    return null;
+  } on FirebaseAuthException catch (e) {
+    debugPrint('Firebase auth exception: ${e.code} - ${e.message}');
+    _handleFirebaseAuthException(e);
+    return null;
+  } catch (e) {
+    debugPrint('Unexpected error during Google sign-in: $e');
+    Get.snackbar(
+      'Error',
+      'Sign-in failed. Please try again.',
+      backgroundColor: Colors.red[100],
+      colorText: Colors.red[800],
+    );
+    return null;
+  } finally {
+    isSignInGoogle(false);
   }
+}
 
 // Handle new Google user - ask for confirmation
   Future<void> _handleNewGoogleUser(User user) async {

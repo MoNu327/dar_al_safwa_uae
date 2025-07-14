@@ -1,7 +1,8 @@
 import 'dart:convert';
-
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_details_submission.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
@@ -15,44 +16,61 @@ class LoginController extends GetxController {
   final errorMessage = Rx<String?>(null);
   final isLoading = false.obs;
 
+  /// 🔁 Holds redirection info after login
+  Map<String, dynamic>? postLoginRedirectArgs;
+
   @override
   void onInit() {
     super.onInit();
-    // Set initial value
-
     fetchDynamicImage();
-    // Or do something async:
-    // fetchUserProfilePicture();
   }
 
-// Google sing-in
+  /// 🔁 Called after login to redirect user accordingly
+  void handlePostLogin() {
+  final args = postLoginRedirectArgs;
+
+  if (args != null && args['redirectToBooking'] == true) {
+    final propertyId = int.tryParse(args['propertyId']?.toString() ?? '0') ?? 0;
+
+    if (propertyId > 0) {
+      // Just go to PropertyDetailsScreen after login
+      Get.offNamedUntil(AppRoute.propertyDetails, (route) => false, arguments: {
+        'propertyId': propertyId,
+      });
+    } else {
+      Get.offAllNamed(AppRoute.home);
+    }
+  } else {
+    Get.offAllNamed(AppRoute.home);
+  }
+}
+
+
+  /// 🔐 Google Sign-In flow
   Future<void> loginWithGoogle() async {
     try {
       isGoogleLoading.value = true;
       debugPrint("Starting Google sign-in");
+
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
       if (googleUser == null) {
-        // The user canceled the login flow
         debugPrint("Google Sign-In canceled by user.");
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
-      // create a new credential
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // Sign in with credential
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
       debugPrint("Google sign-in success: ${userCredential.user?.displayName}");
 
-      navigateToHome();
+      // ✅ Post-login redirection
+      handlePostLogin();
     } catch (e) {
       debugPrint("Error signing in with Google: $e");
     } finally {
@@ -60,39 +78,32 @@ class LoginController extends GetxController {
     }
   }
 
-  // Logout function
+  /// 🔓 Logout the current user
   Future<void> logout() async {
     try {
-      await GoogleSignIn().signOut(); // Sign out from Google
-      await _auth.signOut(); // Sign out from Firebase
+      await GoogleSignIn().signOut();
+      await _auth.signOut();
       debugPrint("User successfully logged out.");
-
-      // Navigate to login screen after logout
       Get.offAllNamed(AppRoute.login);
     } catch (e) {
       debugPrint("Error signing out: $e");
     }
   }
 
+  /// 🔄 Dynamic image for login UI
   Future<void> fetchDynamicImage() async {
     try {
       isLoading(true);
       errorMessage(null);
-
       final response = await _service.getDynamicImage();
       debugPrint('🎉 API response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        // ❗ No jsonDecode here, because Dio has already decoded it
         final responseImage = response.data;
-
-        debugPrint("🔔 property response: ${responseImage['data']?['image']}");
         image(responseImage['data']?['image']);
-        debugPrint(
-            '👌 Image loaded successfully: ${responseImage['data']?['image']}');
+        debugPrint('👌 Image loaded successfully');
       } else {
-        debugPrint(
-            '😔 Failed to load image details: ${response.statusMessage}');
+        debugPrint('😔 Failed to load image: ${response.statusMessage}');
         throw Exception("Failed to load image details");
       }
     } catch (e) {
@@ -100,7 +111,7 @@ class LoginController extends GetxController {
       errorMessage(e.toString());
     } finally {
       isLoading(false);
-      debugPrint('fetchPropertyDetails completed');
+      debugPrint('fetchDynamicImage completed');
     }
   }
 
