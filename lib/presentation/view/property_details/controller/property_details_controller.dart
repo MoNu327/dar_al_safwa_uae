@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
@@ -12,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/model/property_details_model.dart';
+import '../../addmobilenumber/addmobilenumber.dart';
 
 class PropertyDetailsController extends GetxController {
   var propertyOverView = <Map<String, dynamic>>[].obs;
@@ -64,7 +66,8 @@ class PropertyDetailsController extends GetxController {
         debugPrint("🔔 property response: ${propertyResponse.data?.property}");
         property(propertyResponse.data?.property);
         debugPrint(
-            '👌 Property loaded successfully: ${propertyResponse.data?.property?.description?.en}');
+            '👌 Property loaded successfully: ${propertyResponse.data?.property
+                ?.description?.en}');
       } else {
         debugPrint(
             '😔 Failed to load property details: ${response.statusMessage}');
@@ -84,63 +87,145 @@ class PropertyDetailsController extends GetxController {
     }
   }
 
-Future postPropertyInterest(
-  String propertyId,
-  int unitType,
-  int count,
-  String comments,
-  int enqtype,
-  String mobileNumber,
-) async {
-  try {
-    isLoading(true);
-    errorMessage(null);
+  Future postPropertyInterest(
+      String propertyId,
+      int unitType,
+      int count,
+      String comments,
+      int enqtype,
+      String mobileNumber, {
+        String? unitId,
+        String? propertyName,
+        String? agentEmail,
+      }) async {
+    try {
+      isLoading(true);
+      errorMessage(null);
 
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final propertyIdParsed = int.tryParse(propertyId) ?? 0;
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final propertyIdParsed = int.tryParse(propertyId) ?? 0;
 
-    // 🔍 Log all fields for debugging
-    debugPrint('✅ Submitting property interest...');
-    debugPrint('🔑 UID: $uid');
-    debugPrint('🏠 Property ID: $propertyId (parsed: $propertyIdParsed)');
-    debugPrint('📦 Unit Type: $unitType');
-    debugPrint('🔢 Count: $count');
-    debugPrint('💬 Comments: $comments');
-    debugPrint('📞 Mobile: $mobileNumber');
-    debugPrint('📌 Enquiry Type: $enqtype');
+      final isFirstTime = await isFirstTimeUser(uid);
+      if ((mobileNumber.isEmpty || mobileNumber.trim() == "") && isFirstTime) {
+        debugPrint('⚠️ Mobile number missing for first-time user. Redirecting...');
 
-    final response = await apiService.postPropertyInterest(
-      uid,
-      propertyIdParsed,
-      unitType,
-      count,
-      comments,
-      enqtype,
-      "9400069615",
-    );
+        Get.snackbar(
+          "Mobile Number Required",
+          "Please update your mobile number to continue.",
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
+        );
 
-    debugPrint('🎉 API response status: ${response.statusCode}');
-    debugPrint("📨 Full response body: ${response.data}"); // 👈 Add this line here
+        final result = await Get.to(() => MobileNumberUpdatePage(
+          phone: mobileNumber,
+          propertyId: propertyId,
+          navigateToChat: true,
+          navigateToCall: false,
+          unitId: unitId,
+          propertyName: propertyName,
+          agentEmail: agentEmail,
+        ));
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final interestResponse = response.data;
-      debugPrint("🔔 Interest Response Raw: $interestResponse");
-      debugPrint('✅ Interest Posted: ${interestResponse["data"]}');
-      debugPrint(
-        '👌 Interest success - Unit Type: ${interestResponse["data"]["unit_type"]}',
+        if (result != null) {
+          if (result['navigateToChat'] == true) {
+            navigateToAgentChat(
+              result['agentEmail'] ?? "",
+              result['propertyId'],
+              result['propertyName'],
+              result['unitId'],
+            );
+          } else if (result['navigateToCall'] == true) {
+            await callToAgent(result['phone']);
+          }
+        }
+
+        // ✅ Prevent proceeding with interest post after redirect
+        return;
+      }
+
+      // 🔍 Log
+      debugPrint('✅ Submitting property interest...');
+      debugPrint('📞 Mobile: $mobileNumber');
+
+      final response = await apiService.postPropertyInterest(
+        uid,
+        propertyIdParsed,
+        unitType,
+        count,
+        comments,
+        enqtype,
+        mobileNumber,
       );
-    } else {
-      debugPrint('😔 Failed to post interest: ${response.statusMessage}');
-      throw Exception("Failed to post interest details");
+
+      debugPrint('🎉 API response status: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint("✅ Interest Posted");
+      } else {
+        throw Exception("Failed to post interest");
+      }
+    } catch (e) {
+      debugPrint('❌ Error in Post Interest Details: $e');
+      errorMessage(e.toString());
+    } finally {
+      isLoading(false);
     }
-  } catch (e) {
-    debugPrint('❌ Error in Post Interest Details: $e');
-    errorMessage(e.toString());
-  } finally {
-    isLoading(false);
-    debugPrint('🔚 postPropertyInterest completed');
   }
-}
+
+
+  Future<void> saveMobileNumber({
+    required String mobile,
+    required String phone,
+    required String propertyId,
+    String? unitId,
+    String? propertyName,
+    String? agentEmail,
+    bool navigateToChat = false,
+    bool navigateToCall = false,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (mobile.isEmpty || mobile.length < 10) {
+      Get.snackbar("Invalid", "Please enter a valid mobile number");
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'mobile': mobile,
+      }, SetOptions(merge: true));
+
+      Get.snackbar("Success", "Mobile number updated successfully");
+
+      // ✅ Return all navigation context
+      Get.back(result: {
+        'mobile': mobile,
+        'phone': phone,
+        'propertyId': propertyId,
+        'unitId': unitId,
+        'propertyName': propertyName,
+        'agentEmail': agentEmail,
+        'navigateToChat': navigateToChat,
+        'navigateToCall': navigateToCall,
+      });
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // ☎️ Only call if navigateToCall is true
+      if (navigateToCall) {
+        await callToAgent(phone);
+      }
+
+    } catch (e) {
+      Get.snackbar("Error", "Failed to update mobile number");
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+
+
 
   // Helper method to get localized property title
   String getPropertyTitle() {
@@ -153,6 +238,21 @@ Future postPropertyInterest(
         property.value?.description?.ar ??
         'No Description Available';
   }
+
+  Future<bool> isFirstTimeUser(String uid) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (!doc.exists) return true;
+
+    final mobile = doc.data()?['mobile'] ?? '';
+    return mobile
+        .trim()
+        .isEmpty;
+  }
+
 
   final RxList<String> imageUrls = [
     "https://i.postimg.cc/5tSKgkpL/CAB-BUILDING.jpg",
@@ -287,8 +387,8 @@ Future postPropertyInterest(
   }
 
   // Bottom sheet methods
-  void showUnitTypeBottomSheetForChat(
-      String gmail, String propertyId, String propertyName) {
+  void showUnitTypeBottomSheetForChat(String gmail, String propertyId,
+      String propertyName) {
     final unitTypes = property.value?.unitTypes?.data ?? [];
 
     if (unitTypes.isEmpty) {
@@ -338,8 +438,8 @@ Future postPropertyInterest(
     );
   }
 
-  Widget _buildUnitTypeBottomSheet(
-      List<dynamic> unitTypes, VoidCallback onContinue) {
+  Widget _buildUnitTypeBottomSheet(List<dynamic> unitTypes,
+      VoidCallback onContinue) {
     return Container(
       height: Get.height * 0.7,
       decoration: const BoxDecoration(
@@ -368,7 +468,8 @@ Future postPropertyInterest(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Obx(() => Text(
+                Obx(() =>
+                    Text(
                       isBottomSheetForCall.value
                           ? "Select Unit Type for Call"
                           : "Select Unit Type",
@@ -405,14 +506,18 @@ Future postPropertyInterest(
                   ),
                   const SizedBox(height: 12),
 
-                  ...unitTypes.asMap().entries.map((entry) {
+                  ...unitTypes
+                      .asMap()
+                      .entries
+                      .map((entry) {
                     final index = entry.key;
                     final unitType = entry.value;
                     final title = unitType.unitType?.name?.en ?? "Unknown";
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
-                      child: Obx(() => InkWell(
+                      child: Obx(() =>
+                          InkWell(
                             onTap: () {
                               selectedUnitTypeIndex.value = index;
                             },
@@ -449,13 +554,13 @@ Future postPropertyInterest(
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight:
-                                            selectedUnitTypeIndex.value == index
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
+                                        selectedUnitTypeIndex.value == index
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
                                         color:
-                                            selectedUnitTypeIndex.value == index
-                                                ? Colors.blue
-                                                : Colors.black87,
+                                        selectedUnitTypeIndex.value == index
+                                            ? Colors.blue
+                                            : Colors.black87,
                                       ),
                                     ),
                                   ),
@@ -466,63 +571,65 @@ Future postPropertyInterest(
                     );
                   }).toList(),
 
-                  Obx(() => selectedUnitTypeIndex.value != -1
+                  Obx(() =>
+                  selectedUnitTypeIndex.value != -1
                       ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 24),
-                            const Text(
-                              "Select Quantity:",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: List.generate(10, (index) {
-                                final count = index + 1;
-                                return Obx(() => InkWell(
-                                      onTap: () {
-                                        selectedCount.value = count;
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          border: Border.all(
-                                            color: selectedCount.value == count
-                                                ? Colors.blue
-                                                : Colors.grey[300]!,
-                                          ),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          color: selectedCount.value == count
-                                              ? Colors.blue
-                                              : Colors.white,
-                                        ),
-                                        child: Text(
-                                          count.toString(),
-                                          style: TextStyle(
-                                            color: selectedCount.value == count
-                                                ? Colors.white
-                                                : Colors.black87,
-                                            fontWeight:
-                                                selectedCount.value == count
-                                                    ? FontWeight.w600
-                                                    : FontWeight.normal,
-                                          ),
-                                        ),
-                                      ),
-                                    ));
-                              }),
-                            ),
-                          ],
-                        )
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 24),
+                      const Text(
+                        "Select Quantity:",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(10, (index) {
+                          final count = index + 1;
+                          return Obx(() =>
+                              InkWell(
+                                onTap: () {
+                                  selectedCount.value = count;
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: selectedCount.value == count
+                                          ? Colors.blue
+                                          : Colors.grey[300]!,
+                                    ),
+                                    borderRadius:
+                                    BorderRadius.circular(20),
+                                    color: selectedCount.value == count
+                                        ? Colors.blue
+                                        : Colors.white,
+                                  ),
+                                  child: Text(
+                                    count.toString(),
+                                    style: TextStyle(
+                                      color: selectedCount.value == count
+                                          ? Colors.white
+                                          : Colors.black87,
+                                      fontWeight:
+                                      selectedCount.value == count
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ),
+                              ));
+                        }),
+                      ),
+                    ],
+                  )
                       : const SizedBox()),
                 ],
               ),
@@ -530,50 +637,53 @@ Future postPropertyInterest(
           ),
 
           // Bottom action button
-          Obx(() => selectedUnitTypeIndex.value != -1
+          Obx(() =>
+          selectedUnitTypeIndex.value != -1
               ? Container(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.back();
-                        onContinue();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(screenWidth4),
-                        ),
-                      ),
-                      child: Obx(() {
-                        final selectedUnitType =
-                            unitTypes[selectedUnitTypeIndex.value];
-                        final unitTypeName =
-                            selectedUnitType.unitType?.name?.en ?? 'Selection';
-                        return Text(
-                          isBottomSheetForCall.value
-                              ? "Call Agent for $unitTypeName (${selectedCount.value})"
-                              : "Continue with $unitTypeName (${selectedCount.value})",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        );
-                      }),
-                    ),
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Get.back();
+                  onContinue();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(screenWidth4),
                   ),
-                )
+                ),
+                child: Obx(() {
+                  final selectedUnitType =
+                  unitTypes[selectedUnitTypeIndex.value];
+                  final unitTypeName =
+                      selectedUnitType.unitType?.name?.en ?? 'Selection';
+                  return Text(
+                    isBottomSheetForCall.value
+                        ? "Call Agent for $unitTypeName (${selectedCount
+                        .value})"
+                        : "Continue with $unitTypeName (${selectedCount
+                        .value})",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  );
+                }),
+              ),
+            ),
+          )
               : const SizedBox()),
         ],
       ),
     );
   }
 
-  void _handleUnitTypeSelectionForChat(
-      String gmail, String propertyId, String propertyName) async {
+  void _handleUnitTypeSelectionForChat(String gmail, String propertyId,
+      String propertyName) async {
     try {
       final unitTypes = property.value?.unitTypes?.data ?? [];
       final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
@@ -603,34 +713,78 @@ Future postPropertyInterest(
   }
 
   void _handleUnitTypeSelectionForCall(String phone, String propertyId) async {
-    try {
-      final unitTypes = property.value?.unitTypes?.data ?? [];
-      final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
-      final unitTypeId = selectedUnitType.unitType?.id ?? 0;
-      final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final isFirstTime = await isFirstTimeUser(uid);
 
-      // Post property interest with enquiry type as 0 for call
+    final unitTypes = property.value?.unitTypes?.data ?? [];
+    final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
+    final unitTypeId = selectedUnitType.unitType?.id ?? 0;
+    final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
+
+    if (isFirstTime) {
+      final result = await Get.to(() =>
+          MobileNumberUpdatePage(
+            phone: phone,
+            propertyId: propertyId,
+          ));
+
+      if (result != null && result['mobile'] != null) {
+        final updatedMobile = result['mobile'];
+
+        // ⏬ Post interest after mobile updated
+        await postPropertyInterest(
+          propertyId,
+          unitTypeId,
+          selectedCount.value,
+          "Interested in $unitTypeName - Call request",
+          0, // enqtype
+          updatedMobile,
+        );
+
+        // ⏬ Trigger call
+        await callToAgent(phone);
+
+        Get.snackbar(
+          "Success",
+          "Mobile updated and call initiated!",
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      } else {
+        Get.snackbar("Cancelled", "Mobile number update was cancelled.");
+      }
+
+      return; // ⛔ Skip rest
+    }
+
+    // ✅ Regular flow for non-first-time users
+    try {
+      // Fetch mobile from Firestore if needed
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      final mobile = doc.data()?['mobile'] ?? "";
+
       await postPropertyInterest(
         propertyId,
         unitTypeId,
         selectedCount.value,
-        "Interested in $unitTypeName - Call request", // Comments
-        0, // Enquiry type set to 0 for call
-        "", // Mobile number - you can get from auth if needed
+        "Interested in $unitTypeName - Call request",
+        0,
+        mobile,
       );
 
-      // Make the call after successful API call
       await callToAgent(phone);
 
       Get.snackbar(
         "Success",
-        "Interest logged successfully! Initiating call...",
+        "Interest logged and call initiated!",
         snackPosition: SnackPosition.BOTTOM,
       );
     } catch (e) {
       Get.snackbar(
         "Error",
-        "Failed to submit interest: ${e.toString()}",
+        "Failed: ${e.toString()}",
         snackPosition: SnackPosition.BOTTOM,
       );
     }

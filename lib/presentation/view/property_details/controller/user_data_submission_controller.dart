@@ -15,7 +15,6 @@ class UserDataSubmissionController extends GetxController {
       firstName: '',
       lastName: '',
       address: '',
-      poNo: '',
       nationality: '',
       email: '',
       mobile: '',
@@ -31,7 +30,6 @@ class UserDataSubmissionController extends GetxController {
   final firstNameCtrl = TextEditingController();
   final lastNameCtrl = TextEditingController();
   final addressCtrl = TextEditingController();
-  final poNoCtrl = TextEditingController();
   final nationalityCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final mobileCtrl = TextEditingController();
@@ -52,7 +50,6 @@ class UserDataSubmissionController extends GetxController {
         firstName: args['firstName'] ?? '',
         lastName: args['lastName'] ?? '',
         address: args['address'] ?? '',
-        poNo: args['poNo'] ?? '',
         nationality: args['nationality'] ?? '',
         email: args['email'] ?? '',
         mobile: args['mobileNo'] ?? '',
@@ -64,7 +61,6 @@ class UserDataSubmissionController extends GetxController {
       firstNameCtrl.text = user.value.firstName;
       lastNameCtrl.text = user.value.lastName;
       addressCtrl.text = user.value.address;
-      poNoCtrl.text = user.value.poNo;
       nationalityCtrl.text = user.value.nationality;
       emailCtrl.text = user.value.email;
       mobileCtrl.text = user.value.mobile;
@@ -84,7 +80,6 @@ class UserDataSubmissionController extends GetxController {
     firstNameCtrl.dispose();
     lastNameCtrl.dispose();
     addressCtrl.dispose();
-    poNoCtrl.dispose();
     nationalityCtrl.dispose();
     emailCtrl.dispose();
     mobileCtrl.dispose();

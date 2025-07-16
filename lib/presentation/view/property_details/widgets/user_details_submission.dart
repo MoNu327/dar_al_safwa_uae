@@ -123,21 +123,6 @@ class UserDetailsSubmission extends StatelessWidget {
                       keyboardType: TextInputType.text,
                       validator: Validator.validateAddress,
                     ),
-
-                    CustomRichTextWidget(
-                      title: "PO No ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter PO No',
-                      controller: controller.poNoCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      validator: Validator.validatePoNumber,
-                    ),
-
                     CustomTextWidget(
                       title: "Nationality",
                       fontWeight: FontWeight.w600,
@@ -209,7 +194,6 @@ class UserDetailsSubmission extends StatelessWidget {
                             firstName: controller.firstNameCtrl.text,
                             lastName: controller.lastNameCtrl.text,
                             address: controller.addressCtrl.text,
-                            poNo: controller.poNoCtrl.text,
                             nationality: controller.nationalityCtrl.text,
                             email: controller.emailCtrl.text,
                             mobile: controller.mobileCtrl.text,

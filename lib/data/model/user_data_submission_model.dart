@@ -21,8 +21,6 @@ class UserDataSubmissionModel {
 
   @JsonKey(name: 'address')
   final String address;
-
-  final String poNo;
   final String nationality;
   final String email;
   final String mobile;
@@ -37,7 +35,6 @@ class UserDataSubmissionModel {
     required this.firstName,
     required this.lastName,
     required this.address,
-    required this.poNo,
     required this.nationality,
     required this.email,
     required this.mobile,
