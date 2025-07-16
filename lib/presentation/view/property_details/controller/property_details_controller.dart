@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:dar_al_safwa/presentation/view/home/screens/home_screen.dart';
+import 'package:dar_al_safwa/presentation/widgets/bottom_navbar_widget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -81,37 +84,63 @@ class PropertyDetailsController extends GetxController {
     }
   }
 
-  Future postPropertyInterest(String propertyId, int unitType, int count,
-      String comments, int enqtype, String mobileNumber) async {
-    try {
-      isLoading(true);
-      errorMessage(null);
+Future postPropertyInterest(
+  String propertyId,
+  int unitType,
+  int count,
+  String comments,
+  int enqtype,
+  String mobileNumber,
+) async {
+  try {
+    isLoading(true);
+    errorMessage(null);
 
-      debugPrint('Posting property interest for ID: $propertyId');
-      final response = await apiService.postPropertyInterest(
-          propertyId, unitType, count, comments, enqtype, mobileNumber);
-      debugPrint('🎉 API response: ${response.statusCode}');
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final propertyIdParsed = int.tryParse(propertyId) ?? 0;
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // ✅ Use the response data directly (don't decode it again)
-        final interestResponse = response.data;
-        debugPrint("🔔 interest response: ${interestResponse["data"]}");
-        // property(interestResponse["data"]);
+    // 🔍 Log all fields for debugging
+    debugPrint('✅ Submitting property interest...');
+    debugPrint('🔑 UID: $uid');
+    debugPrint('🏠 Property ID: $propertyId (parsed: $propertyIdParsed)');
+    debugPrint('📦 Unit Type: $unitType');
+    debugPrint('🔢 Count: $count');
+    debugPrint('💬 Comments: $comments');
+    debugPrint('📞 Mobile: $mobileNumber');
+    debugPrint('📌 Enquiry Type: $enqtype');
 
-        debugPrint(
-            '👌interest posted successfully: ${interestResponse["data"]["unit_type"]}');
-      } else {
-        debugPrint('😔 Failed to post interest: ${response.statusMessage}');
-        throw Exception("Failed to post interest details");
-      }
-    } catch (e) {
-      debugPrint('😔 Error in Post Interest Details: $e');
-      errorMessage(e.toString());
-    } finally {
-      isLoading(false);
-      debugPrint('postPropertyInterest completed');
+    final response = await apiService.postPropertyInterest(
+      uid,
+      propertyIdParsed,
+      unitType,
+      count,
+      comments,
+      enqtype,
+      "9400069615",
+    );
+
+    debugPrint('🎉 API response status: ${response.statusCode}');
+    debugPrint("📨 Full response body: ${response.data}"); // 👈 Add this line here
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final interestResponse = response.data;
+      debugPrint("🔔 Interest Response Raw: $interestResponse");
+      debugPrint('✅ Interest Posted: ${interestResponse["data"]}');
+      debugPrint(
+        '👌 Interest success - Unit Type: ${interestResponse["data"]["unit_type"]}',
+      );
+    } else {
+      debugPrint('😔 Failed to post interest: ${response.statusMessage}');
+      throw Exception("Failed to post interest details");
     }
+  } catch (e) {
+    debugPrint('❌ Error in Post Interest Details: $e');
+    errorMessage(e.toString());
+  } finally {
+    isLoading(false);
+    debugPrint('🔚 postPropertyInterest completed');
   }
+}
 
   // Helper method to get localized property title
   String getPropertyTitle() {
@@ -240,7 +269,7 @@ class PropertyDetailsController extends GetxController {
 
   // methods for navigate
   void navigateToBack() {
-    Get.back();
+    Get.to(BottomNavbarWidget());
   }
 
 // In your PropertyDetailsController

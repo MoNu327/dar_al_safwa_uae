@@ -176,8 +176,8 @@ class PropertyDetailsScreen extends StatelessWidget {
         "Login Required",
         "You are a guest. Please login to book this property.",
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.shade100,
-        colorText: Colors.black,
+        backgroundColor:AppColors.primaryColor,
+        colorText: AppColors.black,
         duration: const Duration(seconds: 5),
         margin: const EdgeInsets.all(12),
       );

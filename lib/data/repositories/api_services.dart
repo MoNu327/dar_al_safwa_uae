@@ -180,24 +180,29 @@ class ApiService {
     }
   }
 
-  Future<Response> postPropertyInterest(String PropertyId, int unitType,
-      int count, String comments, int enqtype, String mobileNumber) async {
+  Future<Response> postPropertyInterest(
+      String uid,
+      int PropertyId,
+      int unitType,
+      int count,
+      String comments,
+      int enqtype,
+      String mobileNumber) async {
     // API Refining Needed
     try {
       final response = await apiClient.request(
-  "storeenquiry", 
-  method: "post",
-  data: {
-    "uid": "A17flMQDsuQeN8FDchWup1AG2XI2",
-    "propertyid": PropertyId,
-    "unittype": unitType,
-    "count": count,
-    "comments": comments,
-    "enqtype": enqtype,
-    "mobile": mobileNumber
-  },
-);
-
+        "storeenquiry",
+        method: "post",
+        data: {
+          "uid": uid,
+          "propertyid": PropertyId,
+          "unittype": unitType,
+          "count": count,
+          "comments": comments,
+          "enqtype": enqtype,
+          "mobile": ""
+        },
+      );
 
       return response;
     } catch (e) {

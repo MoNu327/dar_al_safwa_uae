@@ -39,9 +39,7 @@ class LoginScreen extends StatelessWidget {
                 if (imageUrl == null || imageUrl.isEmpty) {
                   return Container(
                     width: double.infinity,
-                    height: Get.height * 0.5,
-                    color: Colors.grey.shade300,
-                    child: const Center(child: Icon(Icons.image_not_supported)),
+                    height: Get.height * 0.5,     
                   );
                 }
 
