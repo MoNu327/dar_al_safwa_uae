@@ -15,7 +15,7 @@ class TechnicianTicketsController extends GetxController {
       final response = await apiClient.request(
         "technician/complaints",
         method: "post",
-        data: {"uid": userId}, // ✅ Dynamic UID
+        data: {"uid": userId}, options: null, // ✅ Dynamic UID
       );
 
       final parsedResponse = ViewTicketResponse.fromJson(response.data);

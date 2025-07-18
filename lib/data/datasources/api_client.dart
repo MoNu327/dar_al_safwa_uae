@@ -53,45 +53,48 @@ class ApiClient {
     ));
   }
 
-  Future<Response> request(
-    String endpoint, {
-    dynamic data,
-    String? method,
-    Map<String, String>? headers,
-    bool isFormData = false,
-  }) async {
-    try {
-      final response = await _dio.request(
-        '$baseUrl$endpoint',
-        data: (method == 'get') ? null : data,
-        options: Options(
-          method: method ?? 'post',
-          headers: {
-            "Content-Type":
-                isFormData ? "multipart/form-data" : "application/json",
-            ...?headers,
-          },
-        ),
-      );
-      debugPrint("Response Status: ${response.statusCode}");
-      return response;
-    } on DioException catch (e) {
-      debugPrint('Dio Error: ${e.message}, ${e.type}');
-      if (e.type == DioExceptionType.connectionTimeout) {
-        return _handleTimeoutError();
-      } else if (e.type == DioExceptionType.receiveTimeout) {
-        return _handleTimeoutError();
-      } else if (e.type == DioExceptionType.badResponse) {
-        return _handleErrorResponse(e.response);
-      } else if (e.type == DioExceptionType.connectionError) {
-        return _handleNetworkError();
-      } else {
-        return _handleUnexpectedError(e);
-      }
-    } catch (e) {
+Future<Response> request(
+  String endpoint, {
+  dynamic data,
+  String? method,
+  Map<String, String>? headers,
+  bool isFormData = false,
+  Options? options, // ✅ Change from required to optional
+}) async {
+  try {
+    final response = await _dio.request(
+      '$baseUrl$endpoint',
+      data: (method == 'get') ? null : data,
+      options: options ??
+          Options(
+            method: method ?? 'post',
+            headers: {
+              "Content-Type":
+                  isFormData ? "multipart/form-data" : "application/json",
+              ...?headers,
+            },
+          ),
+    );
+    debugPrint("Response Status: ${response.statusCode}");
+    return response;
+  } on DioException catch (e) {
+    debugPrint('Dio Error: ${e.message}, ${e.type}');
+    if (e.type == DioExceptionType.connectionTimeout) {
+      return _handleTimeoutError();
+    } else if (e.type == DioExceptionType.receiveTimeout) {
+      return _handleTimeoutError();
+    } else if (e.type == DioExceptionType.badResponse) {
+      return _handleErrorResponse(e.response);
+    } else if (e.type == DioExceptionType.connectionError) {
+      return _handleNetworkError();
+    } else {
       return _handleUnexpectedError(e);
     }
+  } catch (e) {
+    return _handleUnexpectedError(e);
   }
+}
+
 
   Future<bool> refreshToken() async {
     debugPrint("🚀 Calling refresh token API...");

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dar_al_safwa/data/model/user_data_submission_model.dart';
 import 'package:dio/dio.dart';
 import '../datasources/api_client.dart';
@@ -15,7 +17,8 @@ class ApiService {
   Future<Response> getComplaintCategories() async {
     try {
       final response = await apiClient.request(
-        "user/complaint",
+        "user/complaint",  // ✅ Dynamic UID
+        method: "get",
       );
 
       return response;
@@ -67,14 +70,36 @@ class ApiService {
       rethrow;
     }
   }
-  Future<Response> getComplaints(String userId) async {
+  
+  Future<Response> updateComplaint({
+  required int complaintId,
+  required int status,
+  required String reply,
+  required int amountPaid,
+  required int amountStatus,
+  List<File>? images,
+}) async {
   try {
+    // Prepare multipart form data
+    FormData formData = FormData.fromMap({
+      'complaint_id': complaintId,
+      'status': status,
+      'reply': reply,
+      'amount_paid': amountPaid,
+      'amount_status': amountStatus,
+      if (images != null)
+        for (int i = 0; i < images.length; i++)
+          'images[$i]': await MultipartFile.fromFile(
+            images[i].path,
+            filename: images[i].path.split('/').last,
+          ),
+    });
+
     final response = await apiClient.request(
-      "technician/complaints", 
+      "technician/update-complaint-status", // replace with your actual endpoint
       method: "post",
-      data: {
-        "uid": userId,
-      },
+      data: formData,
+      options: Options(contentType: 'multipart/form-data'),
     );
 
     return response;
