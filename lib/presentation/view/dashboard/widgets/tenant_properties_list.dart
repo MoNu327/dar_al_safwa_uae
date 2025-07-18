@@ -2,7 +2,6 @@ import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_property_card_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -16,6 +15,7 @@ class TenantPropertiesList extends StatelessWidget {
   Widget build(BuildContext context) {
     final TenantPropertyController tenantPropertyController =
         Get.put(TenantPropertyController());
+
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
@@ -48,9 +48,10 @@ class TenantPropertiesList extends StatelessWidget {
             icon: Container(
               padding: EdgeInsets.all(screenWidth1),
               decoration: BoxDecoration(
-                  color: AppColors.lightGrey2,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.black, width: 2)),
+                color: AppColors.lightGrey2,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.black, width: 2),
+              ),
               child: Icon(
                 Icons.more_horiz,
                 size: smallIconSize,
@@ -62,7 +63,6 @@ class TenantPropertiesList extends StatelessWidget {
         ],
       ),
       body: Padding(
-        // This should be aded inside the properties section of tenants
         padding: EdgeInsets.symmetric(
           horizontal: Get.width * 0.04,
           vertical: Get.height * 0.01,
@@ -79,10 +79,24 @@ class TenantPropertiesList extends StatelessWidget {
             kHeight(0.02),
             Expanded(
               child: Obx(() {
-                if (tenantPropertyController.tenantProperties.isEmpty) {
+                if (tenantPropertyController.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (tenantPropertyController.errorMessage.isNotEmpty) {
                   return Center(
                     child: CustomTextWidget(
-                      title: 'No Properties',
+                      title: tenantPropertyController.errorMessage.value,
+                      fontSize: Get.height * 0.02,
+                      color: Colors.red,
+                    ),
+                  );
+                }
+
+                if (tenantPropertyController.properties.isEmpty) {
+                  return Center(
+                    child: CustomTextWidget(
+                      title: 'No Properties Found',
                       fontSize: Get.height * 0.02,
                       color: AppColors.black600,
                     ),
@@ -90,26 +104,33 @@ class TenantPropertiesList extends StatelessWidget {
                 }
 
                 return ListView.builder(
-                  itemCount: tenantPropertyController.tenantProperties.length,
+                  itemCount: tenantPropertyController.properties.length,
                   itemBuilder: (context, index) {
                     final property =
-                        tenantPropertyController.tenantProperties[index];
-                    return TenantPropertyCard(
-                      imageUrl: property['imageUrl'], // Replace with your image
-                      title: property['propertyName'],
-                      price: '₹99 OMR/month',
-                      location: property['location'],
-                      expiryDate: 'Expiry on May 26, 2026',
-                      sqft: '2000 sq.ft',
-                      bedrooms: '2 Bedrooms',
-                      isExpiringSoon: false,
+                        tenantPropertyController.properties[index];
+
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: Get.height * 0.02),
+                      child: TenantPropertyCard(
+                        imageUrl: property.propertyImageUrl,
+                        title: property.propertyTitle,
+                        price: property.rentAmount,
+                        location: '${property.cityName}, ${property.stateName}',
+                        expiryDate: property.expiryStatus,
+                        sqft: property.unitAreaFormatted,
+                        bedrooms: property.unitTypeName,
+                        isExpiringSoon: property.expiryStatus
+                            .toLowerCase()
+                            .contains('expires'),
                       onTap: () {
-                        Get.to(
-                          () => CustomTenantPropertyDetailWidget(
-                            propertyId: property['id'],
-                          ),
-                        );
-                      },
+  Get.to(() => CustomTenantPropertyDetailWidget(
+        propertyId: property.id, cityName: '', // int
+  ));
+},
+
+
+
+                      ),
                     );
                   },
                 );
@@ -118,56 +139,6 @@ class TenantPropertiesList extends StatelessWidget {
           ],
         ),
       ),
-      // ListView(
-      //   padding: EdgeInsets.all(screenWidth4),
-      //   children: [
-      //     kHeight(0.02),
-      //     TenantPropertyCard(
-      //       imageUrl: 'assets/property2.jpg', // Replace with your image
-      //       title: 'Premium 2BHK Apartment',
-      //       price: '₹99 OMR/month',
-      //       location: 'Kochi',
-      //       expiryDate: 'Expiry on May 26, 2026',
-      //       sqft: '2000 sq.ft',
-      //       bedrooms: '2 Bedrooms',
-      //       isExpiringSoon: false,
-      //     ),
-      //     kHeight(0.02),
-      //     TenantPropertyCard(
-      //       imageUrl: 'assets/property3.jpg', // Replace with your image
-      //       title: 'Premium 2BHK Apartment',
-      //       price: '₹99 OMR/month',
-      //       location: 'Kochi',
-      //       expiryDate: 'Expiry on May 26, 2026',
-      //       sqft: '2000 sq.ft',
-      //       bedrooms: '2 Bedrooms',
-      //       isExpiringSoon: true,
-      //     ),
-      //   ],
-      // ),
     );
   }
-}
-
-// Property Data Model
-class PropertyData {
-  final String imageUrl;
-  final String title;
-  final String price;
-  final String location;
-  final String expiryDate;
-  final String sqft;
-  final String bedrooms;
-  final bool isExpiringSoon;
-
-  PropertyData({
-    required this.imageUrl,
-    required this.title,
-    required this.price,
-    required this.location,
-    required this.expiryDate,
-    required this.sqft,
-    required this.bedrooms,
-    this.isExpiringSoon = false,
-  });
 }

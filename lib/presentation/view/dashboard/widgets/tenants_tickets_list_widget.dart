@@ -144,7 +144,7 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
                     buttonTitle: "Create Ticket",
                     buttonTextColor: AppColors.white,
                     onPressed: () {
-                      Get.to(TenantsCreateTicketScreen());
+                      Get.to(TenantsCreateTicketScreen(propertyName: '',));
                     },
                   ),
                 ),
@@ -251,6 +251,9 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
         textColor = Colors.blue;
         statusText = "In Progress";
         break;
+      case TicketStatus.completed:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
 
     return Container(
@@ -424,5 +427,5 @@ class TicketModel {
 enum TicketStatus {
   pending,
   rectified,
-  inProgress,
+  inProgress, completed,
 }

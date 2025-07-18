@@ -10,7 +10,9 @@ import 'package:get/get.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 class TenantComplaintRegister extends StatelessWidget {
-  TenantComplaintRegister({super.key});
+  final String propertyName;
+
+  TenantComplaintRegister({super.key, required this.propertyName});
 
   final TenantComplaintRegisterController tenantComplaintRegisterController =
       Get.put(TenantComplaintRegisterController());
@@ -32,8 +34,17 @@ class TenantComplaintRegister extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // ✅ Property Name Display
+                CustomTextWidget(
+                  title: 'Property: $propertyName',
+                  fontSize: screenHeight * 0.02,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.secondaryColor,
+                ),
+                kHeight(0.02),
+
+                // Header Section
                 Column(
-                  spacing: screenHeight05,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CustomTextWidget(
@@ -54,6 +65,7 @@ class TenantComplaintRegister extends StatelessWidget {
                 ),
                 kHeight(0.025),
 
+                // ✅ Complaint Type Dropdown
                 buildFieldLabel('Select Complaint'),
                 kHeight(0.005),
                 tenantComplaintRegisterController.isLoadingCompliantList.value
@@ -90,9 +102,11 @@ class TenantComplaintRegister extends StatelessWidget {
                               'Selected Complaint Type: ${tenantComplaintRegisterController.selectedComplaintType?.value}, Selected Complaint ID: ${tenantComplaintRegisterController.selectedComplaintId?.value}');
                           tenantComplaintRegisterController
                               .getSubCompliantList();
-                        }),
+                        },
+                      ),
                 kHeight(0.02),
-                // Second Dropdown - Sub complaint
+
+                // ✅ Sub-Complaint Dropdown
                 buildFieldLabel('Select Sub-Complaint'),
                 kHeight(0.005),
                 tenantComplaintRegisterController
@@ -110,7 +124,6 @@ class TenantComplaintRegister extends StatelessWidget {
                             .subtitleComplaintCategory
                             .map((item) => item.name.toString())
                             .toList(),
-                        // items: tenantComplaintRegisterController.subComplaintList,
                         hintText: 'Select Sub-Complaint',
                         onChanged: (value) {
                           final selectedIndex =
@@ -130,10 +143,9 @@ class TenantComplaintRegister extends StatelessWidget {
                               'Selected Sub-Complaint Type: ${tenantComplaintRegisterController.selectedSubComplaintType?.value}, Selected Sub-Complaint ID: ${tenantComplaintRegisterController.selectedSubtitleComplaintId?.value}');
                         },
                       ),
-
                 kHeight(0.02),
 
-                // Complaint Details Text Area
+                // ✅ Complaint Details Text Area
                 buildFieldLabel('Complaint Details'),
                 kHeight(0.005),
                 TextField(
@@ -180,6 +192,8 @@ class TenantComplaintRegister extends StatelessWidget {
                   ),
                 ),
                 kHeight(0.03),
+
+                // ✅ Submit Button
                 CustomButtonWidget(
                   childWidgetLoader: tenantComplaintRegisterController
                       .isLoadingSubmitCompliant.value,
@@ -216,7 +230,9 @@ class TenantComplaintRegister extends StatelessWidget {
                       return;
                     }
 
-                    tenantComplaintRegisterController.submitCompliant();
+                    // ✅ Pass propertyName to controller
+                    tenantComplaintRegisterController
+                        .submitCompliant(propertyName);
                   },
                 ),
               ],
@@ -227,7 +243,7 @@ class TenantComplaintRegister extends StatelessWidget {
     );
   }
 
-  // Reusable Dropdown Widget
+  // ✅ Reusable Dropdown Widget
   Widget customDropdown({
     required String? selectedValue,
     required List<String> items,
@@ -274,7 +290,7 @@ class TenantComplaintRegister extends StatelessWidget {
     );
   }
 
-  // Reusable Field Label Widget
+  // ✅ Reusable Field Label Widget
   Widget buildFieldLabel(String labelText) {
     return Padding(
       padding: EdgeInsets.only(left: screenWidth1),

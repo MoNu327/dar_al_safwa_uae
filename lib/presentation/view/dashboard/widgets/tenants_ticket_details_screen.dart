@@ -202,6 +202,9 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
         textColor = Colors.blue;
         statusText = "In Progress";
         break;
+      case TicketStatus.completed:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
 
     return Container(

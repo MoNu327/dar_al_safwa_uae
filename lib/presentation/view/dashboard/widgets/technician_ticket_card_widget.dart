@@ -1,4 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dar_al_safwa/core/routes/app_route.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -21,6 +23,7 @@ Widget buildTicketCard({
   required String time,
   required IconData categoryIcon,
   required List<String> images,
+  required dynamic ticket, // Add this line to accept the ticket object
 }) {
   return InkWell(
     onTap: () {},
@@ -140,30 +143,37 @@ Widget buildTicketCard({
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                  child: CustomButtonWidget(
-                buttonHeight: screenHeight * 0.040,
-                buttonTitle: 'View Details',
-                onPressed: () {},
-                buttonShape: 'rect',
-                borderColor: AppColors.darkGrey.withValues(alpha: 0.2),
-                buttonColor: AppColors.white,
-                fontSize: tagTitle,
-                buttonTextColor: AppColors.black,
-              )),
+                child: CustomButtonWidget(
+                  buttonHeight: screenHeight * 0.040,
+                  buttonTitle: 'View Details',
+                  onPressed: () {
+                 Get.toNamed(AppRoute.tenantTicketDetails, arguments: ticket);
+
+
+                  },
+                  buttonShape: 'rect',
+                  borderColor: AppColors.darkGrey.withOpacity(0.2),
+                  buttonColor: AppColors.white,
+                  fontSize: screenHeight * 0.014,
+                  buttonTextColor: AppColors.black,
+                ),
+              ),
               SizedBox(width: Get.width * 0.02),
               Expanded(
-                  child: CustomButtonWidget(
-                buttonHeight: screenHeight * 0.040,
-                buttonTitle: 'Reply',
-                onPressed: () {
-                  // Get.to(RectifyTicketsScreen());
-                },
-                buttonShape: 'rect',
-                borderColor: AppColors.darkGrey.withValues(alpha: 0.2),
-                buttonColor: AppColors.white,
-                fontSize: tagTitle,
-                buttonTextColor: AppColors.black,
-              )),
+  child: CustomButtonWidget(
+    buttonHeight: screenHeight * 0.040,
+    buttonTitle: 'Reply',
+    onPressed: () {
+      Get.toNamed('/technician-rectify-ticket');
+    },
+    buttonShape: 'rect',
+    borderColor: AppColors.darkGrey.withValues(alpha: 0.2),
+    buttonColor: AppColors.white,
+    fontSize: tagTitle,
+    buttonTextColor: AppColors.black,
+  ),
+),
+
             ],
           ),
         ],

@@ -1,49 +1,63 @@
 import 'package:dar_al_safwa/core/routes/app_route.dart';
+import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
+import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class TenantPropertyController extends GetxController {
-  final tenantProperties = <Map<String, dynamic>>[].obs;
+  final ApiService apiService = ApiService();
+
+  var properties = <TenantPropertyModel>[].obs;
+  var isLoading = false.obs;
+  var errorMessage = ''.obs;
 
   @override
   void onInit() {
     super.onInit();
-    loadTenantProperties();
+    fetchTenantProperties();
   }
 
-  void loadTenantProperties() {
-    final properties = [
-      {
-        'id': 1,
-        'imageUrl': 'assets/images/apartment1.jpg',
-        'propertyName': 'Villa in Al Mouj',
-        'status': 'Rent',
-        'location': 'Al Mouj, Muscat',
-        'area': '2,500 sq.ft',
-        'purchasedDate': '2022-05-15',
-        'agreementExpiry': '2025-12-31',
-        'purchasedAmount': '350,000 KWD',
-        'securityAmount': '5,000 KWD',
-        'agentName': 'Al Safwa Real Estate',
-      },
-      {
-        'id': 2,
-        'imageUrl': 'assets/images/apartment2.jpg',
-        'propertyName': 'Apartment in Qurm',
-        'status': 'Owned',
-        'location': 'Qurm, Muscat',
-        'area': '1,800 sq.ft',
-        'purchasedDate': '2020-11-20',
-        'agreementExpiry': 'N/A',
-        'purchasedAmount': '280,000 KWD',
-        'securityAmount': 'N/A',
-        'agentName': 'Gulf Properties',
-      },
-    ];
+  Future<void> fetchTenantProperties() async {
+  isLoading.value = true;
+  errorMessage.value = '';
 
-    tenantProperties.assignAll(properties);
+  try {
+    String uid = "8JnK2Se9sBaHJFrPi6brY0ajme53"; // Replace with dynamic user UID
+
+    final response = await apiService.getMyProperties(uid);
+
+    // ✅ Print the full raw response
+    debugPrint('API Response: ${response.data}');
+
+    if (response.statusCode == 200 && response.data['success'] == true) {
+      // ✅ Print success message and extracted data list
+      debugPrint('Success: ${response.data['message']}');
+      debugPrint('Data List: ${response.data['data']}');
+
+      List<dynamic> dataList = response.data['data'];
+
+      properties.value =
+          dataList.map((e) {
+            debugPrint('Parsing property: $e'); // ✅ Print each property
+            return TenantPropertyModel.fromJson(e);
+          }).toList();
+
+      debugPrint('Total Properties Loaded: ${properties.length}');
+    } else {
+      errorMessage.value =
+          response.data['message']['en'] ?? 'Failed to load properties';
+      debugPrint('API Error: ${errorMessage.value}');
+    }
+  } catch (e) {
+    errorMessage.value = 'Error: $e';
+    debugPrint('Exception: $e');
+  } finally {
+    isLoading.value = false;
+    debugPrint('Loading finished. Properties count: ${properties.length}');
   }
+}
 
-  // navigate to register complaint screen
+
   void navigateToComplaintReg(String propertyName) {
     Get.toNamed(AppRoute.tenantComplaintReg,
         arguments: {"propertyName": propertyName});

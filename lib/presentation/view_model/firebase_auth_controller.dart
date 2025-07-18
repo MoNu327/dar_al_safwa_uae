@@ -998,82 +998,59 @@ Future<UserCredential?> signInWithGoogle() async {
   }
 
   Future<UserCredential?> signInAsTechnician() async {
-    try {
-      isSignInAgent(true);
-      debugPrint('Attempting technician sign in...');
-      final String email = emailController.text.trim();
-      final String password = passwordController.text.trim();
+  try {
+    isSignInTechnician(true); // ✅ Correct loading state for technician
+    debugPrint('Attempting technician sign in...');
+    final String email = emailController.text.trim();
+    final String password = passwordController.text.trim();
 
-      debugPrint('Email: $email');
-      debugPrint(
-          'Password: ${'*' * password.length}'); // Don't print actual password
+    final credential = await auth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
 
-      final credential = await auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
+    debugPrint('Firebase authentication successful, verifying Technician role...');
+    final userDoc = await _firestore.collection('technicians').doc(credential.user?.uid).get();
+
+    if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
+      debugPrint('Technician verification successful');
+      userRole.value = 'technician';
+
+      final userData = userDoc.data();
+      final userModel = TechnicianProfile(
+        role: userData?['role'] ?? 'technician',
+        fullName: userData?['fullName'] ?? '',
+        phoneNumber: userData?['phoneNumber'] ?? '',
+        id: userData?['id'] ?? '',
+        email: credential.user!.email!,
       );
 
-      debugPrint(
-          'Firebase authentication successful, verifying Technician role...');
-      debugPrint('User UID: ${credential.user?.uid}');
+      Get.find<TechnicianController>().currentUser = userModel;
+      debugPrint('Technician details stored: ${userModel.toJson()}');
 
-      // Verify this is actually an agent
-      final userDoc = await _firestore
-          .collection('technicians')
-          .doc(credential.user?.uid)
-          .get();
+      // ✅ Navigate to Technician Dashboard
+      Get.offAllNamed(AppRoute.technicianDashboard);
 
-      if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
-        debugPrint('Technician verification successful');
-        userRole.value = 'technician';
-        // Store user details for app-wide access
-        final userData = userDoc.data();
-        final userModel = TechnicianProfile(
-          fullName: userData?['fullName'] ?? '',
-          profession: userData?['profession'] ?? '',
-          phoneNumber: userData?['phoneNumber'] ?? '',
-          id: userData?['id'] ?? '',
-          skills: userData?['skills'] ?? '',
-          rating: userData?['rating'] ?? 0.0,
-          totalReviews: userData?['totalReviews'] ?? 0,
-          completedJobs: userData?['completedJobs'] ?? 0,
-          jobsAvailable: userData?['jobsAvailable'] ?? 0,
-
-          location: userData?['location'] ?? '',
-
-          email: credential.user!.email!,
-
-          // Add other fields as needed
-        );
-
-        // Assuming you have a user service or controller to store this
-        Get.find<TechnicianController>().currentUser = userModel;
-        debugPrint('Technician details stored: ${userModel.toJson()}');
-
-        // Navigate to home
-        navigateToHome();
-        debugPrint('Navigation to technicain home completed');
-
-        return credential;
-      } else {
-        debugPrint('Account is not registered as an agent');
-        await auth.signOut();
-        Get.snackbar('Error', 'This account is not registered as an agent');
-        return null;
-      }
-    } on FirebaseAuthException catch (e) {
-      debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
-      Get.snackbar('Error', 'Technician login failed: ${e.message}');
+      return credential;
+    } else {
+      debugPrint('Account is not registered as a technician');
+      await auth.signOut();
+      Get.snackbar('Error', 'This account is not registered as a technician');
       return null;
-    } catch (e) {
-      debugPrint('Unexpected Error: $e');
-      Get.snackbar('Error', 'An unexpected error occurred');
-      return null;
-    } finally {
-      isSignInAgent(false);
-      debugPrint('Sign in process completed');
     }
+  } on FirebaseAuthException catch (e) {
+    debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
+    Get.snackbar('Error', 'Technician login failed: ${e.message}');
+    return null;
+  } catch (e) {
+    debugPrint('Unexpected Error: $e');
+    Get.snackbar('Error', 'An unexpected error occurred');
+    return null;
+  } finally {
+    isSignInTechnician(false);
+    debugPrint('Sign in process completed');
   }
+}
 
   Future<void> setUserRole(String role, {String? tenantId}) async {
     final user = auth.currentUser;

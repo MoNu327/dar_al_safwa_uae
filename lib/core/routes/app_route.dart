@@ -2,7 +2,11 @@ import 'package:dar_al_safwa/presentation/view/dashboard/screens/dashboard_scree
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/add_property_screen.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/customer_enquiry_screen.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/properties_screen.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_rectify_ticket_screen.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_view_tickets.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_complaint_register.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
 import 'package:dar_al_safwa/presentation/view/error/screens/error_screen.dart';
 import 'package:dar_al_safwa/presentation/view/home/screens/home_screen.dart';
 import 'package:dar_al_safwa/presentation/view/inbox/screens/inbox_screen.dart';
@@ -12,6 +16,7 @@ import 'package:dar_al_safwa/presentation/view/login/mobile_login_screen.dart';
 import 'package:dar_al_safwa/presentation/view/agent/screens/signin_screen.dart';
 import 'package:dar_al_safwa/presentation/view/agent/screens/signup_screen.dart';
 import 'package:dar_al_safwa/presentation/view/profile/screens/profile_screen.dart';
+import 'package:dar_al_safwa/presentation/view/profile/widgets/technician_profile_page.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/screens/proprety_details_screen.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_details_submission.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/widgets/view_gallery.dart';
@@ -19,6 +24,7 @@ import 'package:dar_al_safwa/presentation/view/property_listings/screens/propert
 import 'package:dar_al_safwa/presentation/view/search/screens/search_screen.dart';
 import 'package:dar_al_safwa/presentation/view/splash/screens/splash_screen.dart';
 import 'package:dar_al_safwa/presentation/widgets/bottom_navbar_widget.dart';
+import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 
@@ -59,7 +65,11 @@ class AppRoute {
   static const String tenantDocumentsList = '/tenantDocumentsList';
   static const String tenantTicketDetails = '/tenantTicketDetails';
   static const String userDetailsSubmission = '/userDetailsSubmission';
-
+  static const String technicianDashboard = '/technicianDashboard';
+  static const technicianProfile = '/technician-profile';
+  static const String technicianTickets = '/technician-tickets';
+  static const String technicianRectifyTicket = '/technician-rectify-ticket';
+  static const String ticketDetails = '/ticket-details';
 
 
   static final routes = [
@@ -161,7 +171,7 @@ class AppRoute {
     ),
     GetPage(
       name: tenantComplaintReg,
-      page: () => TenantComplaintRegister(),
+      page: () => TenantComplaintRegister(propertyName: '',),
     ),
     GetPage(
       name: tenantPropertyList,
@@ -175,6 +185,40 @@ class AppRoute {
   name: userDetailsSubmission,
   page: () => UserDetailsSubmission(),
 ),
+GetPage(
+  name: technicianDashboard,
+  page: () => const TechnicianDashboard(),
+),
+GetPage(
+      name: technicianProfile,
+      page: () => TechnicianProfileScreen(),
+    ),
+    GetPage(
+  name: technicianTickets,
+  page: () => TechnicianViewTickets(),
+),
+
+GetPage(
+  name: technicianRectifyTicket,
+  page: () => RectifyTicketsScreen(),
+),
+GetPage(
+  name: AppRoute.tenantTicketDetails,
+  page: () {
+    final args = Get.arguments;
+    if (args is TicketModel) {
+      return TicketDetailsScreen(ticket: args);
+    } else {
+      // Optional: Show an error or fallback screen
+      return const Scaffold(
+        body: Center(child: Text("No ticket data provided")),
+      );
+    }
+  },
+),
+
+
+
 
   ];
 }

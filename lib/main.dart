@@ -1,8 +1,11 @@
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/core/routes/app_route.dart';
+import 'package:dar_al_safwa/domain/controller/technician_controller.dart';
 import 'package:dar_al_safwa/domain/services/firebase_notification.dart';
 import 'package:dar_al_safwa/presentation/controllers/network_controller.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_dashboard.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_properties_list.dart';
 import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -93,6 +96,7 @@ void _initializeControllers() {
   Get.put(UserController(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(LocalizationController(), permanent: true);
+   Get.put(TechnicianController(), permanent: true);
 }
 
 class MyApp extends StatelessWidget {
@@ -113,7 +117,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         locale: const Locale('en'),
         fallbackLocale: const Locale('en'),
-        // home: ChequeSubmissionScreen(),
+        //  home: TechnicianDashboard(),
         initialRoute:
             isAuthenticated ? AppRoute.navbar : AppRoute.initial, //navbar
         getPages: AppRoute.routes,
@@ -150,5 +154,6 @@ class AppBindings extends Bindings {
     Get.lazyPut<UserController>(() => UserController(), fenix: true);
     Get.lazyPut<LocalizationController>(() => LocalizationController(),
         fenix: true);
+            Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
   }
 }

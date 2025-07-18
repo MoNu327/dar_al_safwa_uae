@@ -1,30 +1,27 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:hugeicons/hugeicons.dart';
-
-import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_widget.dart';
 import 'technician_ticket_card_widget.dart';
 
 class TechnicianViewTickets extends StatelessWidget {
-  const TechnicianViewTickets({super.key});
+  TechnicianViewTickets({super.key});
+
+  final controller = Get.put(TechnicianTicketsController());
 
   @override
   Widget build(BuildContext context) {
+    // Fetch tickets on load
+    controller.fetchTickets("wM26u5uv7MNiisePl803uYTYDNL2"); // Replace with dynamic user ID
+
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
         backgroundColor: AppColors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: AppColors.black,
-            size: 20,
-          ),
+          icon: const Icon(Icons.arrow_back, color: AppColors.black),
           onPressed: () => Get.back(),
         ),
         title: const CustomTextWidget(
@@ -33,57 +30,53 @@ class TechnicianViewTickets extends StatelessWidget {
           color: AppColors.black,
           fontWeight: FontWeight.w600,
         ),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(
-              HugeIcons.strokeRoundedNotification01,
-              color: AppColors.black,
-              size: 24,
-            ),
-            onPressed: () {},
-          ),
-        ],
       ),
-      body: Padding(
-        padding: EdgeInsets.all(Get.width * 0.04),
-        child: ListView(
-          children: [
-            buildTicketCard(
-              propertyName: 'Skyline Residency Tower B',
-              category: 'Plumbing',
-              issue: 'Pipe Leakage',
-              status: 'Execution',
-              statusColor: AppColors.error,
-              description:
-                  "There's a leakage in the kitchen sink area. Needs Urgent repair.",
-              date: 'May 22, 2025',
-              time: '10:30 AM',
-              categoryIcon: HugeIcons.strokeRoundedPipeline,
-              images: [
-                'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=200&h=200&fit=crop',
-                'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=200&h=200&fit=crop',
-              ],
-            ),
-            SizedBox(height: Get.height * 0.02),
-            buildTicketCard(
-              propertyName: 'Hillcrest Apartment',
-              category: 'Electrical',
-              issue: 'Power Outage',
-              status: 'In Progress',
-              statusColor: AppColors.warning,
-              description: 'The lights in the lobby are not working.',
-              date: 'May 21, 2025',
-              time: '02:15 PM',
-              categoryIcon: HugeIcons.strokeRoundedElectricHome01,
-              images: [
-                'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=200&h=200&fit=crop',
-                'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop',
-              ],
-            ),
-          ],
-        ),
-      ),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (controller.tickets.isEmpty) {
+          return const Center(child: Text('No Tickets Found'));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: controller.tickets.length,
+          itemBuilder: (context, index) {
+            final ticket = controller.tickets[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: buildTicketCard(
+                propertyName: ticket.propertyName,
+                category: ticket.category,
+                issue: ticket.subcategory,
+                status: ticket.statusText,
+                statusColor: _getStatusColor(ticket.statusText),
+                description: ticket.description,
+                date: ticket.date.split(' ').first,
+                time: ticket.date.split(' ').last,
+                categoryIcon: Icons.build, // Can map dynamically
+                images: ticket.images,
+                ticket: ticket,
+              ),
+            );
+          },
+        );
+      }),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case "pending":
+        return AppColors.warning;
+      case "completed":
+        return Colors.green;
+      case "execution":
+        return AppColors.error;
+      default:
+        return AppColors.black;
+    }
   }
 }

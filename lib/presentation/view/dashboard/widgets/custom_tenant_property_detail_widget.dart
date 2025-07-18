@@ -1,150 +1,142 @@
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_property_controller.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_complaint_register.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_create_ticket_screen.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_appbar_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 
 import 'view_agreement_screen.dart';
 
 class CustomTenantPropertyDetailWidget extends StatelessWidget {
   final int propertyId;
-  // Placeholder for property name
   final TenantPropertyController tenantPropertyController = Get.find();
 
   CustomTenantPropertyDetailWidget({
     super.key,
-    required this.propertyId,
+    required this.propertyId, required String cityName,
   });
-
-  Map<String, dynamic> get property {
-    return tenantPropertyController.tenantProperties.firstWhere(
-      (property) => property['id'] == propertyId,
-      orElse: () => <String, dynamic>{},
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
-    if (property.isEmpty) {
+    return Obx(() {
+      if (tenantPropertyController.isLoading.value) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      if (tenantPropertyController.errorMessage.isNotEmpty) {
+        return Scaffold(
+          body: Center(
+            child: Text(tenantPropertyController.errorMessage.value),
+          ),
+        );
+      }
+
+      /// Find property by ID
+      final property = tenantPropertyController.properties
+          .firstWhereOrNull((p) => p.id == propertyId);
+
+      if (property == null) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('Property Not Found')),
+          body: const Center(child: Text('Property details not available')),
+        );
+      }
+
+      /// Build UI using property details from API
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Property Not Found'),
+        appBar: CustomAppBarWidget(title: property.propertyTitle),
+        body: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: Get.width * 0.04,
+            vertical: Get.height * 0.02,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildPropertyImage(property.propertyImageUrl),
+              kHeight(0.03),
+              _buildStatusBadge(property.expiryStatus),
+              kHeight(0.02),
+
+              /// Property Details
+              _buildSectionTitle('Property Details'),
+              kHeight(0.02),
+              _buildDetailRow(Icons.home_work_outlined, 'Property Name',
+                  property.propertyTitle),
+              _buildDetailRow(Icons.location_on_outlined, 'Location',
+                  '${property.cityName}, ${property.stateName}'),
+              _buildDetailRow(Icons.aspect_ratio_outlined, 'Area',
+                  property.unitAreaFormatted),
+
+              /// Unit Details
+              kHeight(0.02),
+              _buildSectionTitle('Unit Details'),
+              kHeight(0.02),
+              _buildDetailRow(Icons.home, 'Unit Type', property.unitTypeName),
+              _buildDetailRow(Icons.home, 'Unit Number', property.unitNumber),
+
+              /// Rental Details
+              kHeight(0.02),
+              _buildSectionTitle('Rental Details'),
+              kHeight(0.02),
+              _buildDetailRow(Icons.calendar_today_outlined, 'Start Date',
+                  property.startDateFormatted),
+              _buildDetailRow(Icons.calendar_today_outlined, 'End Date',
+                  property.endDateFormatted),
+              _buildDetailRow(
+                  Icons.attach_money_outlined, 'Rent Amount', property.rentAmount),
+
+              kHeight(0.1),
+            ],
+          ),
         ),
-        body: const Center(
-          child: Text('Property details not available'),
-        ),
+        bottomSheet: _buildActionButtons(property),
       );
-    }
-
-    return Scaffold(
-      appBar: CustomAppBarWidget(
-        title: property['propertyName'],
-        titleFontSize: screenHeight2,
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.symmetric(
-          horizontal: Get.width * 0.04,
-          vertical: Get.height * 0.02,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Property Image
-            _buildPropertyImage(),
-            kHeight(0.03),
-
-            // Property Status Badge
-            _buildStatusBadge(),
-            kHeight(0.02),
-
-            // Property Details Section
-            _buildSectionTitle('Property Details'),
-            kHeight(0.015),
-            _buildDetailRow(Icons.home_work_outlined, 'Property Name',
-                property['propertyName']),
-            _buildDetailRow(
-                Icons.location_on_outlined, 'Location', property['location']),
-            _buildDetailRow(
-                Icons.aspect_ratio_outlined, 'Area', property['area']),
-            kHeight(0.02),
-
-            // Ownership Details Section
-            _buildSectionTitle(property['status'] == 'Rent'
-                ? 'Rental Details'
-                : 'Ownership Details'),
-            kHeight(0.015),
-            _buildDetailRow(
-                Icons.calendar_today_outlined,
-                property['status'] == 'Rent'
-                    ? 'Agreement Expiry'
-                    : 'Purchased Date',
-                property[property['status'] == 'Rent'
-                    ? 'agreementExpiry'
-                    : 'purchasedDate']),
-            _buildDetailRow(
-                Icons.attach_money_outlined,
-                property['status'] == 'Rent'
-                    ? 'Security Amount'
-                    : 'Purchased Amount',
-                property[property['status'] == 'Rent'
-                    ? 'securityAmount'
-                    : 'purchasedAmount']),
-            kHeight(0.02),
-
-            // Agent Details Section
-            _buildSectionTitle('Agent Details'),
-            kHeight(0.015),
-            _buildDetailRow(
-                Icons.business_outlined, 'Agent Name', property['agentName']),
-            kHeight(0.1), // Extra space for buttons
-          ],
-        ),
-      ),
-      bottomSheet: _buildActionButtons(),
-    );
+    });
   }
 
-  // Reusable Widget: Property Image
-  Widget _buildPropertyImage() {
+  /// Property Image Widget
+  Widget _buildPropertyImage(String imageUrl) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(15),
-      child: Image.asset(
-        property['imageUrl'],
+      child: Image.network(
+        imageUrl,
         width: double.infinity,
         height: Get.height * 0.25,
         fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) =>
+            Container(color: Colors.grey[300], child: const Icon(Icons.image)),
       ),
     );
   }
 
-  // Reusable Widget: Status Badge
-  Widget _buildStatusBadge() {
+  /// Status Badge Widget
+  Widget _buildStatusBadge(String status) {
+    bool isExpiring = status.toLowerCase().contains('expires');
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: Get.width * 0.04,
-        vertical: Get.height * 0.01,
-      ),
+          horizontal: Get.width * 0.04, vertical: Get.height * 0.01),
       decoration: BoxDecoration(
-        color: property['status'] == "Rent"
+        color: isExpiring
             ? AppColors.secondaryColorLight.withOpacity(0.2)
             : Colors.green.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
       ),
       child: CustomTextWidget(
-        title: property['status'],
+        title: status,
         fontSize: Get.height * 0.016,
         fontWeight: FontWeight.w600,
-        color: property['status'] == "Rent"
-            ? AppColors.secondaryColorLight
-            : Colors.green,
+        color: isExpiring ? AppColors.secondaryColorLight : Colors.green,
       ),
     );
   }
 
-  // Reusable Widget: Section Title
   Widget _buildSectionTitle(String title) {
     return CustomTextWidget(
       title: title,
@@ -154,18 +146,13 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
     );
   }
 
-  // Reusable Widget: Detail Row
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: Get.height * 0.01),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            color: AppColors.black600,
-            size: Get.height * 0.022,
-          ),
+          Icon(icon, color: AppColors.black600, size: Get.height * 0.022),
           kWidth(0.02),
           Expanded(
             child: Column(
@@ -191,82 +178,58 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
     );
   }
 
-  // Reusable Widget: Action Buttons
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(TenantPropertyModel property) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: Get.width * 0.04,
-        vertical: Get.height * 0.02,
-      ),
+          horizontal: Get.width * 0.04, vertical: Get.height * 0.02),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: .2),
+            color: Colors.grey.withOpacity(.2),
             spreadRadius: 2,
             blurRadius: 5,
             offset: const Offset(0, -2),
-          ),
+          )
         ],
       ),
       child: Row(
         children: [
           Expanded(
-            child: _buildActionButton(
-              'View Agreement',
-              AppColors.onlineGreen,
-              Icons.description_outlined,
-              onPressed: () {
-                Get.to(PdfViewerScreen());
-              },
-            ),
+            child: _buildActionButton('View Agreement', AppColors.onlineGreen,
+                Icons.description_outlined, onPressed: () {
+              Get.to(() => PdfViewerScreen());
+            }),
           ),
           kWidth(0.03),
           Expanded(
-            child: _buildActionButton(
-              'Register Complaint',
-              Colors.red,
-              Icons.report_problem_outlined,
-              onPressed: () {
-                tenantPropertyController
-                    .navigateToComplaintReg(property['propertyName']);
-              },
-            ),
+            child: _buildActionButton('Register Complaint', Colors.red,
+                Icons.report_problem_outlined, onPressed: () {
+              Get.to(() =>
+                  TenantsCreateTicketScreen(propertyName: property.propertyTitle));
+            }),
           ),
         ],
       ),
     );
   }
 
-  // Reusable Widget: Single Action Button
-  Widget _buildActionButton(
-    String text,
-    Color color,
-    IconData icon, {
-    required VoidCallback onPressed,
-  }) {
+  Widget _buildActionButton(String text, Color color, IconData icon,
+      {required VoidCallback onPressed}) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        foregroundColor: color,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: color.withValues(alpha: .3), width: 1),
-        ),
+            borderRadius: BorderRadius.circular(10),
+            side: BorderSide(color: color.withOpacity(.3), width: 1)),
         padding: EdgeInsets.symmetric(
-          horizontal: Get.width * 0.02,
-          vertical: Get.height * 0.015,
-        ),
+            horizontal: Get.width * 0.02, vertical: Get.height * 0.015),
       ),
       onPressed: onPressed,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: Get.height * 0.02,
-            color: AppColors.white,
-          ),
+          Icon(icon, size: Get.height * 0.02, color: AppColors.white),
           kWidth(0.01),
           Flexible(
             child: CustomTextWidget(

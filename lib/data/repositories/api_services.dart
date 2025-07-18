@@ -67,6 +67,21 @@ class ApiService {
       rethrow;
     }
   }
+  Future<Response> getComplaints(String userId) async {
+  try {
+    final response = await apiClient.request(
+      "technician/complaints", 
+      method: "post",
+      data: {
+        "uid": userId,
+      },
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
 
 //Home Section
   //banner
@@ -273,4 +288,19 @@ class ApiService {
       rethrow;
     }
   }
+    Future<Response> getMyProperties(String uid) async {
+  try {
+    final response = await apiClient.request(
+      "tenant/properties",
+      method: "post",
+      data: {
+        "uid": "8JnK2Se9sBaHJFrPi6brY0ajme53"
+      },
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
 }
