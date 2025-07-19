@@ -1,8 +1,5 @@
-import 'dart:io';
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
@@ -18,11 +15,25 @@ class TenantsCreateTicketScreen extends StatefulWidget {
 }
 
 class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
-  final TenantComplaintRegisterController controller =
-      Get.put(TenantComplaintRegisterController());
-
   String? selectedProperty = 'Sun-view Apartment, Flat 302';
-  List<File> uploadedImages = [];
+  String? selectedCategory;
+  String? selectedSubcategory;
+  final TextEditingController _issueController = TextEditingController();
+  List<String> uploadedImages = [];
+
+  // Sample data
+  final List<String> properties = [
+    'Sun-view Apartment, Flat 302',
+    'Ocean-view Villa, Unit 12',
+    'Mountain Retreat, Cabin 5'
+  ];
+
+  final Map<String, List<String>> categories = {
+    'Select a category': [],
+    'Maintenance': ['Plumbing', 'Electrical', 'HVAC'],
+    'Cleaning': ['Regular', 'Deep', 'Carpet'],
+    'Security': ['Access', 'Cameras', 'Locks'],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +47,15 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.black),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 15),
+            child: Icon(
+              Icons.info_outline,
+              color: AppColors.black,
+            ),
+          )
+        ],
         title: CustomTextWidget(
           title: "Post Ticket",
           fontSize: Get.height * 0.022,
@@ -43,75 +63,103 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
           color: AppColors.black,
         ),
       ),
-      body: Obx(() {
-        return controller.isLoadingCompliantList.value
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                padding: EdgeInsets.all(screenWidth4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader('Select Property'),
-                    kHeight(0.01),
-                    _buildPropertyDropdown(),
-                    SizedBox(height: screenHeight2),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(screenWidth4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Select Property
+            _buildSectionHeader('Select Property'),
+            kHeight(0.01),
+            _buildDropdown(
+              value: selectedProperty,
+              items: properties,
+              onChanged: (value) {
+                setState(() {
+                  selectedProperty = value;
+                });
+              },
+            ),
+            SizedBox(height: screenHeight2),
 
-                    // Complaint Category
-                    _buildSectionHeader('Category'),
-                    kHeight(0.01),
-                    _buildComplaintCategoryDropdown(controller),
-                    SizedBox(height: screenHeight2),
+            // Category
+            _buildSectionHeader('Category'),
+            kHeight(0.01),
+            _buildDropdown(
+              value: selectedCategory ?? 'Select a category',
+              items: categories.keys.toList(),
+              onChanged: (value) {
+                setState(() {
+                  selectedCategory =
+                      value == 'Select a category' ? null : value;
+                  selectedSubcategory = null;
+                });
+              },
+            ),
+            SizedBox(height: screenHeight2),
 
-                    // Subcategory
-                    if (controller.selectedComplaintId.value != 0)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildSectionHeader('Subcategory'),
-                          kHeight(0.01),
-                          _buildSubComplaintDropdown(controller),
-                          SizedBox(height: screenHeight2),
-                        ],
-                      ),
+            // Subcategory (only shown when category is selected)
+            if (selectedCategory != null &&
+                selectedCategory != 'Select a category')
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader('Subcategory'),
+                  kHeight(0.01),
+                  _buildDropdown(
+                    value: selectedSubcategory,
+                    items: categories[selectedCategory] ?? [],
+                    hintText: 'Select subcategory',
+                    onChanged: (value) {
+                      setState(() {
+                        selectedSubcategory = value;
+                      });
+                    },
+                  ),
+                  SizedBox(height: screenHeight2),
+                ],
+              ),
 
-                    _buildSectionHeader('Describe the issue'),
-                    kHeight(0.01),
-                    CustomTextFieldWidget(
-                      keyboardType: TextInputType.text,
-                      controller: controller.complaintDetailsController,
-                      hintText: 'Write your message here...',
-                      maxLines: 5,
-                      isBorderNeeded: true,
-                    ),
-                    SizedBox(height: screenHeight2),
+            // Describe the issue
+            _buildSectionHeader('Describe the issue'),
+            kHeight(0.01),
+            CustomTextFieldWidget(
+              keyboardType: TextInputType.text,
+              controller: _issueController,
+              hintText: 'Write your message here...',
+              maxLines: 5,
+              // pad: EdgeInsets.all(screenWidth1),
+              isBorderNeeded: true,
 
-                    _buildSectionHeader('Upload Photos (Optional)'),
-                    kHeight(0.01),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ...uploadedImages
-                            .map((file) => _buildImagePreview(file)),
-                        _buildAddImageButton(),
-                      ],
-                    ),
-                    SizedBox(height: screenHeight4),
+              // borderColor: AppColors.grey.withValues(alpha: 0.3),
+            ),
+            SizedBox(height: screenHeight2),
 
-                    CustomButtonWidget(
-                      onPressed: () {
-                        controller.submitCompliant(selectedProperty ?? '');
-                      },
-                      buttonTitle: "Submit Ticket",
-                      buttonColor: AppColors.secondaryColor,
-                      buttonTextColor: AppColors.white,
-                      buttonShape: "rect",
-                      buttonHeight: Get.height * 0.06,
-                    ),
-                  ],
-                ),
-              );
-      }),
+            // Upload Photos
+            _buildSectionHeader('Upload Photos (Optional)'),
+            kHeight(0.01),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ...uploadedImages.map((image) => _buildImagePreview(image)),
+                _buildAddImageButton(),
+              ],
+            ),
+            SizedBox(height: screenHeight4),
+
+            // Submit Button
+            CustomButtonWidget(
+              onPressed: _submitTicket,
+              buttonTitle: "Submit Ticket",
+              buttonColor: AppColors.secondaryColor,
+              buttonTextColor: AppColors.white,
+              buttonShape: "rect",
+              buttonHeight: Get.height * 0.06,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -124,145 +172,75 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
     );
   }
 
-  /// ✅ Dropdown for Property
-  Widget _buildPropertyDropdown() {
+  Widget _buildDropdown({
+    required String? value,
+    required List<String> items,
+    String? hintText,
+    required Function(String?) onChanged,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.whiteLight,
-        border: Border.all(color: AppColors.grey.withOpacity(0.3)),
+        border: Border.all(color: AppColors.grey.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(14),
       ),
       padding: EdgeInsets.symmetric(horizontal: screenWidth1),
       child: DropdownButton<String>(
-        value: selectedProperty,
+        padding: EdgeInsets.symmetric(horizontal: screenWidth1),
+        value: value,
         isExpanded: true,
         underline: Container(),
-        items: [
-          'Sun-view Apartment, Flat 302',
-          'Ocean-view Villa, Unit 12',
-          'Mountain Retreat, Cabin 5'
-        ].map((String property) {
-          return DropdownMenuItem(
-            value: property,
+        hint: CustomTextWidget(
+          title: hintText ?? 'Select',
+          fontSize: Get.height * 0.016,
+          color: AppColors.black600,
+        ),
+        items: items.map((String item) {
+          return DropdownMenuItem<String>(
+            value: item,
             child: CustomTextWidget(
-              title: property,
+              title: item,
               fontSize: Get.height * 0.016,
               color: AppColors.black,
             ),
           );
         }).toList(),
-        onChanged: (value) {
-          setState(() {
-            selectedProperty = value;
-          });
-        },
+        onChanged: onChanged,
       ),
     );
   }
 
-  /// ✅ Complaint Category Dropdown (API Data)
- Widget _buildComplaintCategoryDropdown(TenantComplaintRegisterController controller) {
-  return Container(
-    decoration: BoxDecoration(
-      color: AppColors.whiteLight,
-      border: Border.all(color: AppColors.grey.withOpacity(0.3)),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    padding: EdgeInsets.symmetric(horizontal: screenWidth1),
-    child: Obx(() {
-      return DropdownButton<int>(
-        value: controller.selectedComplaintId.value == 0
-            ? null
-            : controller.selectedComplaintId.value,
-        isExpanded: true,
-        underline: Container(),
-        hint: const Text('Select a category'),
-        items: controller.complaintCategory.map((category) {
-          return DropdownMenuItem<int>(
-            value: category.id,
-            child: Text(category.name), // ✅ Correct field name
-          );
-        }).toList(),
-        onChanged: (value) {
-          controller.selectedComplaintId.value = value ?? 0;
-          controller.getSubCompliantList();
-        },
-      );
-    }),
-  );
-}
-
-
-
-  /// ✅ Sub-Complaint Dropdown (API Data)
- Widget _buildSubComplaintDropdown(TenantComplaintRegisterController controller) {
-  return Container(
-    decoration: BoxDecoration(
-      color: AppColors.whiteLight,
-      border: Border.all(color: AppColors.grey.withOpacity(0.3)),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    padding: EdgeInsets.symmetric(horizontal: screenWidth1),
-    child: Obx(() {
-      if (controller.isLoadingSubtitleCompliantList.value) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      if (controller.subtitleComplaintCategory.isEmpty) {
-        return const Text('No subcategories found');
-      }
-      return DropdownButton<int>(
-        value: controller.selectedSubtitleComplaintId.value == 0
-            ? null
-            : controller.selectedSubtitleComplaintId.value,
-        isExpanded: true,
-        underline: Container(),
-        hint: const Text('Select subcategory'),
-        items: controller.subtitleComplaintCategory.map((subCategory) {
-          return DropdownMenuItem<int>(
-            value: subCategory.id,
-            child: Text(subCategory.name), // ✅ Correct field
-          );
-        }).toList(),
-        onChanged: (value) {
-          controller.selectedSubtitleComplaintId.value = value ?? 0;
-        },
-      );
-    }),
-  );
-}
-
   Widget _buildAddImageButton() {
     return GestureDetector(
       onTap: () async {
-        final ImagePicker picker = ImagePicker();
-        final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-        if (image != null) {
-          setState(() {
-            uploadedImages.add(File(image.path));
-          });
-        }
+        setState(() {
+          uploadedImages.add('placeholder_${uploadedImages.length + 1}');
+        });
       },
       child: Container(
         width: screenWidth * 0.30,
         height: screenHeight * 0.15,
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.grey.withOpacity(0.3)),
+          border: Border.all(color: AppColors.grey.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add, size: 24, color: AppColors.black600),
+            Icon(Icons.add, size: 24, color: AppColors.black600),
             SizedBox(height: screenHeight05),
-            const Text('Add image'),
+            CustomTextWidget(
+              title: 'Add image',
+              fontSize: Get.height * 0.014,
+              color: AppColors.black600,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildImagePreview(File file) {
+  Widget _buildImagePreview(String image) {
     return Stack(
       children: [
         Container(
@@ -270,11 +248,9 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
           height: screenHeight * 0.15,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            image: DecorationImage(
-              image: FileImage(file),
-              fit: BoxFit.cover,
-            ),
+            color: AppColors.grey.withValues(alpha: 0.1),
           ),
+          child: Icon(Icons.image, size: 40, color: AppColors.grey),
         ),
         Positioned(
           top: 4,
@@ -282,17 +258,54 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
           child: GestureDetector(
             onTap: () {
               setState(() {
-                uploadedImages.remove(file);
+                uploadedImages.remove(image);
               });
             },
-            child: const CircleAvatar(
-              radius: 12,
-              backgroundColor: Colors.black54,
-              child: Icon(Icons.close, size: 14, color: Colors.white),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.black.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              padding: EdgeInsets.all(screenWidth5),
+              child: Icon(Icons.close, size: 16, color: AppColors.white),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  void _submitTicket() {
+    if (selectedProperty == null ||
+        selectedCategory == null ||
+        _issueController.text.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please fill all required fields',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.redColor,
+        colorText: AppColors.white,
+      );
+      return;
+    }
+
+    // TODO: Implement ticket submission logic
+    final ticketData = {
+      'property': selectedProperty,
+      'category': selectedCategory,
+      'subcategory': selectedSubcategory,
+      'issue': _issueController.text,
+      'images': uploadedImages,
+    };
+
+    debugPrint('Ticket submitted: $ticketData');
+    Get.back();
+    Get.snackbar(
+      'Success',
+      'Ticket submitted successfully',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.onlineGreenDark,
+      colorText: AppColors.white,
     );
   }
 }

@@ -2,37 +2,23 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'technician_model.g.dart';
 
-@JsonSerializable(explicitToJson: true)
+@JsonSerializable()
 class TechnicianProfile {
+  final String uid;
+  final String location;
   final String fullName;
-  // final String profession;
-  final String phoneNumber;
-  // final String location;
   final String email;
-  @JsonKey(name: 'technicianId')
-  final String id;
+  final String mobile;
+  final String photoURL;
   final String role;
-  // final List<String> skills;
-  // final double rating;
-  // @JsonKey(name: 'reviewCount')
-  // final int totalReviews;
-  // @JsonKey(name: 'jobsCompleted')
-  // final int completedJobs;
-  // @JsonKey(name: 'totalJobs')
-  // final int jobsAvailable;
 
   TechnicianProfile({
+    required this.uid,
+    required this.location,
     required this.fullName,
-    // required this.profession,
-    required this.phoneNumber,
-    // required this.location,
     required this.email,
-    required this.id,
-    // required this.skills,
-    // required this.rating,
-    // required this.totalReviews,
-    // required this.completedJobs,
-    // required this.jobsAvailable, 
+    required this.mobile,
+    required this.photoURL,
     required this.role,
   });
 

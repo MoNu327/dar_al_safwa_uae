@@ -10,9 +10,9 @@ import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_widget.dart';
 
 class RectifyTicketsScreen extends StatelessWidget {
-  
-  const RectifyTicketsScreen({super.key});
-  
+  final String complaintId; // Pass complaintId dynamically
+
+  const RectifyTicketsScreen({super.key, required this.complaintId});
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +61,6 @@ class RectifyTicketsScreen extends StatelessWidget {
               keyboardType: TextInputType.text,
               controller: controller.workDescriptionController,
               maxLines: 3,
-              onChanged: (value) => {}
             ),
             SizedBox(height: Get.height * 0.01),
 
@@ -73,114 +72,11 @@ class RectifyTicketsScreen extends StatelessWidget {
               color: AppColors.black,
             ),
             SizedBox(height: Get.height * 0.010),
-            Obx(() => Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: Get.width * 0.03,
-                      vertical: Get.height * 0.015),
-                  decoration: BoxDecoration(
-                      color: AppColors.whiteLight,
-                      borderRadius: BorderRadius.circular(screenWidth4)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const CustomTextWidget(
-                        title: 'Pending',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.black,
-                      ),
-                      Row(
-                        children: [
-                          CustomTextWidget(
-                            title: controller.selectedWorkStatus.value,
-                            fontSize: 16,
-                            color: AppColors.black,
-                          ),
-                          Icon(Icons.arrow_right, color: AppColors.black),
-                        ],
-                      ),
-                    ],
-                  ),
-                )),
+            _workStatusDropdown(controller),
             SizedBox(height: Get.height * 0.02),
 
-            // ✅ Amount Charged Section with Editable Field
-            Obx(() => Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                      color: AppColors.whiteLight,
-                      borderRadius: BorderRadius.circular(screenWidth4)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const CustomTextWidget(
-                              title: 'Amount Charged',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.black),
-                          SizedBox(
-                            width: 100,
-                            child: TextField(
-                              controller: controller.amountController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                hintText: '\$0',
-                                border: UnderlineInputBorder(),
-                              ),
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const CustomTextWidget(
-                            title: 'Amount Changed?',
-                            fontSize: 14,
-                            color: AppColors.black,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          Switch(
-                            value: controller.amountChanged.value,
-                            onChanged: controller.toggleAmountChanged,
-                          ),
-                        ],
-                      ),
-                      Divider(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const CustomTextWidget(
-                              title: 'Paid Status',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.black),
-                          Row(
-                            children: [
-                              CustomTextWidget(
-                                  title: controller.isPaid.value
-                                      ? 'Paid'
-                                      : 'Not Paid',
-                                  fontSize: 16,
-                                  color: AppColors.black),
-                              Switch(
-                                value: controller.isPaid.value,
-                                onChanged: controller.togglePaidStatus,
-                              )
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                )),
-
+            // ✅ Amount Charged Section
+            _amountChargedSection(controller),
             SizedBox(height: Get.height * 0.03),
 
             // ✅ Submit Button
@@ -191,7 +87,7 @@ class RectifyTicketsScreen extends StatelessWidget {
                 buttonShape: "rect",
                 buttonColor: AppColors.secondaryColor,
                 buttonTextColor: AppColors.white,
-                onPressed: controller.submitUpdates,
+                onPressed: () => controller.submitUpdates(),
               ),
             ),
           ],
@@ -200,7 +96,106 @@ class RectifyTicketsScreen extends StatelessWidget {
     );
   }
 
-  /// ✅ Image Upload Section
+  /// Work Status Dropdown
+  Widget _workStatusDropdown(RectifyTicketsController controller) {
+    return Obx(() => DropdownButtonFormField<String>(
+          value: controller.selectedWorkStatus.value,
+          items: ['Pending', 'In Progress', 'Completed']
+              .map((status) =>
+                  DropdownMenuItem(value: status, child: Text(status)))
+              .toList(),
+          onChanged: (value) {
+            if (value != null) controller.changeWorkStatus(value);
+          },
+          decoration: InputDecoration(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(screenWidth4),
+            ),
+          ),
+        ));
+  }
+
+  /// Amount Charged Section
+  Widget _amountChargedSection(RectifyTicketsController controller) {
+    return Obx(() => Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+              color: AppColors.whiteLight,
+              borderRadius: BorderRadius.circular(screenWidth4)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const CustomTextWidget(
+                      title: 'Amount Charged',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.black),
+                  SizedBox(
+                    width: 100,
+                    child: TextField(
+                      controller: controller.amountController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        hintText: '\$0',
+                        border: UnderlineInputBorder(),
+                      ),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const CustomTextWidget(
+                    title: 'Amount Changed?',
+                    fontSize: 14,
+                    color: AppColors.black,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  Switch(
+                    value: controller.amountChanged.value,
+                    onChanged: controller.toggleAmountChanged,
+                  ),
+                ],
+              ),
+              const Divider(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const CustomTextWidget(
+                      title: 'Paid Status',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.black),
+                  Row(
+                    children: [
+                      CustomTextWidget(
+                          title:
+                              controller.isPaid.value ? 'Paid' : 'Not Paid',
+                          fontSize: 16,
+                          color: AppColors.black),
+                      Switch(
+                        value: controller.isPaid.value,
+                        onChanged: controller.togglePaidStatus,
+                      )
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ));
+  }
+
+  /// Image Upload Section
   Widget _imageUploadSection(RectifyTicketsController controller) {
     return Container(
       padding: EdgeInsets.all(Get.width * 0.04),

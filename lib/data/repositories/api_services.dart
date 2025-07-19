@@ -55,6 +55,21 @@ class ApiService {
     }
   }
 
+Future<Map<String, dynamic>> getComplaintDetails(String complaintId) async {
+  try {
+    final response = await apiClient.request(
+      "technician/complaint-details",
+      method: "get",
+      data: {"complaint_id": complaintId},
+    );
+
+    return response.data; // Expected response is the JSON you shared
+  } catch (e) {
+    print("❌ Error in getComplaintDetails: $e");
+    rethrow;
+  }
+}
+
   // register complaint
   Future<Response> insertComplaint(
       CreateComplaintRequest createComplaintRequest) async {
@@ -71,42 +86,51 @@ class ApiService {
     }
   }
   
-  Future<Response> updateComplaint({
-  required int complaintId,
-  required int status,
+Future<Map<String, dynamic>> updateComplaint({
+  required String uid,
+  required String complaintId,
+  required String status,
   required String reply,
-  required int amountPaid,
-  required int amountStatus,
-  List<File>? images,
+  required String amountPaid,
+  required bool amountStatus,
+  required List<File> images,
 }) async {
   try {
-    // Prepare multipart form data
-    FormData formData = FormData.fromMap({
-      'complaint_id': complaintId,
-      'status': status,
-      'reply': reply,
-      'amount_paid': amountPaid,
-      'amount_status': amountStatus,
-      if (images != null)
-        for (int i = 0; i < images.length; i++)
-          'images[$i]': await MultipartFile.fromFile(
-            images[i].path,
-            filename: images[i].path.split('/').last,
-          ),
+    final formData = FormData.fromMap({
+      "uid": uid,
+      "complaint_id": complaintId,
+      "status": status,
+      "reply": reply,
+      "amount_paid": amountPaid,
+      "amount_status": amountStatus ? "1" : "0",
+      "images": [
+        for (var file in images)
+          await MultipartFile.fromFile(file.path, filename: file.path.split('/').last)
+      ],
     });
 
+    print("=== FINAL FORM DATA ===");
+    formData.fields.forEach((field) => print("${field.key}: ${field.value}"));
+    print("Images: ${images.map((e) => e.path).toList()}");
+    print("=======================");
+
     final response = await apiClient.request(
-      "technician/update-complaint-status", // replace with your actual endpoint
+      "technician/update-complaint-status",
       method: "post",
       data: formData,
-      options: Options(contentType: 'multipart/form-data'),
+      isFormData: true,
     );
 
-    return response;
+    if (response.data is String) {
+      throw Exception("Unexpected response: ${response.data}");
+    }
+    return response.data;
   } catch (e) {
+    print("❌ Error in updateComplaint: $e");
     rethrow;
   }
 }
+
 
 //Home Section
   //banner
@@ -178,6 +202,63 @@ class ApiService {
       rethrow;
     }
   }
+
+  Future<Response> getTechnicianDetails(String uid) async {
+  try {
+    // Using POST (recommended if backend expects uid in body)
+    final response = await apiClient.request(
+      "technician/details",
+      method: "post",
+      data: {"uid": uid},
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+
+
+Future<Response> updateTechnicianComplaint({
+  required String complaintId,
+  required String status,
+  List<String>? images,
+}) async {
+  try {
+    final response = await apiClient.request(
+      "technician/complaints",
+      method: "post",
+      data: {
+        "complaint_id": complaintId,
+        "status": status,
+        "images": images ?? [],
+      },
+    );
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+  
+  Future<Response> getTechnicianComplaints(String uid) async {
+    try {
+      final response = await apiClient.request(
+        "technician/complaints",
+        method: "post",
+        data: {"uid": uid},
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  
+
+
+
 
   Future<Response> getPropertyDetails(int propertyId) async {
     try {

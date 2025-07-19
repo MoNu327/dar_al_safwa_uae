@@ -7,6 +7,7 @@ import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_prope
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/custom_tenant_property_detail_widget.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/custom_tenant_property_list_widget.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_properties_list.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
 import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
@@ -138,8 +139,9 @@ class TenantDashboard extends StatelessWidget {
                       leading: Image.asset("assets/images/Properties.png"),
                       title: 'My Properties',
                       onTap: () {
-                        Get.toNamed("/tenantPropertyList");
-                      },
+                        Get.to(() => TenantPropertiesList());
+                       }
+
                     ),
                     buildMenuTile(
                       leading: Image.asset("assets/images/Documents.png"),

@@ -187,7 +187,7 @@ class AppRoute {
 ),
 GetPage(
   name: technicianDashboard,
-  page: () => const TechnicianDashboard(),
+  page: () =>  TechnicianDashboard(),
 ),
 GetPage(
       name: technicianProfile,
@@ -200,7 +200,7 @@ GetPage(
 
 GetPage(
   name: technicianRectifyTicket,
-  page: () => RectifyTicketsScreen(),
+  page: () => RectifyTicketsScreen(complaintId: '',),
 ),
 GetPage(
   name: AppRoute.tenantTicketDetails,

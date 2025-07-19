@@ -8,18 +8,22 @@ part of 'technician_model.dart';
 
 TechnicianProfile _$TechnicianProfileFromJson(Map<String, dynamic> json) =>
     TechnicianProfile(
+      uid: json['uid'] as String,
+      location: json['location'] as String,
       fullName: json['fullName'] as String,
-      phoneNumber: json['phoneNumber'] as String,
       email: json['email'] as String,
-      id: json['technicianId'] as String,
+      mobile: json['mobile'] as String,
+      photoURL: json['photoURL'] as String,
       role: json['role'] as String,
     );
 
 Map<String, dynamic> _$TechnicianProfileToJson(TechnicianProfile instance) =>
     <String, dynamic>{
+      'uid': instance.uid,
+      'location': instance.location,
       'fullName': instance.fullName,
-      'phoneNumber': instance.phoneNumber,
       'email': instance.email,
-      'technicianId': instance.id,
+      'mobile': instance.mobile,
+      'photoURL': instance.photoURL,
       'role': instance.role,
     };

@@ -1,20 +1,29 @@
+import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_ticket_card_widget.dart';
+import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../widgets/custom_text_widget.dart';
-import 'technician_ticket_card_widget.dart';
+import 'package:get/get_core/src/get_main.dart';
 
-class TechnicianViewTickets extends StatelessWidget {
-  TechnicianViewTickets({super.key});
+class TechnicianViewTickets extends StatefulWidget {
+  const TechnicianViewTickets({super.key});
 
+  @override
+  _TechnicianViewTicketsState createState() => _TechnicianViewTicketsState();
+}
+
+class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   final controller = Get.put(TechnicianTicketsController());
 
   @override
-  Widget build(BuildContext context) {
-    // Fetch tickets on load
-    controller.fetchTickets("wM26u5uv7MNiisePl803uYTYDNL2"); // Replace with dynamic user ID
+  void initState() {
+    super.initState();
+    controller.fetchTickets("2kiHls8ajrhe8e96aW59fkTh7i13"); // Fetch once
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
@@ -35,7 +44,6 @@ class TechnicianViewTickets extends StatelessWidget {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
-
         if (controller.tickets.isEmpty) {
           return const Center(child: Text('No Tickets Found'));
         }
@@ -51,12 +59,12 @@ class TechnicianViewTickets extends StatelessWidget {
                 propertyName: ticket.propertyName,
                 category: ticket.category,
                 issue: ticket.subcategory,
-                status: ticket.statusText,
-                statusColor: _getStatusColor(ticket.statusText),
+                status: ticket.statusText.en,
+                statusColor: _getStatusColor(ticket.statusText.en),
                 description: ticket.description,
                 date: ticket.date.split(' ').first,
                 time: ticket.date.split(' ').last,
-                categoryIcon: Icons.build, // Can map dynamically
+                categoryIcon: Icons.build,
                 images: ticket.images,
                 ticket: ticket,
               ),

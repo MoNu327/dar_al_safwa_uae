@@ -1012,21 +1012,27 @@ Future<UserCredential?> signInWithGoogle() async {
     debugPrint('Firebase authentication successful, verifying Technician role...');
     final userDoc = await _firestore.collection('technicians').doc(credential.user?.uid).get();
 
-    if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
-      debugPrint('Technician verification successful');
-      userRole.value = 'technician';
+   if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
+  debugPrint('Technician verification successful');
+  userRole.value = 'technician';
 
-      final userData = userDoc.data();
-      final userModel = TechnicianProfile(
-        role: userData?['role'] ?? 'technician',
-        fullName: userData?['fullName'] ?? '',
-        phoneNumber: userData?['phoneNumber'] ?? '',
-        id: userData?['id'] ?? '',
-        email: credential.user!.email!,
-      );
+  final userData = userDoc.data() as Map<String, dynamic>?;
 
-      Get.find<TechnicianController>().currentUser = userModel;
-      debugPrint('Technician details stored: ${userModel.toJson()}');
+  final userModel = TechnicianProfile(
+    uid: userData?['uid'] ?? '',
+    location: userData?['location'] ?? '',
+    fullName: userData?['fullName'] ?? '',
+    email: userData?['email'] ?? credential.user?.email ?? '',
+    mobile: userData?['mobile'] ?? userData?['phoneNumber'] ?? '',
+    photoURL: userData?['photoURL'] ?? '',
+    role: userData?['role'] ?? 'technician',
+  );
+
+  // Store user details in TechnicianController
+  Get.find<TechnicianController>().currentUser = userModel;
+  debugPrint('Technician details stored: ${userModel.toJson()}');
+
+
 
       // ✅ Navigate to Technician Dashboard
       Get.offAllNamed(AppRoute.technicianDashboard);

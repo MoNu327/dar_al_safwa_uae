@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dar_al_safwa/data/repositories/api_services.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -6,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 class RectifyTicketsController extends GetxController {
   final ImagePicker _imagePicker = ImagePicker();
+  final ApiService _apiService = ApiService();
 
   /// Observables
   var uploadedImages = <File>[].obs;
@@ -15,13 +17,13 @@ class RectifyTicketsController extends GetxController {
 
   /// Controllers
   final workDescriptionController = TextEditingController();
-  final amountController = TextEditingController(text: ''); // ✅ Default amount set
+  final amountController = TextEditingController(text: '');
 
   @override
   void onInit() {
     super.onInit();
-    workDescriptionController.text = ''; // Empty description
-    amountController.text = ''; // ✅ Default amount
+    workDescriptionController.text = '';
+    amountController.text = '';
   }
 
   /// Image Picker
@@ -41,16 +43,11 @@ class RectifyTicketsController extends GetxController {
   }
 
   /// Toggle switches
-  void toggleAmountChanged(bool value) {
-    amountChanged.value = value;
-  }
-
-  void togglePaidStatus(bool value) {
-    isPaid.value = value;
-  }
+  void toggleAmountChanged(bool value) => amountChanged.value = value;
+  void togglePaidStatus(bool value) => isPaid.value = value;
 
   /// Submit Logic
-  void submitUpdates() {
+  Future<void> submitUpdates() async {
     final description = workDescriptionController.text.trim();
     final amount = amountController.text.trim();
 
@@ -60,35 +57,84 @@ class RectifyTicketsController extends GetxController {
       return;
     }
 
-    // ✅ Log values or send API request
-    print("Work Description: $description");
-    print("Amount Charged: $amount");
-    print("Paid Status: ${isPaid.value}");
-    print("Amount Changed: ${amountChanged.value}");
-    print("Uploaded Images: ${uploadedImages.length}");
+    print("=== SUBMIT UPDATE REQUEST ===");
+    print("complaint_id: 64");
+    print("description: $description");
+    print("status: ${selectedWorkStatus.value}");
+    print("amount: $amount");
+    print("is_paid: ${isPaid.value}");
+    print("amount_changed: ${amountChanged.value}");
+    print("images: ${uploadedImages.map((e) => e.path).toList()}");
+    print("==============================");
 
-    // ✅ Show Success Message
-    Get.snackbar('Success', 'Updates submitted successfully',
-        backgroundColor: Colors.green, colorText: Colors.white);
+    try {
+      final response = await _apiService.updateComplaint(
+        uid: "TECH_UID", // Replace with the logged-in technician UID
+        complaintId: "64",
+        status: getStatusCode(selectedWorkStatus.value),
+        reply: description,
+        amountPaid: amount,
+        amountStatus: amountChanged.value,
+        images: uploadedImages,
+      );
+if (response['success'] == true) {
+  Get.snackbar('Success', response['message'],
+      backgroundColor: Colors.green, colorText: Colors.white);
 
-    // ✅ Reset form after submission
-    resetForm();
+  final data = response['data'];
+  print("Complaint Updated Successfully!");
+  print("Complaint ID: ${data['complaint_id']}");
+  print("Status: ${data['status']}");
+  print("Updated Rows: ${data['updated_rows']}");
+  print("Images:");
+  if (data['images'] != null && data['images'] is List) {
+    for (var img in data['images']) {
+      print("  - $img");
+    }
+  }
 
-    // ✅ Navigate to Technician Dashboard after submission
-    Future.delayed(const Duration(seconds: 1), () {
-      Get.offAll(() => TechnicianDashboard()); 
-      // ✅ Make sure TechnicianDashboard() is your actual widget
-    });
+  resetForm();
+
+  // ✅ Go back to the previous screen instead of navigating to TechnicianDashboard
+  Future.delayed(const Duration(seconds: 1), () {
+    Get.back();
+  });
+
+} else {
+  Get.snackbar('Error', response['message'] ?? 'Failed to update',
+      backgroundColor: Colors.red, colorText: Colors.white);
+}
+
+    } catch (e) {
+      Get.snackbar('Error', 'Something went wrong: $e',
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
+
+  /// Convert Status to Code
+  String getStatusCode(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return "0";
+      case 'in progress':
+        return "1";
+      case 'completed':
+        return "2";
+      case 'cancelled':
+        return "3";
+      default:
+        return "0";
+    }
   }
 
   /// Reset Form
   void resetForm() {
     workDescriptionController.clear();
-    amountController.text = ''; // ✅ Reset amount to default
-    selectedWorkStatus.value = 'Pending'; // Reset status
-    amountChanged.value = false; // Reset amount changed
-    isPaid.value = false; // Reset Paid status
-    uploadedImages.clear(); // Clear uploaded images
+    amountController.text = '';
+    selectedWorkStatus.value = 'Pending';
+    amountChanged.value = false;
+    isPaid.value = false;
+    uploadedImages.clear();
   }
 
   @override
