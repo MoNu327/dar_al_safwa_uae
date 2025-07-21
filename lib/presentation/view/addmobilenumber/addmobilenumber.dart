@@ -38,10 +38,10 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
 
   Future<void> _handleSave() async {
     final mobile = mobileController.text.trim();
-    if (mobile.isEmpty || mobile.length < 10) {
-      Get.snackbar("Invalid", "Please enter a valid mobile number");
-      return;
-    }
+    // if (mobile.isEmpty || mobile.length < 8) {
+    //   Get.snackbar("Invalid", "Please enter a valid mobile number");
+    //   return;
+    // }
 
     isLoading.value = true;
     final controller = Get.find<PropertyDetailsController>();
@@ -49,16 +49,16 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
     isLoading.value = false;
 
     // Return to previous screen with updated data
-    Get.back(result: {
-      'mobile': mobile,
-      'propertyId': widget.propertyId,
-      'phone': widget.phone,
-      'navigateToChat': widget.navigateToChat,
-      'navigateToCall': widget.navigateToCall,
-      'unitId': widget.unitId,
-      'propertyName': widget.propertyName,
-      'agentEmail': widget.agentEmail,
-    });
+    // Get.back(result: {
+    //   'mobile': mobile,
+    //   'propertyId': widget.propertyId,
+    //   'phone': widget.phone,
+    //   'navigateToChat': widget.navigateToChat,
+    //   'navigateToCall': widget.navigateToCall,
+    //   'unitId': widget.unitId,
+    //   'propertyName': widget.propertyName,
+    //   'agentEmail': widget.agentEmail,
+    // });
 
   }
 
@@ -74,13 +74,14 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
         child: Obx(() => Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
-            const Center(
+            Align(
+              alignment: Alignment.topLeft,
               child: Text(
-                " Mobile number is required to proceed.",
+                " Mobile number is required to proceed.*",
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: AppColors.secondaryColor,
                 ),
@@ -88,7 +89,7 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
             Align(
               alignment: Alignment.centerLeft,

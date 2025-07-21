@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart' show TicketModel, TicketStatus;
 import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget.dart';
 import 'package:flutter/material.dart';
@@ -27,42 +28,42 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
   @override
   void initState() {
     super.initState();
-    _initializeTickets();
+    // _initializeTickets();
     filteredTickets = tickets;
   }
 
-  void _initializeTickets() {
-    tickets = [
-      TicketModel(
-        id: 'TK-1062',
-        title: 'Palm Residency - Flat B12',
-        description: 'Leaking tap in kitchen',
-        submittedDate: 'May 20, 2024',
-        status: TicketStatus.pending,
-      ),
-      TicketModel(
-        id: 'TK-1234',
-        title: 'Green view Apartment - Unit 301',
-        description: 'Broken window in living room',
-        submittedDate: 'May 18, 2024',
-        status: TicketStatus.rectified,
-      ),
-      TicketModel(
-        id: 'TK-1889',
-        title: 'Sunset Estate-House 19',
-        description: 'Bathroom light not working',
-        submittedDate: 'May 14, 2024',
-        status: TicketStatus.pending,
-      ),
-      TicketModel(
-        id: 'TK-2678',
-        title: 'Maple Residency - Flat A07',
-        description: 'AC not cooling properly',
-        submittedDate: 'May 10, 2024',
-        status: TicketStatus.rectified,
-      ),
-    ];
-  }
+  // void _initializeTickets() {
+  //   tickets = [
+  //     TicketModel(
+  //       id: 'TK-1062',
+  //       title: 'Palm Residency - Flat B12',
+  //       description: 'Leaking tap in kitchen',
+  //       submittedDate: 'May 20, 2024',
+  //       status: TicketStatus.pending,
+  //     ),
+  //     TicketModel(
+  //       id: 'TK-1234',
+  //       title: 'Green view Apartment - Unit 301',
+  //       description: 'Broken window in living room',
+  //       submittedDate: 'May 18, 2024',
+  //       status: TicketStatus.rectified,
+  //     ),
+  //     TicketModel(
+  //       id: 'TK-1889',
+  //       title: 'Sunset Estate-House 19',
+  //       description: 'Bathroom light not working',
+  //       submittedDate: 'May 14, 2024',
+  //       status: TicketStatus.pending,
+  //     ),
+  //     TicketModel(
+  //       id: 'TK-2678',
+  //       title: 'Maple Residency - Flat A07',
+  //       description: 'AC not cooling properly',
+  //       submittedDate: 'May 10, 2024',
+  //       status: TicketStatus.rectified,
+  //     ),
+  //   ];
+  // }
 
   void _searchTickets(String query) {
     setState(() {
@@ -70,8 +71,8 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
         filteredTickets = tickets;
       } else {
         filteredTickets = tickets.where((ticket) {
-          return ticket.id.toLowerCase().contains(query.toLowerCase()) ||
-              ticket.title.toLowerCase().contains(query.toLowerCase()) ||
+          return ticket.category.toLowerCase().contains(query.toLowerCase()) ||
+              // ticket.property[] toLowerCase().contains(query.toLowerCase()) ||
               ticket.description.toLowerCase().contains(query.toLowerCase());
         }).toList();
       }
@@ -143,9 +144,15 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
                     buttonColor: AppColors.secondaryColor,
                     buttonTitle: "Create Ticket",
                     buttonTextColor: AppColors.white,
-                    onPressed: () {
-                      Get.to(TenantsCreateTicketScreen(propertyName: '',));
-                    },
+                   onPressed: () {
+  Get.to((dynamic property) => TenantsCreateTicketScreen(
+        propertyName: property.propertyTitle,
+        propertyId: property.id,
+        unitAddressId: property.unitAddressId, 
+        userId: '',// Ensure this field exists in model
+      ));
+},
+
                   ),
                 ),
               ),
@@ -175,7 +182,7 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
           children: [
             // Header Row
             CustomTextWidget(
-              title: "#${ticket.id}",
+              title: "#${ticket.complaintId}",
               fontSize: Get.height * 0.014,
               fontWeight: FontWeight.w600,
               color: AppColors.black800,
@@ -185,7 +192,7 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
 
             // Title
             CustomTextWidget(
-              title: ticket.title,
+              title: ticket.category,
               fontSize: Get.height * 0.018,
               fontWeight: FontWeight.w600,
               color: AppColors.black,
@@ -210,7 +217,7 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 CustomTextWidget(
-                  title: "Submitted on ${ticket.submittedDate}",
+                  title: "Submitted on ${"N/A"}", // ticket.
                   fontSize: Get.height * 0.014,
                   fontWeight: FontWeight.w400,
                   color: AppColors.black500,
@@ -303,129 +310,129 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
     );
   }
 
-  void _showCreateTicketDialog() {
-    final TextEditingController titleController = TextEditingController();
-    final TextEditingController descriptionController = TextEditingController();
+  // void _showCreateTicketDialog() {
+  //   final TextEditingController titleController = TextEditingController();
+  //   final TextEditingController descriptionController = TextEditingController();
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: CustomTextWidget(
-            title: "Create New Ticket",
-            fontSize: Get.height * 0.02,
-            fontWeight: FontWeight.w600,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: InputDecoration(
-                  hintText: "Ticket title",
-                  hintStyle: GoogleFonts.poppins(
-                    color: AppColors.lightGrey,
-                    fontSize: Get.height * 0.016,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              SizedBox(height: screenHeight1),
-              TextField(
-                controller: descriptionController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: "Describe the issue",
-                  hintStyle: GoogleFonts.poppins(
-                    color: AppColors.lightGrey,
-                    fontSize: Get.height * 0.016,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: CustomTextWidget(
-                title: "Cancel",
-                color: AppColors.black500,
-                fontSize: Get.height * 0.016,
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                if (titleController.text.isNotEmpty &&
-                    descriptionController.text.isNotEmpty) {
-                  Navigator.pop(context);
-                  _createNewTicket(
-                      titleController.text, descriptionController.text);
-                }
-              },
-              child: CustomTextWidget(
-                title: "Create",
-                color: AppColors.primaryColor,
-                fontSize: Get.height * 0.016,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: CustomTextWidget(
+  //           title: "Create New Ticket",
+  //           fontSize: Get.height * 0.02,
+  //           fontWeight: FontWeight.w600,
+  //         ),
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             TextField(
+  //               controller: titleController,
+  //               decoration: InputDecoration(
+  //                 hintText: "Ticket title",
+  //                 hintStyle: GoogleFonts.poppins(
+  //                   color: AppColors.lightGrey,
+  //                   fontSize: Get.height * 0.016,
+  //                 ),
+  //                 border: OutlineInputBorder(
+  //                   borderRadius: BorderRadius.circular(8),
+  //                 ),
+  //               ),
+  //             ),
+  //             SizedBox(height: screenHeight1),
+  //             TextField(
+  //               controller: descriptionController,
+  //               maxLines: 3,
+  //               decoration: InputDecoration(
+  //                 hintText: "Describe the issue",
+  //                 hintStyle: GoogleFonts.poppins(
+  //                   color: AppColors.lightGrey,
+  //                   fontSize: Get.height * 0.016,
+  //                 ),
+  //                 border: OutlineInputBorder(
+  //                   borderRadius: BorderRadius.circular(8),
+  //                 ),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             child: CustomTextWidget(
+  //               title: "Cancel",
+  //               color: AppColors.black500,
+  //               fontSize: Get.height * 0.016,
+  //             ),
+  //           ),
+  //           TextButton(
+  //             onPressed: () {
+  //               if (titleController.text.isNotEmpty &&
+  //                   descriptionController.text.isNotEmpty) {
+  //                 Navigator.pop(context);
+  //                 _createNewTicket(
+  //                     titleController.text, descriptionController.text);
+  //               }
+  //             },
+  //             child: CustomTextWidget(
+  //               title: "Create",
+  //               color: AppColors.primaryColor,
+  //               fontSize: Get.height * 0.016,
+  //               fontWeight: FontWeight.w600,
+  //             ),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
-  void _createNewTicket(String title, String description) {
-    final newTicket = TicketModel(
-      id: 'TK-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
-      title: title,
-      description: description,
-      submittedDate: 'Today',
-      status: TicketStatus.pending,
-    );
+//   void _createNewTicket(String title, String description) {
+//     final newTicket = TicketModel(
+//       id: 'TK-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+//       title: title,
+//       description: description,
+//       submittedDate: 'Today',
+//       status: TicketStatus.pending,
+//     );
 
-    setState(() {
-      tickets.insert(0, newTicket);
-      filteredTickets = tickets;
-    });
+//     setState(() {
+//       tickets.insert(0, newTicket);
+//       filteredTickets = tickets;
+//     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: CustomTextWidget(
-          title: "Ticket created successfully!",
-          color: AppColors.white,
-          fontSize: Get.height * 0.016,
-        ),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: CustomTextWidget(
+//           title: "Ticket created successfully!",
+//           color: AppColors.white,
+//           fontSize: Get.height * 0.016,
+//         ),
+//         backgroundColor: Colors.green,
+//       ),
+//     );
+//   }
 }
 
 // Update your existing TicketModel and TicketStatus from the previous file
-class TicketModel {
-  final String id;
-  final String title;
-  final String description;
-  final String submittedDate;
-  final TicketStatus status;
+// class TicketModel {
+//   final String id;
+//   final String title;
+//   final String description;
+//   final String submittedDate;
+//   final TicketStatus status;
 
-  TicketModel({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.submittedDate,
-    required this.status,
-  });
-}
+//   TicketModel({
+//     required this.id,
+//     required this.title,
+//     required this.description,
+//     required this.submittedDate,
+//     required this.status,
+//   });
+// }
 
-enum TicketStatus {
-  pending,
-  rectified,
-  inProgress, completed,
-}
+// enum TicketStatus {
+//   pending,
+//   rectified,
+//   inProgress, completed,
+// }

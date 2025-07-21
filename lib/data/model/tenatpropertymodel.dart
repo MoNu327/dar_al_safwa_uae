@@ -1,5 +1,9 @@
 class TenantPropertyModel {
   final int id;
+  final String uid;
+  final int propertyId;
+  final int unitId;
+  final int unitAddressId;
   final String propertyTitle;
   final String cityName;
   final String stateName;
@@ -16,6 +20,10 @@ class TenantPropertyModel {
 
   TenantPropertyModel({
     required this.id,
+    required this.uid,
+    required this.propertyId,
+    required this.unitId,
+    required this.unitAddressId,
     required this.propertyTitle,
     required this.cityName,
     required this.stateName,
@@ -33,9 +41,11 @@ class TenantPropertyModel {
 
   factory TenantPropertyModel.fromJson(Map<String, dynamic> json) {
     return TenantPropertyModel(
-      id: json['id'] is int
-          ? json['id']
-          : int.tryParse(json['id'].toString()) ?? 0,
+      id: _toInt(json['id']),
+      uid: json['uid'] ?? '',
+      propertyId: _toInt(json['propertyid']),
+      unitId: _toInt(json['unitid']),
+      unitAddressId: _toInt(json['unit_address_id']),
       propertyTitle: json['property_title'] ?? '',
       cityName: json['city_name'] ?? '',
       stateName: json['state_name'] ?? '',
@@ -59,6 +69,10 @@ class TenantPropertyModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'uid': uid,
+      'propertyid': propertyId,
+      'unitid': unitId,
+      'unit_address_id': unitAddressId,
       'property_title': propertyTitle,
       'city_name': cityName,
       'state_name': stateName,
@@ -73,5 +87,13 @@ class TenantPropertyModel {
       'UnitNumber': unitNumber,
       'property_image_url': propertyImageUrl,
     };
+  }
+
+  /// Safe conversion helper
+  static int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }

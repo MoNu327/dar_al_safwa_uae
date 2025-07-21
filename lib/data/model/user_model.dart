@@ -49,7 +49,7 @@ class UserModel {
       phoneNumber: json['phoneNumber'],
       location: json['location'],
       name: json['name'] ?? '',
-      role: json['role'] ?? 'user',
+     role: json['role'] ?? '',
       status: json['status'] ?? 'pending',
       imageUrl: json['photoUrl'] ?? '',
     );

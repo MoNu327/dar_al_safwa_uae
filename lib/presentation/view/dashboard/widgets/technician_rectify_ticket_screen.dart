@@ -16,6 +16,8 @@ class RectifyTicketsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+                debugPrint('Complaint ID: $complaintId');
+
     final RectifyTicketsController controller =
         Get.put(RectifyTicketsController());
 
@@ -78,7 +80,6 @@ class RectifyTicketsScreen extends StatelessWidget {
             // ✅ Amount Charged Section
             _amountChargedSection(controller),
             SizedBox(height: Get.height * 0.03),
-
             // ✅ Submit Button
             SizedBox(
               width: double.infinity,
@@ -87,7 +88,7 @@ class RectifyTicketsScreen extends StatelessWidget {
                 buttonShape: "rect",
                 buttonColor: AppColors.secondaryColor,
                 buttonTextColor: AppColors.white,
-                onPressed: () => controller.submitUpdates(),
+                onPressed: () => controller.submitUpdates(complaintId),
               ),
             ),
           ],
@@ -141,8 +142,8 @@ class RectifyTicketsScreen extends StatelessWidget {
                       controller: controller.amountController,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        hintText: '\$0',
-                        border: UnderlineInputBorder(),
+                        hintText: 'OMR 0',
+                        border:  UnderlineInputBorder(),
                       ),
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w600),

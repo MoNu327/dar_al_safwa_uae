@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/screens/dashboard_screen.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/add_property_screen.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/customer_enquiry_screen.dart';
@@ -170,9 +171,17 @@ class AppRoute {
       page: () => MobileLoginOtp(),
     ),
     GetPage(
-      name: tenantComplaintReg,
-      page: () => TenantComplaintRegister(propertyName: '',),
-    ),
+  name: tenantComplaintReg,
+  page: () {
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    return TenantComplaintRegister(
+      propertyName: args['propertyName'] ?? '',
+      propertyId: args['propertyId'] ?? 0,
+      unitAddressId: args['unitAddressId'] ?? 0,
+    );
+  },
+),
+
     GetPage(
       name: tenantPropertyList,
       page: () => TenantPropertiesList(),
@@ -202,20 +211,12 @@ GetPage(
   name: technicianRectifyTicket,
   page: () => RectifyTicketsScreen(complaintId: '',),
 ),
-GetPage(
-  name: AppRoute.tenantTicketDetails,
-  page: () {
-    final args = Get.arguments;
-    if (args is TicketModel) {
-      return TicketDetailsScreen(ticket: args);
-    } else {
-      // Optional: Show an error or fallback screen
-      return const Scaffold(
-        body: Center(child: Text("No ticket data provided")),
-      );
-    }
-  },
-),
+// GetPage(
+//   name: AppRoute.tenantTicketDetails,
+//   page: () => TicketDetailsScreen(ticket: ,)
+   
+//   ,
+// ),
 
 
 

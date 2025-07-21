@@ -9,9 +9,9 @@ part of 'technician_complaints_response.dart';
 TechnicianComplaintsResponse _$TechnicianComplaintsResponseFromJson(
         Map<String, dynamic> json) =>
     TechnicianComplaintsResponse(
-      status: json['status'] as bool,
-      data: (json['data'] as List<dynamic>)
-          .map((e) => ComplaintData.fromJson(e as Map<String, dynamic>))
+      status: TechnicianComplaintsResponse._statusFromJson(json['status']),
+      data: (json['data'] as List<dynamic>?)
+          ?.map((e) => ComplaintData.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 
@@ -24,22 +24,25 @@ Map<String, dynamic> _$TechnicianComplaintsResponseToJson(
 
 ComplaintData _$ComplaintDataFromJson(Map<String, dynamic> json) =>
     ComplaintData(
-      complaintId: json['complaint_id'] as String,
-      complaintNumber: json['complaint_number'] as String,
-      description: json['description'] as String,
+      complaintId: json['complaint_id'] as String?,
+      complaintNumber: json['complaint_number'] as String?,
+      description: json['description'] as String?,
       reply: json['reply'] as String?,
-      date: json['date'] as String,
-      status: json['status'] as String,
-      statusText:
-          StatusText.fromJson(json['status_text'] as Map<String, dynamic>),
-      category: json['category'] as String,
-      subcategory: json['subcategory'] as String,
-      propertyName: json['property_name'] as String,
-      unitNumber: json['unit_number'] as String,
-      fullAddress: json['full_address'] as String,
-      flatnoId: json['flatno_id'] as String,
-      images:
-          (json['images'] as List<dynamic>).map((e) => e as String).toList(),
+      date: json['last_updated'] as String?,
+      status: json['status'] as String?,
+      statusText: json['status_text'] == null
+          ? null
+          : StatusText.fromJson(json['status_text'] as Map<String, dynamic>),
+      category: json['category'] as String?,
+      subcategory: json['subcategory'] as String?,
+      propertyName: json['property_name'] as String?,
+      unitNumber: json['unit_number'] as String?,
+      fullAddress: json['full_address'] as String?,
+      flatnoId: json['flatno_id'] as String?,
+      images: (json['images'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$ComplaintDataToJson(ComplaintData instance) =>
@@ -48,7 +51,7 @@ Map<String, dynamic> _$ComplaintDataToJson(ComplaintData instance) =>
       'complaint_number': instance.complaintNumber,
       'description': instance.description,
       'reply': instance.reply,
-      'date': instance.date,
+      'last_updated': instance.date,
       'status': instance.status,
       'status_text': instance.statusText,
       'category': instance.category,
@@ -61,7 +64,7 @@ Map<String, dynamic> _$ComplaintDataToJson(ComplaintData instance) =>
     };
 
 StatusText _$StatusTextFromJson(Map<String, dynamic> json) => StatusText(
-      en: json['en'] as String,
+      en: json['en'] as String?,
     );
 
 Map<String, dynamic> _$StatusTextToJson(StatusText instance) =>

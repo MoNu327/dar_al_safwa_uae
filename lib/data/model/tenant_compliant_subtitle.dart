@@ -34,24 +34,46 @@ class ComplaintSubCategoriesResponse {
 
 @JsonSerializable()
 class ComplaintSubCategory {
+  @JsonKey(fromJson: _toInt)
   final int id;
+
   final String name;
-  final int complaint_master_id;
+
+  @JsonKey(name: 'complaint_master_id', fromJson: _toInt)
+  final int complaintMasterId;
+
+  @JsonKey(fromJson: _toInt)
   final int status;
+
+  @JsonKey(fromJson: _toIntNullable)
   final int? flag;
-  final String complaint_master_name;
+
+  @JsonKey(name: 'complaint_master_name')
+  final String complaintMasterName;
 
   ComplaintSubCategory({
     required this.id,
     required this.name,
-    required this.complaint_master_id,
+    required this.complaintMasterId,
     required this.status,
     this.flag,
-    required this.complaint_master_name,
+    required this.complaintMasterName,
   });
 
   factory ComplaintSubCategory.fromJson(Map<String, dynamic> json) =>
       _$ComplaintSubCategoryFromJson(json);
 
   Map<String, dynamic> toJson() => _$ComplaintSubCategoryToJson(this);
+
+  /// --- Utility functions for safe conversion ---
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static int? _toIntNullable(dynamic value) {
+    if (value == null) return null;
+    return _toInt(value);
+  }
 }

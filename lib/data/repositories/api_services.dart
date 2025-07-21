@@ -26,6 +26,8 @@ class ApiService {
       rethrow;
     }
   }
+  
+  
 
   Future<Response> getSubtitleComplaintCategories(
       ComplaintSubCategoriesRequest complaintSubCategoriesRequest) async {
@@ -33,6 +35,7 @@ class ApiService {
       final response = await apiClient.request(
         "user/complaintSubtitles",
         method: "post",
+
         data: complaintSubCategoriesRequest.toJson(),
       );
 
@@ -59,32 +62,69 @@ Future<Map<String, dynamic>> getComplaintDetails(String complaintId) async {
   try {
     final response = await apiClient.request(
       "technician/complaint-details",
-      method: "get",
-      data: {"complaint_id": complaintId},
+      method: "get", 
+      data: {
+        "complaint_id": complaintId,
+      },
     );
 
-    return response.data; // Expected response is the JSON you shared
+    return response.data; 
   } catch (e) {
     print("❌ Error in getComplaintDetails: $e");
     rethrow;
   }
 }
 
-  // register complaint
-  Future<Response> insertComplaint(
-      CreateComplaintRequest createComplaintRequest) async {
-    try {
-      final response = await apiClient.request(
-        "user/complaintform",
-        method: "post",
-        data: createComplaintRequest.toJson(),
-      );
 
-      return response;
-    } catch (e) {
-      rethrow;
+  // register complaint
+
+Future<Response> insertComplaint(
+    CreateComplaintRequest createComplaintRequest,
+    List<File> uploadedImages) async {
+  try {
+    // Prepare FormData
+    final formData = FormData();
+
+    // Add complaint data (from your request model)
+    final complaintData = createComplaintRequest.toJson();
+    complaintData.forEach((key, value) {
+      formData.fields.add(MapEntry(key, value.toString()));
+    });
+
+    // Add uploaded images as multipart
+    for (var file in uploadedImages) {
+      formData.files.add(
+        MapEntry(
+          "images[]", // Laravel expects images[] for multiple files
+          await MultipartFile.fromFile(
+            file.path,
+            filename: file.path.split('/').last,
+          ),
+        ),
+      );
     }
+
+    // Debug print
+    print("=== insertComplaint Form Data ===");
+    formData.fields.forEach((f) => print("${f.key}: ${f.value}"));
+    print("Images: ${uploadedImages.map((e) => e.path).toList()}");
+    print("=======================");
+
+    // Make API call
+    final response = await apiClient.request(
+      "user/complaintform",
+      method: "post",
+      data: formData,
+      isFormData: true, // Important for multipart upload
+    );
+
+    return response;
+  } catch (e) {
+    print("❌ Error in insertComplaint: $e");
+    rethrow;
   }
+}
+
   
 Future<Map<String, dynamic>> updateComplaint({
   required String uid,

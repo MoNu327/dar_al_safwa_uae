@@ -1,15 +1,16 @@
 import 'package:json_annotation/json_annotation.dart';
 part 'tenant_compliant_model.g.dart';
+
 @JsonSerializable()
 class ComplaintCategoriesResponse {
-  final bool? status; // nullable
+  final bool? status;
   final String message;
-  final List<ComplaintCategory>? data; // nullable
+  final List<ComplaintCategory>? data;
 
   ComplaintCategoriesResponse({
-    this.status, // no required keyword
+    this.status,
     required this.message,
-    this.data, // no required keyword
+    this.data,
   });
 
   factory ComplaintCategoriesResponse.fromJson(Map<String, dynamic> json) =>
@@ -20,18 +21,35 @@ class ComplaintCategoriesResponse {
 
 @JsonSerializable()
 class ComplaintCategory {
+  @JsonKey(fromJson: _toInt)
   final int id;
+
   final String name;
-  final int? flag; // nullable
+
+  @JsonKey(fromJson: _toIntNullable)
+  final int? flag;
 
   ComplaintCategory({
     required this.id,
     required this.name,
-    this.flag, // no required keyword
+    this.flag,
   });
 
   factory ComplaintCategory.fromJson(Map<String, dynamic> json) =>
       _$ComplaintCategoryFromJson(json);
 
   Map<String, dynamic> toJson() => _$ComplaintCategoryToJson(this);
+
+  /// Converts both String and int to int
+  static int _toInt(dynamic value) {
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  /// Converts String or null to int?
+  static int? _toIntNullable(dynamic value) {
+    if (value == null) return null;
+    return _toInt(value);
+  }
 }

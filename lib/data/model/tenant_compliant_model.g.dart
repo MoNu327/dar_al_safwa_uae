@@ -26,9 +26,9 @@ Map<String, dynamic> _$ComplaintCategoriesResponseToJson(
 
 ComplaintCategory _$ComplaintCategoryFromJson(Map<String, dynamic> json) =>
     ComplaintCategory(
-      id: (json['id'] as num).toInt(),
+      id: ComplaintCategory._toInt(json['id']),
       name: json['name'] as String,
-      flag: (json['flag'] as num?)?.toInt(),
+      flag: ComplaintCategory._toIntNullable(json['flag']),
     );
 
 Map<String, dynamic> _$ComplaintCategoryToJson(ComplaintCategory instance) =>

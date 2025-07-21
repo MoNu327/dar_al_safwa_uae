@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget.dart';
 import 'package:flutter/material.dart';
@@ -11,7 +12,7 @@ import '../../../widgets/custom_text_widget.dart';
 import 'tenants_tickets_list_widget.dart';
 
 class TicketDetailsScreen extends StatefulWidget {
-  final TicketModel ticket;
+  final TicketModel? ticket;
 
   const TicketDetailsScreen({
     super.key,
@@ -23,43 +24,43 @@ class TicketDetailsScreen extends StatefulWidget {
 }
 
 class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
-  List<String> images = [
-    'https://images.pexels.com/photos/7327135/pexels-photo-7327135.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'https://images.pexels.com/photos/8113574/pexels-photo-8113574.jpeg?auto=compress&cs=tinysrgb&w=400',
-    'https://images.pexels.com/photos/8113785/pexels-photo-8113785.jpeg?auto=compress&cs=tinysrgb&w=400',
-  ];
-
+  late List<String> images;
   List<TimelineItem> timelineItems = [];
 
   @override
   void initState() {
     super.initState();
+    images = [
+      ...widget.ticket?.images ?? [],
+      // ...widget.ticket?.images.technicianImages ?? [],
+    ];
     _initializeTimeline();
   }
 
   void _initializeTimeline() {
+    // This can be replaced by dynamic timeline data from API
     timelineItems = [
       TimelineItem(
         title: 'Submitted',
-        date: 'May 20, 2025, 9:43 AM',
+        date: widget.ticket!.lastUpdated,
         status: TimelineStatus.completed,
         icon: Icons.description_outlined,
       ),
       TimelineItem(
         title: 'Assigned',
-        date: 'May 20, 2025, 11:45 AM',
+        date: widget.ticket!.lastUpdated,
         status: TimelineStatus.completed,
         icon: Icons.person_outline,
       ),
       TimelineItem(
         title: 'Technician',
-        date: 'May 21, 2025, 2:30 PM',
+        date: widget.ticket!.lastUpdated,
         status: TimelineStatus.current,
         icon: Icons.build_outlined,
       ),
       TimelineItem(
-        title: 'Rectified',
-        date: 'May 22, 2025, 10:30 AM',
+        title: 'Resolved',
+        date: widget.ticket!.lastUpdated,
         status: TimelineStatus.pending,
         icon: Icons.check_circle_outline,
       ),
@@ -68,6 +69,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint("Ticket Details: ${widget.ticket!.toJson()}");
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
@@ -90,24 +92,15 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ticket Header
             _buildTicketHeader(),
-
             SizedBox(height: screenHeight2),
-
-            // Issue Description Section
+            // _buildPropertyDetails(),
+            SizedBox(height: screenHeight2),
             _buildIssueDescriptionSection(),
-
             SizedBox(height: screenHeight2),
-
-            // Images Section
             if (images.isNotEmpty) _buildImagesSection(),
-
             SizedBox(height: screenHeight2),
-
-            // Timeline Section
             _buildTimelineSection(),
-
             SizedBox(height: screenHeight * 0.1),
           ],
         ),
@@ -115,6 +108,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     );
   }
 
+  /// -------------------- Ticket Header --------------------
   Widget _buildTicketHeader() {
     return Container(
       padding: EdgeInsets.all(screenWidth2),
@@ -132,48 +126,38 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Ticket ID
           CustomTextWidget(
-            title: "#${widget.ticket.id}",
+            title: widget.ticket!.complaintNumber,
             fontSize: Get.height * 0.016,
             fontWeight: FontWeight.w600,
             color: AppColors.black800,
           ),
-
           SizedBox(height: screenHeight05),
-
-          // Property Title
           CustomTextWidget(
-            title: widget.ticket.title,
+            title: widget.ticket!.category,
             fontSize: Get.height * 0.020,
             fontWeight: FontWeight.w600,
             color: AppColors.black,
             maxLines: 2,
           ),
-
           SizedBox(height: screenHeight05),
-
-          // Issue Title
           CustomTextWidget(
-            title: widget.ticket.description,
+            title: widget.ticket!.subcategory,
             fontSize: Get.height * 0.016,
             fontWeight: FontWeight.w400,
             color: AppColors.black600,
           ),
-
           SizedBox(height: screenHeight1),
-
-          // Date and Status Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               CustomTextWidget(
-                title: "Submitted on ${widget.ticket.submittedDate}",
+                title: "Updated on ${widget.ticket!.lastUpdated}",
                 fontSize: Get.height * 0.014,
                 fontWeight: FontWeight.w400,
                 color: AppColors.black500,
               ),
-              _buildStatusChip(widget.ticket.status),
+              _buildStatusChip(widget.ticket!.status),
             ],
           ),
         ],
@@ -181,6 +165,56 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     );
   }
 
+  // /// -------------------- Property Details --------------------
+  // Widget _buildPropertyDetails() {
+  //   final property = widget.ticket!.property;
+  //   return Container(
+  //     padding: EdgeInsets.all(screenWidth2),
+  //     decoration: BoxDecoration(
+  //       color: AppColors.white,
+  //       borderRadius: BorderRadius.circular(12),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: AppColors.grey.withValues(alpha: 0.1),
+  //           blurRadius: 8,
+  //           offset: const Offset(0, 2),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         CustomTextWidget(
+  //           title: "Property Details",
+  //           fontSize: Get.height * 0.018,
+  //           fontWeight: FontWeight.w600,
+  //           color: AppColors.black,
+  //         ),
+  //         SizedBox(height: screenHeight1),
+  //         CustomTextWidget(
+  //           title: property.title,
+  //           fontSize: Get.height * 0.016,
+  //           fontWeight: FontWeight.w500,
+  //           color: AppColors.black600,
+  //         ),
+  //         CustomTextWidget(
+  //           title: "${property.unitNumber} - ${property.unitType}",
+  //           fontSize: Get.height * 0.014,
+  //           fontWeight: FontWeight.w400,
+  //           color: AppColors.black500,
+  //         ),
+  //         CustomTextWidget(
+  //           title: property.addressFormat,
+  //           fontSize: Get.height * 0.014,
+  //           fontWeight: FontWeight.w400,
+  //           color: AppColors.black500,
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
+
+  /// -------------------- Status Chip --------------------
   Widget _buildStatusChip(TicketStatus status) {
     Color backgroundColor;
     Color textColor;
@@ -188,12 +222,12 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
 
     switch (status) {
       case TicketStatus.pending:
-        backgroundColor = AppColors.primaryColor;
-        textColor = AppColors.secondaryColor;
+        backgroundColor = AppColors.primaryColor.withOpacity(0.1);
+        textColor = AppColors.primaryColor;
         statusText = "Pending";
         break;
       case TicketStatus.rectified:
-        backgroundColor = AppColors.onlineGreen.withValues(alpha: 0.1);
+        backgroundColor = AppColors.onlineGreen.withOpacity(0.1);
         textColor = AppColors.onlineGreenDark;
         statusText = "Rectified";
         break;
@@ -203,8 +237,10 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
         statusText = "In Progress";
         break;
       case TicketStatus.completed:
-        // TODO: Handle this case.
-        throw UnimplementedError();
+        backgroundColor = AppColors.onlineGreen.withOpacity(0.2);
+        textColor = AppColors.onlineGreenDark;
+        statusText = "Completed";
+        break;
     }
 
     return Container(
@@ -225,6 +261,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     );
   }
 
+  /// -------------------- Issue Description --------------------
   Widget _buildIssueDescriptionSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,8 +274,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
         ),
         SizedBox(height: screenHeight1),
         CustomTextWidget(
-          title:
-              "The kitchen tap is leaking constantly, causing water accumulation on the countertop. This has been ongoing for the past 3 days and is causing inconvenience.",
+          title: widget.ticket!.description,
           fontSize: Get.height * 0.014,
           fontWeight: FontWeight.w400,
           color: AppColors.black600,
@@ -248,24 +284,30 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     );
   }
 
+  /// -------------------- Images Section --------------------
   Widget _buildImagesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        CustomTextWidget(
+          title: "Images",
+          fontSize: Get.height * 0.018,
+          fontWeight: FontWeight.w600,
+          color: AppColors.black,
+        ),
         SizedBox(height: screenHeight1),
         SizedBox(
           height: Get.height * 0.15,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            itemCount: 3, // Show placeholder boxes
+            itemCount: images.length,
             itemBuilder: (context, index) {
               final url = images[index];
               return Container(
                 width: Get.width * 0.30,
                 margin: EdgeInsets.only(right: screenWidth1),
                 decoration: BoxDecoration(
-                  image: DecorationImage(
-                      image: NetworkImage(url), fit: BoxFit.cover),
+                  image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
                   color: AppColors.grey.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
@@ -281,6 +323,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     );
   }
 
+  /// -------------------- Timeline Section --------------------
   Widget _buildTimelineSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,7 +341,9 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
           itemCount: timelineItems.length,
           itemBuilder: (context, index) {
             return _buildTimelineItem(
-                timelineItems[index], index == timelineItems.length - 1);
+              timelineItems[index],
+              index == timelineItems.length - 1,
+            );
           },
         ),
       ],
@@ -327,7 +372,6 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Timeline Icon and Line
         Column(
           children: [
             Container(
@@ -351,10 +395,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
               ),
           ],
         ),
-
         SizedBox(width: screenWidth1),
-
-        // Timeline Content
         Expanded(
           child: Padding(
             padding: EdgeInsets.only(bottom: screenHeight1),

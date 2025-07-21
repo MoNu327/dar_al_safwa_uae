@@ -1,8 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_property_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_complaint_register.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_create_ticket_screen.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_appbar_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
@@ -17,8 +17,14 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
 
   CustomTenantPropertyDetailWidget({
     super.key,
-    required this.propertyId, required String cityName,
+    required this.propertyId,
+    required String cityName,
   });
+
+  /// Fetch current user ID from FirebaseAuth
+  String getCurrentUserId() {
+    return FirebaseAuth.instance.currentUser?.uid ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +42,7 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
           ),
         );
       }
-
+       
       /// Find property by ID
       final property = tenantPropertyController.properties
           .firstWhereOrNull((p) => p.id == propertyId);
@@ -137,6 +143,7 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
     );
   }
 
+  /// Section Title
   Widget _buildSectionTitle(String title) {
     return CustomTextWidget(
       title: title,
@@ -146,6 +153,7 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
     );
   }
 
+  /// Detail Row
   Widget _buildDetailRow(IconData icon, String label, String value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: Get.height * 0.01),
@@ -178,6 +186,7 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
     );
   }
 
+  /// Bottom Action Buttons
   Widget _buildActionButtons(TenantPropertyModel property) {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -196,26 +205,44 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _buildActionButton('View Agreement', AppColors.onlineGreen,
-                Icons.description_outlined, onPressed: () {
-              Get.to(() => PdfViewerScreen());
-            }),
+            child: _buildActionButton(
+              'View Agreement',
+              AppColors.onlineGreen,
+              Icons.description_outlined,
+              onPressed: () {
+                Get.to(() => PdfViewerScreen());
+              },
+            ),
           ),
           kWidth(0.03),
           Expanded(
-            child: _buildActionButton('Register Complaint', Colors.red,
-                Icons.report_problem_outlined, onPressed: () {
-              Get.to(() =>
-                  TenantsCreateTicketScreen(propertyName: property.propertyTitle));
-            }),
+            child: _buildActionButton(
+              'Register Complaint',
+              Colors.red,
+              Icons.report_problem_outlined,
+              onPressed: () {
+                final userId = getCurrentUserId();
+                Get.to(() => TenantsCreateTicketScreen(
+                      propertyName: property.propertyTitle,
+                      propertyId: property.propertyId,
+                      unitAddressId: property.unitAddressId,
+                      userId: userId, // Pass userId here
+                    ));
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton(String text, Color color, IconData icon,
-      {required VoidCallback onPressed}) {
+  /// Action Button Widget
+  Widget _buildActionButton(
+    String text,
+    Color color,
+    IconData icon, {
+    required VoidCallback onPressed,
+  }) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: color,

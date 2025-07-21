@@ -27,12 +27,13 @@ Map<String, dynamic> _$ComplaintSubCategoriesResponseToJson(
 ComplaintSubCategory _$ComplaintSubCategoryFromJson(
         Map<String, dynamic> json) =>
     ComplaintSubCategory(
-      id: (json['id'] as num).toInt(),
+      id: ComplaintSubCategory._toInt(json['id']),
       name: json['name'] as String,
-      complaint_master_id: (json['complaint_master_id'] as num).toInt(),
-      status: (json['status'] as num).toInt(),
-      flag: (json['flag'] as num?)?.toInt(),
-      complaint_master_name: json['complaint_master_name'] as String,
+      complaintMasterId:
+          ComplaintSubCategory._toInt(json['complaint_master_id']),
+      status: ComplaintSubCategory._toInt(json['status']),
+      flag: ComplaintSubCategory._toIntNullable(json['flag']),
+      complaintMasterName: json['complaint_master_name'] as String,
     );
 
 Map<String, dynamic> _$ComplaintSubCategoryToJson(
@@ -40,8 +41,8 @@ Map<String, dynamic> _$ComplaintSubCategoryToJson(
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'complaint_master_id': instance.complaint_master_id,
+      'complaint_master_id': instance.complaintMasterId,
       'status': instance.status,
       'flag': instance.flag,
-      'complaint_master_name': instance.complaint_master_name,
+      'complaint_master_name': instance.complaintMasterName,
     };

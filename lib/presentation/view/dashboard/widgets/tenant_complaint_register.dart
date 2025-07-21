@@ -11,8 +11,15 @@ import 'package:loading_animation_widget/loading_animation_widget.dart';
 
 class TenantComplaintRegister extends StatelessWidget {
   final String propertyName;
+  final int propertyId;
+  final int unitAddressId;
 
-  TenantComplaintRegister({super.key, required this.propertyName});
+  TenantComplaintRegister({
+    super.key,
+    required this.propertyName,
+    required this.propertyId,
+    required this.unitAddressId,
+  });
 
   final TenantComplaintRegisterController tenantComplaintRegisterController =
       Get.put(TenantComplaintRegisterController());
@@ -34,7 +41,7 @@ class TenantComplaintRegister extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ✅ Property Name Display
+                /// ✅ Property Name Display
                 CustomTextWidget(
                   title: 'Property: $propertyName',
                   fontSize: screenHeight * 0.02,
@@ -43,7 +50,7 @@ class TenantComplaintRegister extends StatelessWidget {
                 ),
                 kHeight(0.02),
 
-                // Header Section
+                /// Header Section
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -65,87 +72,46 @@ class TenantComplaintRegister extends StatelessWidget {
                 ),
                 kHeight(0.025),
 
-                // ✅ Complaint Type Dropdown
+                /// ✅ Complaint Type Dropdown
                 buildFieldLabel('Select Complaint'),
                 kHeight(0.005),
                 tenantComplaintRegisterController.isLoadingCompliantList.value
-                    ? Center(
-                        child: LoadingAnimationWidget.threeRotatingDots(
-                          size: 20,
-                          color: AppColors.primaryColor,
-                        ),
-                      )
+                    ? _buildLoadingIndicator()
                     : customDropdown(
                         selectedValue: tenantComplaintRegisterController
-                            .selectedComplaintType?.value,
+                            .selectedComplaintType.value,
                         items: tenantComplaintRegisterController
                             .complaintCategory
                             .map((item) => item.name.toString())
                             .toList(),
                         hintText: 'Select Complaint Type',
                         onChanged: (value) {
-                          final selectedIndex =
-                              tenantComplaintRegisterController
-                                  .complaintCategory
-                                  .indexWhere((item) => item.name == value);
-                          if (selectedIndex != -1) {
-                            tenantComplaintRegisterController
-                                .selectedComplaintType?.value = value!;
-                            tenantComplaintRegisterController
-                                    .selectedComplaintId.value =
-                                tenantComplaintRegisterController
-                                    .complaintCategory[selectedIndex].id;
-                          }
-                          tenantComplaintRegisterController
-                              .selectedSubComplaintType?.value = '';
-                          debugPrint(
-                              'Selected Complaint Type: ${tenantComplaintRegisterController.selectedComplaintType?.value}, Selected Complaint ID: ${tenantComplaintRegisterController.selectedComplaintId?.value}');
-                          tenantComplaintRegisterController
-                              .getSubCompliantList();
+                          _onComplaintTypeSelected(value);
                         },
                       ),
                 kHeight(0.02),
 
-                // ✅ Sub-Complaint Dropdown
+                /// ✅ Sub-Complaint Dropdown
                 buildFieldLabel('Select Sub-Complaint'),
                 kHeight(0.005),
                 tenantComplaintRegisterController
                         .isLoadingSubtitleCompliantList.value
-                    ? Center(
-                        child: LoadingAnimationWidget.threeRotatingDots(
-                          size: 20,
-                          color: AppColors.primaryColor,
-                        ),
-                      )
+                    ? _buildLoadingIndicator()
                     : customDropdown(
                         selectedValue: tenantComplaintRegisterController
-                            .selectedSubComplaintType?.value,
+                            .selectedSubComplaintType.value,
                         items: tenantComplaintRegisterController
                             .subtitleComplaintCategory
                             .map((item) => item.name.toString())
                             .toList(),
                         hintText: 'Select Sub-Complaint',
                         onChanged: (value) {
-                          final selectedIndex =
-                              tenantComplaintRegisterController
-                                  .subtitleComplaintCategory
-                                  .indexWhere((item) => item.name == value);
-                          if (selectedIndex != -1) {
-                            tenantComplaintRegisterController
-                                .selectedSubComplaintType?.value = value!;
-                            tenantComplaintRegisterController
-                                    .selectedSubtitleComplaintId.value =
-                                tenantComplaintRegisterController
-                                    .subtitleComplaintCategory[selectedIndex]
-                                    .id;
-                          }
-                          debugPrint(
-                              'Selected Sub-Complaint Type: ${tenantComplaintRegisterController.selectedSubComplaintType?.value}, Selected Sub-Complaint ID: ${tenantComplaintRegisterController.selectedSubtitleComplaintId?.value}');
+                          _onSubComplaintTypeSelected(value);
                         },
                       ),
                 kHeight(0.02),
 
-                // ✅ Complaint Details Text Area
+                /// ✅ Complaint Details Text Area
                 buildFieldLabel('Complaint Details'),
                 kHeight(0.005),
                 TextField(
@@ -193,7 +159,7 @@ class TenantComplaintRegister extends StatelessWidget {
                 ),
                 kHeight(0.03),
 
-                // ✅ Submit Button
+                /// ✅ Submit Button
                 CustomButtonWidget(
                   childWidgetLoader: tenantComplaintRegisterController
                       .isLoadingSubmitCompliant.value,
@@ -201,39 +167,7 @@ class TenantComplaintRegister extends StatelessWidget {
                   buttonShape: "rect",
                   fontSize: tagTitle,
                   buttonColor: AppColors.secondaryColor,
-                  onPressed: () {
-                    List<String> missingField = [];
-                    if (tenantComplaintRegisterController
-                            .selectedComplaintType?.value ==
-                        '') {
-                      missingField.add('Complaint Type');
-                    }
-                    if (tenantComplaintRegisterController
-                            .selectedSubComplaintType?.value ==
-                        '') {
-                      missingField.add('Complaint Subtitle Type');
-                    }
-                    if (tenantComplaintRegisterController
-                        .complaintDetailsController.text.isEmpty) {
-                      missingField.add('Complaint Details');
-                    }
-                    if (missingField.isNotEmpty) {
-                      CustomSnackbar.show(
-                        title: "Warning",
-                        message:
-                            'Please select:\n ${missingField.join('\n ')}.',
-                        status: 1,
-                        isDismissible: true,
-                        durationInSeconds: 2,
-                        isPersistent: false,
-                      );
-                      return;
-                    }
-
-                    // ✅ Pass propertyName to controller
-                    tenantComplaintRegisterController
-                        .submitCompliant(propertyName);
-                  },
+                  onPressed: _onSubmit,
                 ),
               ],
             );
@@ -243,7 +177,78 @@ class TenantComplaintRegister extends StatelessWidget {
     );
   }
 
-  // ✅ Reusable Dropdown Widget
+  /// Helper - Loading Indicator
+  Widget _buildLoadingIndicator() {
+    return Center(
+      child: LoadingAnimationWidget.threeRotatingDots(
+        size: 20,
+        color: AppColors.primaryColor,
+      ),
+    );
+  }
+
+  /// On selecting complaint type
+  void _onComplaintTypeSelected(String? value) {
+    final selectedIndex = tenantComplaintRegisterController.complaintCategory
+        .indexWhere((item) => item.name == value);
+    if (selectedIndex != -1) {
+      tenantComplaintRegisterController.selectedComplaintType.value = value!;
+      tenantComplaintRegisterController.selectedComplaintId.value =
+          tenantComplaintRegisterController.complaintCategory[selectedIndex].id;
+    }
+    tenantComplaintRegisterController.selectedSubComplaintType.value = '';
+    debugPrint(
+        'Selected Complaint Type: ${tenantComplaintRegisterController.selectedComplaintType.value}, ID: ${tenantComplaintRegisterController.selectedComplaintId.value}');
+    tenantComplaintRegisterController.getSubCompliantList();
+  }
+
+  /// On selecting sub-complaint type
+  void _onSubComplaintTypeSelected(String? value) {
+    final selectedIndex = tenantComplaintRegisterController
+        .subtitleComplaintCategory
+        .indexWhere((item) => item.name == value);
+    if (selectedIndex != -1) {
+      tenantComplaintRegisterController.selectedSubComplaintType.value = value!;
+      tenantComplaintRegisterController.selectedSubtitleComplaintId.value =
+          tenantComplaintRegisterController
+              .subtitleComplaintCategory[selectedIndex].id;
+    }
+    debugPrint(
+        'Selected Sub-Complaint Type: ${tenantComplaintRegisterController.selectedSubComplaintType.value}, ID: ${tenantComplaintRegisterController.selectedSubtitleComplaintId.value}');
+  }
+
+  /// On submit
+  void _onSubmit() {
+    List<String> missingField = [];
+    if (tenantComplaintRegisterController.selectedComplaintType.value.isEmpty) {
+      missingField.add('Complaint Type');
+    }
+    if (tenantComplaintRegisterController.selectedSubComplaintType.value.isEmpty) {
+      missingField.add('Complaint Subtitle Type');
+    }
+    if (tenantComplaintRegisterController.complaintDetailsController.text.isEmpty) {
+      missingField.add('Complaint Details');
+    }
+    if (missingField.isNotEmpty) {
+      CustomSnackbar.show(
+        title: "Warning",
+        message: 'Please select:\n ${missingField.join('\n ')}.',
+        status: 1,
+        isDismissible: true,
+        durationInSeconds: 2,
+        isPersistent: false,
+      );
+      return;
+    }
+
+    tenantComplaintRegisterController.submitCompliant(
+      propertyName: propertyName,
+      propertyId: propertyId,
+      unitAddressId: unitAddressId,
+    );
+  }
+
+  /// Dropdown Widget
   Widget customDropdown({
     required String? selectedValue,
     required List<String> items,
@@ -290,7 +295,7 @@ class TenantComplaintRegister extends StatelessWidget {
     );
   }
 
-  // ✅ Reusable Field Label Widget
+  /// Field Label
   Widget buildFieldLabel(String labelText) {
     return Padding(
       padding: EdgeInsets.only(left: screenWidth1),

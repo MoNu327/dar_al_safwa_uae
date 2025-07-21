@@ -1,7 +1,10 @@
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
 import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_ticket_card_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -19,7 +22,11 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   @override
   void initState() {
     super.initState();
-    controller.fetchTickets("2kiHls8ajrhe8e96aW59fkTh7i13"); // Fetch once
+   final String? userId = FirebaseAuth.instance.currentUser?.uid;
+if (userId != null) {
+  controller.fetchTickets(userId); // Fetch once
+}
+ // Fetch once
   }
 
   @override
@@ -53,20 +60,25 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
           itemCount: controller.tickets.length,
           itemBuilder: (context, index) {
             final ticket = controller.tickets[index];
+            debugPrint('Ticket: ${ticket.complaintId}');
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: buildTicketCard(
-                propertyName: ticket.propertyName,
-                category: ticket.category,
-                issue: ticket.subcategory,
-                status: ticket.statusText.en,
-                statusColor: _getStatusColor(ticket.statusText.en),
-                description: ticket.description,
-                date: ticket.date.split(' ').first,
-                time: ticket.date.split(' ').last,
+                complaintId: ticket.complaintId ?? '',
+                propertyName: ticket.propertyName ?? '',
+              category: ticket.category  ?? '',
+                issue: ticket.subcategory  ?? '',
+                status: ticket.statusText?.en  ?? '',
+                statusColor: _getStatusColor(ticket.statusText?.en  ?? ''),
+                description: ticket.description  ?? '',
+                date: (ticket.date ?? '').split(' ').first,
+time: (ticket.date ?? '').split(' ').length > 1
+    ? (ticket.date ?? '').split(' ').last
+    : '',
+
                 categoryIcon: Icons.build,
-                images: ticket.images,
-                ticket: ticket,
+                images: ticket.images ?? [],
+                ticket: TicketModel(complaintId: ticket.complaintId ?? "", complaintNumber: ticket.complaintNumber ?? "", category: ticket.category ?? "", subcategory: ticket.subcategory ?? "", description: ticket.description ?? "", reply:  ticket.reply ?? "", amountPaid:  "N/A" ?? "0", amountPaidStatus: "", status: TicketStatus.pending, lastUpdated: "", images: ticket.images ?? [])  // property: ,
               ),
             );
           },

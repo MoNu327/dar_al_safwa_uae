@@ -15,12 +15,14 @@ import '../../widgets/language_text_button.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
+
   final LocalizationController localizationController = Get.find();
   final LoginController loginController = Get.put(LoginController());
   final AuthService authService = Get.put(AuthService());
 
   @override
   Widget build(BuildContext context) {
+    debugPrint("🔄 LoginScreen build started.");
 
     // Set the status bar icon color
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark.copyWith(
@@ -37,10 +39,12 @@ class LoginScreen extends StatelessWidget {
             children: [
               Obx(() {
                 final imageUrl = loginController.image.value;
+                debugPrint("📸 Login image URL: $imageUrl");
                 if (imageUrl == null || imageUrl.isEmpty) {
+                  debugPrint("⚠ No image found. Showing empty container.");
                   return Container(
                     width: double.infinity,
-                    height: Get.height * 0.5,     
+                    height: Get.height * 0.5,
                   );
                 }
 
@@ -52,12 +56,6 @@ class LoginScreen extends StatelessWidget {
                 );
               }),
 
-              // Image.asset(
-              //   "assets/images/apartment5.jpg",
-              //   width: double.infinity,
-              //   height: Get.height * 0.5,
-              //   fit: BoxFit.cover,
-              // ),
               Stack(
                 children: [
                   Center(
@@ -79,29 +77,33 @@ class LoginScreen extends StatelessWidget {
                 ],
               ),
               CustomButton(
-                  textSize: H18,
-                  color: AppColors.black,
-                  titleColor: AppColors.white,
-                  title: localizationController
-                      .translate('continue_with_mobile_number'),
-                  onPressed: () {
-                    loginController.navigateToMobileLogin();
-                  }),
+                textSize: H18,
+                color: AppColors.black,
+                titleColor: AppColors.white,
+                title: localizationController
+                    .translate('continue_with_mobile_number'),
+                onPressed: () {
+                  debugPrint("➡ Continue with Mobile Number clicked.");
+                  loginController.navigateToMobileLogin();
+                },
+              ),
               CustomTextWidget(
                 title: localizationController.translate('OR'),
                 color: AppColors.black600,
                 fontWeight: FontWeight.w700,
               ),
               Obx(() {
+                debugPrint("🔄 Google Login Loading: ${loginController.isGoogleLoading.value}");
                 return CustomButton(
                   textSize: H18,
                   title: authService.isSignInGoogle.value
                       ? localizationController.translate('loading')
                       : localizationController.translate('login_with_google'),
                   onPressed: () {
-                    authService.isSignInGoogle.value
-                        ? null
-                        : authService.signInWithGoogle();
+                    debugPrint("➡ Google Sign-in Button clicked.");
+                    if (!authService.isSignInGoogle.value) {
+                      authService.signInWithGoogle();
+                    }
                   },
                   customIconWidget: loginController.isGoogleLoading.value
                       ? const SizedBox.shrink()
@@ -122,27 +124,25 @@ class LoginScreen extends StatelessWidget {
                       title: "Continue As Guest",
                       textSize: tagTitle,
                       onPressed: () {
+                        debugPrint("➡ Continue As Guest clicked.");
                         authService.navigateGuestToHome();
                       },
                       customIconWidget: const Icon(Icons.person),
                     ),
                   ),
-                  SizedBox(
-                      width:
-                          10), // Don't use kWidth(0.1) if it gives fractional pixel
-                 Expanded(
-  child: CustomButton(
-    iconSize: 14,
-    customIconWidget: Icon(Icons.build),
-    title: "Technician Login",
-    textSize: tagTitle,
-   onPressed: () {
-  loginController.navigateToTechnicianLogin();
-}
-
-  ),
-),
-
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: CustomButton(
+                      iconSize: 14,
+                      customIconWidget: const Icon(Icons.build),
+                      title: "Technician Login",
+                      textSize: tagTitle,
+                      onPressed: () {
+                        debugPrint("➡ Technician Login clicked.");
+                        loginController.navigateToTechnicianLogin();
+                      },
+                    ),
+                  ),
                 ],
               ),
               kHeight(0.005),
@@ -155,7 +155,7 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-// reusable widget for signup text button
+  // reusable widget for signup text button
   Widget _buildSignupTextButton() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -167,6 +167,7 @@ class LoginScreen extends StatelessWidget {
         ),
         InkWell(
           onTap: () {
+            debugPrint("➡ Agent Login/Signup clicked.");
             loginController.navigateToAgentLogin();
           },
           child: CustomTextWidget(
@@ -189,22 +190,27 @@ class CustomButton extends StatelessWidget {
   final Color? titleColor;
   final Widget? customIconWidget;
 
-  const CustomButton(
-      {required this.title,
-      required this.onPressed,
-      super.key,
-      this.color,
-      this.titleColor,
-      this.customIconWidget,
-      this.iconSize = 20,
-      this.textSize});
+  const CustomButton({
+    required this.title,
+    required this.onPressed,
+    super.key,
+    this.color,
+    this.titleColor,
+    this.customIconWidget,
+    this.iconSize = 20,
+    this.textSize,
+  });
 
   @override
   Widget build(BuildContext context) {
+    debugPrint("🔘 Building CustomButton with title: $title");
     return InkWell(
-      onTap: onPressed,
+      onTap: () {
+        debugPrint("🔘 Button clicked: $title");
+        onPressed();
+      },
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Container(
           width: double.infinity,
           height: Get.height * 0.07,
@@ -212,24 +218,18 @@ class CustomButton extends StatelessWidget {
             color: color ?? AppColors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(17),
-              side: const BorderSide(
-                  color: AppColors.black), // Add border color here
+              side: const BorderSide(color: AppColors.black),
             ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                // width: 28,
-                // height: 28,
-                clipBehavior: Clip.none,
-                child: customIconWidget ??
-                    Icon(
-                      Icons.phone_android_rounded,
-                      size: iconSize,
-                    ),
-              ),
+              customIconWidget ??
+                  Icon(
+                    Icons.phone_android_rounded,
+                    size: iconSize,
+                  ),
               const SizedBox(width: 3),
               CustomTextWidget(
                 title: title,

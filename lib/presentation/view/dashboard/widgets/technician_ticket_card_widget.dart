@@ -1,5 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/routes/app_route.dart';
+import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart' show TicketDetailsScreen;
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -23,7 +25,9 @@ Widget buildTicketCard({
   required String time,
   required IconData categoryIcon,
   required List<String> images,
-  required dynamic ticket, // Add this line to accept the ticket object
+  required TicketModel ticket,
+  required String complaintId,
+   // Add this line to accept the ticket object
 }) {
   return InkWell(
     onTap: () {},
@@ -78,32 +82,34 @@ Widget buildTicketCard({
                 ],
               ),
               SizedBox(width: Get.width * 0.02),
-              Row(
-                children: images.map((imageUrl) {
-                  return Container(
-                    margin: EdgeInsets.only(right: Get.width * 0.01),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        width: Get.width * 0.14,
-                        height: Get.width * 0.14,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: AppColors.black.withOpacity(0.1),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: AppColors.black.withOpacity(0.1),
-                          child: Icon(
-                            Icons.image,
-                            color: AppColors.black.withOpacity(0.3),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+            Row(
+  children: [
+    if (images.isNotEmpty)
+      Container(
+        margin: EdgeInsets.only(right: Get.width * 0.01),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: CachedNetworkImage(
+            imageUrl: images.first, // Display only the first image
+            width: Get.width * 0.14,
+            height: Get.width * 0.14,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => Container(
+              color: AppColors.black.withOpacity(0.1),
+            ),
+            errorWidget: (context, url, error) => Container(
+              color: AppColors.black.withOpacity(0.1),
+              child: Icon(
+                Icons.image,
+                color: AppColors.black.withOpacity(0.3),
               ),
+            ),
+          ),
+        ),
+      ),
+  ],
+),
+
             ],
           ),
 
@@ -112,7 +118,7 @@ Widget buildTicketCard({
           // Description
           CustomTextWidget(
             maxLines: 2,
-            title: description,
+            title: description ?? "No Desciption Available",
             fontSize: screenHeight * 0.014,
             color: AppColors.black.withOpacity(0.9),
             fontWeight: FontWeight.w500,
@@ -147,8 +153,8 @@ Widget buildTicketCard({
                   buttonHeight: screenHeight * 0.040,
                   buttonTitle: 'View Details',
                   onPressed: () {
-                 Get.toNamed(AppRoute.tenantTicketDetails, arguments: ticket);
-
+                //  Get.toNamed(AppRoute.tenantTicketDetails, arguments: ticket);
+Get.to( TicketDetailsScreen(ticket: ticket as TicketModel,));
 
                   },
                   buttonShape: 'rect',
@@ -164,8 +170,13 @@ Widget buildTicketCard({
     buttonHeight: screenHeight * 0.040,
     buttonTitle: 'Reply',
     onPressed: () {
-      Get.toNamed('/technician-rectify-ticket');
-    },
+  Get.to(
+    () => RectifyTicketsScreen(
+      complaintId: complaintId, // Pass the complaintId
+    ),
+  );
+},
+
     buttonShape: 'rect',
     borderColor: AppColors.darkGrey.withValues(alpha: 0.2),
     buttonColor: AppColors.white,

@@ -184,7 +184,7 @@ class PropertyDetailsController extends GetxController {
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    if (mobile.isEmpty || mobile.length < 10) {
+    if (mobile.isEmpty || mobile.length < 8) {
       Get.snackbar("Invalid", "Please enter a valid mobile number");
       return;
     }
@@ -193,7 +193,7 @@ class PropertyDetailsController extends GetxController {
       isLoading.value = true;
 
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'mobile': mobile,
+        'mobile': phone,
       }, SetOptions(merge: true));
 
       Get.snackbar("Success", "Mobile number updated successfully");

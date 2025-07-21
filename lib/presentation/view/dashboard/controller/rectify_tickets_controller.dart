@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart' show TechnicianTicketsController;
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,7 +10,7 @@ import 'package:image_picker/image_picker.dart';
 class RectifyTicketsController extends GetxController {
   final ImagePicker _imagePicker = ImagePicker();
   final ApiService _apiService = ApiService();
-
+  final TechnicianTicketsController fetchController = Get.find<TechnicianTicketsController>();
   /// Observables
   var uploadedImages = <File>[].obs;
   var selectedWorkStatus = 'Pending'.obs;
@@ -47,69 +49,105 @@ class RectifyTicketsController extends GetxController {
   void togglePaidStatus(bool value) => isPaid.value = value;
 
   /// Submit Logic
-  Future<void> submitUpdates() async {
-    final description = workDescriptionController.text.trim();
-    final amount = amountController.text.trim();
+  Future<void> submitUpdates(String complaintId) async {
+  final description = workDescriptionController.text.trim();
+  final amount = amountController.text.trim();
 
-    if (description.isEmpty || amount.isEmpty) {
-      Get.snackbar('Error', 'Please fill all fields',
-          backgroundColor: Colors.red, colorText: Colors.white);
+  if (description.isEmpty || amount.isEmpty) {
+    Get.snackbar(
+      'Error',
+      'Please fill all fields',
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+    return;
+  }
+
+  print("=== SUBMIT UPDATE REQUEST ===");
+  print("complaint_id: $complaintId");
+  print("description: $description");
+  print("status: ${selectedWorkStatus.value}");
+  print("amount: $amount");
+  print("is_paid: ${isPaid.value}");
+  print("amount_changed: ${amountChanged.value}");
+  print("images: ${uploadedImages.map((e) => e.path).toList()}");
+  print("==============================");
+
+  try {
+    // ✅ Get the logged-in technician UID
+    final String? technicianUid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (technicianUid == null) {
+      Get.snackbar(
+        'Error',
+        'No logged-in technician found',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return;
     }
 
-    print("=== SUBMIT UPDATE REQUEST ===");
-    print("complaint_id: 64");
-    print("description: $description");
-    print("status: ${selectedWorkStatus.value}");
-    print("amount: $amount");
-    print("is_paid: ${isPaid.value}");
-    print("amount_changed: ${amountChanged.value}");
-    print("images: ${uploadedImages.map((e) => e.path).toList()}");
-    print("==============================");
+     debugPrint("updatedImages: ${uploadedImages.map((e) => e.path).toList()}");
 
-    try {
-      final response = await _apiService.updateComplaint(
-        uid: "TECH_UID", // Replace with the logged-in technician UID
-        complaintId: "64",
-        status: getStatusCode(selectedWorkStatus.value),
-        reply: description,
-        amountPaid: amount,
-        amountStatus: amountChanged.value,
-        images: uploadedImages,
+    final response = await _apiService.updateComplaint(
+      uid: technicianUid,
+      complaintId: complaintId, // ✅ Using dynamic complaintId
+      status: getStatusCode(selectedWorkStatus.value),
+      reply: description,
+      amountPaid: amount,
+      amountStatus: amountChanged.value,
+      images: uploadedImages,
+    );
+
+    if (response['success'] == true) {
+      Get.snackbar(
+        'Success',
+        response['message'],
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
       );
-if (response['success'] == true) {
-  Get.snackbar('Success', response['message'],
-      backgroundColor: Colors.green, colorText: Colors.white);
 
-  final data = response['data'];
-  print("Complaint Updated Successfully!");
-  print("Complaint ID: ${data['complaint_id']}");
-  print("Status: ${data['status']}");
-  print("Updated Rows: ${data['updated_rows']}");
-  print("Images:");
-  if (data['images'] != null && data['images'] is List) {
-    for (var img in data['images']) {
-      print("  - $img");
+      final data = response['data'];
+      print("Complaint Updated Successfully!");
+      print("Complaint ID: ${data['complaint_id']}");
+      print("Status: ${data['status']}");
+      print("Updated Rows: ${data['updated_rows']}");
+
+      if (data['images'] != null && data['images'] is List) {
+        print("Images:");
+        for (var img in data['images']) {
+          print("  - $img");
+        }
+      }
+
+      resetForm();
+      
+      await  fetchController.fetchTickets(technicianUid); // ✅ Refresh tickets list
+ 
+      // ✅ Go back to the previous screen
+      
+        Get.back(
+        );
+   
+    } else {
+      Get.snackbar(
+        'Error',
+        response['message'] ?? 'Failed to update',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
+  } catch (e) {
+    Get.snackbar(
+      'Error',
+      'Something went wrong: $e',
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
   }
-
-  resetForm();
-
-  // ✅ Go back to the previous screen instead of navigating to TechnicianDashboard
-  Future.delayed(const Duration(seconds: 1), () {
-    Get.back();
-  });
-
-} else {
-  Get.snackbar('Error', response['message'] ?? 'Failed to update',
-      backgroundColor: Colors.red, colorText: Colors.white);
 }
 
-    } catch (e) {
-      Get.snackbar('Error', 'Something went wrong: $e',
-          backgroundColor: Colors.red, colorText: Colors.white);
-    }
-  }
+
 
   /// Convert Status to Code
   String getStatusCode(String status) {

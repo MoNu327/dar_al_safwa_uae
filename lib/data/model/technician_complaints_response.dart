@@ -4,68 +4,81 @@ part 'technician_complaints_response.g.dart';
 
 @JsonSerializable()
 class TechnicianComplaintsResponse {
-  final bool status;
-  final List<ComplaintData> data;
+  @JsonKey(fromJson: _statusFromJson)
+  final bool? status;
+
+  final List<ComplaintData>? data;
 
   TechnicianComplaintsResponse({
-    required this.status,
-    required this.data,
+    this.status,
+    this.data,
   });
 
   factory TechnicianComplaintsResponse.fromJson(Map<String, dynamic> json) =>
       _$TechnicianComplaintsResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$TechnicianComplaintsResponseToJson(this);
+
+  static bool _statusFromJson(dynamic value) {
+    if (value is bool) return value;
+    if (value is String) return value.toLowerCase() == 'true' || value == '1';
+    if (value is int) return value == 1;
+    return false;
+  }
 }
 
 @JsonSerializable()
 class ComplaintData {
   @JsonKey(name: 'complaint_id')
-  final String complaintId;
+  final String? complaintId;
 
   @JsonKey(name: 'complaint_number')
-  final String complaintNumber;
+  final String? complaintNumber;
 
-  final String description;
+  final String? description;
   final String? reply;
-  final String date;
-  final String status;
+
+  @JsonKey(name: 'last_updated')
+  final String? date;
+
+  final String? status;
 
   @JsonKey(name: 'status_text')
-  final StatusText statusText;
+  final StatusText? statusText;
 
-  final String category;
-  final String subcategory;
+  final String? category;
+  final String? subcategory;
 
   @JsonKey(name: 'property_name')
-  final String propertyName;
+  final String? propertyName;
 
   @JsonKey(name: 'unit_number')
-  final String unitNumber;
+  final String? unitNumber;
 
   @JsonKey(name: 'full_address')
-  final String fullAddress;
+  final String? fullAddress;
 
   @JsonKey(name: 'flatno_id')
-  final String flatnoId;
+  final String? flatnoId;
 
-  final List<String> images;
+  @JsonKey(defaultValue: [])
+  final List<String>? images;
 
   ComplaintData({
-    required this.complaintId,
-    required this.complaintNumber,
-    required this.description,
+    this.complaintId,
+    this.complaintNumber,
+    this.description,
     this.reply,
-    required this.date,
-    required this.status,
-    required this.statusText,
-    required this.category,
-    required this.subcategory,
-    required this.propertyName,
-    required this.unitNumber,
-    required this.fullAddress,
-    required this.flatnoId,
-    required this.images,
+    this.date,
+    this.status,
+    this.statusText,
+    this.category,
+    this.subcategory,
+    this.propertyName,
+    this.unitNumber,
+    this.fullAddress,
+    this.flatnoId,
+    this.images,
   });
 
   factory ComplaintData.fromJson(Map<String, dynamic> json) =>
@@ -76,9 +89,9 @@ class ComplaintData {
 
 @JsonSerializable()
 class StatusText {
-  final String en;
+  final String? en;
 
-  StatusText({required this.en});
+  StatusText({this.en});
 
   factory StatusText.fromJson(Map<String, dynamic> json) =>
       _$StatusTextFromJson(json);

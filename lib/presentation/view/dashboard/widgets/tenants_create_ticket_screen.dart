@@ -1,5 +1,14 @@
+import 'dart:io';
+import 'package:dar_al_safwa/data/model/compliant_model.dart';
+import 'package:dar_al_safwa/data/model/tenant_complain_from_model.dart';
+import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
+import 'package:dar_al_safwa/data/model/tenant_compliant_subtitle.dart';
+import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
@@ -7,7 +16,18 @@ import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
 
 class TenantsCreateTicketScreen extends StatefulWidget {
-  const TenantsCreateTicketScreen({super.key, required String propertyName});
+  final String propertyName;
+  final int propertyId;
+  final int unitAddressId;
+  final String userId;
+
+  const TenantsCreateTicketScreen({
+    super.key,
+    required this.propertyName,
+    required this.propertyId,
+    required this.unitAddressId,
+    required this.userId,
+  });
 
   @override
   State<TenantsCreateTicketScreen> createState() =>
@@ -15,25 +35,21 @@ class TenantsCreateTicketScreen extends StatefulWidget {
 }
 
 class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
-  String? selectedProperty = 'Sun-view Apartment, Flat 302';
+  final TenantComplaintRegisterController complaintController =
+      Get.put(TenantComplaintRegisterController());
+
   String? selectedCategory;
   String? selectedSubcategory;
   final TextEditingController _issueController = TextEditingController();
-  List<String> uploadedImages = [];
+  List<File> uploadedImages = [];
 
-  // Sample data
-  final List<String> properties = [
-    'Sun-view Apartment, Flat 302',
-    'Ocean-view Villa, Unit 12',
-    'Mountain Retreat, Cabin 5'
-  ];
+  final ImagePicker _picker = ImagePicker();
 
-  final Map<String, List<String>> categories = {
-    'Select a category': [],
-    'Maintenance': ['Plumbing', 'Electrical', 'HVAC'],
-    'Cleaning': ['Regular', 'Deep', 'Carpet'],
-    'Security': ['Access', 'Cameras', 'Locks'],
-  };
+  @override
+  void initState() {
+    super.initState();
+    complaintController.getComplaintList(); // Fetch categories from API
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,15 +63,6 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
           icon: const Icon(Icons.arrow_back, color: AppColors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 15),
-            child: Icon(
-              Icons.info_outline,
-              color: AppColors.black,
-            ),
-          )
-        ],
         title: CustomTextWidget(
           title: "Post Ticket",
           fontSize: Get.height * 0.022,
@@ -63,101 +70,156 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
           color: AppColors.black,
         ),
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(screenWidth4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Select Property
-            _buildSectionHeader('Select Property'),
-            kHeight(0.01),
-            _buildDropdown(
-              value: selectedProperty,
-              items: properties,
-              onChanged: (value) {
-                setState(() {
-                  selectedProperty = value;
-                });
-              },
-            ),
-            SizedBox(height: screenHeight2),
+      body: Obx(
+        () => SingleChildScrollView(
+          padding: EdgeInsets.all(screenWidth4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Property Display
+              _buildSectionHeader('Property'),
+              kHeight(0.01),
+              Container(
+                padding: EdgeInsets.all(screenWidth2),
+                decoration: BoxDecoration(
+                  color: AppColors.whiteLight,
+                  border:
+                      Border.all(color: AppColors.grey.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: CustomTextWidget(
+                  title: "${widget.propertyName} (ID: ${widget.propertyId})",
+                  fontSize: Get.height * 0.016,
+                  color: AppColors.black,
+                ),
+              ),
+              SizedBox(height: screenHeight2),
 
-            // Category
-            _buildSectionHeader('Category'),
-            kHeight(0.01),
-            _buildDropdown(
-              value: selectedCategory ?? 'Select a category',
-              items: categories.keys.toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedCategory =
-                      value == 'Select a category' ? null : value;
-                  selectedSubcategory = null;
-                });
-              },
-            ),
-            SizedBox(height: screenHeight2),
+              // Category Dropdown
+              _buildSectionHeader('Category'),
+              kHeight(0.01),
+              complaintController.isLoadingCompliantList.value
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildDropdown(
+                      value: selectedCategory,
+                      items: complaintController.complaintCategory
+                          .map((e) => e.name ?? '')
+                          .toList(),
+                      hintText: 'Select Category',
+                      onChanged: (value) async {
+                        setState(() {
+                          selectedCategory = value;
+                          selectedSubcategory = null;
+                        });
 
-            // Subcategory (only shown when category is selected)
-            if (selectedCategory != null &&
-                selectedCategory != 'Select a category')
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                        final selectedItem = complaintController
+                            .complaintCategory
+                            .firstWhereOrNull((item) => item.name == value);
+
+                        if (selectedItem != null) {
+                          complaintController.selectedComplaintId.value =
+                              selectedItem.id ?? 0;
+                          debugPrint(
+                              "✅ Selected Category ID: ${complaintController.selectedComplaintId.value}");
+                          await complaintController.getSubCompliantList();
+                        } else {
+                          debugPrint("❌ No category found for $value");
+                        }
+                      },
+                    ),
+              SizedBox(height: screenHeight2),
+
+              // Subcategory Dropdown
+              if (selectedCategory != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader('Subcategory'),
+                    kHeight(0.01),
+                    complaintController.isLoadingSubtitleCompliantList.value
+                        ? const Center(child: CircularProgressIndicator())
+                        : _buildDropdown(
+                            value: selectedSubcategory,
+                            items: complaintController.subtitleComplaintCategory
+                                .map((e) => e.name ?? '')
+                                .toList(),
+                            hintText: 'Select Subcategory',
+                            onChanged: (value) async {
+
+                             
+                              
+                              setState(() {
+                                selectedSubcategory = value;
+                              });
+
+                              final selectedItem = complaintController
+                                  .subtitleComplaintCategory
+                                  .firstWhereOrNull(
+                                      (item) => item.name == value);
+
+
+
+
+                              if (selectedItem != null) {
+                                complaintController
+                                        .selectedSubtitleComplaintId.value =
+                                    selectedItem.id ?? 0;
+                                debugPrint(
+                                    "✅ Selected Subcategory ID: ${complaintController.selectedSubtitleComplaintId.value}");
+                              } else {
+                                debugPrint("❌ No subcategory found for $value");
+                                await complaintController
+                                    .getSubCompliantList();
+                              }
+                            },
+                          ),
+                    SizedBox(height: screenHeight2),
+                  ],
+                ),
+
+              // Issue Description
+              _buildSectionHeader('Describe the issue'),
+              kHeight(0.01),
+              CustomTextFieldWidget(
+                keyboardType: TextInputType.text,
+                controller: _issueController,
+                hintText: 'Write your message here...',
+                maxLines: 5,
+                isBorderNeeded: true,
+              ),
+              SizedBox(height: screenHeight2),
+
+              // Upload Images
+              _buildSectionHeader('Upload Photos (Optional)'),
+              kHeight(0.01),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  _buildSectionHeader('Subcategory'),
-                  kHeight(0.01),
-                  _buildDropdown(
-                    value: selectedSubcategory,
-                    items: categories[selectedCategory] ?? [],
-                    hintText: 'Select subcategory',
-                    onChanged: (value) {
-                      setState(() {
-                        selectedSubcategory = value;
-                      });
-                    },
-                  ),
-                  SizedBox(height: screenHeight2),
+                  ...uploadedImages
+                      .map((image) => _buildImagePreview(image))
+                      .toList(),
+                  _buildAddImageButton(),
                 ],
               ),
+              SizedBox(height: screenHeight4),
 
-            // Describe the issue
-            _buildSectionHeader('Describe the issue'),
-            kHeight(0.01),
-            CustomTextFieldWidget(
-              keyboardType: TextInputType.text,
-              controller: _issueController,
-              hintText: 'Write your message here...',
-              maxLines: 5,
-              // pad: EdgeInsets.all(screenWidth1),
-              isBorderNeeded: true,
-
-              // borderColor: AppColors.grey.withValues(alpha: 0.3),
-            ),
-            SizedBox(height: screenHeight2),
-
-            // Upload Photos
-            _buildSectionHeader('Upload Photos (Optional)'),
-            kHeight(0.01),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ...uploadedImages.map((image) => _buildImagePreview(image)),
-                _buildAddImageButton(),
-              ],
-            ),
-            SizedBox(height: screenHeight4),
-
-            // Submit Button
-            CustomButtonWidget(
-              onPressed: _submitTicket,
-              buttonTitle: "Submit Ticket",
-              buttonColor: AppColors.secondaryColor,
-              buttonTextColor: AppColors.white,
-              buttonShape: "rect",
-              buttonHeight: Get.height * 0.06,
-            ),
-          ],
+              // Submit Button
+              CustomButtonWidget(
+                onPressed: complaintController.isLoadingSubmitCompliant.value
+                    ? null
+                    : _submitTicket,
+                buttonTitle:
+                    complaintController.isLoadingSubmitCompliant.value
+                        ? "Submitting..."
+                        : "Submit Ticket",
+                buttonColor: AppColors.secondaryColor,
+                buttonTextColor: AppColors.white,
+                buttonShape: "rect",
+                buttonHeight: Get.height * 0.06,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -187,7 +249,7 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
       padding: EdgeInsets.symmetric(horizontal: screenWidth1),
       child: DropdownButton<String>(
         padding: EdgeInsets.symmetric(horizontal: screenWidth1),
-        value: value,
+        value: (value != null && items.contains(value)) ? value : null,
         isExpanded: true,
         underline: Container(),
         hint: CustomTextWidget(
@@ -212,11 +274,7 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
 
   Widget _buildAddImageButton() {
     return GestureDetector(
-      onTap: () async {
-        setState(() {
-          uploadedImages.add('placeholder_${uploadedImages.length + 1}');
-        });
-      },
+      onTap: _pickImage,
       child: Container(
         width: screenWidth * 0.30,
         height: screenHeight * 0.15,
@@ -227,7 +285,7 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.add, size: 24, color: AppColors.black600),
+            const Icon(Icons.add, size: 24, color: AppColors.black600),
             SizedBox(height: screenHeight05),
             CustomTextWidget(
               title: 'Add image',
@@ -240,7 +298,7 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
     );
   }
 
-  Widget _buildImagePreview(String image) {
+  Widget _buildImagePreview(File image) {
     return Stack(
       children: [
         Container(
@@ -249,8 +307,11 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             color: AppColors.grey.withValues(alpha: 0.1),
+            image: DecorationImage(
+              image: FileImage(image),
+              fit: BoxFit.cover,
+            ),
           ),
-          child: Icon(Icons.image, size: 40, color: AppColors.grey),
         ),
         Positioned(
           top: 4,
@@ -267,7 +328,7 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
                 shape: BoxShape.circle,
               ),
               padding: EdgeInsets.all(screenWidth5),
-              child: Icon(Icons.close, size: 16, color: AppColors.white),
+              child: const Icon(Icons.close, size: 16, color: AppColors.white),
             ),
           ),
         ),
@@ -275,37 +336,60 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
     );
   }
 
-  void _submitTicket() {
-    if (selectedProperty == null ||
-        selectedCategory == null ||
-        _issueController.text.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Please fill all required fields',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.redColor,
-        colorText: AppColors.white,
-      );
-      return;
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        uploadedImages.add(File(pickedFile.path));
+      });
     }
+  }
 
-    // TODO: Implement ticket submission logic
-    final ticketData = {
-      'property': selectedProperty,
-      'category': selectedCategory,
-      'subcategory': selectedSubcategory,
-      'issue': _issueController.text,
-      'images': uploadedImages,
-    };
-
-    debugPrint('Ticket submitted: $ticketData');
-    Get.back();
+ Future<void> _submitTicket() async {
+  if (selectedCategory == null ||
+      selectedSubcategory == null ||
+      _issueController.text.isEmpty) {
     Get.snackbar(
-      'Success',
-      'Ticket submitted successfully',
+      'Error',
+      'Please fill all required fields',
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.onlineGreenDark,
+      backgroundColor: AppColors.redColor,
       colorText: AppColors.white,
     );
+    return;
   }
+
+  complaintController.complaintDetailsController.text =
+      _issueController.text.trim();
+
+  await complaintController.submitCompliant(
+    propertyName: widget.propertyName,
+    propertyId: widget.propertyId,
+    unitAddressId: widget.unitAddressId,
+    uploadedImages: uploadedImages,
+  );
+
+  if (complaintController.isLoadingSubmitCompliant.value) {
+    Get.snackbar(
+      'Submitting',
+      'Please wait while we submit your ticket...',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.blueColor,
+      colorText: AppColors.white,
+    );
+  } else {
+    Get.snackbar(
+      'Success',
+      'Ticket submitted successfully!',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColors.onlineGreen,
+      colorText: AppColors.white,
+    );
+    Navigator.pop(context); // Close the screen after submission
+  }
+
+  // if (!complaintController.isLoadingSubmitCompliant.value) {
+  //   Get.back();
+  // }
+}
 }

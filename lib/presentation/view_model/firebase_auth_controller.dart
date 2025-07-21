@@ -1,4 +1,3 @@
-// lib/services/auth_service.dart
 import 'dart:async';
 import 'dart:core';
 import 'dart:ffi';
@@ -55,11 +54,11 @@ class AuthService extends GetxController {
   int? _resendToken;
   String verificationId = '';
 
-  // @override
-  // void onReady() {
-  //   firebaseUser.bindStream(_auth.authStateChanges());
-  //   ever(firebaseUser, _handleAuthChanged);
-  // }
+   @override
+  void onReady() {
+    firebaseUser.bindStream(auth.authStateChanges());
+    ever(firebaseUser, handleAuthChanged);
+  }
 
   void handleAuthChanged(User? user) async {
     if (user == null) {
@@ -69,6 +68,7 @@ class AuthService extends GetxController {
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
         userRole.value = userDoc.data()?['role'] ?? '';
+        debugPrint('User role fetched: ${userRole.value}');
         userTenantId.value = userDoc.data()?['tenantId'] ?? '';
 
         // Redirect based on role
@@ -456,71 +456,86 @@ class AuthService extends GetxController {
 // Google Sign-In for Users Only
 Future<UserCredential?> signInWithGoogle() async {
   try {
+    debugPrint('🔐 Google Sign-In started...');
     isSignInGoogle(true);
-    debugPrint('Starting Google sign-in...');
+    debugPrint('isSignInGoogle: ${isSignInGoogle.value}');
 
     // Check if Google Play Services is available
-    if (!await _googleSignIn.isSignedIn()) {
-      // Force sign out to ensure clean state
+    bool alreadySignedIn = await _googleSignIn.isSignedIn();
+    debugPrint('GoogleSignIn already signed in: $alreadySignedIn');
+
+    if (!alreadySignedIn) {
+      debugPrint('Forcing Google sign-out to ensure a clean state.');
       await _googleSignIn.signOut();
     }
 
     // Trigger Google Sign-In flow
+    debugPrint('Triggering Google sign-in popup...');
     final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
     if (googleUser == null) {
-      debugPrint('Google sign-in cancelled by user');
+      debugPrint('❌ Google sign-in cancelled by user.');
       return null; // User cancelled sign-in
     }
 
-    final GoogleSignInAuthentication googleAuth =
-        await googleUser.authentication;
+    debugPrint('Google user selected: ${googleUser.displayName}, Email: ${googleUser.email}');
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    debugPrint('Google AccessToken: ${googleAuth.accessToken}');
+    debugPrint('Google IdToken: ${googleAuth.idToken}');
 
     // Validate tokens
     if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+      debugPrint('❌ Failed to retrieve valid Google authentication tokens.');
       throw Exception('Failed to get Google authentication tokens');
     }
 
     // Create credentials
+    debugPrint('Creating Firebase credential using Google tokens...');
     final OAuthCredential credential = GoogleAuthProvider.credential(
       accessToken: googleAuth.accessToken,
       idToken: googleAuth.idToken,
     );
 
     // Sign in to Firebase
-    final UserCredential userCredential =
-        await auth.signInWithCredential(credential);
+    debugPrint('Signing in with Firebase...');
+    final UserCredential userCredential = await auth.signInWithCredential(credential);
 
     if (userCredential.user == null) {
+      debugPrint('❌ Firebase returned null user.');
       throw Exception('Failed to authenticate with Firebase');
     }
 
+    debugPrint('✅ Firebase sign-in successful: UID=${userCredential.user?.uid}, Email=${userCredential.user?.email}, User =${userCredential.user?.displayName}');
+
     // Check if this is a new user
     if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-      debugPrint('New Google user detected');
+      debugPrint('🆕 New Google user detected. UID: ${userCredential.user?.uid}');
       // Don’t automatically create account – show confirmation dialog
       await _handleNewGoogleUser(userCredential.user!);
     } else {
-      debugPrint('Existing Google user detected');
+      debugPrint('👤 Existing Google user detected: UID=${userCredential.user?.uid}');
       // Existing user – proceed with login
       await _handleExistingGoogleUser(userCredential.user!);
     }
 
     // ✅ Trigger post-login redirect logic
+    debugPrint('Triggering post-login redirect via LoginController...');
     final loginController = Get.find<LoginController>();
     loginController.handlePostLogin();
 
+    debugPrint('🔐 Google Sign-In flow completed successfully.');
     return userCredential;
   } on PlatformException catch (e) {
-    debugPrint(
-        'Platform exception during Google sign-in: ${e.code} - ${e.message}');
+    debugPrint('⚠ Platform exception during Google sign-in: ${e.code} - ${e.message}');
     _handlePlatformException(e);
     return null;
   } on FirebaseAuthException catch (e) {
-    debugPrint('Firebase auth exception: ${e.code} - ${e.message}');
+    debugPrint('⚠ FirebaseAuth exception: ${e.code} - ${e.message}');
     _handleFirebaseAuthException(e);
     return null;
   } catch (e) {
-    debugPrint('Unexpected error during Google sign-in: $e');
+    debugPrint('❌ Unexpected error during Google sign-in: $e');
     Get.snackbar(
       'Error',
       'Sign-in failed. Please try again.',
@@ -530,6 +545,7 @@ Future<UserCredential?> signInWithGoogle() async {
     return null;
   } finally {
     isSignInGoogle(false);
+    debugPrint('isSignInGoogle reset to: ${isSignInGoogle.value}');
   }
 }
 
@@ -699,8 +715,10 @@ Future<UserCredential?> signInWithGoogle() async {
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         final status = userData['status'] ?? 'active';
+       
+        userRole.value = userData['role'] ?? 'user';
 
-        userRole.value = 'user';
+        debugPrint('User role fetched: ${userRole.value}');
 
         // Check if account is active
         if (status == 'suspended' || status == 'banned') {
@@ -722,11 +740,24 @@ Future<UserCredential?> signInWithGoogle() async {
           uid: user.uid,
           email: user.email ?? userData['email'] ?? '',
           name: userData['displayName'] ?? user.displayName ?? '',
-          role: 'user',
+         role: userData['role'] ?? '',
           status: status,
 
           // profilePicture: userData['profilePicture'] ?? user.photoURL,
         );
+
+        debugPrint('''
+UID: ${userModel.uid}
+Email: ${userModel.email}
+Phone: ${userModel.phoneNumber}
+Location: ${userModel.location}
+Name: ${userModel.name}
+Role: ${userModel.role}
+Status: ${userModel.status}
+Image URL: ${userModel.imageUrl}
+''');
+
+
 
         // Store user in controller
         Get.find<UserController>().currentUser = userModel;
