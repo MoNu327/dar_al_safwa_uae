@@ -60,33 +60,15 @@ class AuthService extends GetxController {
     ever(firebaseUser, handleAuthChanged);
   }
 
-  void handleAuthChanged(User? user) async {
-    if (user == null) {
-      Get.offAllNamed('/login');
-    } else {
-      // Fetch user role from Firestore
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      if (userDoc.exists) {
-        userRole.value = userDoc.data()?['role'] ?? '';
-        debugPrint('User role fetched: ${userRole.value}');
-        userTenantId.value = userDoc.data()?['tenantId'] ?? '';
-
-        // Redirect based on role
-        if (userRole.value == 'agent') {
-          debugPrint('Agent logged in: ${user.displayName}');
-          // Get.offAllNamed('/agent-dashboard');
-        } else if (userRole.value == 'tenant') {
-          debugPrint('tenant logged in: ${user.displayName}');
-          Get.offAllNamed('/tenant-dashboard');
-        }
-      } else {
-        // New user - need to set role (only for Google users)
-        if (user.providerData.any((info) => info.providerId == 'google.com')) {
-          Get.offAllNamed('/role-selection');
-        }
-      }
-    }
+ void handleAuthChanged(User? user) async {
+  if (user == null) {
+    Get.offAllNamed('/login');
+  } else {
+    // Instead of duplicating role logic, reuse existing Google user handler
+    await _handleExistingGoogleUser(user);
   }
+}
+
 
   // Timer methods
   void startResendTimer() {
@@ -716,12 +698,13 @@ Future<UserCredential?> signInWithGoogle() async {
     try {
       // Check user's data in Firestore
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      debugPrint('Checking existing user document for UID: ${user.uid}');
 
       if (userDoc.exists) {
         final userData = userDoc.data()!;
         final status = userData['status'] ?? 'active';
        
-        userRole.value = userData['role'] ?? 'user';
+        userRole.value = userData['role'] ?? '';
 
         debugPrint('User role fetched: ${userRole.value}');
 
@@ -772,6 +755,7 @@ Get.find<UserController>().currentUser = userModel;
 debugPrint('Existing user logged in: ${userModel.toJson()}');
 
 // Navigate based on role
+
 if (userModel.role == 'tenant') {
   debugPrint('Navigating to Tenant Dashboard...');
   Get.offAllNamed(AppRoute.navbar); 
@@ -783,9 +767,6 @@ if (userModel.role == 'tenant') {
   navigateToHome();
 }
 
-
-        // Navigate to home
-        navigateToHome();
       } else {
         debugPrint('User document not found for existing user');
         // This shouldn't happen, but handle gracefully
@@ -800,55 +781,61 @@ if (userModel.role == 'tenant') {
   }
 
 // Handle legacy users (existing Firebase users without proper user documents)
-  Future<void> _handleLegacyGoogleUser(User user) async {
-    try {
-      // Create user document with default values
-      final userData = {
-        'uid': user.uid,
-        'email': user.email ?? '',
-        'displayName': user.displayName ?? '',
-        'role': 'user',
-        'status': 'active',
-        'profilePicture': user.photoURL,
-        'provider': 'google',
-        'location': '',
-        'phoneNumber': '',
-        'createdAt': FieldValue.serverTimestamp(),
-        'isLegacyUser': true,
-        'registrationCompleted': true,
-      };
+  Future<void> _handleLegacyGoogleUser(User user, {String role = 'user'}) async {
+  try {
+    final userData = {
+      'uid': user.uid,
+      'email': user.email ?? '',
+      'displayName': user.displayName ?? '',
+      'role': role,  // dynamically set role
+      'status': 'active',
+      'profilePicture': user.photoURL,
+      'provider': 'google',
+      'location': '',
+      'phoneNumber': '',
+      'createdAt': FieldValue.serverTimestamp(),
+      'isLegacyUser': true,
+      'registrationCompleted': true,
+    };
 
-      await _firestore.collection('users').doc(user.uid).set(userData);
-      userRole.value = 'user';
+    await _firestore.collection('users').doc(user.uid).set(userData);
+    userRole.value = role;
 
-      final userModel = UserModel(
-        location: '',
-        phoneNumber: '',
-        uid: user.uid,
-        email: user.email ?? '',
-        name: user.displayName ?? '',
-        role: 'user',
-        status: 'active',
-        //  : user.photoURL,
-      );
+    final userModel = UserModel(
+      location: '',
+      phoneNumber: '',
+      uid: user.uid,
+      email: user.email ?? '',
+      name: user.displayName ?? '',
+      role: role,
+      status: 'active',
+    );
 
-      Get.find<UserController>().currentUser = userModel;
+    Get.find<UserController>().currentUser = userModel;
 
-      Get.snackbar(
-        'Welcome Back',
-        'Your account has been updated successfully.',
-        backgroundColor: Colors.green[100],
-        colorText: Colors.green[800],
-      );
+    Get.snackbar(
+      'Welcome Back',
+      'Your account has been updated successfully.',
+      backgroundColor: Colors.green[100],
+      colorText: Colors.green[800],
+    );
 
+    // Navigate based on role
+    if (role == 'tenant') {
+      Get.offAllNamed(AppRoute.navbar);
+    } else if (role == 'agent') {
+      Get.offAllNamed(AppRoute.navbar);
+    } else {
       navigateToHome();
-    } catch (e) {
-      debugPrint('Error handling legacy Google user: $e');
-      Get.snackbar('Error', 'Account setup failed. Please try again.');
-      await auth.signOut();
-      await _googleSignIn.signOut();
     }
+  } catch (e) {
+    debugPrint('Error handling legacy Google user: $e');
+    Get.snackbar('Error', 'Account setup failed. Please try again.');
+    await auth.signOut();
+    await _googleSignIn.signOut();
   }
+}
+
 
 // Handle platform-specific exceptions
   void _handlePlatformException(PlatformException e) {

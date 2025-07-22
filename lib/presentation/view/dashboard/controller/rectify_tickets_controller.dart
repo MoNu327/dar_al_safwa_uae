@@ -63,15 +63,6 @@ class RectifyTicketsController extends GetxController {
   final description = workDescriptionController.text.trim();
   final amount = amountController.text.trim();
 
-  if (description.isEmpty || amount.isEmpty) {
-    Get.snackbar(
-      'Error',
-      'Please fill all fields',
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
-    return;
-  }
 
   print("=== SUBMIT UPDATE REQUEST ===");
   print("complaint_id: $complaintId");

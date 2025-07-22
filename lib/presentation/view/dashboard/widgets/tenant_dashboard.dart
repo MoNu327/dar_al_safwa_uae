@@ -150,13 +150,13 @@ class TenantDashboard extends StatelessWidget {
                         Get.toNamed("/tenantDocumentsList");
                       },
                     ),
-                    buildMenuTile(
-                      leading: Image.asset("assets/images/Tickets.png"),
-                      title: 'Tickets',
-                      onTap: () {
-                        Get.to(TenantsTicketsListWidget());
-                      },
-                    ),
+                    // buildMenuTile(
+                    //   leading: Image.asset("assets/images/Tickets.png"),
+                    //   title: 'Tickets',
+                    //   onTap: () {
+                    //     Get.to(TenantsTicketsListWidget());
+                    //   },
+                    // ),
                     buildMenuTile(
                       leading: Image.asset("assets/images/Messages.png"),
                       title: "Messages",
