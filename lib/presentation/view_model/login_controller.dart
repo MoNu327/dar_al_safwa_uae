@@ -16,6 +16,8 @@ class LoginController extends GetxController {
   final image = Rx<String?>(null);
   final errorMessage = Rx<String?>(null);
   final isLoading = false.obs;
+  final isGoogleSigningIn = false.obs;
+
 
   /// 🔁 Holds redirection info after login
   Map<String, dynamic>? postLoginRedirectArgs;
@@ -28,67 +30,66 @@ class LoginController extends GetxController {
   }
 
   /// 🔁 Called after login to redirect user accordingly
-  void handlePostLogin() {
-    debugPrint("🔁 handlePostLogin called.");
-    final args = postLoginRedirectArgs;
-    debugPrint("PostLoginRedirectArgs: $args");
+  // void handlePostLogin() {
+  //   debugPrint("🔁 handlePostLogin called.");
+  //   final args = postLoginRedirectArgs;
+  //   debugPrint("PostLoginRedirectArgs: $args");
 
-    if (args != null && args['redirectToBooking'] == true) {
-      final propertyId = int.tryParse(args['propertyId']?.toString() ?? '0') ?? 0;
-      debugPrint("Redirecting to property details with propertyId: $propertyId");
+  //   if (args != null && args['redirectToBooking'] == true) {
+  //     final propertyId = int.tryParse(args['propertyId']?.toString() ?? '0') ?? 0;
+  //     debugPrint("Redirecting to property details with propertyId: $propertyId");
 
-      if (propertyId > 0) {
-        Get.offNamedUntil(AppRoute.propertyDetails, (route) => false, arguments: {
-          'propertyId': propertyId,
-        });
-      } else {
-        debugPrint("PropertyId is invalid. Redirecting to navbar.");
-        Get.offAllNamed(AppRoute.navbar);
-      }
-    } else {
-      debugPrint("No redirect arguments found. Navigating to navbar.");
-      Get.offAllNamed(AppRoute.navbar);
-    }
-  }
+  //     if (propertyId != null) {
+  //       Get.offNamedUntil(AppRoute.propertyDetails, (route) => false, arguments: {
+  //         'propertyId': propertyId});postLoginRedirectArgs!.clear();
+  //     } else {
+  //       debugPrint("PropertyId is invalid. Redirecting to navbar.");
+  //       Get.offAllNamed(AppRoute.navbar);
+  //     }
+  //   } else {
+  //     debugPrint("No redirect arguments found. Navigating to navbar.");
+  //     Get.offAllNamed(AppRoute.navbar);
+  //   }
+  // }
 
   /// 🔐 Google Sign-In flow
-  Future<void> loginWithGoogle() async {
-    debugPrint("🔐 Starting loginWithGoogle");
-    try {
-      isGoogleLoading.value = true;
-      debugPrint("Google loading state: ${isGoogleLoading.value}");
+  // Future<void> loginWithGoogle() async {
+  //   debugPrint("🔐 Starting loginWithGoogle");
+  //   try {
+  //     isGoogleLoading.value = true;
+  //     debugPrint("Google loading state: ${isGoogleLoading.value}");
 
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      debugPrint("GoogleSignIn user: $googleUser");
+  //     final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+  //     debugPrint("GoogleSignIn user: $googleUser");
 
-      if (googleUser == null) {
-        debugPrint("❌ Google Sign-In canceled by user.");
-        return;
-      }
+  //     if (googleUser == null) {
+  //       debugPrint("❌ Google Sign-In canceled by user.");
+  //       return;
+  //     }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      debugPrint("Google AccessToken: ${googleAuth.accessToken}");
-      debugPrint("Google IdToken: ${googleAuth.idToken}");
+  //     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+  //     debugPrint("Google AccessToken: ${googleAuth.accessToken}");
+  //     debugPrint("Google IdToken: ${googleAuth.idToken}");
 
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+  //     final AuthCredential credential = GoogleAuthProvider.credential(
+  //       accessToken: googleAuth.accessToken,
+  //       idToken: googleAuth.idToken,
+  //     );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      debugPrint("✅ Google sign-in success: ${userCredential.user?.displayName}");
-      debugPrint("User UID: ${userCredential.user?.uid}");
-      debugPrint("User Email: ${userCredential.user?.email}");
+  //     final UserCredential userCredential = await _auth.signInWithCredential(credential);
+  //     debugPrint("✅ Google sign-in success: ${userCredential.user?.displayName}");
+  //     debugPrint("User UID: ${userCredential.user?.uid}");
+  //     debugPrint("User Email: ${userCredential.user?.email}");
 
-      // ✅ Post-login redirection
-      handlePostLogin();
-    } catch (e) {
-      debugPrint("❌ Error signing in with Google: $e");
-    } finally {
-      isGoogleLoading.value = false;
-      debugPrint("Google loading state set to: ${isGoogleLoading.value}");
-    }
-  }
+  //     // ✅ Post-login redirection
+  //     handlePostLogin();
+  //   } catch (e) {
+  //     debugPrint("❌ Error signing in with Google: $e");
+  //   } finally {
+  //     isGoogleLoading.value = false;
+  //     debugPrint("Google loading state set to: ${isGoogleLoading.value}");
+  //   }
+  // }
 
   /// 🔓 Logout the current user
   Future<void> logout() async {

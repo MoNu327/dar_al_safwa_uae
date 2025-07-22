@@ -127,39 +127,27 @@ class AboutContent extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   CustomBottomSheet(
-                    onCallPressed: () {
-                      propertyDetailsController.showUnitTypeBottomSheetForCall(
-                          property?.agent?.phone ?? "9544418765",
-                          property?.id.toString() ?? "0");
-                      // propertyDetailsController
-                      //     .callToAgent(property.agent?.phone ?? "");
-                    },
-                    // For chat
-                    onWhatsAppPressed: () {
-                      auth.currentUser == null
-                          ? Get.toNamed(AppRoute.signupWarning)
-                          : auth.currentUser != null &&
-                                  auth.currentUser?.displayName != null
-                              ? propertyDetailsController
-                                  .showUnitTypeBottomSheetForChat(
-                                      property?.agent?.email ??
-                                          "test@gmail.com",
-                                      property?.id.toString() ?? "",
-                                      property?.title?.en ?? "")
-                              : auth.currentUser?.email == null
-                                  ? propertyDetailsController
-                                      .showUnitTypeBottomSheetForChat(
-                                          property?.agent?.email ??
-                                              "test@gmail.com",
-                                          "41",
-                                          property?.title?.en ?? "")
-                                  : CustomSnackbar.show(
-                                      title: "Failed",
-                                      message:
-                                          "Currently, the agent is unable to connect.");
-                    },
-                    height: 80,
-                  )
+  onCallPressed: () {
+    propertyDetailsController.handleCallOrChat(
+      isCall: true,
+      phone: property?.agent?.phone ?? "9544418765",
+      propertyId: property?.id.toString() ?? "0",
+      propertyName: property?.title?.en ?? "",
+      agentEmail: property?.agent?.email ?? "test@gmail.com",
+    );
+  },
+  onWhatsAppPressed: () {
+    propertyDetailsController.handleCallOrChat(
+      isCall: false,
+      phone: property?.agent?.phone ?? "9544418765",
+      propertyId: property?.id.toString() ?? "0",
+      propertyName: property?.title?.en ?? "",
+      agentEmail: property?.agent?.email ?? "test@gmail.com",
+    );
+  },
+  height: 80,
+),
+
                 ],
               ),
             ),

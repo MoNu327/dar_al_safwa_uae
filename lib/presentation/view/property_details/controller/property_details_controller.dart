@@ -173,57 +173,70 @@ class PropertyDetailsController extends GetxController {
 
 
   Future<void> saveMobileNumber({
-    required String mobile,
-    required String phone,
-    required String propertyId,
-    String? unitId,
-    String? propertyName,
-    String? agentEmail,
-    bool navigateToChat = false,
-    bool navigateToCall = false,
-  }) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-
-    if (mobile.isEmpty || mobile.length < 8) {
-      Get.snackbar("Invalid", "Please enter a valid mobile number");
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'mobile': phone,
-      }, SetOptions(merge: true));
-
-      Get.snackbar("Success", "Mobile number updated successfully");
-
-      // ✅ Return all navigation context
-      Get.back(result: {
-        'mobile': mobile,
-        'phone': phone,
-        'propertyId': propertyId,
-        'unitId': unitId,
-        'propertyName': propertyName,
-        'agentEmail': agentEmail,
-        'navigateToChat': navigateToChat,
-        'navigateToCall': navigateToCall,
-      });
-
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // ☎️ Only call if navigateToCall is true
-      if (navigateToCall) {
-        await callToAgent(phone);
-      }
-
-    } catch (e) {
-      Get.snackbar("Error", "Failed to update mobile number");
-    } finally {
-      isLoading.value = false;
-    }
+  required String mobile,
+  required String phone,
+  required String propertyId,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    throw Exception('User not authenticated');
   }
 
+  // Save mobile number in Firestore
+  await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+    'mobile': mobile,
+    'lastUpdated': FieldValue.serverTimestamp(),
+  });
+
+  print("Mobile number saved: $mobile");
+}
+
+
+Future<void> handleCallOrChat({
+  required bool isCall,
+  required String phone,
+  required String propertyId,
+  String? propertyName,
+  String? agentEmail,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    Get.toNamed(AppRoute.signupWarning);
+    return;
+  }
+
+  // Fetch mobile from Firestore
+  final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+  final mobile = doc.data()?['mobile'] ?? '';
+
+  if (mobile.isEmpty) {
+    // Navigate to MobileNumberUpdatePage
+    final result = await Get.to(() => MobileNumberUpdatePage(
+          phone: phone,
+          propertyId: propertyId,
+          navigateToCall: isCall,
+          navigateToChat: !isCall,
+          propertyName: propertyName,
+          agentEmail: agentEmail,
+        ));
+
+    if (result != null && result['mobile'] != null) {
+      // After saving mobile, continue
+      if (isCall) {
+        showUnitTypeBottomSheetForCall(phone, propertyId);
+      } else {
+        showUnitTypeBottomSheetForChat(agentEmail ?? "", propertyId, propertyName ?? "");
+      }
+    }
+  } else {
+    // Already has mobile number
+    if (isCall) {
+      showUnitTypeBottomSheetForCall(phone, propertyId);
+    } else {
+      showUnitTypeBottomSheetForChat(agentEmail ?? "", propertyId, propertyName ?? "");
+    }
+  }
+}
 
 
 

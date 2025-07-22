@@ -38,6 +38,16 @@ class RectifyTicketsController extends GetxController {
           backgroundColor: Colors.orange, colorText: Colors.white);
     }
   }
+ Future<void> pickFromCamera() async {
+  final ImagePicker picker = ImagePicker();
+  final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+  if (photo != null) {
+    uploadedImages.add(File(photo.path));  // Correct way
+    print("📸 Camera photo added: ${photo.path}");
+    update(); // Only needed if using GetBuilder (not required for Obx with RxList)
+  }
+}
+
 
   /// Work Status
   void changeWorkStatus(String status) {

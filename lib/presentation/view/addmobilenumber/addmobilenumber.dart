@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/constants/custom_size.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/custom_elevated_button.dart';
@@ -11,9 +12,7 @@ class MobileNumberUpdatePage extends StatefulWidget {
   final String? propertyName;
   final String? agentEmail;
   final bool navigateToCall;
-
   final String phone;
-
   final String propertyId;
 
   const MobileNumberUpdatePage({
@@ -27,7 +26,6 @@ class MobileNumberUpdatePage extends StatefulWidget {
     this.agentEmail,
   }) : super(key: key);
 
-
   @override
   State<MobileNumberUpdatePage> createState() => _MobileNumberUpdatePageState();
 }
@@ -38,96 +36,84 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
 
   Future<void> _handleSave() async {
     final mobile = mobileController.text.trim();
-    // if (mobile.isEmpty || mobile.length < 8) {
-    //   Get.snackbar("Invalid", "Please enter a valid mobile number");
-    //   return;
-    // }
+    if (mobile.isEmpty || mobile.length < 8) {
+      Get.snackbar("Invalid", "Please enter a valid mobile number");
+      return;
+    }
 
     isLoading.value = true;
     final controller = Get.find<PropertyDetailsController>();
-    await controller.saveMobileNumber(mobile: mobile, phone: widget.phone, propertyId: widget.propertyId);
+    await controller.saveMobileNumber(
+      mobile: mobile,
+      phone: widget.phone,
+      propertyId: widget.propertyId,
+    );
     isLoading.value = false;
 
-    // Return to previous screen with updated data
-    // Get.back(result: {
-    //   'mobile': mobile,
-    //   'propertyId': widget.propertyId,
-    //   'phone': widget.phone,
-    //   'navigateToChat': widget.navigateToChat,
-    //   'navigateToCall': widget.navigateToCall,
-    //   'unitId': widget.unitId,
-    //   'propertyName': widget.propertyName,
-    //   'agentEmail': widget.agentEmail,
-    // });
-
+    // Pass result back and close the page
+    Get.back(result: {'mobile': mobile});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
-      appBar: AppBar(title: const Text("Update Mobile Number"),
-      backgroundColor: AppColors.white,),
-      body:
-      Padding(
+      appBar: AppBar(
+        title: const Text("Update Mobile Number"),
+        backgroundColor: AppColors.white,
+      ),
+      body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Obx(() => Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
-
-            Align(
-              alignment: Alignment.topLeft,
-              child: Text(
-                " Mobile number is required to proceed.*",
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.secondaryColor,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: Text(
+                    "Mobile number is required to proceed.*",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.secondaryColor,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            Align(
-              alignment: Alignment.centerLeft,
-              child: const Text(
-                "Enter your mobile number:",
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            TextField(
-              controller: mobileController,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'Mobile Number',
-              ),
-            ),
-
-            const SizedBox(height: 40),
-
-            Center(
-              child: CustomButtonWidget(
-                buttonTitle: "Save",
-                onPressed: isLoading.value ? null : _handleSave,
-                childWidgetLoader: isLoading.value,
-                buttonColor: AppColors.secondaryColor,
-                buttonTextColor: AppColors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                buttonShape: "rect",
-                buttonHeight: screenHeight * 0.06,
-                buttonWidth: screenWidth * 0.4,
-
-              ),
-            ),
-          ],
-        )),
+                const SizedBox(height: 20),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Enter your mobile number:",
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: mobileController,
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Mobile Number',
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Center(
+                  child: CustomButtonWidget(
+                    buttonTitle: "Save",
+                    onPressed: isLoading.value ? null : _handleSave,
+                    childWidgetLoader: isLoading.value,
+                    buttonColor: AppColors.secondaryColor,
+                    buttonTextColor: AppColors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    buttonShape: "rect",
+                    buttonHeight: screenHeight * 0.06,
+                    buttonWidth: screenWidth * 0.4,
+                  ),
+                ),
+              ],
+            )),
       ),
     );
   }

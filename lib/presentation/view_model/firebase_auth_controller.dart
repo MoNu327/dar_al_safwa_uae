@@ -522,7 +522,12 @@ Future<UserCredential?> signInWithGoogle() async {
     // ✅ Trigger post-login redirect logic
     debugPrint('Triggering post-login redirect via LoginController...');
     final loginController = Get.find<LoginController>();
-    loginController.handlePostLogin();
+ if (loginController.postLoginRedirectArgs == null || loginController.postLoginRedirectArgs!.isEmpty) {
+    // loginController.handlePostLogin();
+} else {
+   Get.offAllNamed(AppRoute.navbar);
+
+}
 
     debugPrint('🔐 Google Sign-In flow completed successfully.');
     return userCredential;
@@ -536,12 +541,12 @@ Future<UserCredential?> signInWithGoogle() async {
     return null;
   } catch (e) {
     debugPrint('❌ Unexpected error during Google sign-in: $e');
-    Get.snackbar(
-      'Error',
-      'Sign-in failed. Please try again.',
-      backgroundColor: Colors.red[100],
-      colorText: Colors.red[800],
-    );
+    // Get.snackbar(
+    //   'Error',
+    //   'Sign-in failed. Please try again.',
+    //   backgroundColor: Colors.red[100],
+    //   colorText: Colors.red[800],
+    // );
     return null;
   } finally {
     isSignInGoogle(false);
@@ -762,6 +767,22 @@ Image URL: ${userModel.imageUrl}
         // Store user in controller
         Get.find<UserController>().currentUser = userModel;
         debugPrint('Existing user logged in: ${userModel.toJson()}');
+        // Store user in controller
+Get.find<UserController>().currentUser = userModel;
+debugPrint('Existing user logged in: ${userModel.toJson()}');
+
+// Navigate based on role
+if (userModel.role == 'tenant') {
+  debugPrint('Navigating to Tenant Dashboard...');
+  Get.offAllNamed(AppRoute.navbar); 
+} else if (userModel.role == 'agent') {
+  debugPrint('Navigating to Agent Dashboard...');
+  Get.offAllNamed(AppRoute.navbar);
+} else {
+  debugPrint('Navigating to User Home...');
+  navigateToHome();
+}
+
 
         // Navigate to home
         navigateToHome();

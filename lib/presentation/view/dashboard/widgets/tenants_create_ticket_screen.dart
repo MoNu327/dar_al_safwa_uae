@@ -273,30 +273,80 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
   }
 
   Widget _buildAddImageButton() {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: Container(
-        width: screenWidth * 0.30,
-        height: screenHeight * 0.15,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.grey.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.add, size: 24, color: AppColors.black600),
-            SizedBox(height: screenHeight05),
-            CustomTextWidget(
-              title: 'Add image',
-              fontSize: Get.height * 0.014,
-              color: AppColors.black600,
-            ),
-          ],
-        ),
+  return GestureDetector(
+    onTap: _showImageSourceOptions,  // <-- Call bottom sheet
+    child: Container(
+      width: screenWidth * 0.30,
+      height: screenHeight * 0.15,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.grey.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(14),
       ),
-    );
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.add, size: 24, color: AppColors.black600),
+          SizedBox(height: screenHeight05),
+          CustomTextWidget(
+            title: 'Add image',
+            fontSize: Get.height * 0.014,
+            color: AppColors.black600,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+void _showImageSourceOptions() {
+  Get.bottomSheet(
+    Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.camera_alt, color: AppColors.secondaryColor),
+            title: const Text("Take Photo"),
+            onTap: () async {
+              await _pickFromCamera();
+              Get.back();
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.photo_library, color: AppColors.secondaryColor),
+            title: const Text("Choose from Gallery"),
+            onTap: () async {
+              await _pickFromGallery();
+              Get.back();
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
+Future<void> _pickFromCamera() async {
+  final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+  if (pickedFile != null) {
+    setState(() {
+      uploadedImages.add(File(pickedFile.path));
+    });
   }
+}
+
+Future<void> _pickFromGallery() async {
+  final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+  if (pickedFile != null) {
+    setState(() {
+      uploadedImages.add(File(pickedFile.path));
+    });
+  }
+}
+
+  
 
   Widget _buildImagePreview(File image) {
     return Stack(

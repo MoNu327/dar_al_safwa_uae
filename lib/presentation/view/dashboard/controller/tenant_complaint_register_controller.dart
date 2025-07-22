@@ -59,6 +59,7 @@ class TenantComplaintRegisterController extends GetxController {
       isLoadingCompliantList(false);
     }
   }
+  
 
   /// ✅ Get Sub-Complaint List based on selectedComplaintId
   Future<void> getSubCompliantList() async {

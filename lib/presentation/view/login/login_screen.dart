@@ -99,12 +99,14 @@ class LoginScreen extends StatelessWidget {
                   title: authService.isSignInGoogle.value
                       ? localizationController.translate('loading')
                       : localizationController.translate('login_with_google'),
-                  onPressed: () {
-                    debugPrint("➡ Google Sign-in Button clicked.");
-                    if (!authService.isSignInGoogle.value) {
-                      authService.signInWithGoogle();
-                    }
-                  },
+                 onPressed: () {
+  if (!authService.isSignInGoogle.value && !loginController.isGoogleSigningIn.value) {
+    loginController.isGoogleSigningIn.value = true;
+    authService.signInWithGoogle().whenComplete(() {
+      loginController.isGoogleSigningIn.value = false;
+    });
+  }
+},
                   customIconWidget: loginController.isGoogleLoading.value
                       ? const SizedBox.shrink()
                       : Image.asset(
