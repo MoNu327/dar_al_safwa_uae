@@ -4,19 +4,20 @@ import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
 import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_tickets_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_view_tickets.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_create_ticket_screen.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart';
+import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
+import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
 
-import '../../../../core/constants/custom_size.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../widgets/custom_elevated_button.dart';
-import '../../../widgets/custom_text_widget.dart';
-import 'tenants_create_ticket_screen.dart';
-import 'tenants_ticket_details_screen.dart';
+import '../../../../../../core/constants/custom_size.dart';
+import '../../../../../../core/theme/app_colors.dart';
+
 
 class TenantsTicketsListWidget extends StatefulWidget {
   const TenantsTicketsListWidget({super.key});
@@ -36,31 +37,35 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
   @override
   void initState() {
     super.initState();
-    _loadComplaints(); 
+    _loadComplaints(); // Load from API instead of mock data
   }
 
   /// Fetch complaints from API
   Future<void> _loadComplaints() async {
-  try {
-    await controller.fetchTenantComplaints();
-  } catch (e) {
-    debugPrint("Error loading complaints: $e");
+    try {
+      await controller.fetchTenantComplaints();
+      setState(() {
+        complaints = controller.complaints;
+        filteredComplaints = complaints;
+      });
+    } catch (e) {
+      debugPrint("Error loading complaints: $e");
+    }
   }
-}
-
 
  void _searchTickets(String query) {
-  if (query.isEmpty) {
-    filteredComplaints = controller.complaints;
-  } else {
-    filteredComplaints = controller.complaints.where((complaint) {
-      return complaint.category.toLowerCase().contains(query.toLowerCase()) ||
-          complaint.description.toLowerCase().contains(query.toLowerCase()) ||
-          complaint.complaintNumber.toLowerCase().contains(query.toLowerCase());
-    }).toList();
+    setState(() {
+      if (query.isEmpty) {
+        filteredComplaints = complaints;
+      } else {
+        filteredComplaints = complaints.where((complaint) {
+          return complaint.category.toLowerCase().contains(query.toLowerCase()) ||
+                 complaint.description.toLowerCase().contains(query.toLowerCase()) ||
+                 complaint.complaintNumber.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+      }
+    });
   }
-}
-
 
   @override
   void dispose() {
@@ -103,43 +108,19 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
 
                 // Tickets List
                Expanded(
-  child: Obx(() {
-    if (controller.isComplaintLoading.value) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (controller.complaintErrorMessage.isNotEmpty) {
-      return Center(
-        child: CustomTextWidget(
-          title: controller.complaintErrorMessage.value,
-          color: Colors.red,
-          fontSize: Get.height * 0.018,
+  child: filteredComplaints.isEmpty
+      ? _buildEmptyState()
+      : ListView.builder(
+          padding: EdgeInsets.symmetric(
+            horizontal: screenWidth1,
+            vertical: screenHeight1,
+          ),
+          itemCount: filteredComplaints.length,
+          itemBuilder: (context, index) {
+            return _buildComplaintCard(filteredComplaints[index]);
+          },
         ),
-      );
-    }
-
-    // Use filteredComplaints if search is applied, else controller.complaints
-    final complaintsList = filteredComplaints.isEmpty && _searchController.text.isEmpty
-        ? controller.complaints
-        : filteredComplaints;
-
-    if (complaintsList.isEmpty) {
-      return _buildEmptyState();
-    }
-
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth1,
-        vertical: screenHeight1,
-      ),
-      itemCount: complaintsList.length,
-      itemBuilder: (context, index) {
-        return _buildComplaintCard(complaintsList[index]);
-      },
-    );
-  }),
 ),
-
 
               ],
             ),
@@ -245,7 +226,8 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
   return InkWell(
     onTap: () {
       Get.to(() => TicketDetailsScreen(complaint: complaint,
-      // complaintId: complaint.complaintId,
+        // complaintId: complaint.complaintId ?? '',
+    
       ));
     },
     child: Container(

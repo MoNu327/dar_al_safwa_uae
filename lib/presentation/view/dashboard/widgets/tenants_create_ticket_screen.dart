@@ -5,6 +5,7 @@ import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
 import 'package:dar_al_safwa/data/model/tenant_compliant_subtitle.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_tickets_controller.dart' show TenantsTicketsController;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -38,6 +39,9 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
   final TenantComplaintRegisterController complaintController =
       Get.put(TenantComplaintRegisterController());
 
+       final TenantsTicketsController fetchComplaintsControler =
+      Get.find<TenantsTicketsController>();
+
   String? selectedCategory;
   String? selectedSubcategory;
   final TextEditingController _issueController = TextEditingController();
@@ -48,8 +52,16 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
   @override
   void initState() {
     super.initState();
+
     complaintController.getComplaintList(); // Fetch categories from API
   }
+   Future<void> _loadComplaints() async {
+  try {
+    await fetchComplaintsControler.fetchTenantComplaints();
+  } catch (e) {
+    debugPrint("Error loading complaints: $e");
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -435,6 +447,7 @@ Future<void> _pickFromGallery() async {
       backgroundColor: AppColors.onlineGreen,
       colorText: AppColors.white,
     );
+   _loadComplaints(); // Refresh complaints list
     Navigator.pop(context); // Close the screen after submission
   }
 

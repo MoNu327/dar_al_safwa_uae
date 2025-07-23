@@ -46,6 +46,8 @@ ComplaintData _$ComplaintDataFromJson(Map<String, dynamic> json) =>
       lastUpdated: json['last_updated'] as String,
       property: Property.fromJson(json['property'] as Map<String, dynamic>),
       images: ComplaintImages.fromJson(json['images'] as Map<String, dynamic>),
+      mobile: json['mobile'] as String?,
+      name: json['name'] as String?,
     );
 
 Map<String, dynamic> _$ComplaintDataToJson(ComplaintData instance) =>
@@ -62,6 +64,8 @@ Map<String, dynamic> _$ComplaintDataToJson(ComplaintData instance) =>
       'last_updated': instance.lastUpdated,
       'property': instance.property.toJson(),
       'images': instance.images.toJson(),
+      'mobile': instance.mobile,
+      'name': instance.name,
     };
 
 Status _$StatusFromJson(Map<String, dynamic> json) => Status(

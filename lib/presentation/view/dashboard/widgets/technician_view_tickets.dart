@@ -64,6 +64,7 @@ if (userId != null) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: buildTicketCard(
+                
                 complaintId: ticket.complaintId ?? '',
                 propertyName: ticket.propertyName ?? '',
               category: ticket.category  ?? '',
@@ -71,14 +72,11 @@ if (userId != null) {
                 status: ticket.statusText?.en  ?? '',
                 statusColor: _getStatusColor(ticket.statusText?.en  ?? ''),
                 description: ticket.description  ?? '',
-                date: (ticket.date ?? '').split(' ').first,
-time: (ticket.date ?? '').split(' ').length > 1
-    ? (ticket.date ?? '').split(' ').last
-    : '',
+     date: DateTime.now().toString(),
 
                 categoryIcon: Icons.build,
                 images: ticket.images ?? [],
-                ticket: TicketModel(complaintId: ticket.complaintId ?? "", complaintNumber: ticket.complaintNumber ?? "", category: ticket.category ?? "", subcategory: ticket.subcategory ?? "", description: ticket.description ?? "", reply:  ticket.reply ?? "", amountPaid:  "N/A" ?? "0", amountPaidStatus: "", status: TicketStatus.pending, lastUpdated: "", images: ticket.images ?? [])  // property: ,
+                ticket: TicketModel(complaintId: ticket.complaintId ?? "", complaintNumber: ticket.complaintNumber ?? "", category: ticket.category ?? "", subcategory: ticket.subcategory ?? "", description: ticket.description ?? "", reply:  ticket.reply ?? "", amountPaid:  "N/A" ?? "0", amountPaidStatus: "", status: TicketStatus.pending, lastUpdated: "", images: ticket.images ?? []), mobile: '', name: '', time: ''  // property: ,
               ),
             );
           },

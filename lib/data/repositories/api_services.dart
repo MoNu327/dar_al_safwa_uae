@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dar_al_safwa/data/model/user_data_submission_model.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import '../datasources/api_client.dart';
 import '../model/agent_properties_response_model.dart';
 import '../model/compliant_model.dart';
@@ -74,6 +78,32 @@ Future<Map<String, dynamic>> getComplaintDetails(String complaintId) async {
     rethrow;
   }
 }
+
+
+Future<ComplaintsResponse> getTenantComplaints() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception("User not logged in");
+    }
+    final userId = user.uid;
+
+    final response = await apiClient.request(
+      "tenant/complaints",
+      method: "post",
+      data: {"uid": userId},
+    );
+
+    final responseData = response.data;
+    return ComplaintsResponse.fromJson(responseData);
+  } catch (e) {
+    debugPrint("❌ Error in getTenantComplaints: $e");
+    rethrow;
+  }
+}
+
+
+
 
 
   // register complaint
@@ -434,13 +464,20 @@ Future<Response> updateTechnicianComplaint({
       rethrow;
     }
   }
-    Future<Response> getMyProperties(String uid) async {
+   Future<Response> getMyProperties([String? uid]) async {
   try {
+    // Fetch UID dynamically if not provided
+    uid ??= FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (uid.isEmpty) {
+      throw Exception('User not logged in. UID is empty.');
+    }
+
     final response = await apiClient.request(
       "tenant/properties",
       method: "post",
       data: {
-        "uid": "8JnK2Se9sBaHJFrPi6brY0ajme53"
+        "uid": uid,  // <-- Dynamic UID
       },
     );
 

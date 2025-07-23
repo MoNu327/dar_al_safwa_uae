@@ -27,6 +27,8 @@ Widget buildTicketCard({
   required List<String> images,
   required TicketModel ticket,
   required String complaintId,
+  required String mobile,
+  required String name,
    // Add this line to accept the ticket object
 }) {
   return InkWell(
@@ -153,8 +155,7 @@ Widget buildTicketCard({
                   buttonHeight: screenHeight * 0.040,
                   buttonTitle: 'View Details',
                   onPressed: () {
-                //  Get.toNamed(AppRoute.tenantTicketDetails, arguments: ticket);
-Get.to( TicketDetailsScreen(ticket: ticket as TicketModel,));
+                Get.to( TicketDetailsScreen(ticket: ticket,));
 
                   },
                   buttonShape: 'rect',

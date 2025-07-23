@@ -84,3 +84,86 @@
 //     }
 //   }
 // }
+import 'package:dar_al_safwa/data/datasources/api_client.dart';
+import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
+import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
+import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get_rx/src/rx_types/rx_types.dart';
+import 'package:get/get_state_manager/src/simple/get_controllers.dart';
+
+class TenantsTicketsController extends GetxController {
+  final ApiService apiService = ApiService();
+  final ApiClient apiClient = ApiClient();
+
+  RxList<Complaint> complaints = <Complaint>[].obs;
+  RxBool isComplaintLoading = false.obs;
+  RxString complaintErrorMessage = ''.obs;
+
+  RxList<TenantPropertyModel> properties = <TenantPropertyModel>[].obs;
+  RxBool isLoading = false.obs;
+  RxString errorMessage = ''.obs;
+
+  /// Fetch tenant properties
+  Future<void> fetchTenantProperties({String? uid}) async {
+    isLoading.value = true;
+    errorMessage.value = '';
+
+    try {
+      uid ??= FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        errorMessage.value = 'User not logged in';
+        return;
+      }
+
+      final response = await apiService.getMyProperties(uid);
+      debugPrint('API Response (Properties): ${response.data}');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final data = response.data['data'];
+        if (data is List) {
+          properties.value =
+              data.map((e) => TenantPropertyModel.fromJson(e)).toList();
+        } else {
+          errorMessage.value = 'Invalid properties data format';
+        }
+        debugPrint('Total Properties Loaded: ${properties.length}');
+      } else {
+        errorMessage.value =
+            response.data['message']?['en'] ?? 'Failed to load properties';
+        debugPrint('API Error: ${errorMessage.value}');
+      }
+    } catch (e) {
+      errorMessage.value = 'Error: $e';
+      debugPrint('Exception in fetchTenantProperties: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Fetch tenant complaints
+  Future<void> fetchTenantComplaints() async {
+    isComplaintLoading.value = true;
+    complaintErrorMessage.value = '';
+
+    try {
+      final ComplaintsResponse response = await apiService.getTenantComplaints();
+      debugPrint("Complaints API Response: ${response.toJson()}");
+
+      if (response.status == true) {
+        complaints.value = response.data;
+        debugPrint("Loaded Complaints Count: ${complaints.length}");
+      } else {
+        complaintErrorMessage.value =
+            response.message.isNotEmpty ? response.message : "Failed to load complaints";
+      }
+    } catch (e) {
+      complaintErrorMessage.value = "Error: $e";
+      debugPrint("❌ Error in fetchTenantComplaints: $e");
+    } finally {
+      isComplaintLoading.value = false;
+    }
+  }
+}
+

@@ -119,6 +119,8 @@ class TenantPropertiesList extends StatelessWidget {
                         expiryDate: property.expiryStatus,
                         sqft: property.unitAreaFormatted,
                         bedrooms: property.unitTypeName,
+                        unit_address_id: property.unitAddressId,
+                        unit_type:property.unitTypeName,
                         isExpiringSoon: property.expiryStatus
                             .toLowerCase()
                             .contains('expires'),

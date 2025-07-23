@@ -1,6 +1,7 @@
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -22,7 +23,8 @@ class TenantPropertyController extends GetxController {
   errorMessage.value = '';
 
   try {
-    String uid = "8JnK2Se9sBaHJFrPi6brY0ajme53"; // Replace with dynamic user UID
+   String uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+ 
 
     final response = await apiService.getMyProperties(uid);
 

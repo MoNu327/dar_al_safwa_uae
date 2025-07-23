@@ -3,6 +3,7 @@ import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/domain/controller/technician_controller.dart';
 import 'package:dar_al_safwa/domain/services/firebase_notification.dart';
 import 'package:dar_al_safwa/presentation/controllers/network_controller.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_tickets_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_dashboard.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_properties_list.dart';
@@ -97,6 +98,7 @@ void _initializeControllers() {
   Get.put(AuthService(), permanent: true);
   Get.put(LocalizationController(), permanent: true);
    Get.put(TechnicianController(), permanent: true);
+     Get.put(TenantsTicketsController(), permanent: true); 
 }
 
 class MyApp extends StatelessWidget {

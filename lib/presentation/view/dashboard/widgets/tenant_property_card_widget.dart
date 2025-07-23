@@ -14,6 +14,8 @@ class TenantPropertyCard extends StatelessWidget {
   final String bedrooms;
   final bool isExpiringSoon;
   final VoidCallback onTap;
+  final int unit_address_id;
+  final String unit_type;
 
   const TenantPropertyCard({
     Key? key,
@@ -26,6 +28,8 @@ class TenantPropertyCard extends StatelessWidget {
     required this.bedrooms,
     required this.onTap,
     this.isExpiringSoon = false,
+    this.unit_address_id = 0,
+    this.unit_type = '',
   }) : super(key: key);
 
   @override
