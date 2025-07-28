@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/constants/custom_size.dart';
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
+import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technican_history_ticket.dart';
 import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/common_signout_button.dart';
@@ -107,6 +108,14 @@ class TechnicianDashboard extends StatelessWidget {
                     title: 'Tickets',
                     onTap: () {
                       Get.toNamed('/technician-tickets');
+                    },
+                  ),
+                  buildMenuTile(
+                    leading: Icon(Icons.history, color: AppColors.secondaryColor),
+                    title: 'History',
+                    onTap: () {
+                      // ✅ Navigate to Technician Profile Screen
+                      Get.to(TechnicianResolvedTicketsListWidget());
                     },
                   ),
                 ],

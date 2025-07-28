@@ -4,12 +4,13 @@ class TicketModel {
   final String category;
   final String subcategory;
   final String description;
-  final String reply;
+  final String? replyByTechnician;
+  final String? replyByAdmin;
   final String amountPaid;
   final String amountPaidStatus;
   final TicketStatus status;
   final String lastUpdated;
-  // final String property;
+  dynamic   property;
   final List<String> images;
 
   TicketModel({
@@ -18,12 +19,13 @@ class TicketModel {
     required this.category,
     required this.subcategory,
     required this.description,
-    required this.reply,
+    required this.replyByTechnician,
+    required this.replyByAdmin,
     required this.amountPaid,
     required this.amountPaidStatus,
     required this.status,
     required this.lastUpdated,
-    // required this.property,
+     required this.property,
     required this.images,
   });
 
@@ -34,12 +36,13 @@ class TicketModel {
       category: json['category'] ?? '',
       subcategory: json['subcategory'] ?? '',
       description: json['description'] ?? '',
-      reply: json['reply'] ?? '',
+      replyByTechnician: json['replybytechnician'],
+      replyByAdmin: json['replybyadmin'],
       amountPaid: json['amount_paid'] ?? '0',
       amountPaidStatus: json['amount_paid_status'] ?? '0',
       status: TicketStatusHelper.fromString(json['status']?['en'] ?? ''),
       lastUpdated: json['last_updated'] ?? '',
-      // property: PropertyDetails.fromJson(json['property'] ?? {}),
+     property: PropertyDetails.fromJson(json['property'] ?? {}),
       images: json['images'] ?? {},
     );
   }
@@ -51,7 +54,7 @@ class TicketModel {
       'category': category,
       'subcategory': subcategory,
       'description': description,
-      'reply': reply,
+      'replybytechnician': replyByTechnician,
       'amount_paid': amountPaid,
       'amount_paid_status': amountPaidStatus,
       'status': status.name,

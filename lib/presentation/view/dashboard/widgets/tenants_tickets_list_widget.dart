@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/core/utils/date_formater.dart';
 import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart'
     show TicketModel, TicketStatus;
 import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
@@ -10,6 +11,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -40,26 +42,34 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
   }
 
   /// Fetch complaints from API
-  Future<void> _loadComplaints() async {
+ Future<void> _loadComplaints() async {
   try {
     await controller.fetchTenantComplaints();
+    setState(() {
+      complaints = controller.complaints;
+      filteredComplaints = complaints;
+    });
   } catch (e) {
     debugPrint("Error loading complaints: $e");
   }
 }
 
 
+
  void _searchTickets(String query) {
-  if (query.isEmpty) {
-    filteredComplaints = controller.complaints;
-  } else {
-    filteredComplaints = controller.complaints.where((complaint) {
-      return complaint.category.toLowerCase().contains(query.toLowerCase()) ||
-          complaint.description.toLowerCase().contains(query.toLowerCase()) ||
-          complaint.complaintNumber.toLowerCase().contains(query.toLowerCase());
-    }).toList();
-  }
+  setState(() {
+    if (query.isEmpty) {
+      filteredComplaints = complaints;
+    } else {
+      filteredComplaints = complaints.where((complaint) {
+        return complaint.category.toLowerCase().contains(query.toLowerCase()) ||
+            complaint.description.toLowerCase().contains(query.toLowerCase()) ||
+            complaint.complaintNumber.toLowerCase().contains(query.toLowerCase());
+      }).toList();
+    }
+  });
 }
+
 
 
   @override
@@ -124,7 +134,10 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
         : filteredComplaints;
 
     if (complaintsList.isEmpty) {
-      return _buildEmptyState();
+     return _buildEmptyState(
+  message: "No complaints found", 
+  showSearchHint: false
+);
     }
 
     return ListView.builder(
@@ -287,11 +300,11 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
             maxLines: 2,
           ),
           SizedBox(height: screenHeight05),
-          Row(
+           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               CustomTextWidget(
-                title: "Last updated on ${complaint.date}",
+                title: "Last updated on ${complaint.formattedDate}",
                 fontSize: Get.height * 0.014,
                 fontWeight: FontWeight.w400,
                 color: AppColors.black500,
@@ -357,10 +370,94 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
     ),
   );
 }
-
+  
+  // Add this widget inside your _TenantsTicketsListWidgetState class
+// Widget _buildComplaintItem(Complaint complaint) {
+//   return InkWell(
+//     onTap: () {
+//       Get.to(() => TicketDetailsScreen(complaint: complaint));
+//     },
+//     child: Container(
+//       margin: EdgeInsets.only(bottom: screenHeight1),
+//       padding: EdgeInsets.all(screenWidth1),
+//       decoration: BoxDecoration(
+//         color: AppColors.white,
+//         borderRadius: BorderRadius.circular(12),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(0.05),
+//             blurRadius: 4,
+//             offset: const Offset(0, 2),
+//           ),
+//         ],
+//       ),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           CustomTextWidget(
+//             title: "#${complaint.complaintNumber}",
+//             fontSize: Get.height * 0.014,
+//             fontWeight: FontWeight.w600,
+//             color: AppColors.black800,
+//           ),
+//           SizedBox(height: screenHeight05),
+//           CustomTextWidget(
+//             title: complaint.category,
+//             fontSize: Get.height * 0.018,
+//             fontWeight: FontWeight.w600,
+//             color: AppColors.black,
+//             maxLines: 2,
+//           ),
+//           CustomTextWidget(
+//             title: complaint.description,
+//             fontSize: Get.height * 0.014,
+//             fontWeight: FontWeight.w400,
+//             color: AppColors.black,
+//             maxLines: 2,
+//           ),
+//           SizedBox(height: screenHeight05),
+//           Row(
+//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//             children: [
+//               CustomTextWidget(
+//                 title: "Last updated on ${complaint.date}",
+//                 fontSize: Get.height * 0.014,
+//                 fontWeight: FontWeight.w400,
+//                 color: AppColors.black500,
+//               ),
+//               _buildStatusChipFromComplaint(complaint.statusText.en),
+//             ],
+//           ),
+//         ],
+//       ),
+//     ),
+//   );
+// }
 
   /// Empty state
-  Widget _buildEmptyState() {
+ Widget buildComplaintsList() {
+  return Obx(() {
+    if (controller.isComplaintLoading.value) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    
+    if (!controller.hasComplaints.value) {
+      return _buildEmptyState(
+        message: controller.complaintErrorMessage.value,
+        showSearchHint: controller.complaintErrorMessage.value == "No complaints found",
+      );
+    }
+    
+    return ListView.builder(
+      itemCount: controller.complaints.length,
+      itemBuilder: (context, index) => _buildComplaintCard(controller.complaints[index]),
+    );
+  });
+}
+
+  
+
+  Widget _buildEmptyState({required String message, bool showSearchHint = false}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -372,25 +469,26 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
           ),
           SizedBox(height: screenHeight1),
           CustomTextWidget(
-            title: "No tickets found",
+            title: message,
             fontSize: Get.height * 0.02,
             fontWeight: FontWeight.w600,
             color: AppColors.black500,
           ),
-          SizedBox(height: screenHeight05),
-          CustomTextWidget(
-            title: "Try adjusting your search criteria",
-            fontSize: Get.height * 0.016,
-            fontWeight: FontWeight.w400,
-            color: AppColors.lightGrey,
-          ),
+          if (showSearchHint) SizedBox(height: screenHeight05),
+          if (showSearchHint)
+            CustomTextWidget(
+              title: "Try adjusting your search criteria",
+              fontSize: Get.height * 0.016,
+              fontWeight: FontWeight.w400,
+              color: AppColors.lightGrey,
+            ),
         ],
       ),
     );
   }
-
+}
   /// Show Create Ticket Dialog
-  void _showCreateTicketDialog() {
+  void _showCreateTicketDialog(BuildContext context) {
     final TextEditingController titleController = TextEditingController();
     final TextEditingController descriptionController = TextEditingController();
 
@@ -469,13 +567,15 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
 
   /// Add new ticket
 void _createNewComplaint(String category, String description) {
+  final now = DateTime.now();
+  
   final newComplaint = Complaint(
-    complaintId: 'CID-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
-    complaintNumber: 'CMP-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+    complaintId: 'CID-${now.millisecondsSinceEpoch.toString().substring(8)}',
+    complaintNumber: 'CMP-${now.millisecondsSinceEpoch.toString().substring(8)}',
     description: description,
     replyByTechnician: '',
     replyByAdmin: '',
-    date: DateTime.now().toString(),
+    date: DateFormatter.formatCurrentDate(), // Formatted current date
     status: 'pending',
     statusText: StatusText(en: 'Pending'),
     category: category,
@@ -487,20 +587,4 @@ void _createNewComplaint(String category, String description) {
     images: [],
   );
 
-  setState(() {
-    complaints.insert(0, newComplaint);    // complaints is List<Complaint>
-    filteredComplaints = complaints;
-  });
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: CustomTextWidget(
-        title: "Complaint created successfully!",
-        color: AppColors.white,
-        fontSize: Get.height * 0.016,
-      ),
-      backgroundColor: Colors.green,
-    ),
-  );
-}
 }

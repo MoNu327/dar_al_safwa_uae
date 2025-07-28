@@ -30,6 +30,45 @@ class ApiService {
       rethrow;
     }
   }
+
+
+  Future<Response> getFullComplaintDetails(String complaintId) async {
+  try {
+    final response = await apiClient.request(
+      "complaint-details",  // Your endpoint
+      method: "get",
+      data: {'complaint_id': complaintId},
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+ 
+  Future<Response> getTechnicanHistory(String complaintId) async {
+  try {
+    print("📤 Sending request to technician-resolved-complaints with id: $complaintId");
+
+    final response = await apiClient.request(
+      "technician-resolved-complaints",
+      method: "post", // Use POST if required by the backend
+      data: {
+        "complaint_id": complaintId,
+      },
+    );
+
+    print("✅ Response status: ${response.statusCode}");
+    print("📥 Response data: ${response.data}");
+
+    return response;
+  } catch (e) {
+    print("❌ Error in getTechnicanHistory: $e");
+    rethrow;
+  }
+}
+
   
   
 
@@ -49,6 +88,26 @@ class ApiService {
     }
   }
 
+
+  Future<Response> getAvailableTechnicians() async {
+    try {
+      final response = await apiClient.request(
+        "technicians/except",  
+        method: "get",
+        data: {
+          "exclude_uid": FirebaseAuth.instance.currentUser?.uid,
+        }
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+  
+  
+  
+ 
   Future<Response> getDynamicImage() async {
     try {
       final response = await apiClient.request(
@@ -79,33 +138,56 @@ Future<Map<String, dynamic>> getComplaintDetails(String complaintId) async {
   }
 }
 
-
 Future<ComplaintsResponse> getTenantComplaints() async {
   try {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception("User not logged in");
-    }
-    final userId = user.uid;
+    if (user == null) throw Exception("User not logged in");
 
     final response = await apiClient.request(
       "tenant/complaints",
       method: "post",
-      data: {"uid": userId},
+      data: {"uid": user.uid},
+      // options: Options(
+      //   validateStatus: (status) => true, // Accept all status codes
+      // ),
     );
 
-    final responseData = response.data;
-    return ComplaintsResponse.fromJson(responseData);
+    debugPrint("API Response: ${response.data}");
+
+    if (response.data == null) {
+      throw Exception("Empty response from server");
+    }
+
+    return ComplaintsResponse.fromJson(response.data as Map<String, dynamic>);
+  } on DioException catch (e) {
+    debugPrint("Dio error (${e.response?.statusCode}): ${e.message}");
+    if (e.response?.data != null) {
+      try {
+        // Try to parse error response
+        return ComplaintsResponse.fromJson(e.response!.data);
+      } catch (_) {
+        throw Exception("Failed to parse error response");
+      }
+    }
+    rethrow;
   } catch (e) {
-    debugPrint("❌ Error in getTenantComplaints: $e");
+    debugPrint("Unexpected error: $e");
     rethrow;
   }
 }
+  Future<Response> getComplaints() async {
+    try {
+      final response = await apiClient.request(
+        "tenant/complaints",
+        method: "post",
+        data: {"uid": FirebaseAuth.instance.currentUser?.uid ?? ''},
+      );
 
-
-
-
-
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
   // register complaint
 
 Future<Response> insertComplaint(

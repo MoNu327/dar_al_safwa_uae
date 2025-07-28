@@ -9,6 +9,7 @@ import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
 import 'package:dar_al_safwa/domain/controller/technician_controller.dart';
 import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
+import 'package:email_validator/email_validator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -755,13 +756,15 @@ Get.find<UserController>().currentUser = userModel;
 debugPrint('Existing user logged in: ${userModel.toJson()}');
 
 // Navigate based on role
-
 if (userModel.role == 'tenant') {
   debugPrint('Navigating to Tenant Dashboard...');
-  Get.offAllNamed(AppRoute.navbar); 
+  Get.offAllNamed(AppRoute.navbar);
 } else if (userModel.role == 'agent') {
   debugPrint('Navigating to Agent Dashboard...');
   Get.offAllNamed(AppRoute.navbar);
+} else if (userModel.role == 'technician') {
+  debugPrint('Navigating to Technician Dashboard...');
+  Get.offAllNamed(AppRoute.technicianDashboard);
 } else {
   debugPrint('Navigating to User Home...');
   navigateToHome();
@@ -1097,6 +1100,20 @@ if (userModel.role == 'tenant') {
   }
 }
 
+void _handleAuthError(FirebaseAuthException e) {
+  debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
+  
+  final message = switch (e.code) {
+    'invalid-credential' => 'Invalid email or password',
+    'user-disabled' => 'This account has been disabled',
+    'user-not-found' => 'No account found with this email',
+    'wrong-password' => 'Incorrect password',
+    _ => 'Technician login failed: ${e.message}',
+  };
+  
+  Get.snackbar('Error', message);
+}
+
   Future<void> setUserRole(String role, {String? tenantId}) async {
     final user = auth.currentUser;
     if (user == null) return;
@@ -1107,11 +1124,11 @@ if (userModel.role == 'tenant') {
       'displayName': user.displayName,
       'photoURL': user.photoURL,
       'phoneNumber': user.phoneNumber,
-      'role': role,
+      'role': '',
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    userRole.value = role;
+    userRole.value = role ?? '';
     userTenantId.value = tenantId ?? '';
   }
 

@@ -74,6 +74,4 @@ class TechnicianController extends GetxController {
   }
 }
 
-extension on Response {
-  get data => null;
-}
+

@@ -1,4 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
 
 part 'technician_complaints_response.g.dart';
 
@@ -85,6 +87,39 @@ class ComplaintData {
       _$ComplaintDataFromJson(json);
 
   Map<String, dynamic> toJson() => _$ComplaintDataToJson(this);
+
+  // Getter for formatted date
+  String get formattedDate {
+    if (date == null) return 'No date';
+    try {
+      return DateFormat('MMM dd, yyyy hh:mm a').format(DateTime.parse(date!));
+    } catch (e) {
+      return date!; // Return original if parsing fails
+    }
+  }
+
+  // Getter for display status (handles "In Progres" typo)
+  String get displayStatus {
+    final status = statusText?.en?.toLowerCase() ?? '';
+    if (status == 'in progres') return 'In Progress';
+    return statusText?.en ?? status ?? 'Unknown';
+  }
+
+  // Getter for status color
+  Color get statusColor {
+    switch (displayStatus.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'in progress':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green;
+      case 'rectified':
+        return Colors.teal;
+      default:
+        return Colors.grey;
+    }
+  }
 }
 
 @JsonSerializable()

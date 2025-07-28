@@ -18,7 +18,7 @@ class CustomButtonWidget extends StatelessWidget {
     this.fontSize,
     this.childWidgetLoader = false,
     this.buttonShape,
-    this.borderColor,
+    this.borderColor, 
   });
   final String buttonTitle;
   final Color? buttonColor;
