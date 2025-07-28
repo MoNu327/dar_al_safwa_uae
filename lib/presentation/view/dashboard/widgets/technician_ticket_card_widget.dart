@@ -14,8 +14,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_widget.dart';
 import 'technician_rectify_ticket_screen.dart';
-
-
 Widget buildTicketCard({
   required String propertyName,
   required String category,
@@ -34,7 +32,6 @@ Widget buildTicketCard({
 }) {
   final controller = Get.find<TechnicianTicketsController>();
   
-  
   return InkWell(
     onTap: () {},
     child: Container(
@@ -46,7 +43,7 @@ Widget buildTicketCard({
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header (same as before)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -147,118 +144,112 @@ Widget buildTicketCard({
             SizedBox(height: Get.height * 0.01),
 
             // Technician Dropdown
-        // Technician Dropdown (per ticket)
-Obx(() {
-  final selectedTechId = controller.selectedTechnicianIds[complaintId] ?? '';
+            Obx(() {
+              final selectedTechId = controller.selectedTechnicianIds[complaintId] ?? '';
 
-  if (controller.availableTechnicians.isEmpty && controller.isLoading.value) {
-    return CustomTextWidget(
-      title: 'Loading technicians...',
-      fontSize: screenHeight * 0.012,
-      color: AppColors.black.withOpacity(0.5),
-    );
-  }
+              if (controller.availableTechnicians.isEmpty && controller.isLoading.value) {
+                return CustomTextWidget(
+                  title: 'Loading technicians...',
+                  fontSize: screenHeight * 0.012,
+                  color: AppColors.black.withOpacity(0.5),
+                );
+              }
 
-  return Container(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
-    ),
-    padding: EdgeInsets.symmetric(horizontal: Get.width * 0.03),
-    child: DropdownButtonHideUnderline(
-      child: DropdownButton<String>(
-        isExpanded: true,
-        value: selectedTechId.isEmpty ? null : selectedTechId,
-        hint: CustomTextWidget(
-          title: 'Select Technician',
-          fontSize: screenHeight * 0.014,
-          color: AppColors.black.withOpacity(0.5),
-        ),
-        items: controller.availableTechnicians.map((tech) {
-          return DropdownMenuItem<String>(
-            value: tech['id'],
-            child: CustomTextWidget(
-              title: tech['name'] ?? 'Unknown Technician',
-              fontSize: screenHeight * 0.014,
-              color: AppColors.black,
-            ),
-          );
-        }).toList(),
-        onChanged: (value) {
-          if (value != null) {
-            controller.selectedTechnicianIds[complaintId] = value;
-          }
-        },
-      ),
-    ),
-  );
-}),
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: Get.width * 0.03),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: selectedTechId.isEmpty ? null : selectedTechId,
+                    hint: CustomTextWidget(
+                      title: 'Select Technician',
+                      fontSize: screenHeight * 0.014,
+                      color: AppColors.black.withOpacity(0.5),
+                    ),
+                    items: controller.availableTechnicians.map((tech) {
+                      return DropdownMenuItem<String>(
+                        value: tech['id'],
+                        child: CustomTextWidget(
+                          title: tech['name'] ?? 'Unknown Technician',
+                          fontSize: screenHeight * 0.014,
+                          color: AppColors.black,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        controller.selectedTechnicianIds[complaintId] = value;
+                      }
+                    },
+                  ),
+                ),
+              );
+            }),
 
-SizedBox(height: Get.height * 0.015),
+            SizedBox(height: Get.height * 0.015),
 
-// Assign Button (per ticket)
-Obx(() {
-  final selectedTechId = controller.selectedTechnicianIds[complaintId] ?? '';
+            // Assign Button
+            Obx(() {
+              final selectedTechId = controller.selectedTechnicianIds[complaintId] ?? '';
+              final isAssigning = controller.isAssigningMap[complaintId] ?? false;
 
-  return CustomButtonWidget(
-    buttonHeight: screenHeight * 0.040,
-    buttonTitle: controller.isAssigning.value ? 'Assigning...' : 'Assign Technician',
-    onPressed: controller.isAssigning.value
-        ? null
-        : () async {
-            if (selectedTechId.isEmpty) {
-              Get.snackbar('Error', 'Please select a technician',
-                  snackPosition: SnackPosition.BOTTOM);
-              return;
-            }
-            await controller.assignTechnician(
-              complaintId,
-              selectedTechId,
-            );
-          },
-    buttonShape: 'rect',
-    borderColor: AppColors.secondaryColor,
-    buttonColor: AppColors.secondaryColor,
-    fontSize: screenHeight * 0.014,
-    buttonTextColor: AppColors.white,
-  );
-}),
+              return CustomButtonWidget(
+                buttonHeight: screenHeight * 0.040,
+                buttonTitle: isAssigning ? 'Assigning...' : 'Assign Technician',
+                onPressed: isAssigning
+                    ? null
+                    : () async {
+                        if (selectedTechId.isEmpty) {
+                          Get.snackbar('Error', 'Please select a technician',
+                              snackPosition: SnackPosition.BOTTOM);
+                          return;
+                        }
 
-SizedBox(height: Get.height * 0.01),
+                        // Show loading state
+                        controller.setAssigning(complaintId, true);
+                        
+                        try {
+                          await controller.assignTechnician(complaintId, selectedTechId);
+                          
+                          // Remove the assigned ticket from local list immediately
+                          final index = controller.tickets.indexWhere((t) => t.complaintId == complaintId);
+                          if (index != -1) {
+                            controller.tickets.removeAt(index);
+                          }
+                          
+                          // Clear the selection
+                          controller.selectedTechnicianIds.remove(complaintId);
+                          
+                          // Show success message
+                          Get.snackbar(
+                            'Success',
+                            'Technician assigned successfully',
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        } catch (e) {
+                          Get.snackbar(
+                            'Error',
+                            'Failed to assign technician: ${e.toString()}',
+                            snackPosition: SnackPosition.BOTTOM,
+                          );
+                        } finally {
+                          controller.setAssigning(complaintId, false);
+                        }
+                      },
+                buttonShape: 'rect',
+                borderColor: AppColors.secondaryColor,
+                buttonColor: AppColors.secondaryColor,
+                fontSize: screenHeight * 0.014,
+                buttonTextColor: AppColors.white,
+              );
+            }),
 
-
-
-
-//             // Assign Button
-//     Obx(() {
-//   final selectedTechId = controller.selectedTechnicianIds[complaintId] ?? '';
-
-//   return CustomButtonWidget(
-//     buttonHeight: screenHeight * 0.040,
-//     buttonTitle: controller.isAssigning.value ? 'Assigning...' : 'Assign Technician',
-//     onPressed: controller.isAssigning.value
-//         ? null
-//         : () async {
-//             if (selectedTechId.isEmpty) {
-//               Get.snackbar('Error', 'Please select a technician',
-//                   snackPosition: SnackPosition.BOTTOM);
-//               return;
-//             }
-
-//             await controller.assignTechnician(complaintId, selectedTechId);
-
-//             // Optionally clear the selection after assigning
-//             controller.selectedTechnicianIds.remove(complaintId);
-//           },
-//     buttonShape: 'rect',
-//     borderColor: AppColors.secondaryColor,
-//     buttonColor: AppColors.secondaryColor,
-//     fontSize: screenHeight * 0.014,
-//     buttonTextColor: AppColors.white,
-//   );
-// }),
-// SizedBox(height: Get.height * 0.01),
-
+            SizedBox(height: Get.height * 0.01),
+          ],
 
           // Footer Buttons
           Row(
@@ -296,7 +287,7 @@ SizedBox(height: Get.height * 0.01),
             ],
           ),
         ],
-    ]  ),
+      ),
     ),
   );
 }

@@ -10,7 +10,7 @@ class TechnicianTicketsController extends GetxController {
   var isLoading = false.obs;
   var tickets = <ComplaintData>[].obs; // List of complaints
   var selectedTicket = Rxn<TicketModel>(); // Single ticket details
-  var isAssigning = false.obs;
+final RxMap<String, bool> isAssigningMap = <String, bool>{}.obs;
 final RxList<Map<String, dynamic>> availableTechnicians = <Map<String, dynamic>>[].obs;
 final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs;
 
@@ -71,8 +71,7 @@ Future<void> getAvailableTechnicians() async {
 Future<void> assignTechnician(String complaintId, String technicianId) async {
   print("🔄 Assigning technician: $technicianId to complaint: $complaintId");
   try {
-    isAssigning.value = true;
-    print("⏳ isAssigning set to true");
+    setAssigning(complaintId, true);
 
     final userUid = FirebaseAuth.instance.currentUser?.uid;
     if (userUid == null) {
@@ -90,36 +89,24 @@ Future<void> assignTechnician(String complaintId, String technicianId) async {
         "user_uid": userUid,
       },
     );
-
-    print("📡 API Response Status: ${response.statusCode}");
-    print("📥 API Response Body: ${response.data}");
-
+    
+    print("📡 Escalate API Status: ${response.statusCode}");
+    print("📥 Escalate API Raw Body: ${response.data}");
+    
     if (response.data['success'] == true) {
       Get.snackbar('✅ Success', 'Technician assigned successfully');
-      print("✅ Technician assigned successfully");
-
-      // Clear the selected technician for this complaint
-      if (selectedTechnicianIds.containsKey(complaintId)) {
-        selectedTechnicianIds.remove(complaintId);
-      }
-
-      // Refresh data for both technicians (old and new)
-      await fetchTickets(userUid);
+      selectedTechnicianIds.remove(complaintId);
       
-      // You might want to add additional refresh logic here if needed
-      // For example, if this is an admin view showing all tickets:
-      await fetchAllTickets(); // If you have such a function
+      // Instead of fetching all tickets, just remove the assigned one
+      tickets.removeWhere((ticket) => ticket.complaintId == complaintId);
     } else {
       final errorMsg = response.data['message']?['en'] ?? 'Assignment failed';
-      print("❌ Assignment failed: $errorMsg");
       Get.snackbar('Error', errorMsg);
     }
   } catch (e) {
-    print("❌ Exception occurred during technician assignment: $e");
     Get.snackbar('Error', 'Failed to assign technician: ${e.toString()}');
   } finally {
-    isAssigning.value = false;
-    print("✅ isAssigning set to false");
+    setAssigning(complaintId, false);
   }
 }
 
@@ -179,4 +166,8 @@ Future<void> assignTechnician(String complaintId, String technicianId) async {
       isLoading.value = false;
     }
   }
+  void setAssigning(String complaintId, bool value) {
+  isAssigningMap[complaintId] = value;
+}
+
 }
