@@ -568,23 +568,42 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
   /// Add new ticket
 void _createNewComplaint(String category, String description) {
   final now = DateTime.now();
-  
+  final formattedDate = DateFormatter.formatCurrentDate();
+
   final newComplaint = Complaint(
     complaintId: 'CID-${now.millisecondsSinceEpoch.toString().substring(8)}',
     complaintNumber: 'CMP-${now.millisecondsSinceEpoch.toString().substring(8)}',
     description: description,
-    replyByTechnician: '',
-    replyByAdmin: '',
-    date: DateFormatter.formatCurrentDate(), // Formatted current date
-    status: 'pending',
+    replyByTechnician: null,  // Changed from empty string to null
+    replyByAdmin: null,      // Changed from empty string to null
+    amountPaid: null,        // New field
+    amountPaidStatus: null,  // New field
+    date: formattedDate,
+    lastUpdated: null,       // New field
+    lastUpdatedByAdmin: null,// New field
+    addedByAdmin: false,     // New field
     statusText: StatusText(en: 'Pending'),
+    status: 'pending',
     category: category,
-    subcategory: '',
-    propertyName: '',
-    unitNumber: '',
-    fullAddress: '',
-    flatnoId: '',
-    images: [],
+    subcategory: '',         // You can add specific subcategory if needed
+    propertyName: '',        // Add property name if available
+    unitNumber: '',          // Add unit number if available
+    unitType: '',            // New field
+    fullAddress: '',         // Add full address if available
+    flatnoId: '',            // Add flat ID if available
+    images: [],              // Add images if available
+    assignedTechnicians: [], // New field - empty list by default
+    complaintImages: ComplaintImages(  // New field - initialized with empty lists
+      tenantUploaded: [],
+      adminUploaded: [],
+      technicianUploaded: [],
+      adminTechnicianUploaded: [],
+    ),
   );
 
+  // setState(() {
+  //   complaints.insert(0, newComplaint);
+  //   filteredComplaints = complaints;
+  // });
 }
+

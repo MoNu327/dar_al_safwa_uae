@@ -24,18 +24,48 @@ class TicketDetailsScreen extends StatefulWidget {
 }
 
 class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
-  late List<String> images;
+  late ComplaintImages complaintImages;
   List<TimelineItem> timelineItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    images = [
-      ...widget.ticket?.images ?? widget.complaint?.images ?? [],
-    ];
-    _initializeTimeline();
+   List<String> images = [];
+ @override
+void initState() {
+  super.initState();
+  
+  // Try multiple ways to get images
+  complaintImages = widget.complaint?.complaintImages ?? ComplaintImages();
+  
+  // Fallback to check direct images list if complaintImages is empty
+  if (complaintImages.tenantUploaded.isEmpty &&
+      complaintImages.adminUploaded.isEmpty &&
+      complaintImages.technicianUploaded.isEmpty &&
+      complaintImages.adminTechnicianUploaded.isEmpty) {
+    
+    // Check if there's a direct images list in the complaint
+    final directImages = widget.complaint?.images ?? [];
+    if (directImages.isNotEmpty) {
+      complaintImages = ComplaintImages(tenantUploaded: directImages);
+    }
   }
 
+  debugPrint('Final images to display:');
+  debugPrint('Tenant: ${complaintImages.tenantUploaded}');
+  debugPrint('Admin: ${complaintImages.adminUploaded}');
+  debugPrint('Technician: ${complaintImages.technicianUploaded}');
+  debugPrint('Admin/Technician: ${complaintImages.adminTechnicianUploaded}');
+  
+  _initializeTimeline();
+}
+//  @override
+//   void initState() {
+//     super.initState();
+    
+//     // Initialize complaint images from either ticket or complaint
+//     complaintImages = widget.ticket?.images ?? images 
+//                      widget.complaint?.complaintImages ?? 
+//                      ComplaintImages();
+                     
+//     _initializeTimeline();
+//   }
   void _initializeTimeline() {
     final String lastUpdated =
         widget.ticket?.lastUpdated ?? widget.complaint?.date ?? '';
@@ -104,7 +134,11 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
             SizedBox(height: screenHeight2),
             _buildRepliesSection(),
             SizedBox(height: screenHeight2),
-            if (images.isNotEmpty) _buildImagesSection(),
+           if (complaintImages.tenantUploaded.isNotEmpty || 
+    complaintImages.adminUploaded.isNotEmpty ||
+    complaintImages.technicianUploaded.isNotEmpty ||
+    complaintImages.adminTechnicianUploaded.isNotEmpty) 
+  _buildImagesSection(),
             SizedBox(height: screenHeight2),
             _buildTimelineSection(),
             SizedBox(height: screenHeight * 0.1),
@@ -359,43 +393,78 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
 
   /// -------------------- Images Section --------------------
   Widget _buildImagesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CustomTextWidget(
-          title: "Images",
-          fontSize: Get.height * 0.018,
-          fontWeight: FontWeight.w600,
-          color: AppColors.black,
-        ),
-        SizedBox(height: screenHeight1),
-        SizedBox(
-          height: Get.height * 0.15,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: images.length,
-            itemBuilder: (context, index) {
-              final url = images[index];
-              return Container(
-                width: Get.width * 0.30,
-                margin: EdgeInsets.only(right: screenWidth1),
-                decoration: BoxDecoration(
-                  image:
-                      DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
-                  color: AppColors.grey.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.grey.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
+  // First check if we have any images at all
+  final hasAnyImages = complaintImages.tenantUploaded.isNotEmpty ||
+                     complaintImages.adminUploaded.isNotEmpty ||
+                     complaintImages.technicianUploaded.isNotEmpty ||
+                     complaintImages.adminTechnicianUploaded.isNotEmpty;
+
+  if (!hasAnyImages) {
+    return SizedBox.shrink(); // Return empty widget if no images
   }
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      CustomTextWidget(
+        title: "Attachments",
+        fontSize: Get.height * 0.018,
+        fontWeight: FontWeight.w600,
+        color: AppColors.black,
+      ),
+      SizedBox(height: screenHeight1),
+      if (complaintImages.tenantUploaded.isNotEmpty)
+        _buildImageCategory("Tenant Uploaded", complaintImages.tenantUploaded),
+      if (complaintImages.adminUploaded.isNotEmpty)
+        _buildImageCategory("Admin Uploaded", complaintImages.adminUploaded),
+      if (complaintImages.technicianUploaded.isNotEmpty)
+        _buildImageCategory("Technician Uploaded", complaintImages.technicianUploaded),
+      if (complaintImages.adminTechnicianUploaded.isNotEmpty)
+        _buildImageCategory("Admin/Technician Uploaded", complaintImages.adminTechnicianUploaded),
+    ],
+  );
+}
+Widget _buildImageCategory(String title, List<String> images) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(height: screenHeight1),
+      CustomTextWidget(
+        title: title,
+        fontSize: Get.height * 0.018,
+        fontWeight: FontWeight.w600,
+        color: AppColors.black,
+      ),
+      SizedBox(height: screenHeight1),
+      SizedBox(
+        height: Get.height * 0.15,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: images.length,
+          itemBuilder: (context, index) {
+            final url = images[index];
+            return Container(
+              width: Get.width * 0.30,
+              margin: EdgeInsets.only(right: screenWidth1),
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage(url), 
+                  fit: BoxFit.cover
+                ),
+                color: AppColors.grey.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.grey.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    ],
+  );
+}
 
   /// -------------------- Timeline Section --------------------
   Widget _buildTimelineSection() {

@@ -14,7 +14,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_widget.dart';
 import 'technician_rectify_ticket_screen.dart';
-Widget buildTicketCard({
+Widget buildTicketCard( {
   required String propertyName,
   required String category,
   required String issue,
@@ -260,7 +260,7 @@ Widget buildTicketCard({
                   buttonHeight: screenHeight * 0.040,
                   buttonTitle: 'View Details',
                   onPressed: () {
-                    Get.to(() => TicketDetailsScreen(ticket: ticket));
+                    Get.to(() => TicketDetailsScreen(ticket: ticket,));
                   },
                   buttonShape: 'rect',
                   borderColor: AppColors.darkGrey.withOpacity(0.2),

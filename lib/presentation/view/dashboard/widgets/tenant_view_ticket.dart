@@ -451,26 +451,40 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
 
   /// Add new ticket
 void _createNewComplaint(String category, String description) {
+  final now = DateTime.now().toString();
   final newComplaint = Complaint(
     complaintId: 'CID-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
     complaintNumber: 'CMP-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
     description: description,
-    replyByTechnician: '',
-    replyByAdmin: '',
-    date: DateTime.now().toString(),
-    status: 'pending',
+    replyByTechnician: null,
+    replyByAdmin: null,
+    amountPaid: null,
+    amountPaidStatus: null,
+    date: now,
+    lastUpdated: null,
+    lastUpdatedByAdmin: null,
+    addedByAdmin: false,
     statusText: StatusText(en: 'Pending'),
+    status: 'pending',
     category: category,
-    subcategory: '',
-    propertyName: '',
-    unitNumber: '',
-    fullAddress: '',
-    flatnoId: '',
-    images: [],
+    subcategory: '', // You can add subcategory if needed
+    propertyName: '', // Add property name if available
+    unitNumber: '', // Add unit number if available
+    unitType: '', // Add unit type if available
+    fullAddress: '', // Add full address if available
+    flatnoId: '', // Add flat ID if available
+    images: [], // Add images if available
+    assignedTechnicians: [], // Add technicians if available
+    complaintImages: ComplaintImages(
+      tenantUploaded: [],
+      adminUploaded: [],
+      technicianUploaded: [],
+      adminTechnicianUploaded: [],
+    ),
   );
 
   setState(() {
-    complaints.insert(0, newComplaint);    // complaints is List<Complaint>
+    complaints.insert(0, newComplaint);
     filteredComplaints = complaints;
   });
 
