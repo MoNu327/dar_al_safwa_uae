@@ -89,8 +89,12 @@ class TechnicianResolvedTicketsListWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildTicketCard(TicketHistoryModel ticket) {
-    return Container(
+ Widget _buildTicketCard(TicketHistoryModel ticket) {
+  return GestureDetector(
+    // onTap: () {
+    //   Get.to(() => TicketDetailsScreen(complaint: complaint)); // Navigate with data
+    // },
+    child: Container(
       margin: EdgeInsets.symmetric(vertical: screenHeight05),
       padding: EdgeInsets.all(screenWidth1),
       decoration: BoxDecoration(
@@ -143,8 +147,10 @@ class TechnicianResolvedTicketsListWidget extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildStatusChip(String status) {
     Color bgColor;

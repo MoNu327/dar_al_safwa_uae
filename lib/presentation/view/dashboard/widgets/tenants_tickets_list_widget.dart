@@ -122,7 +122,7 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
       return Center(
         child: CustomTextWidget(
           title: controller.complaintErrorMessage.value,
-          color: Colors.red,
+          color: AppColors.black,
           fontSize: Get.height * 0.018,
         ),
       );

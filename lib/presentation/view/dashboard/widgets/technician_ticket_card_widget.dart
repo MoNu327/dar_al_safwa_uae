@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -25,13 +26,19 @@ Widget buildTicketCard( {
   required String time,
   required IconData categoryIcon,
   required List<String> images,
-  required TicketModel ticket,
+  // required TicketModel ticket,
   required String complaintId,
   required String mobile,
   required String name,
 }) {
-  final controller = Get.find<TechnicianTicketsController>();
+   final dateTime = DateFormat('MMM dd, yyyy hh:mm a').parse(date);
   
+  // Then format it as needed
+  final formattedDate = DateFormat('MMM dd, yyyy').format(dateTime);
+  final formattedTime = DateFormat('hh:mm a').format(dateTime);
+  final controller = Get.find<TechnicianTicketsController>();
+    debugPrint('Original date: $date, time: $time');
+
   return InkWell(
     onTap: () {},
     child: Container(
@@ -123,7 +130,7 @@ Widget buildTicketCard( {
               ),
               SizedBox(width: Get.width * 0.015),
               CustomTextWidget(
-                title: '$date • $time',
+                title: '$formattedTime • $formattedDate',
                 fontSize: 12,
                 color: AppColors.black.withOpacity(0.9),
                 fontWeight: FontWeight.w500,
@@ -260,7 +267,7 @@ Widget buildTicketCard( {
                   buttonHeight: screenHeight * 0.040,
                   buttonTitle: 'View Details',
                   onPressed: () {
-                    Get.to(() => TicketDetailsScreen(ticket: ticket,));
+                    Get.to(() => TicketDetailsScreen(       ));
                   },
                   buttonShape: 'rect',
                   borderColor: AppColors.darkGrey.withOpacity(0.2),

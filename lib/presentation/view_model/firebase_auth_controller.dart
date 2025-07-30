@@ -61,11 +61,27 @@ class AuthService extends GetxController {
     ever(firebaseUser, handleAuthChanged);
   }
 
- void handleAuthChanged(User? user) async {
+//  void handleAuthChanged(User? user) async {
+//   if (user == null) {
+//     Get.offAllNamed('/login');
+//   } else {
+//     // Instead of duplicating role logic, reuse existing Google user handler
+//     await _handleExistingGoogleUser(user);
+//   }
+// }
+void handleAuthChanged(User? user) async {
   if (user == null) {
     Get.offAllNamed('/login');
   } else {
-    // Instead of duplicating role logic, reuse existing Google user handler
+    // Check if user is a technician first
+    final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
+    if (technicianDoc.exists && technicianDoc.data()?['role'] == 'technician') {
+      await _handleTechnicianUser(user);
+      Get.offAllNamed(AppRoute.technicianDashboard);
+      return;
+    }
+    
+    // Otherwise handle as regular user
     await _handleExistingGoogleUser(user);
   }
 }
@@ -1099,20 +1115,138 @@ if (userModel.role == 'tenant') {
     debugPrint('Sign in process completed');
   }
 }
+Future<void> _handleTechnicianUser(User user) async {
+  try {
+    final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
+    // if (!technicianDoc.exists) {
+    //   await auth.signOut();
+    //   Get.offAllNamed(AppRoute.login);
+    //   return;
+    // }
 
-void _handleAuthError(FirebaseAuthException e) {
-  debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
-  
-  final message = switch (e.code) {
-    'invalid-credential' => 'Invalid email or password',
-    'user-disabled' => 'This account has been disabled',
-    'user-not-found' => 'No account found with this email',
-    'wrong-password' => 'Incorrect password',
-    _ => 'Technician login failed: ${e.message}',
-  };
-  
-  Get.snackbar('Error', message);
+    final userData = technicianDoc.data()!;
+    final userModel = TechnicianProfile(
+      uid: user.uid,
+      location: userData['location'] ?? '',
+      fullName: userData['fullName'] ?? '',
+      email: userData['email'] ?? user.email ?? '',
+      mobile: userData['mobile'] ?? userData['phoneNumber'] ?? '',
+      photoURL: userData['photoURL'] ?? '',
+      role: 'technician',
+    );
+
+    Get.find<TechnicianController>().currentUser = userModel;
+  } catch (e) {
+    debugPrint('Error handling technician user: $e');
+    await auth.signOut();
+    Get.offAllNamed(AppRoute.login);
+  }
 }
+
+  // Future<UserCredential?> signInAsTechnician() async {
+  // try {
+  //   isSignInTechnician(true);
+  //   debugPrint('Attempting technician sign in...');
+  //   final String email = emailController.text.trim().toLowerCase();
+  //   final String password = passwordController.text.trim();
+
+    // First, verify the email exists in Firebase Auth
+    // debugPrint('Checking if email exists in Firebase Auth...');
+    // try {
+    //   final methods = await auth.fetchSignInMethodsForEmail(email);
+    //   if (methods.isEmpty) {
+    //     Get.snackbar('Error', 'No account found with this email');
+    //     return null;
+    //   }
+    //   debugPrint('Email exists in Firebase Auth');
+    // } catch (e) {
+    //   debugPrint('Error checking user existence: $e');
+    //   Get.snackbar('Error', 'Error verifying account');
+    //   return null;
+    // }
+
+    // Proceed with sign in
+//     debugPrint('Attempting Firebase authentication...');
+//     final credential = await auth.signInWithEmailAndPassword(
+//       email: email,
+//       password: password,
+//     );
+
+//     if (credential.user == null) {
+//       throw FirebaseAuthException(
+//         code: 'auth-failed',
+//         message: 'Authentication failed unexpectedly',
+//       );
+//     }
+
+//     debugPrint('Firebase authentication successful, verifying Technician role...');
+//     final userDoc = await _firestore.collection('technicians').doc(credential.user?.uid).get();
+
+//     if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
+//       debugPrint('Technician verification successful');
+//       userRole.value = 'technician';
+
+//       final userData = userDoc.data() as Map<String, dynamic>?;
+
+//       final userModel = TechnicianProfile(
+//         uid: userData?['uid'] ?? '',
+//         location: userData?['location'] ?? '',
+//         fullName: userData?['fullName'] ?? '',
+//         email: userData?['email'] ?? credential.user?.email ?? '',
+//         mobile: userData?['mobile'] ?? userData?['phoneNumber'] ?? '',
+//         photoURL: userData?['photoURL'] ?? '',
+//         role: userData?['role'] ?? 'technician',
+//       );
+
+//       // Store user details in TechnicianController
+//       Get.find<TechnicianController>().currentUser = userModel;
+//       debugPrint('Technician details stored: ${userModel.toJson()}');
+
+//       // Navigate to Technician Dashboard
+//       Get.offAllNamed(AppRoute.technicianDashboard);
+//       return credential;
+//     } else {
+//       debugPrint('Account is not registered as a technician');
+//       await auth.signOut();
+//       Get.snackbar('Error', 'This account is not registered as a technician');
+//       return null;
+//     }
+//   } on FirebaseAuthException catch (e) {
+//     debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
+    
+//     String errorMessage = 'Technician login failed';
+//     if (e.code == 'wrong-password') {
+//       errorMessage = 'Incorrect password';
+//     } else if (e.code == 'user-not-found') {
+//       errorMessage = 'Account not found';
+//     } else if (e.code == 'user-disabled') {
+//       errorMessage = 'Account disabled';
+//     }
+    
+//     Get.snackbar('Error', errorMessage);
+//     return null;
+//   } catch (e) {
+//     debugPrint('Unexpected Error: $e');
+//     Get.snackbar('Error', 'An unexpected error occurred');
+//     return null;
+//   } finally {
+//     isSignInTechnician(false);
+//     debugPrint('Sign in process completed');
+//   }
+// }
+// void _handleAuthError(FirebaseAuthException e) {
+//   debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
+  
+//   final message = switch (e.code) {
+//     'invalid-credential' => 'Invalid email or password',
+//     'user-disabled' => 'This account has been disabled',
+//     'user-not-found' => 'No account found with this email',
+//     'wrong-password' => 'Incorrect password',
+//     _ => 'Technician login failed: ${e.message}',
+//   };
+  
+//   Get.snackbar('Error', message);
+// }
 
   Future<void> setUserRole(String role, {String? tenantId}) async {
     final user = auth.currentUser;

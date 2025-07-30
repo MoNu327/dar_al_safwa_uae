@@ -8,7 +8,7 @@ import '../../../../data/model/technican_ticket_view_model.dart';
 
 class TechnicianTicketsController extends GetxController {
   var isLoading = false.obs;
-  var tickets = <ComplaintData>[].obs; // List of complaints
+  var tickets = <Complaint>[].obs; // List of complaints
   var selectedTicket = Rxn<TicketModel>(); // Single ticket details
 final RxMap<String, bool> isAssigningMap = <String, bool>{}.obs;
 final RxList<Map<String, dynamic>> availableTechnicians = <Map<String, dynamic>>[].obs;
@@ -111,35 +111,89 @@ Future<void> assignTechnician(String complaintId, String technicianId) async {
 }
 
   /// Fetch technician complaints (tickets)
-  Future<void> fetchTickets(String userId) async {
-    try {
-      isLoading.value = true;
+Future<void> fetchTickets(String userId) async {
+  try {
+    isLoading.value = true;
+    tickets.clear();
 
-      final response = await apiClient.request(
-        "technician/complaints",
-        method: "post",
-        data: {"uid": userId},
-      );
-      print("🔍 Fetched complaints: ${response.data ?? 0}");
-      final parsedResponse = TechnicianComplaintsResponse.fromJson(response.data);
-      print("🔍 Fetched complaints: ${parsedResponse.data?.length ?? 0}");
-      if (parsedResponse.status == true && parsedResponse.data != null) {
-        tickets
-          ..clear()
-          ..addAll(parsedResponse.data!);
+    final response = await apiClient.request(
+      "technician/complaints",
+      method: "post",
+      data: {"uid": userId},
+    );
 
-        print("✅ Complaints fetched: ${tickets.length}");
-      } else {
-        tickets.clear();
-        print("⚠️ API returned empty complaints list");
-      }
-    } catch (e) {
-      tickets.clear();
-      print("❌ Error fetching complaints: $e");
-    } finally {
-      isLoading.value = false;
+    print("Response Status: ${response.statusCode}");
+    print("🔍 Fetched complaints: ${response.data ?? 'null'}");
+
+    final data = response.data;
+    if (data == null) {
+      print("⚠️ API returned null response");
+      return;
     }
+
+    if (data is List) {
+      // Rare: API returns a bare list (no {status, data})
+      final complaints = data
+          .whereType<Map<String, dynamic>>()
+          .map(Complaint.fromJson)
+          .toList();
+      tickets.addAll(complaints);
+      print("✅ Complaints fetched (bare list): ${tickets.length}");
+      return;
+    }
+
+    if (data is Map<String, dynamic>) {
+      // Normal: { status, data: [...] } OR { status, data: {...} }
+      final map = data;
+
+     final bool ok = TechnicianComplaintsResponse.statusFromJson(map['status']);
+
+
+      if (!ok) {
+        print("⚠️ API status not OK");
+        return;
+      }
+
+      final dynamic inner = map['data'];
+      if (inner is List) {
+        // Your current API shape (list of complaints)
+        final complaints = inner
+            .whereType<Map<String, dynamic>>()
+            .map(Complaint.fromJson)
+            .toList();
+
+        if (complaints.isEmpty) {
+          print("⚠️ API returned empty complaints list");
+        } else {
+          tickets.addAll(complaints);
+          print("✅ Complaints fetched: ${tickets.length}");
+        }
+      } else if (inner is Map<String, dynamic>) {
+        // Fallback: single complaint shape using your existing model
+        final parsed = TechnicianComplaintsResponse.fromJson(map);
+        final single = parsed.data?.complaint;
+        if (single != null) {
+          tickets.add(single);
+          print("✅ Single complaint fetched: ${tickets.length}");
+        } else {
+          print("⚠️ No complaint data found");
+        }
+      } else {
+        print("⚠️ Unexpected 'data' type: ${inner.runtimeType}");
+      }
+      return;
+    }
+
+    print("⚠️ Unexpected top-level response type: ${data.runtimeType}");
+  } catch (e, st) {
+    tickets.clear();
+    print("❌ Error fetching complaints: $e");
+    print(st);
+  } finally {
+    isLoading.value = false;
   }
+}
+
 
   /// Fetch single complaint details by complaintId
   Future<void> fetchComplaintDetails(String complaintId) async {
@@ -147,7 +201,7 @@ Future<void> assignTechnician(String complaintId, String technicianId) async {
       isLoading.value = true;
 
       final response = await apiClient.request(
-        "technician/complaints",
+        "complaint-details",
         method: "get", // Or "post" if API requires it
         data: {
           "complaint_id": complaintId,
