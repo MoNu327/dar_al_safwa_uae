@@ -42,13 +42,12 @@ ComplaintResponseData _$ComplaintResponseDataFromJson(
     ComplaintResponseData(
       complaint: json['complaint'] == null
           ? null
-          : Complaint.fromJson(json['complaint'] as Map<String, dynamic>),
+          : Complaints.fromJson(json['complaint'] as Map<String, dynamic>),
       property: json['property'] == null
           ? null
           : Property.fromJson(json['property'] as Map<String, dynamic>),
-      images: json['images'] == null
-          ? null
-          : ComplaintImages.fromJson(json['images'] as Map<String, dynamic>),
+      directImages:
+          (json['images'] as List<dynamic>?)?.map((e) => e as String).toList(),
       adminInfo: json['adminInfo'] == null
           ? null
           : AdminInfo.fromJson(json['adminInfo'] as Map<String, dynamic>),
@@ -59,12 +58,12 @@ Map<String, dynamic> _$ComplaintResponseDataToJson(
     <String, dynamic>{
       'complaint': instance.complaint,
       'property': instance.property,
-      'images': instance.images,
+      'images': instance.directImages,
       'adminInfo': instance.adminInfo,
     };
 
-Complaint _$ComplaintFromJson(Map<String, dynamic> json) => Complaint(
-      complaintId: Complaint._readComplaintId(json, 'complaintId') as String?,
+Complaints _$ComplaintsFromJson(Map<String, dynamic> json) => Complaints(
+      complaintId: Complaints._readComplaintId(json, 'complaintId') as String?,
       complaintNumber: json['complaint_number'] as String?,
       category: json['category'] as String?,
       subcategory: json['subcategory'] as String?,
@@ -73,11 +72,11 @@ Complaint _$ComplaintFromJson(Map<String, dynamic> json) => Complaint(
       replyByAdmin: json['reply_by_admin'] as String?,
       amountPaid: json['amount_paid'] as String?,
       amountPaidStatus: json['amount_paid_status'] as String?,
-      statusCode: Complaint._statusCodeFromJson(json['status']),
+      statusCode: Complaints._statusCodeFromJson(json['status']),
       status: json['status_text'] == null
           ? null
           : Status.fromJson(json['status_text'] as Map<String, dynamic>),
-      createdAt: Complaint._readCreatedAt(json, 'createdAt') as String?,
+      createdAt: Complaints._readCreatedAt(json, 'createdAt') as String?,
       lastUpdated: json['last_updated'] as String?,
       lastUpdatedByAdmin: json['last_updated_by_admin'] as String?,
       addedByAdmin: json['added_by_admin'] as bool?,
@@ -87,7 +86,8 @@ Complaint _$ComplaintFromJson(Map<String, dynamic> json) => Complaint(
       flatnoId: json['flatno_id'] as String?,
     );
 
-Map<String, dynamic> _$ComplaintToJson(Complaint instance) => <String, dynamic>{
+Map<String, dynamic> _$ComplaintsToJson(Complaints instance) =>
+    <String, dynamic>{
       'complaintId': instance.complaintId,
       'complaint_number': instance.complaintNumber,
       'category': instance.category,
@@ -178,8 +178,8 @@ Map<String, dynamic> _$TechnicianToJson(Technician instance) =>
       'is_current': instance.isCurrent,
     };
 
-ComplaintImages _$ComplaintImagesFromJson(Map<String, dynamic> json) =>
-    ComplaintImages(
+TechnicianImages _$TechnicianImagesFromJson(Map<String, dynamic> json) =>
+    TechnicianImages(
       tenantUploads: (json['tenant_uploads'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
@@ -192,13 +192,18 @@ ComplaintImages _$ComplaintImagesFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           [],
+      images: (json['images'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
     );
 
-Map<String, dynamic> _$ComplaintImagesToJson(ComplaintImages instance) =>
+Map<String, dynamic> _$TechnicianImagesToJson(TechnicianImages instance) =>
     <String, dynamic>{
       'tenant_uploads': instance.tenantUploads,
       'admin_uploads': instance.adminUploads,
       'technician_uploads': instance.technicianUploads,
+      'images': instance.images,
     };
 
 AdminInfo _$AdminInfoFromJson(Map<String, dynamic> json) => AdminInfo(

@@ -1,5 +1,6 @@
 import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:dar_al_safwa/data/model/technician_complaints_response.dart';
+import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_ticket_card_widget.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
@@ -57,36 +58,85 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
           padding: const EdgeInsets.all(16),
           itemCount: controller.tickets.length,
           itemBuilder: (context, index) {
-            // ✅ Your list holds Complaint items
-            final Complaint complaint = controller.tickets[index];
-
+            final complaint = controller.tickets[index];
+            final statusColors = getStatusColors(complaint.statusText.en ?? '');
+            
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: buildTicketCard(
-                // Use only fields available on Complaint
                 complaintId: complaint.complaintId ?? '',
-                propertyName: '', // Not available on Complaint (see Option B)
+                propertyName: complaint.propertyName ?? '', 
                 category: complaint.category ?? '',
                 issue: complaint.subcategory ?? '',
-                status: complaint.displayStatus,        // from your getter
-                statusColor: complaint.statusColor,     // from your getter
+                status: complaint.statusText.en ?? '',
+                statusColor: statusColors.textColor,
+                // statusBackgroundColor: statusColors.backgroundColor,
                 description: complaint.description ?? '',
-                date: complaint.formattedDate,          // from your getter
+                date: complaint.formattedDate ?? 'No date',          
                 categoryIcon: Icons.build,
-
-                // Not on Complaint (these live in ComplaintResponseData) — pass safe fallbacks
-                images: const <String>[],
-                mobile: '',
-                name: 'Technician',
-                time: complaint.createdAt ?? '', 
-
-                // ⚠️ Avoid passing `ticket:` if your card expects TicketModel.
-                // Remove or adapt card’s parameter to accept Complaint if needed.
+                images: ComplaintImages(),
+                complaint: complaint,
+                time: complaint.lastUpdated ?? '', 
               ),
             );
           },
         );
       }),
     );
+  }
+}
+
+class StatusColors {
+  final Color backgroundColor;
+  final Color textColor;
+
+  StatusColors({required this.backgroundColor, required this.textColor});
+}
+
+StatusColors getStatusColors(String status) {
+  final normalizedStatus = status.trim().toLowerCase();
+
+  switch (normalizedStatus) {
+    case 'pending':
+      return StatusColors(
+        backgroundColor: AppColors.warning,
+        textColor: AppColors.primaryColor,
+      );
+    case 'rectified':
+      return StatusColors(
+        backgroundColor: AppColors.onlineGreen,
+        textColor: AppColors.onlineGreenDark,
+      );
+    case 'In Progress':
+    case 'processing':
+      return StatusColors(
+        backgroundColor: Colors.blue,
+        textColor: Colors.blue,
+      );
+    case 'resolved':
+    case 'completed':
+    case 'closed':
+      return StatusColors(
+        backgroundColor: Colors.green,
+        textColor: Colors.green,
+      );
+    case 'rejected':
+    case 'cancelled':
+    case 'canceled':
+      return StatusColors(
+        backgroundColor: AppColors.redColor.withOpacity(0.1),
+        textColor: AppColors.redColor,
+      );
+    case 'on hold':
+    case 'hold':
+      return StatusColors(
+        backgroundColor: AppColors.blueColor.withOpacity(0.1),
+        textColor: AppColors.blueColor,
+      );
+    default:
+      return StatusColors(
+        backgroundColor: AppColors.grey.withOpacity(0.1),
+        textColor: AppColors.grey,
+      );
   }
 }

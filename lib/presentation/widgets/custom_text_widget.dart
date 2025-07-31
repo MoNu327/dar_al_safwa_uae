@@ -5,6 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/utils/core.dart';
 
+import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../core/utils/core.dart';
+
 class CustomTextWidget extends StatelessWidget {
   const CustomTextWidget({
     super.key,
@@ -12,14 +19,16 @@ class CustomTextWidget extends StatelessWidget {
     this.fontSize,
     this.fontWeight,
     this.color,
-    this.maxLines,
-    this.overflow,
-    this.softWrap,
+    this.maxLines = 1,  // Default to single line
+    this.overflow = TextOverflow.ellipsis,  // Default to ellipsis
+    this.softWrap = false,  // Disable softWrap by default
     this.textAlign,
     this.fontStyle,
     this.strikethrough = false,
     this.underline = false,
+    this.lineHeight,
   });
+
   final String? title;
   final double? fontSize;
   final FontWeight? fontWeight;
@@ -31,28 +40,13 @@ class CustomTextWidget extends StatelessWidget {
   final FontStyle? fontStyle;
   final bool strikethrough;
   final bool underline;
+  final double? lineHeight;
 
   @override
   Widget build(BuildContext context) {
-    // Use GetX utilities to get screen size
-    final screenWidth = Get.width;
     final screenHeight = Get.height;
+    final calculatedFontSize = fontSize ?? screenHeight * 0.018;
 
-    // Check if the device is mobile based on screen width
-    final isMobile = screenWidth > 600; // Typical mobile screen width is < 600
-
-    // Detect landscape mode based on height and width ratio
-    final isLandscape =
-        screenWidth > screenHeight; // Detect landscape using Get.isLandscape
-
-    // Dynamically calculate font size based on screen size and orientation
-    double calculatedFontSize = fontSize ?? screenHeight * 0.018;
-
-    if (isMobile && isLandscape) {
-// In landscape mode, increase font size for mobile
-      calculatedFontSize *= 2;
-    }
-    // Combine decorations if both strikethrough and underline are true
     TextDecoration combinedDecoration = TextDecoration.none;
     if (strikethrough && underline) {
       combinedDecoration = TextDecoration.combine([
@@ -64,27 +58,23 @@ class CustomTextWidget extends StatelessWidget {
     } else if (underline) {
       combinedDecoration = TextDecoration.underline;
     }
+
     return Text(
-      capitalizeFirstLetter(
-        title ?? "",
-      ),
+      capitalizeFirstLetter(title ?? ""),
       style: GoogleFonts.lato(
         color: color ?? AppColors.black,
         fontSize: calculatedFontSize,
         fontWeight: fontWeight ?? FontWeight.w500,
         fontStyle: fontStyle ?? FontStyle.normal,
-        decoration: combinedDecoration, // No decoration if false
-        decorationColor: color ?? AppColors.black, // Color of the strikethrough
-        decorationThickness: 2, // Thickness of the strikethrough line
+        decoration: combinedDecoration,
+        decorationColor: color ?? AppColors.black,
+        decorationThickness: 2,
+        height: lineHeight,
       ),
-      maxLines: maxLines, // Allows text to wrap onto multiple lines
-      overflow: overflow ??
-          TextOverflow.ellipsis, // Ensure long text doesn't overflow
-      softWrap: softWrap ?? false, // Enables wrapping of long text
+      maxLines: maxLines,
+      overflow: overflow,
+      softWrap: softWrap,
       textAlign: textAlign ?? TextAlign.start,
-
-      // overflow: TextOverflow.ellipsis,
-      // maxLines: 1,
     );
   }
 }
@@ -98,7 +88,9 @@ class CustomRichTextWidget extends StatelessWidget {
     this.color,
     this.subTitle,
     this.subTextColor,
-    this.fontWeight2, // Adding condition parameter
+    this.fontWeight2,
+    this.maxLines = 1,
+    this.overflow = TextOverflow.ellipsis,
   });
 
   final String? title;
@@ -108,27 +100,25 @@ class CustomRichTextWidget extends StatelessWidget {
   final FontWeight? fontWeight2;
   final Color? color;
   final Color? subTextColor;
+  final int? maxLines;
+  final TextOverflow? overflow;
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = Get.width;
     final screenHeight = Get.height;
+    final isMobile = screenWidth > 600;
+    final isLandscape = screenWidth > screenHeight;
 
-    // Check if the device is mobile based on screen width
-    final isMobile = screenWidth > 600; // Typical mobile screen width is < 600
-
-    // Detect landscape mode based on height and width ratio
-    final isLandscape =
-        screenWidth > screenHeight; // Detect landscape using Get.isLandscape
-
-    // Dynamically calculate font size based on screen size and orientation
     double calculatedFontSize = fontSize ?? screenHeight * 0.018;
 
     if (isMobile && isLandscape) {
-      // In landscape mode, increase font size for mobile
-      calculatedFontSize *= 2;
+      calculatedFontSize *= 1.5;
     }
+
     return RichText(
+      maxLines: maxLines,
+      overflow: overflow ?? TextOverflow.ellipsis,
       text: TextSpan(
         children: [
           TextSpan(
@@ -140,10 +130,9 @@ class CustomRichTextWidget extends StatelessWidget {
             ),
           ),
           TextSpan(
-            text: subTitle ?? '', // Red asterisk
+            text: subTitle ?? '',
             style: GoogleFonts.poppins(
-              color:
-                  subTextColor ?? AppColors.black, // Red color for the asterisk
+              color: subTextColor ?? AppColors.black,
               fontSize: calculatedFontSize,
               fontWeight: fontWeight2 ?? FontWeight.normal,
             ),

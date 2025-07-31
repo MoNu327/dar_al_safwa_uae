@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dar_al_safwa/core/routes/app_route.dart';
 import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
+import 'package:dar_al_safwa/data/model/technician_complaints_response.dart';
+import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart' show TicketDetailsScreen;
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
@@ -25,13 +27,15 @@ Widget buildTicketCard( {
   required String date,
   required String time,
   required IconData categoryIcon,
-  required List<String> images,
+   ComplaintImages ?images,
   // required TicketModel ticket,
   required String complaintId,
-  required String mobile,
-  required String name,
+  // required String mobile,
+  // required String name,
+  Complaint ?complaint, 
 }) {
    final dateTime = DateFormat('MMM dd, yyyy hh:mm a').parse(date);
+   
   
   // Then format it as needed
   final formattedDate = DateFormat('MMM dd, yyyy').format(dateTime);
@@ -64,12 +68,16 @@ Widget buildTicketCard( {
                     color: AppColors.black,
                   ),
                   SizedBox(height: Get.height * 0.005),
-                  CustomTextWidget(
-                    title: '$category • $issue',
-                    fontSize: screenHeight * 0.014,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.black,
-                  ),
+                  Expanded(
+  child: CustomTextWidget(
+    title: '$category • $issue',
+    fontSize: screenHeight * 0.014,
+    fontWeight: FontWeight.w600,
+    color: AppColors.black,
+    maxLines: 1, // Add this to ensure single line
+    overflow: TextOverflow.ellipsis,
+  ),
+),
                   SizedBox(height: Get.height * 0.010),
                   Container(
                     padding: EdgeInsets.symmetric(
@@ -89,25 +97,34 @@ Widget buildTicketCard( {
                   ),
                 ],
               ),
-              if (images.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: CachedNetworkImage(
-                    imageUrl: images.first,
-                    width: Get.width * 0.14,
-                    height: Get.width * 0.14,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppColors.black.withOpacity(0.1),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.black.withOpacity(0.1),
-                      child: Icon(Icons.image, color: AppColors.black.withOpacity(0.3)),
-                    ),
-                  ),
-                ),
-            ],
+                if (complaint != null &&
+    (complaint.images.isNotEmpty || 
+     complaint.complaintImages.tenantUploaded.isNotEmpty ||
+     complaint.complaintImages.adminUploaded.isNotEmpty ||
+     complaint.complaintImages.technicianUploaded.isNotEmpty ||
+     complaint.complaintImages.adminTechnicianUploaded.isNotEmpty))
+
+  ClipRRect(
+    borderRadius: BorderRadius.circular(6),
+    child: CachedNetworkImage(
+      imageUrl: _getFirstAvailableImage(complaint),
+          width: Get.width * 0.14,
+          height: Get.width * 0.14,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            color: AppColors.black.withOpacity(0.1),
           ),
+          errorWidget: (context, url, error) => Container(
+            color: AppColors.black.withOpacity(0.1),
+            child: Icon(
+              Icons.image, 
+              color: AppColors.black.withOpacity(0.3),
+            ),
+          ),
+        ),
+      ),
+  ],
+),
 
           SizedBox(height: Get.height * 0.010),
 
@@ -267,7 +284,11 @@ Widget buildTicketCard( {
                   buttonHeight: screenHeight * 0.040,
                   buttonTitle: 'View Details',
                   onPressed: () {
-                    Get.to(() => TicketDetailsScreen(       ));
+                    debugPrint("Complaint Details inside navigation ==>$complaint");
+                    Get.to(() => TicketDetailsScreen(
+                   complaint: complaint,
+
+                    ));
                   },
                   buttonShape: 'rect',
                   borderColor: AppColors.darkGrey.withOpacity(0.2),
@@ -297,4 +318,32 @@ Widget buildTicketCard( {
       ),
     ),
   );
+}
+String _getFirstAvailableImage(Complaint complaint) {
+  // Check in order of priority:
+  // 1. Direct images list
+  if (complaint.images.isNotEmpty) return complaint.images.first;
+  
+  // 2. Tenant uploaded images
+  if (complaint.complaintImages.tenantUploaded.isNotEmpty) {
+    return complaint.complaintImages.tenantUploaded.first;
+  }
+  
+  // 3. Admin uploaded images
+  if (complaint.complaintImages.adminUploaded.isNotEmpty) {
+    return complaint.complaintImages.adminUploaded.first;
+  }
+  
+  // 4. Technician uploaded images
+  if (complaint.complaintImages.technicianUploaded.isNotEmpty) {
+    return complaint.complaintImages.technicianUploaded.first;
+  }
+  
+  // 5. Admin/Technician uploaded images
+  if (complaint.complaintImages.adminTechnicianUploaded.isNotEmpty) {
+    return complaint.complaintImages.adminTechnicianUploaded.first;
+  }
+  
+  // Fallback empty image
+  return '';
 }

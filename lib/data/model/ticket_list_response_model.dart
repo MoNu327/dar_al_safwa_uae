@@ -194,7 +194,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
       'unit_type': unitType,
       'assigned_technicians': assignedTechnicians.map((e) => e.toJson()).toList(),
     },
-    'images': complaintImages.toJson(),
+    'complaint_images': complaintImages.toJson(),
   };
 }
 

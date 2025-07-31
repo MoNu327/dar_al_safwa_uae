@@ -226,7 +226,6 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
   return InkWell(
     onTap: () {
       Get.to(() => TicketDetailsScreen(complaint: complaint,
-        // complaintId: complaint.complaintId ?? '',
     
       ));
     },

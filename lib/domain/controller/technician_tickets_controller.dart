@@ -1,5 +1,6 @@
 import 'package:dar_al_safwa/data/datasources/api_client.dart';
 import 'package:dar_al_safwa/data/model/technican_list_model.dart';
+import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
@@ -13,6 +14,7 @@ class TechnicianTicketsController extends GetxController {
 final RxMap<String, bool> isAssigningMap = <String, bool>{}.obs;
 final RxList<Map<String, dynamic>> availableTechnicians = <Map<String, dynamic>>[].obs;
 final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs;
+  RxList<Complaint> ticket = <Complaint>[].obs;
 
   final ApiClient apiClient = ApiClient();  
 
@@ -168,20 +170,22 @@ Future<void> fetchTickets(String userId) async {
           tickets.addAll(complaints);
           print("✅ Complaints fetched: ${tickets.length}");
         }
-      } else if (inner is Map<String, dynamic>) {
-        // Fallback: single complaint shape using your existing model
-        final parsed = TechnicianComplaintsResponse.fromJson(map);
-        final single = parsed.data?.complaint;
-        if (single != null) {
-          tickets.add(single);
-          print("✅ Single complaint fetched: ${tickets.length}");
-        } else {
-          print("⚠️ No complaint data found");
-        }
-      } else {
-        print("⚠️ Unexpected 'data' type: ${inner.runtimeType}");
-      }
-      return;
+      } 
+    //
+    //else if (inner is Map<String, dynamic>) {
+    //     // Fallback: single complaint shape using your existing model
+    //     final parsed = ComplaintsResponse.fromJson(map);
+    //     final single = parsed.data?.;
+    //     if (single != null) {
+    //       tickets.add(single);
+    //       print("✅ Single complaint fetched: ${tickets.length}");
+    //     } else {
+    //       print("⚠️ No complaint data found");
+    //     }
+    //   } else {
+    //     print("⚠️ Unexpected 'data' type: ${inner.runtimeType}");
+    //   }
+    //   return;
     }
 
     print("⚠️ Unexpected top-level response type: ${data.runtimeType}");

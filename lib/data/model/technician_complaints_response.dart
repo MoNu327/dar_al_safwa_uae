@@ -24,7 +24,6 @@ class TechnicianComplaintsResponse {
   Map<String, dynamic> toJson() => _$TechnicianComplaintsResponseToJson(this);
 
   static bool statusFromJson(dynamic value) {
-
     if (value is bool) return value;
     if (value is String) return value.toLowerCase() == 'true' || value == '1';
     if (value is int) return value == 1;
@@ -45,27 +44,54 @@ class Message {
 
 @JsonSerializable()
 class ComplaintResponseData {
-  final Complaint? complaint;
+  final Complaints? complaint;
   final Property? property;
-  final ComplaintImages? images;
+
+  @JsonKey(name: 'images')
+  final List<String>? directImages;
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final TechnicianImages? images;
+
   final AdminInfo? adminInfo;
 
   ComplaintResponseData({
     this.complaint,
     this.property,
+    this.directImages,
     this.images,
     this.adminInfo,
   });
 
-  factory ComplaintResponseData.fromJson(Map<String, dynamic> json) =>
-      _$ComplaintResponseDataFromJson(json);
+  List<String> get allImages {
+    if (directImages != null && directImages!.isNotEmpty) {
+      return directImages!;
+    }
+    return images?.allImages ?? [];
+  }
+
+  factory ComplaintResponseData.fromJson(Map<String, dynamic> json) {
+    if (json['images'] is List) {
+      return ComplaintResponseData(
+        complaint: Complaints.fromJson(json['complaint'] ?? {}),
+        property: json['property'] != null
+            ? Property.fromJson(json['property'])
+            : null,
+        directImages: List<String>.from(json['images'] ?? []),
+        images: TechnicianImages(images: List<String>.from(json['images'] ?? [])),
+        adminInfo: json['adminInfo'] != null
+            ? AdminInfo.fromJson(json['adminInfo'])
+            : null,
+      );
+    }
+    return _$ComplaintResponseDataFromJson(json);
+  }
 
   Map<String, dynamic> toJson() => _$ComplaintResponseDataToJson(this);
 }
 
 @JsonSerializable()
-class Complaint {
-  // Accepts either "complaint_id" (list shape) or "id" (single-complaint shape)
+class Complaints {
   @JsonKey(readValue: _readComplaintId)
   final String? complaintId;
 
@@ -86,16 +112,12 @@ class Complaint {
   @JsonKey(name: 'amount_paid_status')
   final String? amountPaidStatus;
 
-  // API list shape provides numeric "status", text is under "status_text.en"
   @JsonKey(name: 'status', fromJson: _statusCodeFromJson)
-final int? statusCode;
+  final int? statusCode;
 
-
-  // Keep your Status { en } model, but map it from "status_text"
   @JsonKey(name: 'status_text')
   final Status? status;
 
-  // Accepts either "created_at" (single) or "date" (list)
   @JsonKey(readValue: _readCreatedAt)
   final String? createdAt;
 
@@ -108,7 +130,6 @@ final int? statusCode;
   @JsonKey(name: 'added_by_admin')
   final bool? addedByAdmin;
 
-  // Extra fields present only in the list response (safe to keep optional)
   @JsonKey(name: 'property_name')
   final String? propertyName;
 
@@ -121,7 +142,7 @@ final int? statusCode;
   @JsonKey(name: 'flatno_id')
   final String? flatnoId;
 
-  Complaint({
+  Complaints({
     this.complaintId,
     this.complaintNumber,
     this.category,
@@ -143,32 +164,27 @@ final int? statusCode;
     this.flatnoId,
   });
 
-  factory Complaint.fromJson(Map<String, dynamic> json) =>
-      _$ComplaintFromJson(json);
+  factory Complaints.fromJson(Map<String, dynamic> json) =>
+      _$ComplaintsFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ComplaintToJson(this);
-
-  // --- helpers for readValue ---
+  Map<String, dynamic> toJson() => _$ComplaintsToJson(this);
 
   static Object? _readComplaintId(Map json, String _) {
     final v = json['complaint_id'] ?? json['id'];
     return v?.toString();
-    // handles int ids as well
   }
-  static int? _statusCodeFromJson(dynamic value) {
-  if (value == null) return null;
-  if (value is int) return value;
-  if (value is String) return int.tryParse(value);
-  return null;
-}
 
+  static int? _statusCodeFromJson(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
 
   static Object? _readCreatedAt(Map json, String _) {
-    // prefer created_at if present; otherwise fall back to date
     return json['created_at'] ?? json['date'];
   }
 
-  // Your existing getters can remain the same:
   String get formattedDate {
     if (createdAt == null) return 'No date';
     try {
@@ -197,7 +213,6 @@ final int? statusCode;
     }
   }
 }
-
 
 @JsonSerializable()
 class Status {
@@ -291,25 +306,36 @@ class Technician {
 }
 
 @JsonSerializable()
-class ComplaintImages {
+class TechnicianImages {
   @JsonKey(name: 'tenant_uploads', defaultValue: [])
-  final List<String>? tenantUploads;
+  final List<String> tenantUploads;
   
   @JsonKey(name: 'admin_uploads', defaultValue: [])
-  final List<String>? adminUploads;
+  final List<String> adminUploads;
   
   @JsonKey(name: 'technician_uploads', defaultValue: [])
-  final List<String>? technicianUploads;
+  final List<String> technicianUploads;
 
-  ComplaintImages({
-    this.tenantUploads,
-    this.adminUploads,
-    this.technicianUploads,
+  @JsonKey(defaultValue: [])
+  final List<String> images;
+
+  TechnicianImages({
+    this.tenantUploads = const [],
+    this.adminUploads = const [],
+    this.technicianUploads = const [],
+    this.images = const [],
   });
 
-  factory ComplaintImages.fromJson(Map<String, dynamic> json) =>
-      _$ComplaintImagesFromJson(json);
-  Map<String, dynamic> toJson() => _$ComplaintImagesToJson(this);
+  List<String> get allImages => [
+    ...images,
+    ...tenantUploads,
+    ...adminUploads,
+    ...technicianUploads,
+  ];
+
+  factory TechnicianImages.fromJson(Map<String, dynamic> json) =>
+      _$TechnicianImagesFromJson(json);
+  Map<String, dynamic> toJson() => _$TechnicianImagesToJson(this);
 }
 
 @JsonSerializable()

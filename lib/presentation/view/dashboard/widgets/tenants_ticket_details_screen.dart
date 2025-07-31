@@ -1,4 +1,3 @@
-import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
 import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -6,17 +5,13 @@ import 'package:get/get.dart';
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/custom_text_widget.dart';
-import 'tenants_tickets_list_widget.dart';
 
 class TicketDetailsScreen extends StatefulWidget {
-  final TicketModel? ticket;
   final Complaint? complaint;
 
   const TicketDetailsScreen({
     super.key,
-    this.ticket,
-    this.complaint, 
-    // required String complaintId,
+    this.complaint,
   });
 
   @override
@@ -26,49 +21,44 @@ class TicketDetailsScreen extends StatefulWidget {
 class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
   late ComplaintImages complaintImages;
   List<TimelineItem> timelineItems = [];
-   List<String> images = [];
- @override
-void initState() {
-  super.initState();
   
-  // Try multiple ways to get images
-  complaintImages = widget.complaint?.complaintImages ?? ComplaintImages();
-  
-  // Fallback to check direct images list if complaintImages is empty
-  if (complaintImages.tenantUploaded.isEmpty &&
-      complaintImages.adminUploaded.isEmpty &&
-      complaintImages.technicianUploaded.isEmpty &&
-      complaintImages.adminTechnicianUploaded.isEmpty) {
-    
-    // Check if there's a direct images list in the complaint
-    final directImages = widget.complaint?.images ?? [];
-    if (directImages.isNotEmpty) {
-      complaintImages = ComplaintImages(tenantUploaded: directImages);
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('Technician complaint data: ${widget.complaint}');
+debugPrint('Images: ${widget.complaint?.complaintImages}');
+debugPrint('Direct images: ${widget.complaint?.images}');
+debugPrint('Status text: ${widget.complaint?.statusText.en}');
+
+    debugPrint("=== initState ===");
+    debugPrint("Received complaint: ${widget.complaint?.complaintNumber}");
+
+    complaintImages = widget.complaint?.complaintImages ?? ComplaintImages();
+
+    debugPrint("Initial complaintImages: $complaintImages");
+
+    if (complaintImages.tenantUploaded.isEmpty &&
+        complaintImages.adminUploaded.isEmpty &&
+        complaintImages.technicianUploaded.isEmpty &&
+        complaintImages.adminTechnicianUploaded.isEmpty) {
+      final directImages = widget.complaint?.images ?? [];
+      if (directImages.isNotEmpty) {
+        complaintImages = ComplaintImages(tenantUploaded: directImages);
+        debugPrint("Fallback to direct complaint images: $directImages");
+      }
     }
+
+    debugPrint('Final images to display:');
+    debugPrint('Tenant: ${complaintImages.tenantUploaded}');
+    debugPrint('Admin: ${complaintImages.adminUploaded}');
+    debugPrint('Technician: ${complaintImages.technicianUploaded}');
+    debugPrint('Admin/Technician: ${complaintImages.adminTechnicianUploaded}');
+
+    _initializeTimeline();
   }
 
-  debugPrint('Final images to display:');
-  debugPrint('Tenant: ${complaintImages.tenantUploaded}');
-  debugPrint('Admin: ${complaintImages.adminUploaded}');
-  debugPrint('Technician: ${complaintImages.technicianUploaded}');
-  debugPrint('Admin/Technician: ${complaintImages.adminTechnicianUploaded}');
-  
-  _initializeTimeline();
-}
-//  @override
-//   void initState() {
-//     super.initState();
-    
-//     // Initialize complaint images from either ticket or complaint
-//     complaintImages = widget.ticket?.images ?? images 
-//                      widget.complaint?.complaintImages ?? 
-//                      ComplaintImages();
-                     
-//     _initializeTimeline();
-//   }
   void _initializeTimeline() {
-    final String lastUpdated =
-        widget.ticket?.lastUpdated ?? widget.complaint?.date ?? '';
+    final String lastUpdated = widget.complaint?.date ?? '';
 
     timelineItems = [
       TimelineItem(
@@ -100,9 +90,7 @@ void initState() {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.ticket != null) {
-      debugPrint("Ticket Details: ${widget.ticket!.toJson()}");
-    } else if (widget.complaint != null) {
+    if (widget.complaint != null) {
       debugPrint("Complaint Details: ${widget.complaint!.complaintNumber}");
     }
 
@@ -134,11 +122,11 @@ void initState() {
             SizedBox(height: screenHeight2),
             _buildRepliesSection(),
             SizedBox(height: screenHeight2),
-           if (complaintImages.tenantUploaded.isNotEmpty || 
-    complaintImages.adminUploaded.isNotEmpty ||
-    complaintImages.technicianUploaded.isNotEmpty ||
-    complaintImages.adminTechnicianUploaded.isNotEmpty) 
-  _buildImagesSection(),
+            if (complaintImages.tenantUploaded.isNotEmpty || 
+                complaintImages.adminUploaded.isNotEmpty ||
+                complaintImages.technicianUploaded.isNotEmpty ||
+                complaintImages.adminTechnicianUploaded.isNotEmpty) 
+              _buildImagesSection(),
             SizedBox(height: screenHeight2),
             _buildTimelineSection(),
             SizedBox(height: screenHeight * 0.1),
@@ -148,31 +136,21 @@ void initState() {
     );
   }
 
-  /// -------------------- Ticket Header --------------------
   Widget _buildTicketHeader() {
-    final String complaintNumber =
-        widget.ticket?.complaintNumber ?? widget.complaint?.complaintNumber ?? "N/A";
-    final String category =
-        widget.ticket?.category ?? widget.complaint?.category ?? "N/A";
-    final String subcategory =
-        widget.ticket?.subcategory ?? widget.complaint?.subcategory ?? "N/A";
-    final String propertyName =
-        widget.complaint?.propertyName ?? "N/A";
-    final String unitNumber =
-        widget.complaint?.unitNumber ?? "N/A";
-    final String fullAddress =
-        widget.complaint?.fullAddress ?? "N/A";
+    final String complaintNumber = widget.complaint?.complaintNumber ?? "N/A";
+    final String category = widget.complaint?.category ?? "N/A";
+    final String subcategory = widget.complaint?.subcategory ?? "N/A";
+    final String propertyName = widget.complaint?.propertyName ?? "N/A";
+    final String unitNumber = widget.complaint?.unitNumber ?? "N/A";
+    final String fullAddress = widget.complaint?.fullAddress ?? "N/A";
+    final String lastUpdated = widget.complaint?.date ?? "N/A";
+    final String? complaintStatusText = widget.complaint?.statusText.en;
 
-    final String lastUpdated =
-        widget.ticket?.lastUpdated ?? widget.complaint?.date ?? "N/A";
-
-    String? complaintStatusText;
-    TicketStatus? ticketStatus;
-    if (widget.ticket != null) {
-      ticketStatus = widget.ticket!.status;
-    } else if (widget.complaint != null) {
-      complaintStatusText = widget.complaint!.statusText.en;
-    }
+    debugPrint("Building ticket header with:");
+    debugPrint("Complaint Number: $complaintNumber");
+    debugPrint("Category: $category | Subcategory: $subcategory");
+    debugPrint("Property: $propertyName | Unit: $unitNumber");
+    debugPrint("Address: $fullAddress | Last Updated: $lastUpdated");
 
     return Container(
       padding: EdgeInsets.all(screenWidth2),
@@ -238,8 +216,7 @@ void initState() {
                 fontWeight: FontWeight.w400,
                 color: AppColors.black500,
               ),
-              if (ticketStatus != null) _buildStatusChip(ticketStatus),
-              if (ticketStatus == null && complaintStatusText != null)
+              if (complaintStatusText != null)
                 _buildComplaintStatusChip(complaintStatusText),
             ],
           ),
@@ -248,12 +225,11 @@ void initState() {
     );
   }
 
-  /// -------------------- Replies Section --------------------
   Widget _buildRepliesSection() {
-    final replyByTechnician =
-        widget.complaint?.replyByTechnician ?? "No reply from technician";
-    final replyByAdmin =
-        widget.complaint?.replyByAdmin ?? "No reply from admin";
+    final replyByTechnician = widget.complaint?.replyByTechnician ?? "No reply from technician";
+    final replyByAdmin = widget.complaint?.replyByAdmin ?? "No reply from admin";
+    debugPrint("Technician reply: $replyByTechnician");
+    debugPrint("Admin reply: $replyByAdmin");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,7 +258,6 @@ void initState() {
     );
   }
 
-  /// -------------------- Complaint Status Chip --------------------
   Widget _buildComplaintStatusChip(String statusText) {
     Color backgroundColor;
     Color textColor;
@@ -319,57 +294,8 @@ void initState() {
     );
   }
 
-  /// -------------------- Status Chip --------------------
-  Widget _buildStatusChip(TicketStatus status) {
-    Color backgroundColor;
-    Color textColor;
-    String statusText;
-
-    switch (status) {
-      case TicketStatus.pending:
-        backgroundColor = AppColors.primaryColor.withOpacity(0.1);
-        textColor = AppColors.primaryColor;
-        statusText = "Pending";
-        break;
-      case TicketStatus.rectified:
-        backgroundColor = AppColors.onlineGreen.withOpacity(0.1);
-        textColor = AppColors.onlineGreenDark;
-        statusText = "Rectified";
-        break;
-      case TicketStatus.inProgress:
-        backgroundColor = Colors.blue.withOpacity(0.1);
-        textColor = Colors.blue;
-        statusText = "In Progress";
-        break;
-      case TicketStatus.completed:
-        backgroundColor = AppColors.onlineGreen.withOpacity(0.2);
-        textColor = AppColors.onlineGreenDark;
-        statusText = "Completed";
-        break;
-    }
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.015,
-        vertical: screenHeight * 0.005,
-      ),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: CustomTextWidget(
-        title: statusText,
-        fontSize: Get.height * 0.012,
-        fontWeight: FontWeight.w600,
-        color: textColor,
-      ),
-    );
-  }
-
-  /// -------------------- Issue Description --------------------
   Widget _buildIssueDescriptionSection() {
-    final description =
-        widget.ticket?.description ?? widget.complaint?.description ?? '';
+    final description = widget.complaint?.description ?? '';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -391,82 +317,82 @@ void initState() {
     );
   }
 
-  /// -------------------- Images Section --------------------
   Widget _buildImagesSection() {
-  // First check if we have any images at all
-  final hasAnyImages = complaintImages.tenantUploaded.isNotEmpty ||
-                     complaintImages.adminUploaded.isNotEmpty ||
-                     complaintImages.technicianUploaded.isNotEmpty ||
-                     complaintImages.adminTechnicianUploaded.isNotEmpty;
+    final hasAnyImages = complaintImages.tenantUploaded.isNotEmpty ||
+                       complaintImages.adminUploaded.isNotEmpty ||
+                       complaintImages.technicianUploaded.isNotEmpty ||
+                       complaintImages.adminTechnicianUploaded.isNotEmpty;
 
-  if (!hasAnyImages) {
-    return SizedBox.shrink(); // Return empty widget if no images
+    if (!hasAnyImages) {
+      return SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextWidget(
+          title: "Attachments",
+          fontSize: Get.height * 0.018,
+          fontWeight: FontWeight.w600,
+          color: AppColors.black,
+        ),
+        SizedBox(height: screenHeight1),
+        if (complaintImages.tenantUploaded.isNotEmpty)
+          _buildImageCategory("Tenant Uploaded", complaintImages.tenantUploaded),
+        if (complaintImages.adminUploaded.isNotEmpty)
+          _buildImageCategory("Admin Uploaded", complaintImages.adminUploaded),
+        if (complaintImages.technicianUploaded.isNotEmpty)
+          _buildImageCategory("Technician Uploaded", complaintImages.technicianUploaded),
+        if (complaintImages.adminTechnicianUploaded.isNotEmpty)
+          _buildImageCategory("Admin/Technician Uploaded", complaintImages.adminTechnicianUploaded),
+      ],
+    );
   }
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      CustomTextWidget(
-        title: "Attachments",
-        fontSize: Get.height * 0.018,
-        fontWeight: FontWeight.w600,
-        color: AppColors.black,
-      ),
-      SizedBox(height: screenHeight1),
-      if (complaintImages.tenantUploaded.isNotEmpty)
-        _buildImageCategory("Tenant Uploaded", complaintImages.tenantUploaded),
-      if (complaintImages.adminUploaded.isNotEmpty)
-        _buildImageCategory("Admin Uploaded", complaintImages.adminUploaded),
-      if (complaintImages.technicianUploaded.isNotEmpty)
-        _buildImageCategory("Technician Uploaded", complaintImages.technicianUploaded),
-      if (complaintImages.adminTechnicianUploaded.isNotEmpty)
-        _buildImageCategory("Admin/Technician Uploaded", complaintImages.adminTechnicianUploaded),
-    ],
-  );
-}
-Widget _buildImageCategory(String title, List<String> images) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SizedBox(height: screenHeight1),
-      CustomTextWidget(
-        title: title,
-        fontSize: Get.height * 0.018,
-        fontWeight: FontWeight.w600,
-        color: AppColors.black,
-      ),
-      SizedBox(height: screenHeight1),
-      SizedBox(
-        height: Get.height * 0.15,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: images.length,
-          itemBuilder: (context, index) {
-            final url = images[index];
-            return Container(
-              width: Get.width * 0.30,
-              margin: EdgeInsets.only(right: screenWidth1),
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(url), 
-                  fit: BoxFit.cover
-                ),
-                color: AppColors.grey.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppColors.grey.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    ],
-  );
-}
+  Widget _buildImageCategory(String title, List<String> images) {
+    debugPrint("Rendering image category '$title' with ${images.length} images");
 
-  /// -------------------- Timeline Section --------------------
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(height: screenHeight1),
+        CustomTextWidget(
+          title: title,
+          fontSize: Get.height * 0.018,
+          fontWeight: FontWeight.w600,
+          color: AppColors.black,
+        ),
+        SizedBox(height: screenHeight1),
+        SizedBox(
+          height: Get.height * 0.15,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: images.length,
+            itemBuilder: (context, index) {
+              final url = images[index];
+              return Container(
+                width: Get.width * 0.30,
+                margin: EdgeInsets.only(right: screenWidth1),
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(url), 
+                    fit: BoxFit.cover
+                  ),
+                  color: AppColors.grey.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppColors.grey.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTimelineSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,6 +420,8 @@ Widget _buildImageCategory(String title, List<String> images) {
   }
 
   Widget _buildTimelineItem(TimelineItem item, bool isLast) {
+    debugPrint("Timeline item: ${item.title} - ${item.date} - ${item.status}");
+
     Color iconColor;
     Color lineColor;
 
@@ -567,7 +495,6 @@ Widget _buildImageCategory(String title, List<String> images) {
   }
 }
 
-/// Timeline Item Model
 class TimelineItem {
   final String title;
   final String date;
@@ -582,5 +509,4 @@ class TimelineItem {
   });
 }
 
-/// Timeline Status Enum
 enum TimelineStatus { completed, current, pending }
