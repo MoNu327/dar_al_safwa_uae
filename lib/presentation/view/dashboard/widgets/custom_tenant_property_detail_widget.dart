@@ -102,7 +102,12 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
             ],
           ),
         ),
-        bottomSheet: _buildActionButtons(property),
+        bottomSheet: SafeArea(
+  child: SingleChildScrollView(
+    child: _buildActionButtons(property),
+  ),
+),
+
       );
     });
   }
@@ -187,87 +192,178 @@ class CustomTenantPropertyDetailWidget extends StatelessWidget {
   }
 
   /// Bottom Action Buttons
-  Widget _buildActionButtons(TenantPropertyModel property) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: Get.width * 0.04, vertical: Get.height * 0.02),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(.2),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, -2),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildActionButton(
-              'View Agreement',
-              AppColors.onlineGreen,
-              Icons.description_outlined,
-              onPressed: () {
-                Get.to(() => PdfViewerScreen());
-              },
-            ),
-          ),
-          kWidth(0.03),
-          Expanded(
-            child: _buildActionButton(
-              'Register Complaint',
-              Colors.red,
-              Icons.report_problem_outlined,
-              onPressed: () {
-                final userId = getCurrentUserId();
-                Get.to(() => TenantsCreateTicketScreen(
-                      propertyName: property.propertyTitle,
-                      propertyId: property.propertyId,
-                      unitAddressId: property.unitAddressId,
-                      userId: userId, // Pass userId here
-                    ));
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+// Widget _buildActionButtons(TenantPropertyModel property) {
+//   return SafeArea(
+//     child: Container(
+//       padding: EdgeInsets.symmetric(
+//           horizontal: Get.width * 0.04, vertical: Get.height * 0.02),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.grey.withOpacity(.2),
+//             spreadRadius: 2,
+//             blurRadius: 5,
+//             offset: const Offset(0, -2),
+//           )
+//         ],
+//       ),
+//       child: Row(
+//         children: [
+//           Expanded(
+//             child: _buildActionButton(
+//               'View Agreement',
+//               AppColors.onlineGreen,
+//               Icons.description_outlined,
+//               onPressed: () {
+//                 Get.to(() => PdfViewerScreen());
+//               },
+//             ),
+//           ),
+//           kWidth(0.03),
+//           Expanded(
+//             child: _buildActionButton(
+//               'Register Complaint',
+//               Colors.red,
+//               Icons.report_problem_outlined,
+//               onPressed: () {
+//                 final userId = getCurrentUserId();
+//                 Get.to(() => TenantsCreateTicketScreen(
+//                       propertyName: property.propertyTitle,
+//                       propertyId: property.propertyId,
+//                       unitAddressId: property.unitAddressId,
+//                       userId: userId, // Pass userId here
+//                     ));
+//               },
+//             ),
+//           ),
+//         ],
+//       ),
+//     ),
+//   );
+// }
 
-  /// Action Button Widget
-  Widget _buildActionButton(
-    String text,
-    Color color,
-    IconData icon, {
-    required VoidCallback onPressed,
-  }) {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-            side: BorderSide(color: color.withOpacity(.3), width: 1)),
-        padding: EdgeInsets.symmetric(
-            horizontal: Get.width * 0.02, vertical: Get.height * 0.015),
-      ),
-      onPressed: onPressed,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: Get.height * 0.02, color: AppColors.white),
-          kWidth(0.01),
-          Flexible(
-            child: CustomTextWidget(
-              title: text,
-              fontSize: Get.height * 0.016,
-              fontWeight: FontWeight.w600,
-              color: AppColors.white,
-            ),
+// /// Action Button Widget
+// Widget _buildActionButton(
+//   String text,
+//   Color color,
+//   IconData icon, {
+//   required VoidCallback onPressed,
+// }) {
+//   return ElevatedButton(
+//     style: ElevatedButton.styleFrom(
+//       backgroundColor: color,
+//       shape: RoundedRectangleBorder(
+//           borderRadius: BorderRadius.circular(10),
+//           side: BorderSide(color: color.withOpacity(.3), width: 1)),
+//       padding: EdgeInsets.symmetric(
+//           horizontal: Get.width * 0.02, vertical: Get.height * 0.015),
+//     ),
+//     onPressed: onPressed,
+//     child: Row(
+//       mainAxisAlignment: MainAxisAlignment.center,
+//       children: [
+//         Icon(icon, size: Get.height * 0.02, color: AppColors.white),
+//         kWidth(0.01),
+//         Flexible(
+//           child: CustomTextWidget(
+//             title: text,
+//             fontSize: Get.height * 0.016,
+//             fontWeight: FontWeight.w600,
+//             color: AppColors.white,
+//           ),
+//         ),
+//       ],
+//     ),
+//   );
+// }
+// }
+Widget _buildActionButtons(TenantPropertyModel property) {
+  return Container(
+    padding: EdgeInsets.symmetric(
+      horizontal: Get.width * 0.04, 
+      vertical: Get.height * 0.02,
+    ),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(.2),
+          spreadRadius: 2,
+          blurRadius: 5,
+          offset: const Offset(0, -2),
+        )
+      ],
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: _buildActionButton(
+            'View Agreement',
+            AppColors.onlineGreen,
+            Icons.description_outlined,
+            onPressed: () {
+              Get.to(() => PdfViewerScreen());
+            },
           ),
-        ],
+        ),
+        kWidth(0.03),
+        Expanded(
+          child: _buildActionButton(
+            'Register Complaint',
+            Colors.red,
+            Icons.report_problem_outlined,
+            onPressed: () {
+              final userId = getCurrentUserId();
+              Get.to(() => TenantsCreateTicketScreen(
+                propertyName: property.propertyTitle,
+                propertyId: property.propertyId,
+                unitAddressId: property.unitAddressId,
+                userId: userId,
+              ));
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Action Button Widget (unchanged)
+Widget _buildActionButton(
+  String text,
+  Color color,
+  IconData icon, {
+  required VoidCallback onPressed,
+}) {
+  return ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: color,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: color.withOpacity(.3), width: 1),
       ),
-    );
-  }
+      padding: EdgeInsets.symmetric(
+        horizontal: Get.width * 0.02, 
+        vertical: Get.height * 0.015,
+      ),
+    ),
+    onPressed: onPressed,
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: Get.height * 0.02, color: AppColors.white),
+        kWidth(0.01),
+        Flexible(
+          child: CustomTextWidget(
+            title: text,
+            fontSize: Get.height * 0.016,
+            fontWeight: FontWeight.w600,
+            color: AppColors.white,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }

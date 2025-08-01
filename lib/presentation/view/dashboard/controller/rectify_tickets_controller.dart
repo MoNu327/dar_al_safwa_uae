@@ -16,16 +16,29 @@ class RectifyTicketsController extends GetxController {
   var selectedWorkStatus = 'Pending'.obs;
   var amountChanged = false.obs;
   var isPaid = false.obs;
-
+  var ispaidStatus =false.obs;
+   final paymentTitleController = TextEditingController();
+  final paidByController = TextEditingController();
+  var selectedPaymentMethod = 1.obs; // Default to card (1)
+  final paymentStatus = 0.obs; 
   /// Controllers
   final workDescriptionController = TextEditingController();
   final amountController = TextEditingController(text: '');
+ 
+
+   final paymentMethods = [
+    {'value': '1', 'label': 'Card'},
+    {'value': '2', 'label': 'Cash'},
+    {'value': '3', 'label': 'Others'},
+  ];
+
 
   @override
   void onInit() {
     super.onInit();
     workDescriptionController.text = '';
     amountController.text = '';
+
   }
 
   /// Image Picker
@@ -58,98 +71,81 @@ class RectifyTicketsController extends GetxController {
   void toggleAmountChanged(bool value) => amountChanged.value = value;
   void togglePaidStatus(bool value) => isPaid.value = value;
 
+  
+  // New methods for payment handling
+  void setPaymentStatus(int status) {
+    paymentStatus.value = status;
+    // Update isPaid based on status for backward compatibility
+    isPaid.value = status != 0;
+  }
+  
+  void setPaymentMethod(int method) {
+    selectedPaymentMethod.value = method;
+  }
   /// Submit Logic
-  Future<void> submitUpdates(String complaintId) async {
+ Future<void> submitUpdates(String complaintId) async {
   final description = workDescriptionController.text.trim();
   final amount = amountController.text.trim();
-
+  final paymentTitle = paymentTitleController.text.trim();
+  final paidBy = paidByController.text.trim();
 
   print("=== SUBMIT UPDATE REQUEST ===");
   print("complaint_id: $complaintId");
   print("description: $description");
   print("status: ${selectedWorkStatus.value}");
   print("amount: $amount");
-  print("is_paid: ${isPaid.value}");
-  print("amount_changed: ${amountChanged.value}");
+  print("payment_status: ${paymentStatus.value}");
+  print("payment_method: ${selectedPaymentMethod.value}");
+  print("payment_title: $paymentTitle");
+  print("paid_by: $paidBy");
   print("images: ${uploadedImages.map((e) => e.path).toList()}");
-  print("==============================");
 
   try {
-    // ✅ Get the logged-in technician UID
     final String? technicianUid = FirebaseAuth.instance.currentUser?.uid;
-
     if (technicianUid == null) {
-      Get.snackbar(
-        'Error',
-        'No logged-in technician found',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar('Error', 'No logged-in technician found',
+          backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
 
-     debugPrint("updatedImages: ${uploadedImages.map((e) => e.path).toList()}");
+    // Prepare payments array according to validation rules
+    final payments = amount.isNotEmpty ? [{
+      'amount_paid': amount,
+      'amount_status': paymentStatus.value.toString(), // 0, 1, or 2
+      'payment_title': paymentTitle,
+      'paid_by': paidBy,
+      'payment_method': paymentStatus.value != 0 
+          ? selectedPaymentMethod.value.toString()
+          : null, // Only send if payment made
+      'payment_date': paymentStatus.value != 0
+          ? DateTime.now().toIso8601String()
+          : null, // Only send if payment made
+    }] : [];
 
     final response = await _apiService.updateComplaint(
       uid: technicianUid,
-      complaintId: complaintId, // ✅ Using dynamic complaintId
+      complaintId: complaintId,
       status: getStatusCode(selectedWorkStatus.value),
       reply: description,
-      amountPaid: amount,
-      amountStatus: amountChanged.value,
+      payments: payments.whereType<Map<String, dynamic>>().toList(),
       images: uploadedImages,
     );
 
     if (response['success'] == true) {
-      Get.snackbar(
-        'Success',
-        response['message'],
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-      );
-
-      final data = response['data'];
-      print("Complaint Updated Successfully!");
-      print("Complaint ID: ${data['complaint_id']}");
-      print("Status: ${data['status']}");
-      print("Updated Rows: ${data['updated_rows']}");
-
-      if (data['images'] != null && data['images'] is List) {
-        print("Images:");
-        for (var img in data['images']) {
-          print("  - $img");
-        }
-      }
-
+      Get.snackbar('Success', response['message'],
+          backgroundColor: Colors.green, colorText: Colors.white);
       resetForm();
-      
-      await  fetchController.fetchTickets(technicianUid); // ✅ Refresh tickets list
- 
-      // ✅ Go back to the previous screen
-      
-        Get.back(
-        );
-   
+      await fetchController.fetchTickets(technicianUid);
+      Get.back();
     } else {
-      Get.snackbar(
-        'Error',
-        response['message'] ?? 'Failed to update',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      Get.snackbar('Error', response['message'] ?? 'Failed to update',
+          backgroundColor: Colors.red, colorText: Colors.white);
     }
   } catch (e) {
-    Get.snackbar(
-      'Error',
-      'Something went wrong: $e',
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
+    Get.snackbar('Error', 'Something went wrong: $e',
+        backgroundColor: Colors.red, colorText: Colors.white);
   }
 }
-
-
-
   /// Convert Status to Code
   String getStatusCode(String status) {
     switch (status.toLowerCase()) {
@@ -178,8 +174,9 @@ class RectifyTicketsController extends GetxController {
 
   @override
   void onClose() {
-    workDescriptionController.dispose();
     amountController.dispose();
+    paymentTitleController.dispose();
+    paidByController.dispose();
     super.onClose();
   }
 }

@@ -1,9 +1,12 @@
 import 'package:dar_al_safwa/data/datasources/api_client.dart';
 import 'package:dar_al_safwa/data/model/technican_list_model.dart';
+import 'package:dar_al_safwa/data/model/technican_summary_model.dart';
 import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import '../../../../data/model/technician_complaints_response.dart';
 import '../../../../data/model/technican_ticket_view_model.dart';
 
@@ -15,8 +18,163 @@ final RxMap<String, bool> isAssigningMap = <String, bool>{}.obs;
 final RxList<Map<String, dynamic>> availableTechnicians = <Map<String, dynamic>>[].obs;
 final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs;
   RxList<Complaint> ticket = <Complaint>[].obs;
+  var filteredTickets = <Complaint>[].obs;
+  final Rx<ComplaintStatisticsResponse?> technicianStats = Rx<ComplaintStatisticsResponse?>(null);
+  final RxBool isStatsLoading = false.obs;
+  final RxString statsErrorMessage = ''.obs;
+
 
   final ApiClient apiClient = ApiClient();  
+
+
+  
+
+void applyFilters({
+  String? status,
+  DateTime? startDate,
+  DateTime? endDate,
+}) {
+  List<Complaint> result = List.from(tickets); // Start with all tickets
+
+  // Status filtering
+  if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+    final normalizedSelectedStatus = status.toLowerCase().trim();
+    
+    result = result.where((tickets) {
+      final ticketStatus = tickets.statusText.en?.toLowerCase().trim() ?? '';
+      debugPrint("🔍 Status Filter: Comparing selected '$normalizedSelectedStatus' vs ticket '$ticketStatus'");
+      
+      // Enhanced status matching
+      switch (normalizedSelectedStatus) {
+        case 'pending':
+          return ticketStatus == 'pending' || 
+                 ticketStatus.contains('pend') ||
+                 ticketStatus.contains('open');
+        case 'in progress':
+          return ticketStatus.contains('progress') || 
+                 ticketStatus.contains('progres') ||
+                 ticketStatus.contains('processing') ||
+                 ticketStatus.contains('in-progress');
+        case 'resolved':
+          return ticketStatus.contains('resolve') ||
+                 ticketStatus.contains('complete') ||
+                 ticketStatus.contains('closed') ||
+                 ticketStatus.contains('finished');
+        default:
+          return ticketStatus == normalizedSelectedStatus;
+      }
+    }).toList();
+  }
+
+  // Date range filtering
+  if (startDate != null || endDate != null) {
+    result = result.where((tickets) {
+      try {
+        final ticketDate = _parseTicketDate(tickets.lastUpdated ?? tickets.lastUpdated);
+        if (ticketDate == null) {
+          debugPrint("⚠️ Could not parse date for ticket ${tickets.complaintId}");
+          return false;
+        }
+
+        // Normalize dates to midnight for comparison
+        final ticketDateOnly = DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
+        final startDateOnly = startDate != null 
+            ? DateTime(startDate.year, startDate.month, startDate.day)
+            : DateTime(1900); // Very early date if no start filter
+        final endDateOnly = endDate != null
+            ? DateTime(endDate.year, endDate.month, endDate.day)
+            : DateTime(2100); // Very late date if no end filter
+
+        debugPrint("📅 Date Filter: Ticket ${ticketDateOnly.toString()} between $startDateOnly and $endDateOnly");
+
+        return (ticketDateOnly.isAtSameMomentAs(startDateOnly) || 
+                ticketDateOnly.isAfter(startDateOnly)) &&
+               (ticketDateOnly.isAtSameMomentAs(endDateOnly) || 
+                ticketDateOnly.isBefore(endDateOnly));
+      } catch (e) {
+        debugPrint("❌ Error filtering by date for ticket ${tickets.complaintId}: $e");
+        return false;
+      }
+    }).toList();
+  }
+
+  filteredTickets.assignAll(result);
+  debugPrint("✅ Applied filters. ${filteredTickets.length} tickets match criteria.");
+}
+
+DateTime? _parseTicketDate(String? dateString) {
+  if (dateString == null || dateString.isEmpty) {
+    debugPrint("⚠️ Date string is null or empty");
+    return null;
+  }
+
+  // Trim any whitespace and remove timezone indicators if present
+  final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}$'), '');
+
+  // Try multiple common date formats
+  final possibleFormats = [
+    "yyyy-MM-dd HH:mm:ss",      // 2025-08-01 14:30:00
+    "yyyy-MM-ddTHH:mm:ss",      // 2025-08-01T14:30:00
+    "yyyy-MM-dd",               // 2025-08-01
+    "dd-MM-yyyy HH:mm:ss",      // 01-08-2025 14:30:00
+    "MM/dd/yyyy HH:mm:ss",      // 08/01/2025 14:30:00
+    "yyyy/MM/dd HH:mm:ss",      // 2025/08/01 14:30:00
+    "EEE, dd MMM yyyy HH:mm:ss", // Tue, 01 Aug 2025 14:30:00
+  ];
+
+  for (final format in possibleFormats) {
+    try {
+      final date = DateFormat(format).parse(cleanDateString);
+      debugPrint("✅ Parsed date '$dateString' as $date using format '$format'");
+      return date;
+    } catch (e) {
+      // Try next format
+    }
+  }
+
+  // Fallback to DateTime.parse if none of the formats worked
+  try {
+    final date = DateTime.parse(cleanDateString);
+    debugPrint("✅ Parsed date '$dateString' as $date using DateTime.parse");
+    return date;
+  } catch (e) {
+    debugPrint("❌ Failed to parse date: '$dateString'");
+    return null;
+  }
+}
+
+
+
+ Future<void> getSummaryForTechnician(String uid) async {
+    isStatsLoading.value = true;
+    statsErrorMessage.value = '';
+    technicianStats.value = null;
+
+    try {
+      final response = await apiClient.request(
+        "Technician/PropertyStats",
+        method: "post",
+        data: {"technician_id": uid},
+      );
+
+      if (response.data['success'] == true) {
+        technicianStats.value = ComplaintStatisticsResponse.fromJson(response.data);
+        debugPrint('Technician stats loaded: ${technicianStats.value?.data.propertyStats.length} properties');
+      } else {
+        statsErrorMessage.value = 
+            response.data['message']?['en'] ?? 'Failed to load technician statistics';
+      }
+    } catch (e) {
+      statsErrorMessage.value = 'Error loading technician stats: $e';
+      debugPrint('Exception in getSummaryForTechnician: $e');
+    } finally {
+      isStatsLoading.value = false;
+    }
+  }
+
+  // You can add helper methods to access the statistics more easily
+  
+
 
   /// Fetch available technicians (excluding current technician)
 Future<void> getAvailableTechnicians() async {
@@ -111,6 +269,9 @@ Future<void> assignTechnician(String complaintId, String technicianId) async {
     setAssigning(complaintId, false);
   }
 }
+
+
+
 
   /// Fetch technician complaints (tickets)
 Future<void> fetchTickets(String userId) async {

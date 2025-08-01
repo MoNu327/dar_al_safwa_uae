@@ -68,16 +68,15 @@ Widget buildTicketCard( {
                     color: AppColors.black,
                   ),
                   SizedBox(height: Get.height * 0.005),
-                  Expanded(
-  child: CustomTextWidget(
-    title: '$category • $issue',
-    fontSize: screenHeight * 0.014,
-    fontWeight: FontWeight.w600,
-    color: AppColors.black,
-    maxLines: 1, // Add this to ensure single line
-    overflow: TextOverflow.ellipsis,
-  ),
-),
+                  CustomTextWidget(
+                  title: '$category • $issue',
+                  fontSize: screenHeight * 0.014,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.black,
+                  maxLines: 1,
+                   overflow: TextOverflow.ellipsis,
+                  ),
+
                   SizedBox(height: Get.height * 0.010),
                   Container(
                     padding: EdgeInsets.symmetric(

@@ -243,8 +243,7 @@ Future<Map<String, dynamic>> updateComplaint({
   required String complaintId,
   required String status,
   required String reply,
-  required String amountPaid,
-  required bool amountStatus,
+  required List<Map<String, dynamic>> payments,
   required List<File> images,
 }) async {
   try {
@@ -253,8 +252,7 @@ Future<Map<String, dynamic>> updateComplaint({
       "complaint_id": complaintId,
       "status": status,
       "reply": reply,
-      "amount_paid": amountPaid,
-      "amount_status": amountStatus ? "1" : "0",
+      "payments": payments,
       "images": [
         for (var file in images)
           await MultipartFile.fromFile(file.path, filename: file.path.split('/').last)
@@ -262,7 +260,11 @@ Future<Map<String, dynamic>> updateComplaint({
     });
 
     print("=== FINAL FORM DATA ===");
-    formData.fields.forEach((field) => print("${field.key}: ${field.value}"));
+    print("uid: $uid");
+    print("complaint_id: $complaintId");
+    print("status: $status");
+    print("reply: $reply");
+    print("payments: ${jsonEncode(payments)}");
     print("Images: ${images.map((e) => e.path).toList()}");
     print("=======================");
 
@@ -282,7 +284,6 @@ Future<Map<String, dynamic>> updateComplaint({
     rethrow;
   }
 }
-
 
 //Home Section
   //banner
@@ -407,7 +408,19 @@ Future<Response> updateTechnicianComplaint({
     }
   }
 
-  
+   Future<Response> getSummaryForTechnician(String uid) async {
+    try {
+      final response = await apiClient.request(
+        "Technician/PropertyStats",
+        method: "post",
+        data: {"technician_id": uid},
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
 
 
 
