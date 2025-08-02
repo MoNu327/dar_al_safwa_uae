@@ -291,15 +291,15 @@ class RectifyTicketsScreen extends StatelessWidget {
               color: AppColors.black
             ),
             DropdownButton<int>(
-              value: controller.paymentStatus.value,
-              items: const [
-                DropdownMenuItem(value: 0, child: Text('Unpaid')),
-                DropdownMenuItem(value: 1, child: Text('Partially Paid')),
-                DropdownMenuItem(value: 2, child: Text('Fully Paid')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  controller.setPaymentStatus(value);
+          value: controller.paymentStatus.value,
+          items: const [
+            DropdownMenuItem(value: 0, child: Text('Unpaid')),
+            DropdownMenuItem(value: 1, child: Text('Partially Paid')),
+            DropdownMenuItem(value: 2, child: Text('Fully Paid')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              controller.setPaymentStatus(value);
                 }
               },
             ),
@@ -318,16 +318,16 @@ class RectifyTicketsScreen extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: AppColors.black
               ),
-              DropdownButton<int>(
-                value: controller.selectedPaymentMethod.value,
-                items: const [
-                  DropdownMenuItem(value: 1, child: Text('Card')),
-                  DropdownMenuItem(value: 2, child: Text('Cash')),
-                  DropdownMenuItem(value: 3, child: Text('Others')),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    controller.setPaymentMethod(value);
+               DropdownButton<int>(
+            value: controller.selectedPaymentMethod.value,
+            items: const [
+              DropdownMenuItem(value: 1, child: Text('Card')),
+              DropdownMenuItem(value: 2, child: Text('Cash')),
+              DropdownMenuItem(value: 3, child: Text('Others')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                controller.setPaymentMethod(value);
                   }
                 },
               ),

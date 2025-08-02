@@ -19,11 +19,13 @@ class RectifyTicketsController extends GetxController {
   var ispaidStatus =false.obs;
    final paymentTitleController = TextEditingController();
   final paidByController = TextEditingController();
-  var selectedPaymentMethod = 1.obs; // Default to card (1)
-  final paymentStatus = 0.obs; 
+  // var selectedPaymentMethod = 1.obs; // Default to card (1)
+  // final paymentStatus = 0.obs; 
   /// Controllers
   final workDescriptionController = TextEditingController();
   final amountController = TextEditingController(text: '');
+  final RxInt paymentStatus = 0.obs; // Unpaid by default
+final RxInt selectedPaymentMethod = 1.obs;
  
 
    final paymentMethods = [

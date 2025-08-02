@@ -303,6 +303,7 @@ Widget buildTicketCard( {
                   buttonTitle: 'Reply',
                   onPressed: () {
                     Get.to(() => RectifyTicketsScreen(complaintNumber: complaintId,category: category,));
+                    
                   },
                   buttonShape: 'rect',
                   borderColor: AppColors.darkGrey.withOpacity(0.2),
