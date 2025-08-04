@@ -6,6 +6,7 @@ import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart' show TicketDetailsScreen;
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -44,7 +45,11 @@ Widget buildTicketCard( {
     debugPrint('Original date: $date, time: $time');
 
   return InkWell(
-    onTap: () {},
+    onTap: () {
+        if (complaint != null) {
+      Get.to(() => TicketDetailsScreen(complaint: complaint));
+    }
+    },
     child: Container(
       padding: EdgeInsets.all(Get.width * 0.04),
       decoration: BoxDecoration(
@@ -153,6 +158,8 @@ Widget buildTicketCard( {
               ),
             ],
           ),
+
+            SizedBox(height: Get.height * 0.02),
 
           if (status.toLowerCase() == 'pending') ...[
             SizedBox(height: Get.height * 0.02),
@@ -302,8 +309,7 @@ Widget buildTicketCard( {
                   buttonHeight: screenHeight * 0.040,
                   buttonTitle: 'Reply',
                   onPressed: () {
-                    Get.to(() => RectifyTicketsScreen(complaintNumber: complaintId,category: category,));
-                    
+                    Get.to(() => RectifyTicketsScreen(complaintId: complaintId, category: category,));
                   },
                   buttonShape: 'rect',
                   borderColor: AppColors.darkGrey.withOpacity(0.2),

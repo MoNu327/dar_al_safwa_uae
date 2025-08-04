@@ -222,12 +222,13 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  String _formatOverviewValue(dynamic value) {
-    if (value == null) return 'N/A';
-    if (value is int || value is String) return value.toString();
-    // if (value is AreaValue) return value.formatted?.en ?? '';
-    return 'N/A';
-  }
+ String _formatOverviewValue(dynamic value) {
+  if (value == null) return 'N/A';
+  if (value is int || value is String) return value.toString();
+  // if (value is AreaValue) return value.formatted?.en ?? '';
+  return 'N/A';
+}
+
 
   IconData _getIconForOverviewItem(String? iconName) {
     switch (iconName ?? '') {

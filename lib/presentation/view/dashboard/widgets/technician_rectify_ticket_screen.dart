@@ -10,15 +10,19 @@ import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_widget.dart';
 
 class RectifyTicketsScreen extends StatelessWidget {
-  final String complaintNumber;
+  final String complaintId;
   final String category;
 
-  const RectifyTicketsScreen({super.key, required this.complaintNumber,required this.category});
+
+  const RectifyTicketsScreen({super.key, required this.complaintId,required this.category});
+   
+
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('Complaint ID: $complaintNumber');
+    debugPrint('Complaint ID: $complaintId');
     final RectifyTicketsController controller = Get.put(RectifyTicketsController());
+    
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -42,7 +46,7 @@ class RectifyTicketsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             _ticketDetailsCard(complaintNumber, category),
+            _ticketDetailsCard(complaintId, category),
             SizedBox(height: Get.height * 0.015),
             _imageUploadSection(controller),
             SizedBox(height: Get.height * 0.02),
@@ -92,8 +96,7 @@ class RectifyTicketsScreen extends StatelessWidget {
                     buttonShape: "rect",
                     buttonColor: AppColors.secondaryColor,
                     buttonTextColor: AppColors.white,
-                    onPressed: () => controller.submitUpdates(complaintNumber),
-                    
+                    onPressed: () => controller.submitUpdates(complaintId),
                   ),
                 ),
                 const SizedBox(height: 100),
@@ -291,23 +294,23 @@ class RectifyTicketsScreen extends StatelessWidget {
               color: AppColors.black
             ),
             DropdownButton<int>(
-          value: controller.paymentStatus.value,
-          items: const [
-            DropdownMenuItem(value: 0, child: Text('Unpaid')),
-            DropdownMenuItem(value: 1, child: Text('Partially Paid')),
-            DropdownMenuItem(value: 2, child: Text('Fully Paid')),
-          ],
-          onChanged: (value) {
-            if (value != null) {
-              controller.setPaymentStatus(value);
+              value: controller.paymentStatus.value,
+              items: const [
+                DropdownMenuItem(value: 0, child: Text('Unpaid')),
+                DropdownMenuItem(value: 1, child: Text('Partially Paid')),
+                DropdownMenuItem(value: 2, child: Text('Fully Paid')),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  controller.setPaymentStatus(value);
                 }
               },
             ),
           ],
         ),
         
-        // Payment Method Section (only shown if payment status is not Unpaid)
-        if (controller.paymentStatus.value != 0) ...[
+        // Only show payment method and details if status is not Unpaid AND amount changed is true
+        if (controller.paymentStatus.value != 0 && controller.amountChanged.value) ...[
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -318,16 +321,16 @@ class RectifyTicketsScreen extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: AppColors.black
               ),
-               DropdownButton<int>(
-            value: controller.selectedPaymentMethod.value,
-            items: const [
-              DropdownMenuItem(value: 1, child: Text('Card')),
-              DropdownMenuItem(value: 2, child: Text('Cash')),
-              DropdownMenuItem(value: 3, child: Text('Others')),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                controller.setPaymentMethod(value);
+              DropdownButton<int>(
+                value: controller.selectedPaymentMethod.value,
+                items: const [
+                  DropdownMenuItem(value: 1, child: Text('Card')),
+                  DropdownMenuItem(value: 2, child: Text('Cash')),
+                  DropdownMenuItem(value: 3, child: Text('Others')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    controller.setPaymentMethod(value);
                   }
                 },
               ),
@@ -461,14 +464,14 @@ class RectifyTicketsScreen extends StatelessWidget {
     );
   }
 
-  Widget _ticketDetailsCard(String complaintNumber, String category) {
+  Widget _ticketDetailsCard(String complaintId, String category) {
   return Container(
     padding: EdgeInsets.all(screenWidth4),
     decoration: BoxDecoration(
       color: AppColors.whiteLight,
       borderRadius: BorderRadius.circular(screenWidth4),
     ),
-    child: CustomTextWidget(title: '#$complaintNumber | $category'),
+    child: CustomTextWidget(title: '#$complaintId | $category'),
   );
 }
 

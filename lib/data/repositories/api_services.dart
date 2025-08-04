@@ -32,11 +32,26 @@ class ApiService {
   }
 
 
-  Future<Response> getFullComplaintDetails(String complaintId) async {
+//   Future<Response> getFullComplaintDetails(String complaintId) async {
+//   try {
+//     final response = await apiClient.request(
+//       "complaint-details",  // Your endpoint
+//       method: "get",
+//       data: {'complaint_id': complaintId},
+//     );
+
+//     return response;
+//   } catch (e) {
+//     rethrow;
+//   }
+// }
+ 
+
+   Future<Response> getFullComplaintDetails(String complaintId) async {
   try {
     final response = await apiClient.request(
-      "complaint-details",  // Your endpoint
-      method: "get",
+      "complaint-detailscopy",  // Your endpoint
+      method: "post",
       data: {'complaint_id': complaintId},
     );
 
@@ -45,7 +60,6 @@ class ApiService {
     rethrow;
   }
 }
-
  
   Future<Response> getTechnicanHistory(String complaintId) async {
   try {

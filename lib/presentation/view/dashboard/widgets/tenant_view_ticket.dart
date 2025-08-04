@@ -186,33 +186,45 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
             itemCount: properties.length,
             itemBuilder: (context, index) {
               final property = properties[index];
+              print("Rendering: ${property.propertyTitle}, Flat No: ${property.unitNumber}");
+
               return ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: CustomTextWidget(
-                  title: property.propertyTitle,
-                  fontSize: Get.height * 0.016,
-                  color: AppColors.black,
-                ),
-                subtitle: CustomTextWidget(
-                  title: "ID: ${property.id}",
-                  fontSize: Get.height * 0.014,
-                  color: AppColors.grey,
-                ),
-                onTap: () {
-                  debugPrint(
-                    'Selected Property: ${property.propertyTitle}, ID: ${property.id},unitAddressId: ${property.unitAddressId}, userId: $userId,propertyName: ${property.propertyTitle},',
-                  );
-                  
-                  Get.back(); // Close bottom sheet
-                  Get.to(() => TenantsCreateTicketScreen(
-                        propertyName: property.propertyTitle,
-                        propertyId: property.propertyId,
-                        unitAddressId: property.unitAddressId,
-                        userId: userId,
-                        
-                      ));
-                },
-              );
+  contentPadding: EdgeInsets.zero,
+  title: CustomTextWidget(
+    title: property.propertyTitle,
+    fontSize: Get.height * 0.016,
+    color: AppColors.black,
+  ),
+  subtitle: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      CustomTextWidget(
+        title: "ID: ${property.id}",
+        fontSize: Get.height * 0.014,
+        color: AppColors.grey,
+      ),
+      CustomTextWidget(
+        title: "Flat No: ${property.unitNumber.isNotEmpty ? property.unitNumber : 'N/A'}",
+        fontSize: Get.height * 0.014,
+        color: AppColors.grey,
+      ),
+    ],
+  ),
+  onTap: () {
+    debugPrint(
+      'Selected Property: ${property.propertyTitle}, ID: ${property.id}, unitAddressId: ${property.unitAddressId}, userId: $userId, propertyName: ${property.propertyTitle}, Flat No: ${property.unitNumber}',
+    );
+
+    Get.back();
+    Get.to(() => TenantsCreateTicketScreen(
+          propertyName: property.propertyTitle,
+          propertyId: property.propertyId,
+          unitAddressId: property.unitAddressId,
+          userId: userId,
+        ));
+  },
+);
+
             },
           ),
         ],
@@ -454,6 +466,7 @@ void _createNewComplaint(String category, String description) {
   final newComplaint = Complaint(
     complaintId: 'CID-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
     complaintNumber: 'CMP-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+    
     description: description,
     replyByTechnician: null,
     replyByAdmin: null,

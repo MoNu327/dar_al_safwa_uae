@@ -19,13 +19,11 @@ class RectifyTicketsController extends GetxController {
   var ispaidStatus =false.obs;
    final paymentTitleController = TextEditingController();
   final paidByController = TextEditingController();
-  // var selectedPaymentMethod = 1.obs; // Default to card (1)
-  // final paymentStatus = 0.obs; 
+  var selectedPaymentMethod = 1.obs; // Default to card (1)
+  final paymentStatus = 0.obs; 
   /// Controllers
   final workDescriptionController = TextEditingController();
   final amountController = TextEditingController(text: '');
-  final RxInt paymentStatus = 0.obs; // Unpaid by default
-final RxInt selectedPaymentMethod = 1.obs;
  
 
    final paymentMethods = [
@@ -88,8 +86,8 @@ final RxInt selectedPaymentMethod = 1.obs;
  Future<void> submitUpdates(String complaintId) async {
   final description = workDescriptionController.text.trim();
   final amount = amountController.text.trim();
-  final paymentTitle = paymentTitleController.text.trim();
-  final paidBy = paidByController.text.trim();
+  // final paymentTitle = paymentTitleController.text.trim();
+  // final paidBy = paidByController.text.trim();
 
   print("=== SUBMIT UPDATE REQUEST ===");
   print("complaint_id: $complaintId");
@@ -98,8 +96,8 @@ final RxInt selectedPaymentMethod = 1.obs;
   print("amount: $amount");
   print("payment_status: ${paymentStatus.value}");
   print("payment_method: ${selectedPaymentMethod.value}");
-  print("payment_title: $paymentTitle");
-  print("paid_by: $paidBy");
+  // print("payment_title: $paymentTitle");
+  // print("paid_by: $paidBy");
   print("images: ${uploadedImages.map((e) => e.path).toList()}");
 
   try {
@@ -114,8 +112,8 @@ final RxInt selectedPaymentMethod = 1.obs;
     final payments = amount.isNotEmpty ? [{
       'amount_paid': amount,
       'amount_status': paymentStatus.value.toString(), // 0, 1, or 2
-      'payment_title': paymentTitle,
-      'paid_by': paidBy,
+      // 'payment_title': paymentTitle,
+      // 'paid_by': paidBy,
       'payment_method': paymentStatus.value != 0 
           ? selectedPaymentMethod.value.toString()
           : null, // Only send if payment made
@@ -134,13 +132,15 @@ final RxInt selectedPaymentMethod = 1.obs;
     );
 
     if (response['success'] == true) {
-      Get.snackbar('Success', response['message'],
-          backgroundColor: Colors.green, colorText: Colors.white);
-      resetForm();
-      await fetchController.fetchTickets(technicianUid);
-      
-      Get.back();
-    } else {
+  Get.snackbar('Success', response['message'],
+      backgroundColor: Colors.green, colorText: Colors.white);
+  resetForm();
+  await fetchController.fetchTickets(technicianUid); // Wait for this to complete
+  print("Navigating back");
+  Get.back(); // Only call once
+  print("After navigation");
+}
+ else {
       Get.snackbar('Error', response['message'] ?? 'Failed to update',
           backgroundColor: Colors.red, colorText: Colors.white);
     }
@@ -164,7 +164,13 @@ final RxInt selectedPaymentMethod = 1.obs;
         return "0";
     }
   }
-
+Future<void> refreshData() async {
+  try {
+    await fetchController.fetchTickets(FirebaseAuth.instance.currentUser?.uid ?? '');
+  } catch (e) {
+    debugPrint("Error refreshing tickets: $e");
+  }
+}
   /// Reset Form
   void resetForm() {
     workDescriptionController.clear();

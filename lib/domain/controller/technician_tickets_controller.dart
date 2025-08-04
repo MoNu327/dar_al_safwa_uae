@@ -361,13 +361,43 @@ Future<void> fetchTickets(String userId) async {
 
 
   /// Fetch single complaint details by complaintId
-  Future<void> fetchComplaintDetails(String complaintId) async {
+//   Future<void> fetchComplaintDetails(String complaintId) async {
+//     try {
+//       isLoading.value = true;
+
+//       final response = await apiClient.request(
+//         "complaint-details",
+//         method: "get", // Or "post" if API requires it
+//         data: {
+//           "complaint_id": complaintId,
+//         },
+//       );
+
+//       if (response.data['success'] == true) {
+//         selectedTicket.value = TicketModel.fromJson(response.data['data']);
+//         print("✅ Ticket details fetched: ${selectedTicket.value?.complaintNumber}");
+//       } else {
+//         print("⚠️ Failed to load ticket details: ${response.data['message']['en']}");
+//       }
+//     } catch (e) {
+//       print("❌ Error fetching complaint details: $e");
+//     } finally {
+//       isLoading.value = false;
+//     }
+//   }
+//   void setAssigning(String complaintId, bool value) {
+//   isAssigningMap[complaintId] = value;
+// }
+  
+
+
+   Future<void> fetchComplaintDetails(String complaintId) async {
     try {
       isLoading.value = true;
 
       final response = await apiClient.request(
-        "complaint-details",
-        method: "get", // Or "post" if API requires it
+        "complaint-detailscopy",
+        method: "post", // Or "post" if API requires it
         data: {
           "complaint_id": complaintId,
         },
@@ -388,5 +418,4 @@ Future<void> fetchTickets(String userId) async {
   void setAssigning(String complaintId, bool value) {
   isAssigningMap[complaintId] = value;
 }
-
 }

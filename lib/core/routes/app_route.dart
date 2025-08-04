@@ -209,7 +209,7 @@ GetPage(
 
 GetPage(
   name: technicianRectifyTicket,
-  page: () => RectifyTicketsScreen(complaintNumber: '',category: '',),
+  page: () => RectifyTicketsScreen(complaintId: '',category: '',),
 ),
 // GetPage(
 //   name: AppRoute.tenantTicketDetails,
@@ -217,9 +217,5 @@ GetPage(
    
 //   ,
 // ),
-
-
-
-
   ];
 }

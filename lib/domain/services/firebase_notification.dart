@@ -587,12 +587,12 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 class FirebaseNotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -601,6 +601,9 @@ class FirebaseNotificationService {
 
   StreamSubscription? _authSubscription;
   StreamSubscription? _tokenRefreshSubscription;
+
+  // Add navigation key for global navigation
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   // Notification channels for different types
   static const String _chatChannelId = 'chat_channel';
@@ -617,6 +620,15 @@ class FirebaseNotificationService {
       // Set up message handlers
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+      
+      // Handle notification opened app (when app is terminated)
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpenedApp);
+      
+      // Check for initial message (when app is launched from notification)
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        _handleNotificationOpenedApp(initialMessage);
+      }
 
       // Start listening for auth state changes
       _setupAuthStateListener();
@@ -790,6 +802,7 @@ class FirebaseNotificationService {
     }
   }
 
+  // Enhanced notification tap handler with navigation
   void _handleNotificationTap(String? payload) {
     if (payload == null) return;
     
@@ -797,10 +810,125 @@ class FirebaseNotificationService {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       debugPrint('Notification tapped with payload: $data');
       
-      // Add your navigation logic here
+      _navigateBasedOnNotificationType(data);
     } catch (e) {
       debugPrint('Error handling notification tap: $e');
     }
+  }
+
+  // Handle notification when app is opened from background/terminated state
+  void _handleNotificationOpenedApp(RemoteMessage message) {
+    debugPrint('Notification opened app: ${message.data}');
+    _navigateBasedOnNotificationType(message.data);
+  }
+
+  // Navigation logic based on notification type
+  void _navigateBasedOnNotificationType(Map<String, dynamic> data) {
+    final context = navigatorKey.currentContext;
+    if (context == null) {
+      debugPrint('Navigation context is null');
+      return;
+    }
+
+    final notificationType = data['type'] as String?;
+    
+    switch (notificationType) {
+      case 'chat':
+        _navigateToChat(context, data);
+        break;
+      case 'technician_assignment':
+        _navigateToTechnicianAssignment(context, data);
+        break;
+      case 'order_update':
+        _navigateToOrderDetails(context, data);
+        break;
+      case 'job_update':
+        _navigateToJobDetails(context, data);
+        break;
+      case 'appointment':
+        _navigateToAppointment(context, data);
+        break;
+      default:
+        _navigateToHome(context);
+    }
+  }
+
+  void _navigateToChat(BuildContext context, Map<String, dynamic> data) {
+    final chatId = data['chatId'] as String?;
+    final userId = data['userId'] as String?;
+    final userName = data['userName'] as String?;
+    
+    if (chatId != null) {
+      Navigator.of(context).pushNamed(
+        '/chat',
+        arguments: {
+          'chatId': chatId,
+          'userId': userId,
+          'userName': userName,
+        },
+      );
+    }
+  }
+
+  void _navigateToTechnicianAssignment(BuildContext context, Map<String, dynamic> data) {
+    final assignmentId = data['assignmentId'] as String?;
+    final jobId = data['jobId'] as String?;
+    
+    if (assignmentId != null || jobId != null) {
+      Navigator.of(context).pushNamed(
+        '/technician-assignment',
+        arguments: {
+          'assignmentId': assignmentId,
+          'jobId': jobId,
+        },
+      );
+    }
+  }
+
+  void _navigateToOrderDetails(BuildContext context, Map<String, dynamic> data) {
+    final orderId = data['orderId'] as String?;
+    
+    if (orderId != null) {
+      Navigator.of(context).pushNamed(
+        '/order-details',
+        arguments: {
+          'orderId': orderId,
+        },
+      );
+    }
+  }
+
+  void _navigateToJobDetails(BuildContext context, Map<String, dynamic> data) {
+    final jobId = data['jobId'] as String?;
+    
+    if (jobId != null) {
+      Navigator.of(context).pushNamed(
+        '/job-details',
+        arguments: {
+          'jobId': jobId,
+        },
+      );
+    }
+  }
+
+  void _navigateToAppointment(BuildContext context, Map<String, dynamic> data) {
+    final appointmentId = data['appointmentId'] as String?;
+    
+    if (appointmentId != null) {
+      Navigator.of(context).pushNamed(
+        '/appointment',
+        arguments: {
+          'appointmentId': appointmentId,
+        },
+      );
+    }
+  }
+
+  void _navigateToHome(BuildContext context) {
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/home',
+      (route) => false,
+    );
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {

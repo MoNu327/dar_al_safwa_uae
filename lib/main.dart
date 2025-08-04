@@ -27,6 +27,9 @@ import 'presentation/view/profile/widgets/tenant_edit_profile_widget.dart';
 import 'presentation/view/property_details/widgets/cheque_submission_screen.dart';
 import 'presentation/view_model/localization_controller.dart';
 
+// Global navigator key for notification navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -40,6 +43,7 @@ Future<void> main() async {
   // Initialize Firebase
   await _initializeFirebase();
   await _initializeNotifications();
+  
   // Initialize controllers
   _initializeControllers();
 
@@ -61,9 +65,6 @@ Future<void> _initializeFirebase() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-
-    // Uncomment when ready to use notifications
-    // await _initializeNotifications();
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
     // Handle error appropriately for your app
@@ -72,8 +73,11 @@ Future<void> _initializeFirebase() async {
 
 Future<void> _initializeNotifications() async {
   try {
-    await FirebaseNotificationService().initialize();
+    // Initialize the notification service
+    final notificationService = FirebaseNotificationService();
+    await notificationService.initialize();
 
+    // Create additional notification channels if needed
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'high_importance_channel',
       'High Importance Notifications',
@@ -97,8 +101,8 @@ void _initializeControllers() {
   Get.put(UserController(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(LocalizationController(), permanent: true);
-   Get.put(TechnicianController(), permanent: true);
-     Get.put(TenantsTicketsController(), permanent: true); 
+  Get.put(TechnicianController(), permanent: true);
+  Get.put(TenantsTicketsController(), permanent: true); 
 }
 
 class MyApp extends StatelessWidget {
@@ -119,11 +123,18 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         locale: const Locale('en'),
         fallbackLocale: const Locale('en'),
-        //  home: TenantDashboard(),
-        initialRoute:
-            isAuthenticated ? AppRoute.navbar : AppRoute.initial, //navbar
+        
+        // Add the navigator key for notification navigation
+        navigatorKey: navigatorKey,
+        
+        initialRoute: isAuthenticated ? AppRoute.navbar : AppRoute.initial,
         getPages: AppRoute.routes,
         initialBinding: AppBindings(),
+        
+        // Add navigation observer to handle notification navigation
+        navigatorObservers: [
+          NotificationNavigationObserver(),
+        ],
       ),
     );
   }
@@ -156,6 +167,21 @@ class AppBindings extends Bindings {
     Get.lazyPut<UserController>(() => UserController(), fenix: true);
     Get.lazyPut<LocalizationController>(() => LocalizationController(),
         fenix: true);
-            Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
+    Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
+  }
+}
+
+// Custom navigation observer for handling notification navigation
+class NotificationNavigationObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    debugPrint('Navigation: Pushed ${route.settings.name}');
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
+    debugPrint('Navigation: Replaced ${oldRoute?.settings.name} with ${newRoute?.settings.name}');
   }
 }

@@ -196,62 +196,66 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
   final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
   Get.bottomSheet(
-    Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CustomTextWidget(
-            title: "Select Property",
-            fontSize: Get.height * 0.02,
-            fontWeight: FontWeight.bold,
-            color: AppColors.black,
-          ),
-          const SizedBox(height: 12),
-          ListView.builder(
-            shrinkWrap: true,
-            itemCount: properties.length,
-            itemBuilder: (context, index) {
-              final property = properties[index];
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: CustomTextWidget(
-                  title: property.propertyTitle,
-                  fontSize: Get.height * 0.016,
-                  color: AppColors.black,
-                ),
-                subtitle: CustomTextWidget(
-                  title: "ID: ${property.id}",
-                  fontSize: Get.height * 0.014,
-                  color: AppColors.grey,
-                ),
-                onTap: () {
-                  debugPrint(
-                    'Selected Property: ${property.propertyTitle}, ID: ${property.id},unitAddressId: ${property.unitAddressId}, userId: $userId,propertyName: ${property.propertyTitle},',
-                  );
-                  
-                  Get.back(); // Close bottom sheet
-                  Get.to(() => TenantsCreateTicketScreen(
-                        propertyName: property.propertyTitle,
-                        propertyId: property.propertyId,
-                        unitAddressId: property.unitAddressId,
-                        userId: userId,
-                        
-                      ));
-                },
-              );
-            },
-          ),
-        ],
+    SafeArea(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CustomTextWidget(
+              title: "Select Property",
+              fontSize: Get.height * 0.02,
+              fontWeight: FontWeight.bold,
+              color: AppColors.black,
+            ),
+            const SizedBox(height: 12),
+            ListView.builder(
+              shrinkWrap: true,
+              itemCount: properties.length,
+              itemBuilder: (context, index) {
+                final property = properties[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: CustomTextWidget(
+                    title: "${property.propertyTitle} - Flat No: ${property.unitNumber ?? 'N/A'}",
+                    fontSize: Get.height * 0.016,
+                    color: AppColors.black,
+                  ),
+                  // subtitle: CustomTextWidget(
+                  //   title: "ID: ${property.id}",
+                  //   fontSize: Get.height * 0.014,
+                  //   color: AppColors.grey,
+                  // ),
+                  onTap: () {
+                    debugPrint(
+                      'Selected Property: ${property.propertyTitle},  Flat No: ${property.unitNumber}, unitAddressId: ${property.unitAddressId}, userId: $userId',
+                    );
+
+                    Get.back(); // Close bottom sheet
+                    Get.to(() => TenantsCreateTicketScreen(
+                          propertyName: property.propertyTitle,
+                          propertyId: property.propertyId,
+                          unitAddressId: property.unitAddressId,
+                          userId: userId,
+                        ));
+                  },
+                );
+              },
+            ),
+          ],
+        ),
       ),
     ),
+    isScrollControlled: true, // <-- Allows full height if needed
   );
 }
+
+
 
   /// Builds a single ticket card
   Widget _buildComplaintCard(Complaint complaint) {

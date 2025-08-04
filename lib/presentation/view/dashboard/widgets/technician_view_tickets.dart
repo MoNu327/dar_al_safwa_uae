@@ -185,141 +185,157 @@ Future<void> _selectDate(BuildContext context, bool isStartDate) async {
           }),
 
           // Filters Section
-       Padding(
+      Padding(
   padding: const EdgeInsets.all(12.0),
   child: Row(
     children: [
+      // Status Filter Dropdown
       Expanded(
         child: Container(
+          height: 48, // Fixed height to match date picker
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
           ),
-          padding: EdgeInsets.symmetric(horizontal: Get.width * 0.03),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: selectedStatus,
-              hint: CustomTextWidget(
-                title: 'Filter by Status',
-                fontSize: Get.height * 0.014,
-                color: AppColors.black.withOpacity(0.5),
-              ),
-              items: [
-                'All',
-                'Pending',
-                'In Progress',
-                'Resolved',
-              ].map((status) {
-                return DropdownMenuItem<String>(
-                  value: status,
-                  child: CustomTextWidget(
-                    title: status,
-                    fontSize: Get.height * 0.014,
-                    color: AppColors.black,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                isExpanded: true,
+                value: selectedStatus,
+                hint: Text(
+                  'Filter by Status',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.black.withOpacity(0.5),
                   ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() => selectedStatus = value);
-                _applyFilters();
-              },
+                ),
+                items: [
+                  'All',
+                  'Pending',
+                  'In Progress',
+                  'Resolved',
+                ].map((status) {
+                  return DropdownMenuItem<String>(
+                    value: status,
+                    child: Text(
+                      status,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.black,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() => selectedStatus = value);
+                  _applyFilters();
+                },
+              ),
             ),
           ),
         ),
       ),
       const SizedBox(width: 8),
       // Date Range Selector
-      Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Start Date
-            InkWell(
-              onTap: () => _selectDate(context, true),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'From',
-                      style: TextStyle(
-                        fontSize: Get.height * 0.012,
-                        color: AppColors.black.withOpacity(0.6),
-                      ),
+      Expanded(
+        child: Container(
+          height: 48, // Same height as filter dropdown
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
+          ),
+          child: Row(
+            children: [
+              // Start Date
+              Expanded(
+                child: InkWell(
+                  onTap: () => _selectDate(context, true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'From',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.black.withOpacity(0.6),
+                          ),
+                        ),
+                        Text(
+                          startDate != null 
+                              ? DateFormat('MMM dd').format(startDate!)
+                              : 'Select',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: startDate != null 
+                                ? AppColors.secondaryColor 
+                                : AppColors.black.withOpacity(0.5),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      startDate != null 
-                          ? DateFormat('MMM dd, yyyy').format(startDate!)
-                          : 'Select Date',
-                      style: TextStyle(
-                        fontSize: Get.height * 0.014,
-                        color: startDate != null ? AppColors.secondaryColor : AppColors.black.withOpacity(0.5),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            // Divider
-            Container(
-              height: 24,
-              width: 1,
-              color: AppColors.darkGrey.withOpacity(0.2),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-            ),
-            // End Date
-            InkWell(
-              onTap: () => _selectDate(context, false),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'To',
-                      style: TextStyle(
-                        fontSize: Get.height * 0.012,
-                        color: AppColors.black.withOpacity(0.6),
-                      ),
+              // Divider
+              Container(
+                height: 24,
+                width: 1,
+                color: AppColors.darkGrey.withOpacity(0.2),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+              ),
+              // End Date
+              Expanded(
+                child: InkWell(
+                  onTap: () => _selectDate(context, false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'To',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.black.withOpacity(0.6),
+                          ),
+                        ),
+                        Text(
+                          endDate != null 
+                              ? DateFormat('MMM dd').format(endDate!)
+                              : 'Select',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: endDate != null 
+                                ? AppColors.secondaryColor 
+                                : AppColors.black.withOpacity(0.5),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      endDate != null 
-                          ? DateFormat('MMM dd, yyyy').format(endDate!)
-                          : 'Select Date',
-                      style: TextStyle(
-                        fontSize: Get.height * 0.014,
-                        color: endDate != null ? AppColors.secondaryColor : AppColors.black.withOpacity(0.5),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-            // Calendar Icon
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Icon(
-                Icons.calendar_today,
-                size: 20,
-                color: AppColors.secondaryColor,
+              // Calendar Icon
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.calendar_today,
+                  size: 20,
+                  color: AppColors.secondaryColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ],
+  ],
   ),
 ),
 
