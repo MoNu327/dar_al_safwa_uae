@@ -1,27 +1,27 @@
 class ComplaintStatisticsResponse {
   final bool success;
-  final TechnicanMessage message;
-  final TechnicanData data;
+  final TechnicanMessage? message; // Made nullable
+  final TechnicanData? data; // Made nullable
 
   ComplaintStatisticsResponse({
     required this.success,
-    required this.message,
-    required this.data,
+    this.message,
+    this.data,
   });
 
   factory ComplaintStatisticsResponse.fromJson(Map<String, dynamic> json) {
     return ComplaintStatisticsResponse(
-      success: json['success'],
-      message: TechnicanMessage.fromJson(json['message']),
-      data: TechnicanData.fromJson(json['data']),
+      success: json['success'] ?? false,
+      message: json['message'] != null ? TechnicanMessage.fromJson(json['message']) : null,
+      data: json['data'] != null ? TechnicanData.fromJson(json['data']) : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'success': success,
-      'message': message.toJson(),
-      'data': data.toJson(),
+      'message': message?.toJson(),
+      'data': data?.toJson(),
     };
   }
 }
@@ -37,8 +37,8 @@ class TechnicanMessage {
 
   factory TechnicanMessage.fromJson(Map<String, dynamic> json) {
     return TechnicanMessage(
-      en: json['en'],
-      ar: json['ar'],
+      en: json['en']?.toString() ?? '',
+      ar: json['ar']?.toString() ?? '',
     );
   }
 
@@ -63,11 +63,13 @@ class TechnicanData {
 
   factory TechnicanData.fromJson(Map<String, dynamic> json) {
     return TechnicanData(
-      propertyStats: (json['propertyStats'] as List)
-          .map((e) => PropertyStats.fromJson(e))
-          .toList(),
-      location: json['location'],
-      technicianId: json['technician_id'],
+      propertyStats: json['propertyStats'] != null 
+          ? (json['propertyStats'] as List)
+              .map((e) => PropertyStats.fromJson(e))
+              .toList()
+          : [],
+      location: json['location']?.toString() ?? '',
+      technicianId: json['technician_id']?.toString() ?? '',
     );
   }
 
@@ -103,14 +105,14 @@ class PropertyStats {
 
   factory PropertyStats.fromJson(Map<String, dynamic> json) {
     return PropertyStats(
-      propertyId: json['property_id'],
-      propertyName: json['property_name'],
-      totalComplaints: json['total_complaints'],
-      unattended: json['unattended'],
-      inProgress: json['in_progress'],
-      resolved: json['resolved'],
-      escalatedToMe: json['escalated_to_me'],
-      escalatedByMe: json['escalated_by_me'],
+      propertyId: json['property_id']?.toString() ?? '',
+      propertyName: json['property_name']?.toString() ?? '',
+      totalComplaints: json['total_complaints']?.toString() ?? '0',
+      unattended: json['unattended']?.toString() ?? '0',
+      inProgress: json['in_progress']?.toString() ?? '0',
+      resolved: json['resolved']?.toString() ?? '0',
+      escalatedToMe: json['escalated_to_me']?.toString() ?? '0',
+      escalatedByMe: json['escalated_by_me']?.toString() ?? '0',
     );
   }
 

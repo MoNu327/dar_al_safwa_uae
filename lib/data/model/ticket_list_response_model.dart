@@ -430,6 +430,8 @@ class Complaint {
         ? (complaint['images'] as Map).cast<String, dynamic>() 
         : <String, dynamic>{};
 
+
+    
     // Enhanced technician parsing with multiple fallbacks
     List<Technician> parsedTechnicians = [];
     

@@ -87,6 +87,7 @@
 import 'dart:convert';
 import 'package:dar_al_safwa/data/datasources/api_client.dart';
 import 'package:dar_al_safwa/data/model/full_complaint_model.dart';
+import 'package:dar_al_safwa/data/model/tenant_summary_model.dart';
 import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
 import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
@@ -110,7 +111,9 @@ class TenantsTicketsController extends GetxController {
   RxBool isComplaintLoading = false.obs;
   RxString complaintErrorMessage = ''.obs;
   final RxBool hasComplaints = false.obs;
-  
+   final isStatsLoading = false.obs; // Using GetX observable
+  final statsErrorMessage = ''.obs;
+  final technicianStats = Rxn<TenantSummary>(); 
   // Property related observables
   RxList<TenantPropertyModel> properties = <TenantPropertyModel>[].obs;
   RxBool isLoading = false.obs;
@@ -159,6 +162,10 @@ class TenantsTicketsController extends GetxController {
       isLoading.value = false;
     }
   }
+
+
+
+  
 
   /// Fetch tenant complaints
   Future<void> fetchTenantComplaints() async {
@@ -274,9 +281,88 @@ class TenantsTicketsController extends GetxController {
       isAssigning.value = false;
     }
   }
+  
 
   /// Clear selected technician
   void clearTechnicianSelection() {
     selectedTechnicianId.value = '';
   }
+
+
+Future<void> getSummaryForTenant(String userId) async {
+  debugPrint('[getSummaryForTenant] Starting with userId: $userId');
+  
+  isStatsLoading.value = true;
+  statsErrorMessage.value = '';
+  technicianStats.value = null;
+
+  try {
+    final response = await apiClient.request(
+      "Tenant/PropertyStats",
+      method: "post",
+      data: {"user_id": userId},
+    );
+
+    debugPrint('[getSummaryForTenant] Status: ${response.statusCode}');
+    debugPrint('[getSummaryForTenant] Raw response: ${jsonEncode(response.data)}'); // Better formatting
+    
+    if (response.statusCode == 200 && response.data['success'] == true) {
+      // Enhanced debug logging
+      debugPrint('[getSummaryForTenant] Full response structure:');
+      debugPrint(jsonEncode(response.data)); // Pretty-print JSON
+      
+      try {
+        // Parse the response
+        final summary = TenantSummary.fromJson(response.data);
+        technicianStats.value = summary;
+        
+        // Enhanced validation
+        if (summary.propertyStats.isEmpty) {
+          debugPrint('[getSummaryForTenant] Warning: Received empty property stats');
+          statsErrorMessage.value = 'No property statistics available';
+        } else {
+          debugPrint('[getSummaryForTenant] Successfully parsed ${summary.propertyStats.length} properties');
+          
+          // Detailed property debug output
+          for (final stat in summary.propertyStats) {
+            debugPrint('''
+            Property Details:
+            - ID: ${stat.propertyId}
+            - Name: ${stat.propertyName}
+            - Total Complaints: ${stat.totalComplaints}
+            - Started: ${stat.startedWorking}
+            - In Progress: ${stat.inProgress}
+            - Resolved: ${stat.resolved}
+            --------------------------
+            ''');
+          }
+        }
+      } catch (e, stackTrace) {
+        debugPrint('[getSummaryForTenant] Parse error: $e');
+        debugPrint(stackTrace.toString());
+        statsErrorMessage.value = 'Data format error: ${e.toString()}';
+      }
+    } else {
+      final errorMsg = response.data['message'] is Map 
+          ? response.data['message']['en'] ?? 'Request failed'
+          : response.data['message']?.toString() ?? 'Request failed';
+      statsErrorMessage.value = errorMsg;
+      debugPrint('[getSummaryForTenant] API Error: $errorMsg');
+    }
+  } on DioException catch (e) {
+    final errorMsg = e.response?.data?['message']?.toString() ?? e.message ?? 'Network error';
+    statsErrorMessage.value = errorMsg;
+    debugPrint('[getSummaryForTenant] DioError: $errorMsg');
+    debugPrint(e.stackTrace?.toString() ?? 'No stack trace');
+  } catch (e, stackTrace) {
+    statsErrorMessage.value = 'Unexpected error: ${e.toString()}';
+    debugPrint('[getSummaryForTenant] Unexpected error: $e');
+    debugPrint(stackTrace.toString());
+  } finally {
+    isStatsLoading.value = false;
+    // Force UI update if needed
+    technicianStats.refresh();
+    debugPrint('[getSummaryForTenant] Completed loading');
+  }
+}
 }

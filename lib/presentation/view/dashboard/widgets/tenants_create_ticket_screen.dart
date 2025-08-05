@@ -6,6 +6,8 @@ import 'package:dar_al_safwa/data/model/tenant_compliant_subtitle.dart';
 import 'package:dar_al_safwa/data/repositories/api_services.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_tickets_controller.dart' show TenantsTicketsController;
+import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,6 +38,7 @@ class TenantsCreateTicketScreen extends StatefulWidget {
 }
 
 class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
   final TenantComplaintRegisterController complaintController =
       Get.put(TenantComplaintRegisterController());
 
@@ -53,13 +56,30 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
   void initState() {
     super.initState();
 
-    complaintController.getComplaintList(); // Fetch categories from API
+    complaintController.getComplaintList();
+     // Fetch categories from API
   }
    Future<void> _loadComplaints() async {
   try {
     await fetchComplaintsControler.fetchTenantComplaints();
   } catch (e) {
     debugPrint("Error loading complaints: $e");
+  }
+}
+
+Future<void> _loadsummary(String userId) async {
+  debugPrint('[_loadsummary] Starting load for user: $userId');
+  try {
+    await fetchComplaintsControler.getSummaryForTenant(userId);
+  } on DioException catch (e) {
+    debugPrint("Network error loading complaints: ${e.message}");
+    // Consider setting an error message visible to users
+  } catch (e, stackTrace) {
+    debugPrint("Unexpected error loading complaints: $e");
+    debugPrint(stackTrace.toString());
+    // Consider setting an error message visible to users
+  } finally {
+    debugPrint('[_loadsummary] Completed loading attempt');
   }
 }
 
@@ -446,8 +466,10 @@ Future<void> _pickFromGallery() async {
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.onlineGreen,
       colorText: AppColors.white,
+      
     );
    _loadComplaints(); // Refresh complaints list
+   _loadsummary('userId');
     Navigator.pop(context); // Close the screen after submission
   }
 

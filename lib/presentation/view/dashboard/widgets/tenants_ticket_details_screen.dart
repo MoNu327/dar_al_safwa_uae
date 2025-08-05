@@ -758,20 +758,35 @@ void _buildTimelineSteps() {
   }
 
   // Step 5: Payment (if applicable)
-  if (complaint.amountPaid?.isNotEmpty == true) {
-    final isPaid = complaint.amountPaidStatus?.toLowerCase().contains('paid') == true;
-    timelineSteps.add(TimelineStep(
-      title: 'Payment',
-      subtitle: isPaid ? 'Payment completed' : 'Payment pending',
-      date: complaint.lastUpdated ?? complaint.date,
-      status: isPaid ? TimelineStepStatus.completed : TimelineStepStatus.pending,
-      icon: HugeIcons.strokeRoundedCreditCard,
-      details: [
-        'Amount: ${complaint.amountPaid}',
-        'Status: ${complaint.amountPaidStatus ?? 'Pending'}',
-      ],
-    ));
-    debugPrint('Added payment step');
+ if (complaint.amountPaid != null && complaint.amountPaid!.isNotEmpty) {
+    final amount = double.tryParse(complaint.amountPaid!) ?? 0;
+    if (amount > 0) {
+      final isPaid = (complaint.amountPaidStatus?.toLowerCase().contains('paid') ?? false);
+      final paymentDate = complaint.lastUpdated ?? complaint.date;
+      
+      timelineSteps.add(TimelineStep(
+        title: 'Payment',
+        subtitle: isPaid ? 'Payment completed' : 'Payment pending',
+        date: paymentDate,
+        status: isPaid ? TimelineStepStatus.completed : TimelineStepStatus.pending,
+        icon: HugeIcons.strokeRoundedCreditCard,
+        details: [
+          'Amount: ${amount.toStringAsFixed(2)}',
+          'Status: ${complaint.amountPaidStatus ?? 'Pending'}',
+          if (paymentDate.isNotEmpty) 
+            'Processed: ${DateFormatter.formatTo12Hour(paymentDate)}',
+        ],
+      ));
+      debugPrint('Payment step added with amount: $amount');
+    } else {
+      debugPrint('Payment amount is zero or invalid: ${complaint.amountPaid}');
+    }
+  } else {
+    debugPrint('''
+      No valid payment data found:
+      amountPaid: ${complaint.amountPaid}
+      amountPaidStatus: ${complaint.amountPaidStatus}
+    ''');
   }
 
   // Step 6: Resolution

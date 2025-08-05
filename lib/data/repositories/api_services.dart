@@ -438,6 +438,22 @@ Future<Response> updateTechnicianComplaint({
 
 
 
+  Future<Response> getSummaryForTenant(String user_id) async {
+    try {
+      final response = await apiClient.request(
+        "Tenant/PropertyStats",
+        method: "post",
+        data: {"user_id": user_id},
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+
+
 
   Future<Response> getPropertyDetails(int propertyId) async {
     try {

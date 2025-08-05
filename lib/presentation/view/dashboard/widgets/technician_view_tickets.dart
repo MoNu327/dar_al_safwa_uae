@@ -153,31 +153,41 @@ Future<void> _selectDate(BuildContext context, bool isStartDate) async {
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                     children: [
-                      _buildStatItem(
-                        icon: Icons.apartment,
-                        value: stats.data.propertyStats.length.toString(),
-                        label: 'Properties',
-                        color: AppColors.warning
-                      ),
-                      _buildStatItem(
-                        icon: Icons.list_alt,
-                        value: stats.data.propertyStats.fold<int>(0, (sum, stat) => sum + int.parse(stat.totalComplaints)).toString(),
-                        label: 'Total Tickets' ,
-                        color: AppColors.warning
-                      ),
-                      _buildStatItem(
-                        icon: Icons.pending_actions,
-                        value: stats.data.propertyStats.fold<int>(0, (sum, stat) => sum + int.parse(stat.unattended) + int.parse(stat.inProgress)).toString(),
-                        label: 'Active Tickets',
-                        color: AppColors.warning,
-                      ),
-                      _buildStatItem(
-                        icon: Icons.check_circle,
-                        value: stats.data.propertyStats.fold<int>(0, (sum, stat) => sum + int.parse(stat.resolved)).toString(),
-                        label: 'Resolved',
-                        color: AppColors.onlineGreen,
-                      ),
-                    ],
+  _buildStatItem(
+    icon: Icons.apartment,
+    value: (stats.data?.propertyStats.length ?? 0).toString(),
+    label: 'Properties',
+    color: AppColors.warning
+  ),
+  _buildStatItem(
+    icon: Icons.list_alt,
+    value: (stats.data?.propertyStats.fold<int>(0, (sum, stat) {
+      final totalComplaints = int.tryParse(stat.totalComplaints) ?? 0;
+      return sum + totalComplaints;
+    }) ?? 0).toString(),
+    label: 'Total Tickets',
+    color: AppColors.warning
+  ),
+  _buildStatItem(
+    icon: Icons.pending_actions,
+    value: (stats.data?.propertyStats.fold<int>(0, (sum, stat) {
+      final unattended = int.tryParse(stat.unattended) ?? 0;
+      final inProgress = int.tryParse(stat.inProgress) ?? 0;
+      return sum + unattended + inProgress;
+    }) ?? 0).toString(),
+    label: 'Active Tickets',
+    color: AppColors.warning,
+  ),
+  _buildStatItem(
+    icon: Icons.check_circle,
+    value: (stats.data?.propertyStats.fold<int>(0, (sum, stat) {
+      final resolved = int.tryParse(stat.resolved) ?? 0;
+      return sum + resolved;
+    }) ?? 0).toString(),
+    label: 'Resolved',
+    color: AppColors.onlineGreen,
+  ),
+],
                   ),
                 ],
               ),

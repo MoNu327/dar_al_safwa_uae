@@ -39,7 +39,18 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
   void initState() {
     super.initState();
     _loadComplaints(); 
+    _loadData();
   }
+  
+  
+
+  Future<void> _loadData() async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId != null) {
+    await controller.getSummaryForTenant(userId);
+    await controller.fetchTenantComplaints();
+  }
+}
 
   /// Fetch complaints from API
  Future<void> _loadComplaints() async {
@@ -102,6 +113,8 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
           children: [
             Column(
               children: [
+
+                 _buildSummarySection(),
                 // Search Bar
                 CustomTextFieldWidget(
                   hintText: "Search ticket by ID or Issue...",
@@ -255,7 +268,164 @@ void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
   );
 }
 
+Widget _buildSummarySection() {
+  return Obx(() {
+    debugPrint('[SummaryWidget] Building with:');
+    debugPrint('- isLoading: ${controller.isStatsLoading.value}');
+    debugPrint('- error: ${controller.statsErrorMessage.value}');
+    debugPrint('- stats: ${controller.technicianStats.value?.propertyStats.length} properties');
+    
+    if (controller.isStatsLoading.value) {
+      return const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: LinearProgressIndicator(),
+      );
+    }
+    
+    if (controller.statsErrorMessage.value.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Text(
+          controller.statsErrorMessage.value,
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
 
+    final summary = controller.technicianStats.value;
+    if (summary == null) {
+      debugPrint('[SummaryWidget] Summary is null');
+      return const Text('No summary data available');
+    }
+
+    // Calculate totals
+    final totalTickets = summary.propertyStats.fold<int>(0, (sum, stat) {
+      return sum + (int.tryParse(stat.totalComplaints) ?? 0);
+    });
+    
+    final totalActive = summary.propertyStats.fold<int>(0, (sum, stat) {
+      final started = int.tryParse(stat.startedWorking) ?? 0;
+      final inProgress = int.tryParse(stat.inProgress) ?? 0;
+      return sum + started + inProgress;
+    });
+    
+    final totalResolved = summary.propertyStats.fold<int>(0, (sum, stat) {
+      return sum + (int.tryParse(stat.resolved) ?? 0);
+    });
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primaryColor.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const CustomTextWidget(
+            title: 'Your Tickets Summary',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppColors.secondaryColor,
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            childAspectRatio: 2.5,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            children: [
+              _buildStatItem(
+                icon: Icons.home_work_outlined,
+                value: summary.propertyStats.length.toString(),
+                label: 'Properties',
+                color: AppColors.primaryColor,
+              ),
+              _buildStatItem(
+                icon: Icons.list_alt,
+                value: totalTickets.toString(),
+                label: 'Total Tickets',
+                color: AppColors.primaryColor,
+              ),
+              _buildStatItem(
+                icon: Icons.pending_actions,
+                value: totalActive.toString(),
+                label: 'Active Tickets',
+                color: AppColors.warning,
+              ),
+              _buildStatItem(
+                icon: Icons.check_circle,
+                value: totalResolved.toString(),
+                label: 'Resolved',
+                color: AppColors.onlineGreen,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  });
+}
+
+Widget _buildStatItem({
+  required IconData icon,
+  required String value,
+  required String label,
+  Color color = AppColors.primaryColor,
+}) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.1),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   /// Builds a single ticket card
   Widget _buildComplaintCard(Complaint complaint) {
