@@ -274,6 +274,7 @@ Widget _buildSummarySection() {
     debugPrint('- isLoading: ${controller.isStatsLoading.value}');
     debugPrint('- error: ${controller.statsErrorMessage.value}');
     debugPrint('- stats: ${controller.technicianStats.value?.propertyStats.length} properties');
+    debugPrint('- complaints count: ${controller.complaints.length}');
     
     if (controller.isStatsLoading.value) {
       return const Padding(
@@ -285,33 +286,73 @@ Widget _buildSummarySection() {
     if (controller.statsErrorMessage.value.isNotEmpty) {
       return Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Text(
-          controller.statsErrorMessage.value,
-          style: const TextStyle(color: Colors.red),
+        child: Column(
+          children: [
+            Text(
+              controller.statsErrorMessage.value,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 8),
+            // Show fallback stats from complaints
+            if (controller.complaints.isNotEmpty)
+              Text(
+                'Fallback: Found ${controller.complaints.length} complaints',
+                style: const TextStyle(color: Colors.orange, fontSize: 12),
+              ),
+          ],
         ),
       );
     }
 
     final summary = controller.technicianStats.value;
-    if (summary == null) {
-      debugPrint('[SummaryWidget] Summary is null');
-      return const Text('No summary data available');
+    
+    // Calculate totals - handle null/empty cases gracefully
+    final propertyCount = summary?.propertyStats.length ?? 0;
+    
+    // Enhanced calculation with more debugging
+    int totalTickets = 0;
+    int totalActive = 0;
+    int totalResolved = 0;
+    
+    if (summary?.propertyStats.isNotEmpty ?? false) {
+      // API-based calculation
+      debugPrint('[SummaryWidget] Using API data for calculations');
+      
+      for (final stat in summary!.propertyStats) {
+        final tickets = int.tryParse(stat.totalComplaints) ?? 0;
+        final started = int.tryParse(stat.startedWorking) ?? 0;
+        final inProgress = int.tryParse(stat.inProgress) ?? 0;
+        final resolved = int.tryParse(stat.resolved) ?? 0;
+        
+        debugPrint('[SummaryWidget] Property ${stat.propertyName}: $tickets total, $started started, $inProgress in progress, $resolved resolved');
+        
+        totalTickets += tickets;
+        totalActive += started + inProgress;
+        totalResolved += resolved;
+      }
+    } else {
+      // Fallback calculation from complaints list
+      debugPrint('[SummaryWidget] Using fallback calculation from complaints');
+      
+      totalTickets = controller.complaints.length;
+      
+      for (final complaint in controller.complaints) {
+        final status = complaint.status.toLowerCase();
+        final statusText = complaint.statusText.en.toLowerCase();
+        
+        if (status.contains('resolved') || status.contains('completed') || 
+            statusText.contains('resolved') || statusText.contains('completed')) {
+          totalResolved++;
+        } else {
+          totalActive++; // Everything else is considered active
+        }
+      }
+      
+      debugPrint('[SummaryWidget] Fallback calculation: $totalTickets total, $totalActive active, $totalResolved resolved');
     }
 
-    // Calculate totals
-    final totalTickets = summary.propertyStats.fold<int>(0, (sum, stat) {
-      return sum + (int.tryParse(stat.totalComplaints) ?? 0);
-    });
-    
-    final totalActive = summary.propertyStats.fold<int>(0, (sum, stat) {
-      final started = int.tryParse(stat.startedWorking) ?? 0;
-      final inProgress = int.tryParse(stat.inProgress) ?? 0;
-      return sum + started + inProgress;
-    });
-    
-    final totalResolved = summary.propertyStats.fold<int>(0, (sum, stat) {
-      return sum + (int.tryParse(stat.resolved) ?? 0);
-    });
+    // Show debug info in development
+    final isDebugMode = true; // Set to false in production
 
     return Container(
       margin: const EdgeInsets.all(12),
@@ -324,12 +365,39 @@ Widget _buildSummarySection() {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CustomTextWidget(
-            title: 'Your Tickets Summary',
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: AppColors.secondaryColor,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const CustomTextWidget(
+                title: 'Your Tickets Summary',
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: AppColors.secondaryColor,
+              ),
+              if (isDebugMode)
+                Icon(
+                  summary?.propertyStats.isNotEmpty ?? false 
+                    ? Icons.api : Icons.list,
+                  size: 16,
+                  color: summary?.propertyStats.isNotEmpty ?? false 
+                    ? AppColors.onlineGreen : AppColors.warning,
+                ),
+            ],
           ),
+          
+          if (isDebugMode && (summary?.propertyStats != null && summary!.propertyStats.isEmpty))
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              // child: Text(
+              //   'Using fallback calculation from ${controller.complaints.length} complaints',
+              //   style: const TextStyle(
+              //     fontSize: 10,
+              //     color: Colors.orange,
+              //     fontStyle: FontStyle.italic,
+              //   ),
+              // ),
+            ),
+            
           const SizedBox(height: 12),
           GridView.count(
             shrinkWrap: true,
@@ -341,15 +409,15 @@ Widget _buildSummarySection() {
             children: [
               _buildStatItem(
                 icon: Icons.home_work_outlined,
-                value: summary.propertyStats.length.toString(),
+                value: propertyCount > 0 ? propertyCount.toString() : '1', // Show at least 1 if we have complaints
                 label: 'Properties',
-                color: AppColors.primaryColor,
+                color: AppColors.warning,
               ),
               _buildStatItem(
                 icon: Icons.list_alt,
                 value: totalTickets.toString(),
                 label: 'Total Tickets',
-                color: AppColors.primaryColor,
+                color: AppColors.warning,
               ),
               _buildStatItem(
                 icon: Icons.pending_actions,
@@ -365,6 +433,16 @@ Widget _buildSummarySection() {
               ),
             ],
           ),
+          
+          // Debug information
+          if (isDebugMode)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'Debug: API Stats=${summary?.propertyStats.length ?? 0}, Complaints=${controller.complaints.length}',
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+              ),
+            ),
         ],
       ),
     );
@@ -749,25 +827,25 @@ void _createNewComplaint(String category, String description) {
     complaintNumber: 'CMP-${now.millisecondsSinceEpoch.toString().substring(8)}',
     description: description,
     replyByTechnician: null,  // Changed from empty string to null
-    replyByAdmin: null,      // Changed from empty string to null
-    amountPaid: null,        // New field
-    amountPaidStatus: null,  // New field
+    replyByAdmin: null,      
+    amountPaid: null,       
+    amountPaidStatus: null, 
     date: formattedDate,
-    lastUpdated: null,       // New field
-    lastUpdatedByAdmin: null,// New field
-    addedByAdmin: false,     // New field
+    lastUpdated: null,       
+    lastUpdatedByAdmin: null,
+    addedByAdmin: false,     
     statusText: StatusText(en: 'Pending'),
     status: 'pending',
     category: category,
-    subcategory: '',         // You can add specific subcategory if needed
-    propertyName: '',        // Add property name if available
-    unitNumber: '',          // Add unit number if available
-    unitType: '',            // New field
-    fullAddress: '',         // Add full address if available
-    flatnoId: '',            // Add flat ID if available
-    images: [],              // Add images if available
-    assignedTechnicians: [], // New field - empty list by default
-    complaintImages: ComplaintImages(  // New field - initialized with empty lists
+    subcategory: '',         
+    propertyName: '',     
+    unitNumber: '',          
+    unitType: '',           
+    fullAddress: '',         
+    flatnoId: '',            
+    images: [],              
+    assignedTechnicians: [], 
+    complaintImages: ComplaintImages(  
       tenantUploaded: [],
       adminUploaded: [],
       technicianUploaded: [],

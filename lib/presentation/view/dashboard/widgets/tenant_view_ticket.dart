@@ -590,7 +590,8 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
   }
 
   /// Fetch tenant summary statistics
- Future<void> _loadTenantSummary() async {
+/// Fetch tenant summary statistics
+Future<void> _loadTenantSummary() async {
   try {
     setState(() {
       isLoadingSummary = true;
@@ -605,27 +606,47 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
       return;
     }
 
-    // Assuming controller is your state management class
+    debugPrint("Loading tenant summary for userId: $userId");
+    
+    // Call the controller method
     await controller.getSummaryForTenant(userId);
     
-    // Access the data from the controller's state
+    // Check if we have valid data
     if (controller.technicianStats.value != null) {
-      setState(() {
-        tenantSummary = controller.technicianStats.value;
-        final propertyCount = tenantSummary?.propertyStats.length ?? 0;
-        debugPrint('Tenant summary loaded: $propertyCount properties');
-        isLoadingSummary = false;
-      });
+      final summary = controller.technicianStats.value!;
+      
+      // Additional validation: check if propertyStats is not empty
+      if (summary.propertyStats.isNotEmpty) {
+        setState(() {
+          tenantSummary = summary;
+          final propertyCount = summary.propertyStats.length;
+          debugPrint('Tenant summary loaded successfully: $propertyCount properties');
+          isLoadingSummary = false;
+        });
+      } else {
+        // Handle case where summary exists but has no properties
+        debugPrint("Tenant summary loaded but no properties found");
+        setState(() {
+          tenantSummary = null; // Set to null so it doesn't display
+          isLoadingSummary = false;
+        });
+      }
     } else {
-      String errorMessage = controller.statsErrorMessage.value;
+      // Handle case where no summary was returned
+      String errorMessage = controller.statsErrorMessage.value.isNotEmpty 
+          ? controller.statsErrorMessage.value 
+          : "No summary data available";
       debugPrint("Failed to load summary: $errorMessage");
       setState(() {
+        tenantSummary = null;
         isLoadingSummary = false;
       });
     }
-  } catch (e) {
+  } catch (e, stackTrace) {
     debugPrint("Error loading tenant summary: $e");
+    debugPrint("Stack trace: $stackTrace");
     setState(() {
+      tenantSummary = null;
       isLoadingSummary = false;
     });
   }

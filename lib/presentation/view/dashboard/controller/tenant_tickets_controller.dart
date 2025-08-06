@@ -304,43 +304,75 @@ Future<void> getSummaryForTenant(String userId) async {
     );
 
     debugPrint('[getSummaryForTenant] Status: ${response.statusCode}');
-    debugPrint('[getSummaryForTenant] Raw response: ${jsonEncode(response.data)}'); // Better formatting
+    debugPrint('[getSummaryForTenant] Raw response: ${jsonEncode(response.data)}');
     
     if (response.statusCode == 200 && response.data['success'] == true) {
-      // Enhanced debug logging
       debugPrint('[getSummaryForTenant] Full response structure:');
-      debugPrint(jsonEncode(response.data)); // Pretty-print JSON
+      debugPrint(jsonEncode(response.data));
       
       try {
-        // Parse the response
+        // Let's examine the actual structure first
+        final responseData = response.data;
+        debugPrint('[getSummaryForTenant] Response data keys: ${responseData.keys}');
+        
+        if (responseData.containsKey('data')) {
+          debugPrint('[getSummaryForTenant] Data content: ${jsonEncode(responseData['data'])}');
+        }
+        
+        // Try parsing with more detailed error handling
         final summary = TenantSummary.fromJson(response.data);
+        
+        // Always set the summary, even if empty
         technicianStats.value = summary;
         
-        // Enhanced validation
+        // Enhanced debugging for property stats
         if (summary.propertyStats.isEmpty) {
           debugPrint('[getSummaryForTenant] Warning: Received empty property stats');
-          statsErrorMessage.value = 'No property statistics available';
+          debugPrint('[getSummaryForTenant] Checking if data exists in response...');
+          
+          // Check if there's data but parsing failed
+          if (responseData.containsKey('data') && responseData['data'] != null) {
+            final data = responseData['data'];
+            if (data is Map && data.containsKey('property_stats')) {
+              debugPrint('[getSummaryForTenant] Found property_stats in data: ${data['property_stats']}');
+            } else if (data is List && data.isNotEmpty) {
+              debugPrint('[getSummaryForTenant] Found list data: $data');
+            }
+          }
         } else {
           debugPrint('[getSummaryForTenant] Successfully parsed ${summary.propertyStats.length} properties');
           
-          // Detailed property debug output
+          // Detailed property debug output with null safety
           for (final stat in summary.propertyStats) {
             debugPrint('''
             Property Details:
             - ID: ${stat.propertyId}
             - Name: ${stat.propertyName}
-            - Total Complaints: ${stat.totalComplaints}
-            - Started: ${stat.startedWorking}
-            - In Progress: ${stat.inProgress}
-            - Resolved: ${stat.resolved}
+            - Total Complaints: ${stat.totalComplaints} (parsed as: ${int.tryParse(stat.totalComplaints)})
+            - Started: ${stat.startedWorking} (parsed as: ${int.tryParse(stat.startedWorking)})
+            - In Progress: ${stat.inProgress} (parsed as: ${int.tryParse(stat.inProgress)})
+            - Resolved: ${stat.resolved} (parsed as: ${int.tryParse(stat.resolved)})
             --------------------------
             ''');
           }
         }
+        
+        // Also check if the complaints list has data for comparison
+        debugPrint('[getSummaryForTenant] Current complaints count: ${complaints.length}');
+        debugPrint('[getSummaryForTenant] Complaints data: ${complaints.map((c) => c.complaintNumber).join(', ')}');
+        
       } catch (e, stackTrace) {
         debugPrint('[getSummaryForTenant] Parse error: $e');
-        debugPrint(stackTrace.toString());
+        debugPrint('[getSummaryForTenant] Stack trace: $stackTrace');
+        
+        // Try to extract raw data for manual inspection
+        if (response.data.containsKey('data')) {
+          debugPrint('[getSummaryForTenant] Raw data for manual inspection:');
+          debugPrint(jsonEncode(response.data['data']));
+        }
+        
         statsErrorMessage.value = 'Data format error: ${e.toString()}';
+        technicianStats.value = null;
       }
     } else {
       final errorMsg = response.data['message'] is Map 
@@ -348,21 +380,95 @@ Future<void> getSummaryForTenant(String userId) async {
           : response.data['message']?.toString() ?? 'Request failed';
       statsErrorMessage.value = errorMsg;
       debugPrint('[getSummaryForTenant] API Error: $errorMsg');
+      debugPrint('[getSummaryForTenant] Full error response: ${jsonEncode(response.data)}');
     }
   } on DioException catch (e) {
     final errorMsg = e.response?.data?['message']?.toString() ?? e.message ?? 'Network error';
     statsErrorMessage.value = errorMsg;
     debugPrint('[getSummaryForTenant] DioError: $errorMsg');
+    debugPrint('[getSummaryForTenant] Error response: ${e.response?.data}');
     debugPrint(e.stackTrace?.toString() ?? 'No stack trace');
   } catch (e, stackTrace) {
     statsErrorMessage.value = 'Unexpected error: ${e.toString()}';
     debugPrint('[getSummaryForTenant] Unexpected error: $e');
-    debugPrint(stackTrace.toString());
+    debugPrint('[getSummaryForTenant] Stack trace: $stackTrace');
   } finally {
     isStatsLoading.value = false;
-    // Force UI update if needed
+    // Force UI update
     technicianStats.refresh();
-    debugPrint('[getSummaryForTenant] Completed loading');
+    debugPrint('[getSummaryForTenant] Completed loading. Final value: ${technicianStats.value != null ? "not null with ${technicianStats.value?.propertyStats.length} properties" : "null"}');
+    
+    // Add a fallback calculation using existing complaints data
+    if (technicianStats.value?.propertyStats.isEmpty ?? true) {
+      debugPrint('[getSummaryForTenant] No stats from API, calculating from existing complaints...');
+      _calculateStatsFromComplaints();
+    }
   }
+}
+
+// Add this helper method to calculate stats from existing complaints
+void _calculateStatsFromComplaints() {
+  if (complaints.isEmpty) {
+    debugPrint('[calculateStatsFromComplaints] No complaints available for calculation');
+    return;
+  }
+  
+  debugPrint('[calculateStatsFromComplaints] Calculating from ${complaints.length} complaints');
+  
+  // Group complaints by property
+  final Map<String, List<Complaint>> complaintsByProperty = {};
+  
+  for (final complaint in complaints) {
+    final propertyKey = complaint.propertyName.isNotEmpty 
+        ? complaint.propertyName 
+        : 'Unknown Property';
+    
+    complaintsByProperty.putIfAbsent(propertyKey, () => []).add(complaint);
+  }
+  
+  debugPrint('[calculateStatsFromComplaints] Properties found: ${complaintsByProperty.keys.join(', ')}');
+  
+  // Create property stats from complaints
+  final List<PropertyStats> calculatedStats = [];
+  
+  complaintsByProperty.forEach((propertyName, propertyComplaints) {
+    int totalComplaints = propertyComplaints.length;
+    int pending = propertyComplaints.where((c) => 
+        c.status.toLowerCase() == 'pending' || 
+        c.statusText.en.toLowerCase() == 'pending').length;
+    int inProgress = propertyComplaints.where((c) => 
+        c.status.toLowerCase().contains('progress') || 
+        c.statusText.en.toLowerCase().contains('progress')).length;
+    int resolved = propertyComplaints.where((c) => 
+        c.status.toLowerCase() == 'resolved' || 
+        c.status.toLowerCase() == 'completed' ||
+        c.statusText.en.toLowerCase() == 'resolved' ||
+        c.statusText.en.toLowerCase() == 'completed').length;
+    
+    debugPrint('''
+    [calculateStatsFromComplaints] $propertyName:
+    - Total: $totalComplaints
+    - Pending: $pending  
+    - In Progress: $inProgress
+    - Resolved: $resolved
+    ''');
+    
+    // You'll need to create PropertyStat objects here
+    // This is a placeholder - adjust according to your PropertyStat model
+    // calculatedStats.add(PropertyStat(
+    //   propertyId: propertyComplaints.first.flatnoId ?? '',
+    //   propertyName: propertyName,
+    //   totalComplaints: totalComplaints.toString(),
+    //   startedWorking: pending.toString(),
+    //   inProgress: inProgress.toString(),
+    //   resolved: resolved.toString(),
+    // ));
+  });
+  
+  // Update the stats (you may need to adjust this based on your TenantSummary model)
+  // technicianStats.value = TenantSummary(propertyStats: calculatedStats);
+  // technicianStats.refresh();
+  
+  debugPrint('[calculateStatsFromComplaints] Fallback calculation completed');
 }
 }

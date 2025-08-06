@@ -1,426 +1,3 @@
-// import 'package:dar_al_safwa/data/datasources/api_client.dart';
-// import 'package:dar_al_safwa/data/model/technican_list_model.dart';
-// import 'package:dar_al_safwa/data/model/technican_summary_model.dart';
-// import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-// import 'package:dio/dio.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:intl/intl.dart';
-// import '../../../../data/model/technician_complaints_response.dart';
-// import '../../../../data/model/technican_ticket_view_model.dart';
-
-// class TechnicianTicketsController extends GetxController {
-//   var isLoading = false.obs;
-//   var tickets = <Complaint>[].obs; // List of complaints
-//   var selectedTicket = Rxn<TicketModel>(); // Single ticket details
-// final RxMap<String, bool> isAssigningMap = <String, bool>{}.obs;
-// RxMap<String, String> get assignedTechnicianIds => selectedTechnicianIds;
-// final RxList<Map<String, dynamic>> availableTechnicians = <Map<String, dynamic>>[].obs;
-// final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs;
-//   RxList<Complaint> ticket = <Complaint>[].obs;
-//   var filteredTickets = <Complaint>[].obs;
-//   final Rx<ComplaintStatisticsResponse?> technicianStats = Rx<ComplaintStatisticsResponse?>(null);
-//   final RxBool isStatsLoading = false.obs;
-//   final RxString statsErrorMessage = ''.obs;
-
-
-//   final ApiClient apiClient = ApiClient();  
-
-
-  
-
-// void applyFilters({
-//   String? status,
-//   DateTime? startDate,
-//   DateTime? endDate,
-// }) {
-//   List<Complaint> result = List.from(tickets); // Start with all tickets
-
-//   // Status filtering
-//   if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
-//     final normalizedSelectedStatus = status.toLowerCase().trim();
-    
-//     result = result.where((tickets) {
-//       final ticketStatus = tickets.statusText.en?.toLowerCase().trim() ?? '';
-//       debugPrint("🔍 Status Filter: Comparing selected '$normalizedSelectedStatus' vs ticket '$ticketStatus'");
-      
-//       // Enhanced status matching
-//       switch (normalizedSelectedStatus) {
-//         case 'pending':
-//           return ticketStatus == 'pending' || 
-//                  ticketStatus.contains('pend') ||
-//                  ticketStatus.contains('open');
-//         case 'in progress':
-//           return ticketStatus.contains('progress') || 
-//                  ticketStatus.contains('progres') ||
-//                  ticketStatus.contains('processing') ||
-//                  ticketStatus.contains('in-progress');
-//         case 'resolved':
-//           return ticketStatus.contains('resolve') ||
-//                  ticketStatus.contains('complete') ||
-//                  ticketStatus.contains('closed') ||
-//                  ticketStatus.contains('finished');
-//         default:
-//           return ticketStatus == normalizedSelectedStatus;
-//       }
-//     }).toList();
-//   }
-
-//   // Date range filtering
-//   if (startDate != null || endDate != null) {
-//     result = result.where((tickets) {
-//       try {
-//         final ticketDate = _parseTicketDate(tickets.lastUpdated ?? tickets.lastUpdated);
-//         if (ticketDate == null) {
-//           debugPrint("⚠️ Could not parse date for ticket ${tickets.complaintId}");
-//           return false;
-//         }
-
-//         // Normalize dates to midnight for comparison
-//         final ticketDateOnly = DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
-//         final startDateOnly = startDate != null 
-//             ? DateTime(startDate.year, startDate.month, startDate.day)
-//             : DateTime(1900); // Very early date if no start filter
-//         final endDateOnly = endDate != null
-//             ? DateTime(endDate.year, endDate.month, endDate.day)
-//             : DateTime(2100); // Very late date if no end filter
-
-//         debugPrint("📅 Date Filter: Ticket ${ticketDateOnly.toString()} between $startDateOnly and $endDateOnly");
-
-//         return (ticketDateOnly.isAtSameMomentAs(startDateOnly) || 
-//                 ticketDateOnly.isAfter(startDateOnly)) &&
-//                (ticketDateOnly.isAtSameMomentAs(endDateOnly) || 
-//                 ticketDateOnly.isBefore(endDateOnly));
-//       } catch (e) {
-//         debugPrint("❌ Error filtering by date for ticket ${tickets.complaintId}: $e");
-//         return false;
-//       }
-//     }).toList();
-//   }
-
-//   filteredTickets.assignAll(result);
-//   debugPrint("✅ Applied filters. ${filteredTickets.length} tickets match criteria.");
-// }
-
-// DateTime? _parseTicketDate(String? dateString) {
-//   if (dateString == null || dateString.isEmpty) {
-//     debugPrint("⚠️ Date string is null or empty");
-//     return null;
-//   }
-
-//   // Trim any whitespace and remove timezone indicators if present
-//   final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}$'), '');
-
-//   // Try multiple common date formats
-//   final possibleFormats = [
-//     "yyyy-MM-dd HH:mm:ss",      // 2025-08-01 14:30:00
-//     "yyyy-MM-ddTHH:mm:ss",      // 2025-08-01T14:30:00
-//     "yyyy-MM-dd",               // 2025-08-01
-//     "dd-MM-yyyy HH:mm:ss",      // 01-08-2025 14:30:00
-//     "MM/dd/yyyy HH:mm:ss",      // 08/01/2025 14:30:00
-//     "yyyy/MM/dd HH:mm:ss",      // 2025/08/01 14:30:00
-//     "EEE, dd MMM yyyy HH:mm:ss", // Tue, 01 Aug 2025 14:30:00
-//   ];
-
-//   for (final format in possibleFormats) {
-//     try {
-//       final date = DateFormat(format).parse(cleanDateString);
-//       debugPrint("✅ Parsed date '$dateString' as $date using format '$format'");
-//       return date;
-//     } catch (e) {
-//       // Try next format
-//     }
-//   }
-
-//   // Fallback to DateTime.parse if none of the formats worked
-//   try {
-//     final date = DateTime.parse(cleanDateString);
-//     debugPrint("✅ Parsed date '$dateString' as $date using DateTime.parse");
-//     return date;
-//   } catch (e) {
-//     debugPrint("❌ Failed to parse date: '$dateString'");
-//     return null;
-//   }
-// }
-
-
-
-//  Future<void> getSummaryForTechnician(String uid) async {
-//     isStatsLoading.value = true;
-//     statsErrorMessage.value = '';
-//     technicianStats.value = null;
-
-//     try {
-//       final response = await apiClient.request(
-//         "Technician/PropertyStats",
-//         method: "post",
-//         data: {"technician_id": uid},
-//       );
-
-//       if (response.data['success'] == true) {
-//         technicianStats.value = ComplaintStatisticsResponse.fromJson(response.data);
-//         debugPrint('Technician stats loaded: ${technicianStats.value?.data.propertyStats.length} properties');
-//       } else {
-//         statsErrorMessage.value = 
-//             response.data['message']?['en'] ?? 'Failed to load technician statistics';
-//       }
-//     } catch (e) {
-//       statsErrorMessage.value = 'Error loading technician stats: $e';
-//       debugPrint('Exception in getSummaryForTechnician: $e');
-//     } finally {
-//       isStatsLoading.value = false;
-//     }
-//   }
-
-//   // You can add helper methods to access the statistics more easily
-  
-
-
-//   /// Fetch available technicians (excluding current technician)
-// Future<void> getAvailableTechnicians() async {
-//   try {
-//     print("🔄 Starting technician fetch...");
-//     isLoading.value = true;
-//     print("🔁 isLoading set to true");
-
-//     availableTechnicians.clear();
-//     print("🧹 Cleared availableTechnicians list");
-
-//     final currentUid = FirebaseAuth.instance.currentUser?.uid;
-//     print("🧑‍💻 Current User UID (to exclude): $currentUid");
-
-//     final response = await apiClient.request(
-//       "technicians/except",
-//       method: "post",
-//       data: {
-//         "exclude_uid": currentUid,
-//       },
-//     );
-
-//     print("📡 Response received from API with status: ${response.statusCode}");
-//     print("📥 Raw response data: ${response.data}");
-
-//     if (response.statusCode == 200) {
-//       final parsedResponse = TechnicianDropdownResponse.fromJson(response.data);
-//       print("✅ Parsed response: ${parsedResponse.success}, Message: ${parsedResponse.displayMessage}");
-
-//       if (parsedResponse.success) {
-//         final techniciansList = parsedResponse.data.technicians.map((tech) => {
-//           'id': tech.uid,
-//           'name': tech.fullName,
-//         }).toList();
-
-//         availableTechnicians.assignAll(techniciansList);
-//         print("📋 Assigned ${techniciansList.length} available technicians to list");
-//         for (var tech in techniciansList) {
-//           print("🧑 Technician => ID: ${tech['id']}, Name: ${tech['name']}");
-//         }
-//       } else {
-//         print("❌ API responded with failure: ${parsedResponse.displayMessage}");
-//       }
-//     } else {
-//       print("❌ Unexpected status code: ${response.statusCode}");
-//     }
-//   } catch (e) {
-//     print("❌ Erroroccurred while fetching technicians: $e");
-//   } finally {
-//     isLoading.value = false;
-//   }
-// }
-
-// Future<void> assignTechnician(String complaintId, String technicianId) async {
-//   print("🔄 Assigning technician: $technicianId to complaint: $complaintId");
-//   try {
-//     setAssigning(complaintId, true);
-
-//     final userUid = FirebaseAuth.instance.currentUser?.uid;
-//     if (userUid == null) {
-//       print("❌ User UID is null");
-//       Get.snackbar('Error', 'User not logged in');
-//       return;
-//     }
-
-//     final response = await apiClient.request(
-//       "complaints/escalate",
-//       method: "post",
-//       data: {
-//         "complaint_id": complaintId,
-//         "technician_uid": technicianId,
-//         "user_uid": userUid,
-//       },
-//     );
-    
-//     print("📡 Escalate API Status: ${response.statusCode}");
-//     print("📥 Escalate API Raw Body: ${response.data}");
-    
-//     if (response.data['success'] == true) {
-//       Get.snackbar('✅ Success', 'Technician assigned successfully');
-//       selectedTechnicianIds.remove(complaintId);
-      
-//       // Instead of fetching all tickets, just remove the assigned one
-//       tickets.removeWhere((ticket) => ticket.complaintId == complaintId);
-//     } else {
-//       final errorMsg = response.data['message']?['en'] ?? 'Assignment failed';
-//       Get.snackbar('Error', errorMsg);
-//     }
-//   } catch (e) {
-//     Get.snackbar('Error', 'Failed to assign technician: ${e.toString()}');
-//   } finally {
-//     setAssigning(complaintId, false);
-//   }
-// }
-
-
-
-
-//   /// Fetch technician complaints (tickets)
-// Future<void> fetchTickets(String userId) async {
-//   try {
-//     isLoading.value = true;
-//     tickets.clear();
-
-//     final response = await apiClient.request(
-//       "technician/complaints",
-//       method: "post",
-//       data: {"uid": userId},
-//     );
-
-//     print("Response Status: ${response.statusCode}");
-//     print("🔍 Fetched complaints: ${response.data ?? 'null'}");
-
-//     final data = response.data;
-//     if (data == null) {
-//       print("⚠️ API returned null response");
-//       return;
-//     }
-
-//     if (data is List) {
-//       // Rare: API returns a bare list (no {status, data})
-//       final complaints = data
-//           .whereType<Map<String, dynamic>>()
-//           .map(Complaint.fromJson)
-//           .toList();
-//       tickets.addAll(complaints);
-//       print("✅ Complaints fetched (bare list): ${tickets.length}");
-//       return;
-//     }
-
-//     if (data is Map<String, dynamic>) {
-//       // Normal: { status, data: [...] } OR { status, data: {...} }
-//       final map = data;
-
-//      final bool ok = TechnicianComplaintsResponse.statusFromJson(map['status']);
-
-
-//       if (!ok) {
-//         print("⚠️ API status not OK");
-//         return;
-//       }
-
-//       final dynamic inner = map['data'];
-//       if (inner is List) {
-//         // Your current API shape (list of complaints)
-//         final complaints = inner
-//             .whereType<Map<String, dynamic>>()
-//             .map(Complaint.fromJson)
-//             .toList();
-
-//         if (complaints.isEmpty) {
-//           print("⚠️ API returned empty complaints list");
-//         } else {
-//           tickets.addAll(complaints);
-//           print("✅ Complaints fetched: ${tickets.length}");
-//         }
-//       } 
-//     //
-//     //else if (inner is Map<String, dynamic>) {
-//     //     // Fallback: single complaint shape using your existing model
-//     //     final parsed = ComplaintsResponse.fromJson(map);
-//     //     final single = parsed.data?.;
-//     //     if (single != null) {
-//     //       tickets.add(single);
-//     //       print("✅ Single complaint fetched: ${tickets.length}");
-//     //     } else {
-//     //       print("⚠️ No complaint data found");
-//     //     }
-//     //   } else {
-//     //     print("⚠️ Unexpected 'data' type: ${inner.runtimeType}");
-//     //   }
-//     //   return;
-//     }
-
-//     print("⚠️ Unexpected top-level response type: ${data.runtimeType}");
-//   } catch (e, st) {
-//     tickets.clear();
-//     print("❌ Error fetching complaints: $e");
-//     print(st);
-//   } finally {
-//     isLoading.value = false;
-//   }
-// }
-
-
-//   /// Fetch single complaint details by complaintId
-// //   Future<void> fetchComplaintDetails(String complaintId) async {
-// //     try {
-// //       isLoading.value = true;
-
-// //       final response = await apiClient.request(
-// //         "complaint-details",
-// //         method: "get", // Or "post" if API requires it
-// //         data: {
-// //           "complaint_id": complaintId,
-// //         },
-// //       );
-
-// //       if (response.data['success'] == true) {
-// //         selectedTicket.value = TicketModel.fromJson(response.data['data']);
-// //         print("✅ Ticket details fetched: ${selectedTicket.value?.complaintNumber}");
-// //       } else {
-// //         print("⚠️ Failed to load ticket details: ${response.data['message']['en']}");
-// //       }
-// //     } catch (e) {
-// //       print("❌ Error fetching complaint details: $e");
-// //     } finally {
-// //       isLoading.value = false;
-// //     }
-// //   }
-// //   void setAssigning(String complaintId, bool value) {
-// //   isAssigningMap[complaintId] = value;
-// // }
-  
-
-
-//    Future<void> fetchComplaintDetails(String complaintId) async {
-//     try {
-//       isLoading.value = true;
-
-//       final response = await apiClient.request(
-//         "complaint-detailscopy",
-//         method: "post", // Or "post" if API requires it
-//         data: {
-//           "complaint_id": complaintId,
-//         },
-//       );
-
-//       if (response.data['success'] == true) {
-//         selectedTicket.value = TicketModel.fromJson(response.data['data']);
-//         print("✅ Ticket details fetched: ${selectedTicket.value?.complaintNumber}");
-//       } else {
-//         print("⚠️ Failed to load ticket details: ${response.data['message']['en']}");
-//       }
-//     } catch (e) {
-//       print("❌ Error fetching complaint details: $e");
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-//   void setAssigning(String complaintId, bool value) {
-//   isAssigningMap[complaintId] = value;
-// }
-// }
-
 import 'package:dar_al_safwa/data/datasources/api_client.dart';
 import 'package:dar_al_safwa/data/model/technican_list_model.dart';
 import 'package:dar_al_safwa/data/model/technican_summary_model.dart';
@@ -429,19 +6,22 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart'; // ADD THIS IMPORT
 import 'package:intl/intl.dart';
 import '../../../../data/model/technician_complaints_response.dart';
 import '../../../../data/model/technican_ticket_view_model.dart';
 
 class TechnicianTicketsController extends GetxController {
   var isLoading = false.obs;
-  var tickets = <Complaint>[].obs; // List of complaints
-  var selectedTicket = Rxn<TicketModel>(); // Single ticket details
+  var tickets = <Complaint>[].obs;
+  var selectedTicket = Rxn<TicketModel>();
   
-  // ✅ FIXED: Separated the two maps instead of using getter
+  // ✅ Assignment state management
   final RxMap<String, bool> isAssigningMap = <String, bool>{}.obs;
-  final RxMap<String, String> assignedTechnicianIds = <String, String>{}.obs; // ✅ NEW: Separate map for assigned technicians
-  final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs; // ✅ FIXED: Now separate from assignedTechnicianIds
+  final RxMap<String, String> assignedTechnicianIds = <String, String>{}.obs;
+  final RxMap<String, String> assignedTechnicianNames = <String, String>{}.obs;
+  final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs;
+  final RxMap<String, bool> showAssignmentSection = <String, bool>{}.obs;
   
   final RxList<Map<String, dynamic>> availableTechnicians = <Map<String, dynamic>>[].obs;
   RxList<Complaint> ticket = <Complaint>[].obs;
@@ -451,394 +31,560 @@ class TechnicianTicketsController extends GetxController {
   final RxString statsErrorMessage = ''.obs;
 
   final ApiClient apiClient = ApiClient();
+  
+  // 🆕 ADD: GetStorage instance
+  final GetStorage _storage = GetStorage();
 
-  // ✅ ADDED: Initialize controller and load technicians
+  // ✅ Initialize controller and load data
   @override
   void onInit() {
     super.onInit();
-    getAvailableTechnicians(); // Load technicians when controller initializes
+    debugPrint("🚀 TechnicianTicketsController onInit called");
+    _initializeController();
   }
 
-void applyFilters({
-  String? status,
-  DateTime? startDate,
-  DateTime? endDate,
-}) {
-  List<Complaint> result = List.from(tickets); // Start with all tickets
-
-  // Status filtering
-  if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
-    final normalizedSelectedStatus = status.toLowerCase().trim();
-    
-    result = result.where((tickets) {
-      final ticketStatus = tickets.statusText.en?.toLowerCase().trim() ?? '';
-      debugPrint("🔍 Status Filter: Comparing selected '$normalizedSelectedStatus' vs ticket '$ticketStatus'");
+  // 🆕 ADD: Initialize controller with proper data loading sequence
+  Future<void> _initializeController() async {
+    try {
+      // Load assignments from storage first
+      await _loadAssignmentsFromStorage();
       
-      // Enhanced status matching
-      switch (normalizedSelectedStatus) {
-        case 'pending':
-          return ticketStatus == 'pending' || 
-                 ticketStatus.contains('pend') ||
-                 ticketStatus.contains('open');
-        case 'in progress':
-          return ticketStatus.contains('progress') || 
-                 ticketStatus.contains('progres') ||
-                 ticketStatus.contains('processing') ||
-                 ticketStatus.contains('in-progress');
-        case 'resolved':
-          return ticketStatus.contains('resolve') ||
-                 ticketStatus.contains('complete') ||
-                 ticketStatus.contains('closed') ||
-                 ticketStatus.contains('finished');
-        default:
-          return ticketStatus == normalizedSelectedStatus;
-      }
-    }).toList();
+      // Then load technicians
+      await getAvailableTechnicians();
+      
+      debugPrint("✅ Controller initialization complete");
+    } catch (e) {
+      debugPrint("❌ Error initializing controller: $e");
+    }
   }
 
-  // Date range filtering
-  if (startDate != null || endDate != null) {
-    result = result.where((tickets) {
-      try {
-        final ticketDate = _parseTicketDate(tickets.lastUpdated ?? tickets.lastUpdated);
-        if (ticketDate == null) {
-          debugPrint("⚠️ Could not parse date for ticket ${tickets.complaintId}");
+  @override
+  void onClose() {
+    debugPrint("🔄 TechnicianTicketsController onClose called");
+    // Don't clear assignment data on close - keep it persistent
+    super.onClose();
+  }
+
+  // ✅ UPDATED: Enhanced assignment method with persistent storage
+  Future<void> assignTechnicianWithoutRemoval(String complaintId, String technicianId) async {
+    debugPrint("🔄 Assigning technician: $technicianId to complaint: $complaintId");
+    try {
+      setAssigning(complaintId, true);
+
+      final userUid = FirebaseAuth.instance.currentUser?.uid;
+      if (userUid == null) {
+        debugPrint("❌ User UID is null");
+        throw Exception('User not logged in');
+      }
+
+      final response = await apiClient.request(
+        "complaints/escalate",
+        method: "post",
+        data: {
+          "complaint_id": complaintId,
+          "technician_uid": technicianId,
+          "user_uid": userUid,
+        },
+      );
+      
+      debugPrint("📡 Escalate API Status: ${response.statusCode}");
+      debugPrint("📥 Escalate API Response: ${response.data}");
+      
+      if (response.data['success'] == true) {
+        // Update assignment state
+        await _updateAssignmentState(complaintId, technicianId);
+        debugPrint("✅ Technician assigned successfully");
+      } else {
+        final errorMsg = response.data['message']?['en'] ?? 'Assignment failed';
+        throw Exception(errorMsg);
+      }
+    } catch (e) {
+      debugPrint("❌ Assignment error: $e");
+      rethrow;
+    } finally {
+      setAssigning(complaintId, false);
+    }
+  }
+
+  // 🆕 UPDATED: Enhanced assignment state update with persistent storage
+  Future<void> _updateAssignmentState(String complaintId, String technicianId) async {
+    try {
+      // Find technician info
+      final tech = availableTechnicians.firstWhere(
+        (t) => t['id'] == technicianId,
+        orElse: () => {'id': technicianId, 'name': 'Unknown Technician'},
+      );
+      
+      final technicianName = tech['name'] ?? 'Unknown Technician';
+      
+      // Update local state
+      assignedTechnicianIds[complaintId] = technicianId;
+      assignedTechnicianNames[complaintId] = technicianName;
+      
+      // 🆕 Save to persistent storage
+      await _saveAssignmentToStorage(complaintId, technicianId, technicianName);
+      
+      // Clear UI state
+      selectedTechnicianIds.remove(complaintId);
+      showAssignmentSection[complaintId] = false;
+      
+      // Update ticket in the list
+      _updateTicketInList(complaintId, technicianId, technicianName);
+      
+      // Force UI refresh
+      tickets.refresh();
+      filteredTickets.refresh();
+      
+      debugPrint("✅ Assignment state updated and saved for $complaintId");
+    } catch (e) {
+      debugPrint("❌ Error updating assignment state: $e");
+    }
+  }
+
+  // 🆕 IMPLEMENTED: Save assignment to persistent storage using GetStorage
+  Future<void> _saveAssignmentToStorage(String complaintId, String technicianId, String technicianName) async {
+    try {
+      final assignmentData = {
+        'technicianId': technicianId,
+        'technicianName': technicianName,
+        'assignedAt': DateTime.now().toIso8601String(),
+      };
+      
+      await _storage.write('assigned_technician_$complaintId', assignmentData);
+      
+      debugPrint("💾 Assignment saved to storage: $complaintId -> $technicianName");
+    } catch (e) {
+      debugPrint("❌ Failed to save assignment to storage: $e");
+    }
+  }
+
+  // 🆕 IMPLEMENTED: Load assignments from persistent storage using GetStorage
+  Future<void> _loadAssignmentsFromStorage() async {
+    try {
+      // Get all stored assignments
+      final allKeys = _storage.getKeys();
+      final assignmentKeys = allKeys.where((key) => key.startsWith('assigned_technician_')).toList();
+      
+      debugPrint("📂 Found ${assignmentKeys.length} stored assignments");
+      
+      for (final key in assignmentKeys) {
+        try {
+          final complaintId = key.replaceFirst('assigned_technician_', '');
+          final assignmentData = _storage.read(key);
+          
+          if (assignmentData != null && assignmentData is Map) {
+            assignedTechnicianIds[complaintId] = assignmentData['technicianId'] ?? '';
+            assignedTechnicianNames[complaintId] = assignmentData['technicianName'] ?? 'Unknown Technician';
+            
+            debugPrint("📂 Loaded assignment: $complaintId -> ${assignmentData['technicianName']}");
+          }
+        } catch (e) {
+          debugPrint("❌ Error loading assignment for key $key: $e");
+        }
+      }
+      
+      debugPrint("✅ Loaded ${assignedTechnicianIds.length} assignments from storage");
+    } catch (e) {
+      debugPrint("❌ Failed to load assignments from storage: $e");
+    }
+  }
+
+  // ✅ UPDATED: Enhanced ticket fetching with assignment restoration
+  Future<void> fetchTickets(String userId) async {
+    try {
+      debugPrint("🔄 Fetching tickets for user: $userId");
+      isLoading.value = true;
+      
+      // Load assignments from storage before fetching tickets
+      await _loadAssignmentsFromStorage();
+      
+      tickets.clear();
+      filteredTickets.clear();
+
+      final response = await apiClient.request(
+        "technician/complaints",
+        method: "post",
+        data: {"uid": userId},
+      );
+
+      debugPrint("📡 Fetch tickets response status: ${response.statusCode}");
+
+      final data = response.data;
+      if (data == null) {
+        debugPrint("⚠️ API returned null response");
+        return;
+      }
+
+      List<Complaint> complaints = [];
+
+      if (data is List) {
+        complaints = data
+            .whereType<Map<String, dynamic>>()
+            .map(Complaint.fromJson)
+            .toList();
+      } else if (data is Map<String, dynamic>) {
+        final bool ok = TechnicianComplaintsResponse.statusFromJson(data['status']);
+        
+        if (ok) {
+          final dynamic inner = data['data'];
+          if (inner is List) {
+            complaints = inner
+                .whereType<Map<String, dynamic>>()
+                .map(Complaint.fromJson)
+                .toList();
+          }
+        }
+      }
+
+      if (complaints.isNotEmpty) {
+        tickets.addAll(complaints);
+        filteredTickets.addAll(complaints);
+        
+        // Apply stored assignments to tickets
+        _applyStoredAssignments();
+        
+        debugPrint("✅ Fetched ${tickets.length} tickets with ${assignedTechnicianIds.length} assignments restored");
+      }
+      
+    } catch (e, st) {
+      debugPrint("❌ Error fetching tickets: $e");
+      debugPrint(st.toString());
+      tickets.clear();
+      filteredTickets.clear();
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // 🆕 ADD: Apply stored assignments to fetched tickets
+  void _applyStoredAssignments() {
+    for (int i = 0; i < tickets.length; i++) {
+      final complaint = tickets[i];
+      final complaintId = complaint.complaintId;
+      
+      // Check if we have stored assignment for this ticket
+      final storedTechId = assignedTechnicianIds[complaintId];
+      final storedTechName = assignedTechnicianNames[complaintId];
+      
+      if (storedTechId != null && storedTechName != null && storedTechId.isNotEmpty) {
+        // Update the complaint object with stored assignment info
+        try {
+          tickets[i] = complaint.copyWith(
+            assignedTechnicianId: storedTechId,
+            assignedTechnicianName: storedTechName,
+            status: complaint.status == 'pending' ? 'Assigned' : complaint.status,
+          );
+          
+          debugPrint("🔄 Applied stored assignment to ticket $complaintId: $storedTechName");
+        } catch (e) {
+          debugPrint("❌ Error applying assignment to ticket $complaintId: $e");
+          // If copyWith fails, at least keep the assignment in memory
+          debugPrint("ℹ️ Assignment kept in memory for $complaintId");
+        }
+      }
+    }
+    
+    // Update filtered tickets as well
+    filteredTickets.assignAll(tickets);
+  }
+
+  // 🆕 ADD: Update ticket in list helper method
+  void _updateTicketInList(String complaintId, String technicianId, String technicianName) {
+    try {
+      for (int i = 0; i < tickets.length; i++) {
+        if (tickets[i].complaintId == complaintId) {
+          tickets[i] = tickets[i].copyWith(
+            assignedTechnicianId: technicianId,
+            assignedTechnicianName: technicianName,
+            status: tickets[i].status == 'pending' ? 'Assigned' : tickets[i].status,
+          );
+          break;
+        }
+      }
+      
+      // Update filtered tickets
+      for (int i = 0; i < filteredTickets.length; i++) {
+        if (filteredTickets[i].complaintId == complaintId) {
+          filteredTickets[i] = filteredTickets[i].copyWith(
+            assignedTechnicianId: technicianId,
+            assignedTechnicianName: technicianName,
+            status: filteredTickets[i].status == 'pending' ? 'Assigned' : filteredTickets[i].status,
+          );
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ Error updating ticket in list: $e");
+      // If copyWith fails, the assignment is still in memory and will show in UI
+    }
+  }
+
+  // ✅ UPDATED: Clear assignment with storage cleanup
+  Future<void> clearAssignment(String complaintId) async {
+    assignedTechnicianIds.remove(complaintId);
+    assignedTechnicianNames.remove(complaintId);
+    selectedTechnicianIds.remove(complaintId);
+    showAssignmentSection.remove(complaintId);
+    
+    // Remove from persistent storage
+    try {
+      await _storage.remove('assigned_technician_$complaintId');
+      debugPrint("🗑️ Cleared assignment from storage for: $complaintId");
+    } catch (e) {
+      debugPrint("❌ Failed to clear assignment from storage: $e");
+    }
+    
+    // Update UI
+    tickets.refresh();
+    filteredTickets.refresh();
+  }
+
+  // 🆕 ADD: Method to get all stored assignments (for debugging)
+  void debugStoredAssignments() {
+    debugPrint("🔍 Current stored assignments:");
+    for (final entry in assignedTechnicianIds.entries) {
+      debugPrint("  ${entry.key} -> ${assignedTechnicianNames[entry.key]} (${entry.value})");
+    }
+  }
+
+  // Rest of your existing methods remain the same...
+  
+  void applyFilters({
+    String? status,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    List<Complaint> result = List.from(tickets);
+
+    if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+      final normalizedSelectedStatus = status.toLowerCase().trim();
+      
+      result = result.where((tickets) {
+        final ticketStatus = tickets.statusText.en?.toLowerCase().trim() ?? '';
+        debugPrint("🔍 Status Filter: Comparing '$normalizedSelectedStatus' vs '$ticketStatus'");
+        
+        switch (normalizedSelectedStatus) {
+          case 'pending':
+            return ticketStatus == 'pending' || 
+                   ticketStatus.contains('pend') ||
+                   ticketStatus.contains('open');
+          case 'in progress':
+            return ticketStatus.contains('progress') || 
+                   ticketStatus.contains('progres') ||
+                   ticketStatus.contains('processing') ||
+                   ticketStatus.contains('in-progress');
+          case 'resolved':
+            return ticketStatus.contains('resolve') ||
+                   ticketStatus.contains('complete') ||
+                   ticketStatus.contains('closed') ||
+                   ticketStatus.contains('finished');
+          default:
+            return ticketStatus == normalizedSelectedStatus;
+        }
+      }).toList();
+    }
+
+    if (startDate != null || endDate != null) {
+      result = result.where((tickets) {
+        try {
+          final ticketDate = _parseTicketDate(tickets.lastUpdated ?? tickets.lastUpdated);
+          if (ticketDate == null) {
+            debugPrint("⚠️ Could not parse date for ticket ${tickets.complaintId}");
+            return false;
+          }
+
+          final ticketDateOnly = DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
+          final startDateOnly = startDate != null 
+              ? DateTime(startDate.year, startDate.month, startDate.day)
+              : DateTime(1900);
+          final endDateOnly = endDate != null
+              ? DateTime(endDate.year, endDate.month, endDate.day)
+              : DateTime(2100);
+
+          return (ticketDateOnly.isAtSameMomentAs(startDateOnly) || 
+                  ticketDateOnly.isAfter(startDateOnly)) &&
+                 (ticketDateOnly.isAtSameMomentAs(endDateOnly) || 
+                  ticketDateOnly.isBefore(endDateOnly));
+        } catch (e) {
+          debugPrint("❌ Error filtering by date for ticket ${tickets.complaintId}: $e");
           return false;
         }
+      }).toList();
+    }
 
-        // Normalize dates to midnight for comparison
-        final ticketDateOnly = DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
-        final startDateOnly = startDate != null 
-            ? DateTime(startDate.year, startDate.month, startDate.day)
-            : DateTime(1900); // Very early date if no start filter
-        final endDateOnly = endDate != null
-            ? DateTime(endDate.year, endDate.month, endDate.day)
-            : DateTime(2100); // Very late date if no end filter
+    filteredTickets.assignAll(result);
+    debugPrint("✅ Applied filters. ${filteredTickets.length} tickets match criteria.");
+  }
 
-        debugPrint("📅 Date Filter: Ticket ${ticketDateOnly.toString()} between $startDateOnly and $endDateOnly");
+  DateTime? _parseTicketDate(String? dateString) {
+    if (dateString == null || dateString.isEmpty) return null;
 
-        return (ticketDateOnly.isAtSameMomentAs(startDateOnly) || 
-                ticketDateOnly.isAfter(startDateOnly)) &&
-               (ticketDateOnly.isAtSameMomentAs(endDateOnly) || 
-                ticketDateOnly.isBefore(endDateOnly));
+    final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}$'), '');
+
+    final possibleFormats = [
+      "yyyy-MM-dd HH:mm:ss",
+      "yyyy-MM-ddTHH:mm:ss",
+      "yyyy-MM-dd",
+      "dd-MM-yyyy HH:mm:ss",
+      "MM/dd/yyyy HH:mm:ss",
+      "yyyy/MM/dd HH:mm:ss",
+      "EEE, dd MMM yyyy HH:mm:ss",
+    ];
+
+    for (final format in possibleFormats) {
+      try {
+        return DateFormat(format).parse(cleanDateString);
       } catch (e) {
-        debugPrint("❌ Error filtering by date for ticket ${tickets.complaintId}: $e");
-        return false;
+        continue;
       }
-    }).toList();
-  }
+    }
 
-  filteredTickets.assignAll(result);
-  debugPrint("✅ Applied filters. ${filteredTickets.length} tickets match criteria.");
-}
-
-DateTime? _parseTicketDate(String? dateString) {
-  if (dateString == null || dateString.isEmpty) {
-    debugPrint("⚠️ Date string is null or empty");
-    return null;
-  }
-
-  // Trim any whitespace and remove timezone indicators if present
-  final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}$'), '');
-
-  // Try multiple common date formats
-  final possibleFormats = [
-    "yyyy-MM-dd HH:mm:ss",      // 2025-08-01 14:30:00
-    "yyyy-MM-ddTHH:mm:ss",      // 2025-08-01T14:30:00
-    "yyyy-MM-dd",               // 2025-08-01
-    "dd-MM-yyyy HH:mm:ss",      // 01-08-2025 14:30:00
-    "MM/dd/yyyy HH:mm:ss",      // 08/01/2025 14:30:00
-    "yyyy/MM/dd HH:mm:ss",      // 2025/08/01 14:30:00
-    "EEE, dd MMM yyyy HH:mm:ss", // Tue, 01 Aug 2025 14:30:00
-  ];
-
-  for (final format in possibleFormats) {
     try {
-      final date = DateFormat(format).parse(cleanDateString);
-      debugPrint("✅ Parsed date '$dateString' as $date using format '$format'");
-      return date;
+      return DateTime.parse(cleanDateString);
     } catch (e) {
-      // Try next format
+      debugPrint("❌ Failed to parse date: '$dateString'");
+      return null;
     }
   }
 
-  // Fallback to DateTime.parse if none of the formats worked
-  try {
-    final date = DateTime.parse(cleanDateString);
-    debugPrint("✅ Parsed date '$dateString' as $date using DateTime.parse");
-    return date;
-  } catch (e) {
-    debugPrint("❌ Failed to parse date: '$dateString'");
-    return null;
-  }
-}
-
- Future<void> getSummaryForTechnician(String uid) async {
-  isStatsLoading.value = true;
-  statsErrorMessage.value = '';
-  technicianStats.value = null;
+  // Keep all your other existing methods...
   
-  try {
-    final response = await apiClient.request(
-      "Technician/PropertyStats",
-      method: "post",
-      data: {"technician_id": uid},
-    );
+  Future<void> getSummaryForTechnician(String uid) async {
+    isStatsLoading.value = true;
+    statsErrorMessage.value = '';
+    technicianStats.value = null;
     
-    if (response.data['success'] == true) {
-      technicianStats.value = ComplaintStatisticsResponse.fromJson(response.data);
-      final propertyCount = technicianStats.value?.data?.propertyStats.length ?? 0;
-      debugPrint('Technician stats loaded: $propertyCount properties');
-    } else {
-      // Handle different message formats from API
-      String errorMessage = 'Failed to load technician statistics';
+    try {
+      final response = await apiClient.request(
+        "Technician/PropertyStats",
+        method: "post",
+        data: {"technician_id": uid},
+      );
       
-      if (response.data['message'] != null) {
-        final messageData = response.data['message'];
-        if (messageData is Map && messageData['en'] != null) {
-          errorMessage = messageData['en'].toString();
-        } else if (messageData is String) {
-          errorMessage = messageData;
-        } else {
-          errorMessage = messageData.toString();
-        }
-      }
-      
-      statsErrorMessage.value = errorMessage;
-    }
-  } catch (e) {
-    statsErrorMessage.value = 'Error loading technician stats: $e';
-    debugPrint('Exception in getSummaryForTechnician: $e');
-  } finally {
-    isStatsLoading.value = false;
-  }
-}
-
-  /// Fetch available technicians (excluding current technician)
-Future<void> getAvailableTechnicians() async {
-  try {
-    print("🔄 Starting technician fetch...");
-    isLoading.value = true;
-    print("🔁 isLoading set to true");
-
-    availableTechnicians.clear();
-    print("🧹 Cleared availableTechnicians list");
-
-    final currentUid = FirebaseAuth.instance.currentUser?.uid;
-    print("🧑‍💻 Current User UID (to exclude): $currentUid");
-
-    final response = await apiClient.request(
-      "technicians/except",
-      method: "post",
-      data: {
-        "exclude_uid": currentUid,
-      },
-    );
-
-    print("📡 Response received from API with status: ${response.statusCode}");
-    print("📥 Raw response data: ${response.data}");
-
-    if (response.statusCode == 200) {
-      final parsedResponse = TechnicianDropdownResponse.fromJson(response.data);
-      print("✅ Parsed response: ${parsedResponse.success}, Message: ${parsedResponse.displayMessage}");
-
-      if (parsedResponse.success) {
-        final techniciansList = parsedResponse.data.technicians.map((tech) => {
-          'id': tech.uid,
-          'name': tech.fullName,
-        }).toList();
-
-        availableTechnicians.assignAll(techniciansList);
-        print("📋 Assigned ${techniciansList.length} available technicians to list");
-        for (var tech in techniciansList) {
-          print("🧑 Technician => ID: ${tech['id']}, Name: ${tech['name']}");
-        }
+      if (response.data['success'] == true) {
+        technicianStats.value = ComplaintStatisticsResponse.fromJson(response.data);
+        final propertyCount = technicianStats.value?.data?.propertyStats.length ?? 0;
+        debugPrint('Technician stats loaded: $propertyCount properties');
       } else {
-        print("❌ API responded with failure: ${parsedResponse.displayMessage}");
+        String errorMessage = 'Failed to load technician statistics';
+        
+        if (response.data['message'] != null) {
+          final messageData = response.data['message'];
+          if (messageData is Map && messageData['en'] != null) {
+            errorMessage = messageData['en'].toString();
+          } else if (messageData is String) {
+            errorMessage = messageData;
+          } else {
+            errorMessage = messageData.toString();
+          }
+        }
+        
+        statsErrorMessage.value = errorMessage;
       }
-    } else {
-      print("❌ Unexpected status code: ${response.statusCode}");
+    } catch (e) {
+      statsErrorMessage.value = 'Error loading technician stats: $e';
+      debugPrint('Exception in getSummaryForTechnician: $e');
+    } finally {
+      isStatsLoading.value = false;
     }
-  } catch (e) {
-    print("❌ Error occurred while fetching technicians: $e");
-  } finally {
-    isLoading.value = false;
   }
-}
 
-// ✅ ENHANCED: Better error handling and success feedback
-Future<void> assignTechnician(String complaintId, String technicianId) async {
-  print("🔄 Assigning technician: $technicianId to complaint: $complaintId");
-  try {
-    setAssigning(complaintId, true);
+  Future<void> getAvailableTechnicians() async {
+    try {
+      debugPrint("🔄 Starting technician fetch...");
+      isLoading.value = true;
 
-    final userUid = FirebaseAuth.instance.currentUser?.uid;
-    if (userUid == null) {
-      print("❌ User UID is null");
-      Get.snackbar('Error', 'User not logged in');
-      throw Exception('User not logged in');
+      availableTechnicians.clear();
+
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      debugPrint("🧑‍💻 Current User UID (to exclude): $currentUid");
+
+      final response = await apiClient.request(
+        "technicians/except",
+        method: "post",
+        data: {"exclude_uid": currentUid},
+      );
+
+      debugPrint("📡 Response received: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final parsedResponse = TechnicianDropdownResponse.fromJson(response.data);
+        
+        if (parsedResponse.success) {
+          final techniciansList = parsedResponse.data.technicians.map((tech) => {
+            'id': tech.uid,
+            'name': tech.fullName,
+          }).toList();
+
+          availableTechnicians.assignAll(techniciansList);
+          debugPrint("📋 Loaded ${techniciansList.length} available technicians");
+        }
+      }
+    } catch (e) {
+      debugPrint("❌ Error fetching technicians: $e");
+    } finally {
+      isLoading.value = false;
     }
+  }
 
-    final response = await apiClient.request(
-      "complaints/escalate",
-      method: "post",
-      data: {
-        "complaint_id": complaintId,
-        "technician_uid": technicianId,
-        "user_uid": userUid,
-      },
-    );
-    
-    print("📡 Escalate API Status: ${response.statusCode}");
-    print("📥 Escalate API Raw Body: ${response.data}");
-    
-    if (response.data['success'] == true) {
+  Future<void> assignTechnician(String complaintId, String technicianId) async {
+    try {
+      await assignTechnicianWithoutRemoval(complaintId, technicianId);
+      
       Get.snackbar(
         '✅ Success', 
         'Technician assigned successfully',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green.withOpacity(0.8),
         colorText: Colors.white,
+        duration: const Duration(seconds: 3),
       );
       
-      // Clear selection and remove ticket from list
-      selectedTechnicianIds.remove(complaintId);
-      tickets.removeWhere((ticket) => ticket.complaintId == complaintId);
-      filteredTickets.removeWhere((ticket) => ticket.complaintId == complaintId); // ✅ ADDED: Also remove from filtered list
-      
-      print("✅ Ticket removed from lists successfully");
-    } else {
-      final errorMsg = response.data['message']?['en'] ?? 'Assignment failed';
+    } catch (e) {
+      debugPrint("❌ Assignment error: $e");
       Get.snackbar(
         'Error', 
-        errorMsg,
+        'Failed to assign technician: ${e.toString()}',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
       );
-      throw Exception(errorMsg);
+      rethrow;
     }
-  } catch (e) {
-    print("❌ Assignment error: $e");
-    Get.snackbar(
-      'Error', 
-      'Failed to assign technician: ${e.toString()}',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.withOpacity(0.8),
-      colorText: Colors.white,
-    );
-    rethrow; // ✅ ADDED: Rethrow to let UI handler know there was an error
-  } finally {
-    setAssigning(complaintId, false);
   }
-}
 
-  /// Fetch technician complaints (tickets)
-Future<void> fetchTickets(String userId) async {
-  try {
-    isLoading.value = true;
-    tickets.clear();
-    filteredTickets.clear(); // ✅ ADDED: Clear filtered tickets too
-
-    final response = await apiClient.request(
-      "technician/complaints",
-      method: "post",
-      data: {"uid": userId},
-    );
-
-    print("Response Status: ${response.statusCode}");
-    print("🔍 Fetched complaints: ${response.data ?? 'null'}");
-
-    final data = response.data;
-    if (data == null) {
-      print("⚠️ API returned null response");
-      return;
-    }
-
-    if (data is List) {
-      // Rare: API returns a bare list (no {status, data})
-      final complaints = data
-          .whereType<Map<String, dynamic>>()
-          .map(Complaint.fromJson)
-          .toList();
-      tickets.addAll(complaints);
-      filteredTickets.addAll(complaints); // ✅ ADDED: Also add to filtered list
-      print("✅ Complaints fetched (bare list): ${tickets.length}");
-      return;
-    }
-
-    if (data is Map<String, dynamic>) {
-      // Normal: { status, data: [...] } OR { status, data: {...} }
-      final map = data;
-
-     final bool ok = TechnicianComplaintsResponse.statusFromJson(map['status']);
-
-      if (!ok) {
-        print("⚠️ API status not OK");
-        return;
-      }
-
-      final dynamic inner = map['data'];
-      if (inner is List) {
-        // Your current API shape (list of complaints)
-        final complaints = inner
-            .whereType<Map<String, dynamic>>()
-            .map(Complaint.fromJson)
-            .toList();
-
-        if (complaints.isEmpty) {
-          print("⚠️ API returned empty complaints list");
-        } else {
-          tickets.addAll(complaints);
-          filteredTickets.addAll(complaints); // ✅ ADDED: Also add to filtered list
-          print("✅ Complaints fetched: ${tickets.length}");
-        }
-      } 
-    }
-
-    print("⚠️ Unexpected top-level response type: ${data.runtimeType}");
-  } catch (e, st) {
-    tickets.clear();
-    filteredTickets.clear(); // ✅ ADDED: Clear both lists on error
-    print("❌ Error fetching complaints: $e");
-    print(st);
-  } finally {
-    isLoading.value = false;
+  bool isTicketAssigned(String complaintId) {
+    return assignedTechnicianIds.containsKey(complaintId);
   }
-}
 
-   Future<void> fetchComplaintDetails(String complaintId) async {
+  String? getAssignedTechnicianName(String complaintId) {
+    return assignedTechnicianNames[complaintId];
+  }
+
+  Future<void> fetchComplaintDetails(String complaintId) async {
     try {
       isLoading.value = true;
 
       final response = await apiClient.request(
         "complaint-detailscopy",
         method: "post",
-        data: {
-          "complaint_id": complaintId,
-        },
+        data: {"complaint_id": complaintId},
       );
 
       if (response.data['success'] == true) {
         selectedTicket.value = TicketModel.fromJson(response.data['data']);
-        print("✅ Ticket details fetched: ${selectedTicket.value?.complaintNumber}");
-      } else {
-        print("⚠️ Failed to load ticket details: ${response.data['message']['en']}");
+        debugPrint("✅ Ticket details fetched: ${selectedTicket.value?.complaintNumber}");
       }
     } catch (e) {
-      print("❌ Error fetching complaint details: $e");
+      debugPrint("❌ Error fetching complaint details: $e");
     } finally {
       isLoading.value = false;
     }
   }
 
-  // ✅ ENHANCED: Better logging for assignment state
   void setAssigning(String complaintId, bool value) {
+    if (isAssigningMap[complaintId] == value) return;
     isAssigningMap[complaintId] = value;
-    print("🔄 Setting assignment state for $complaintId: $value");
+    debugPrint("🔄 Setting assignment state for $complaintId: $value");
   }
 }
-
-
-
-

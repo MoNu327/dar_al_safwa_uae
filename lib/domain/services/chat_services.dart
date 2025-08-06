@@ -87,14 +87,14 @@ class ChatService {
   }
 
   // Get property data if available
-  Future<Map<String, dynamic>> getPropertyData(String? propertyId) async {
+  Future<Map<String, dynamic>> getPropertyData(String? propertyId,String?unitId) async {
     if (propertyId == null || propertyId.isEmpty) {
       return {};
     }
 
     try {
       final doc =
-          await _firestore.collection('properties').doc(propertyId).get();
+          await _firestore.collection('properties').doc(propertyId,).get();
       return doc.data() ?? {};
     } catch (e) {
       print('Error getting property data: $e');
