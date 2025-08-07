@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/data/model/user_data_submission_model.dart';
 import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
 import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:file_picker/file_picker.dart';
@@ -26,9 +27,23 @@ class DocumentUploadScreen extends StatefulWidget {
 
 class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   final Map<int, List<File>> _uploadedFiles = {};
+  final Map<int, List<File>> _additionalFiles = {};
+  final Map<int, List<String>> _additionalTitles = {};
   bool _isSubmitting = false;
-  final controler = Get.find<UserDataSubmissionController>();
+  final controller = Get.find<UserDataSubmissionController>();
   final user = Get.put(AuthService());
+
+  // Document type mapping based on field titles
+  final Map<String, String> _documentTypeMapping = {
+    'Civil ID Front': 'civil_id_front',
+    'Civil ID Back': 'civil_id_back',
+    'Passport First Page': 'passport_first_page',
+    'Passport Last Page': 'passport_last_page',
+    'Passport Visa Page': 'passport_visa_page',
+    'Resident Visa': 'resident_visa',
+    'Expat Civil ID Front': 'expat_civil_id_front',
+    'Expat Civil ID Back': 'expat_civil_id_back',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -54,10 +69,48 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           horizontal: screenWidth5,
           vertical: screenHeight2,
         ),
-        child: Column(
+        child: Obx(() => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            // User Information Display
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16),
+              margin: EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppColors.secondaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.secondaryColor.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomTextWidget(
+                    title: "Submitting for: ${controller.user.value.firstName} ${controller.user.value.lastName}",
+                    fontSize: packageTitle,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondaryColor,
+                  ),
+                  kHeight(0.01),
+                  Text(
+                    "Citizenship: ${controller.user.value.isNative ? 'Native' : 'Foreign'}",
+                    style: TextStyle(
+                      fontSize: detailContentTitle,
+                      color: AppColors.black600,
+                    ),
+                  ),
+                  Text(
+                    "Email: ${controller.user.value.email}",
+                    style: TextStyle(
+                      fontSize: detailContentTitle,
+                      color: AppColors.black600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             CustomTextWidget(
               title: "Upload Required Documents *",
               fontSize: tagTitle,
@@ -66,20 +119,72 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             kHeight(0.02),
+
+            // Required Documents Section
             ...widget.documentFields.asMap().entries.map((entry) {
               final index = entry.key;
               final field = entry.value;
-              return _buildDocumentField(index, field);
+              return _buildDocumentField(index, field, isRequired: true);
             }),
+
+            kHeight(0.03),
+
+            // Additional Documents Section
+            CustomTextWidget(
+              title: "Additional Documents (Optional)",
+              fontSize: tagTitle,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black600,
+              overflow: TextOverflow.ellipsis,
+            ),
+            kHeight(0.01),
+            Text(
+              "You can upload any additional supporting documents here",
+              style: TextStyle(
+                fontSize: detailContentTitle,
+                color: AppColors.black500,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            kHeight(0.02),
+
+            _buildAdditionalDocumentsSection(),
+
             kHeight(0.05),
+
+            // Error Display
+            if (controller.errorMessage.value != null)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                margin: EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error, color: Colors.red),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        controller.errorMessage.value!,
+                        style: TextStyle(color: Colors.red.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             _buildSubmitButton(),
           ],
-        ),
+        )),
       ),
     );
   }
 
-  Widget _buildDocumentField(int index, DocumentField field) {
+  Widget _buildDocumentField(int index, DocumentField field, {bool isRequired = true}) {
     final uploadedFiles = _uploadedFiles[index] ?? [];
     final canUploadMore = uploadedFiles.length < field.maxFiles;
 
@@ -89,18 +194,57 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       decoration: BoxDecoration(
         color: AppColors.whiteLight,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.lightGrey),
+        border: Border.all(
+          color: isRequired ? AppColors.secondaryColor.withOpacity(0.5) : AppColors.lightGrey,
+          width: isRequired ? 1.5 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            field.title,
-            style: TextStyle(
-              fontSize: packageTitle,
-              fontWeight: FontWeight.w600,
-              color: AppColors.black,
-            ),
+          Row(
+            children: [
+              if (isRequired)
+                Icon(
+                  Icons.star,
+                  color: Colors.red,
+                  size: 12,
+                ),
+              if (isRequired) SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  field.title,
+                  style: TextStyle(
+                    fontSize: packageTitle,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.black,
+                  ),
+                ),
+              ),
+              if (uploadedFiles.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.onlineGreen,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check, color: AppColors.white, size: 12),
+                      SizedBox(width: 4),
+                      Text(
+                        'Uploaded',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           if (field.description.isNotEmpty) ...[
             kHeight(0.01),
@@ -114,7 +258,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
           ],
           kHeight(0.02),
           if (uploadedFiles.isNotEmpty) ...[
-            ...uploadedFiles.map((file) => _buildUploadedFileItem(file, index)),
+            ...uploadedFiles.map((file) => _buildUploadedFileItem(file, index, isRequired)),
             kHeight(0.02),
           ],
           if (canUploadMore)
@@ -122,6 +266,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
               index: index,
               field: field,
               isFirstUpload: uploadedFiles.isEmpty,
+              isRequired: isRequired,
             ),
           if (field.maxFiles > 1 && uploadedFiles.isNotEmpty && canUploadMore)
             Text(
@@ -136,7 +281,199 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     );
   }
 
-  Widget _buildUploadedFileItem(File file, int fieldIndex) {
+  Widget _buildAdditionalDocumentsSection() {
+  return Container(
+    padding: EdgeInsets.all(screenWidth3),
+    decoration: BoxDecoration(
+      color: AppColors.lightGrey.withOpacity(0.3),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: AppColors.lightGrey),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section Title
+        Text(
+          'Additional Documents',
+          style: TextStyle(
+            fontSize: detailContentTitle,
+            fontWeight: FontWeight.w600,
+            color: AppColors.black,
+          ),
+        ),
+        kHeight(0.02),
+        
+        // Display existing additional documents
+        if (_additionalFiles.isNotEmpty) ...[
+          ..._additionalFiles.entries.map((entry) {
+            final index = entry.key;
+            final files = entry.value;
+            final titles = _additionalTitles[index] ?? [];
+                           
+            return Column(
+              children: files.asMap().entries.map((fileEntry) {
+                final fileIndex = fileEntry.key;
+                final file = fileEntry.value;
+                final title = fileIndex < titles.length ? titles[fileIndex] : 'Additional Document';
+                                   
+                return Container(
+                  margin: EdgeInsets.only(bottom: 8),
+                  child: _buildUploadedFileItem(file, index, false, title: title),
+                );
+              }).toList(),
+            );
+          }).toList(),
+          kHeight(0.02),
+        ],
+                   
+        // Add additional document button with file picker
+        InkWell(
+          onTap: () => _handleAdditionalFileUpload(),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth3, 
+              vertical: screenHeight2
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              border: Border.all(
+                color: AppColors.black.withOpacity(0.2),
+                style: BorderStyle.solid,
+                width: 1,
+              ),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.upload_file_outlined,
+                  size: iconSize,
+                  color: AppColors.black.withOpacity(0.6),
+                ),
+                kWidth(0.02),
+                Text(
+                  'Upload Additional Document',
+                  style: TextStyle(
+                    fontSize: detailContentTitle,
+                    color: AppColors.black.withOpacity(0.6),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Optional: Show supported file types
+        kHeight(0.01),
+        Text(
+          'Supported formats: PDF, DOC, DOCX, JPG, PNG',
+          style: TextStyle(
+            fontSize: detailContentTitle * 0.8,
+            color: AppColors.black.withOpacity(0.4),
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Make sure your _handleAdditionalFileUpload method looks something like this:
+// Fixed _handleAdditionalFileUpload method
+Future<void> _handleAdditionalFileUpload() async {
+  try {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+    );
+
+    if (result != null) {
+      _addAdditionalFile(result.files.single);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Document uploaded successfully'),
+          backgroundColor: AppColors.onlineGreen,
+        ),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to upload document'),
+        backgroundColor: AppColors.redColor,
+      ),
+    );
+  }
+}
+// Alternative version if you want to allow multiple files
+Future<void> _handleAdditionalFileUploadMultiple() async {
+  try {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.any, // Changed to FileType.any for multiple files
+      allowMultiple: true,
+    );
+
+    if (result != null) {
+      // Filter files by extension manually
+      List<PlatformFile> validFiles = result.files.where((file) {
+        String extension = file.extension?.toLowerCase() ?? '';
+        return ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'].contains(extension);
+      }).toList();
+
+      if (validFiles.isNotEmpty) {
+        setState(() {
+          for (PlatformFile file in validFiles) {
+            _addAdditionalFile(file);
+          }
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${validFiles.length} document(s) uploaded successfully'),
+            backgroundColor: AppColors.onlineGreen,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No valid files selected. Please choose PDF, DOC, DOCX, JPG, or PNG files.'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to upload document: $e'),
+        backgroundColor: AppColors.redColor,
+      ),
+    );
+  }
+}
+
+// Also fix your _addAdditionalFile method to handle the type conversion properly
+void _addAdditionalFile(PlatformFile platformFile) {
+  int newIndex = _additionalFiles.length;
+  
+  if (platformFile.path != null) {
+    File file = File(platformFile.path!);
+    
+    if (_additionalFiles[newIndex] == null) {
+      _additionalFiles[newIndex] = [];
+      _additionalTitles[newIndex] = [];
+    }
+    
+    _additionalFiles[newIndex]!.add(file);
+    _additionalTitles[newIndex]!.add(platformFile.name);
+    
+    setState(() {});
+  }
+}
+  Widget _buildUploadedFileItem(File file, int fieldIndex, bool isRequired, {String? title}) {
     return Container(
       margin: EdgeInsets.only(bottom: screenHeight1),
       padding: EdgeInsets.symmetric(
@@ -151,28 +488,50 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       child: Row(
         children: [
           Icon(
-            Icons.insert_drive_file,
+            _getFileIcon(file.path),
             size: iconSize,
             color: AppColors.secondaryColor,
           ),
           kWidth(0.02),
           Expanded(
-            child: Text(
-              file.path.split('/').last,
-              style: TextStyle(
-                fontSize: detailContentTitle,
-                color: AppColors.black,
-                overflow: TextOverflow.ellipsis,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null)
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: detailContentTitle,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.black,
+                    ),
+                  ),
+                Text(
+                  file.path.split('/').last,
+                  style: TextStyle(
+                    fontSize: expandedContentTitle,
+                    color: AppColors.black600,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
           IconButton(
             icon: Icon(Icons.close, size: smallIconSize),
             onPressed: () {
               setState(() {
-                _uploadedFiles[fieldIndex]?.remove(file);
-                if (_uploadedFiles[fieldIndex]?.isEmpty ?? false) {
-                  _uploadedFiles.remove(fieldIndex);
+                if (isRequired) {
+                  _uploadedFiles[fieldIndex]?.remove(file);
+                  if (_uploadedFiles[fieldIndex]?.isEmpty ?? false) {
+                    _uploadedFiles.remove(fieldIndex);
+                  }
+                } else {
+                  _additionalFiles[fieldIndex]?.remove(file);
+                  if (_additionalFiles[fieldIndex]?.isEmpty ?? false) {
+                    _additionalFiles.remove(fieldIndex);
+                    _additionalTitles.remove(fieldIndex);
+                  }
                 }
               });
             },
@@ -186,6 +545,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     required int index,
     required DocumentField field,
     required bool isFirstUpload,
+    required bool isRequired,
   }) {
     return OutlinedButton(
       style: OutlinedButton.styleFrom(
@@ -233,7 +593,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   }
 
   Widget _buildSubmitButton() {
-    final allFieldsFilled = widget.documentFields.every((field) {
+    final allRequiredFieldsFilled = widget.documentFields.every((field) {
       final index = widget.documentFields.indexOf(field);
       return _uploadedFiles.containsKey(index) &&
           _uploadedFiles[index]!.isNotEmpty;
@@ -243,7 +603,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: allFieldsFilled && !_isSubmitting
+          backgroundColor: allRequiredFieldsFilled && !_isSubmitting
               ? AppColors.secondaryColor
               : AppColors.secondaryColor.withOpacity(0.5),
           padding: EdgeInsets.symmetric(vertical: screenHeight2),
@@ -251,7 +611,7 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        onPressed: allFieldsFilled && !_isSubmitting ? _submitDocuments : null,
+        onPressed: allRequiredFieldsFilled && !_isSubmitting ? _submitDocuments : null,
         child: _isSubmitting
             ? SizedBox(
                 height: 20,
@@ -262,10 +622,11 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                 ),
               )
             : Text(
-                'Submit Documents',
+                'Submit Application',
                 style: TextStyle(
                   fontSize: packageTitle,
                   color: AppColors.white,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
       ),
@@ -273,122 +634,245 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   }
 
   Future<void> _handleFileUpload(int index, DocumentField field) async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any, //widget.documentFields[index].allowedTypes.
-        allowedExtensions: _getAllowedExtensions(field.allowedTypes),
-        allowMultiple: field.maxFiles > 1,
-      );
+  try {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+    );
 
-      if (result != null) {
-        final files = result.paths.map((path) => File(path!)).toList();
+    if (result != null) {
+      final file = File(result.files.single.path!);
 
-        setState(() {
-          if (_uploadedFiles.containsKey(index)) {
-            // Add to existing files, respecting maxFiles limit
-            final currentFiles = _uploadedFiles[index]!;
-            final remainingSlots = field.maxFiles - currentFiles.length;
-            final filesToAdd = files.take(remainingSlots).toList();
-            _uploadedFiles[index]!.addAll(filesToAdd);
-          } else {
-            // First upload for this field
-            _uploadedFiles[index] = files.take(field.maxFiles).toList();
-          }
-        });
-
-        if (files.length > field.maxFiles) {
-          Get.snackbar(
-            'Upload Limit',
-            'Only ${field.maxFiles} files can be uploaded for ${field.title}',
-            backgroundColor: AppColors.warning,
-            colorText: AppColors.white,
-          );
+      setState(() {
+        if (_uploadedFiles.containsKey(index)) {
+          _uploadedFiles[index]!.add(file);
+        } else {
+          _uploadedFiles[index] = [file];
         }
-      }
-    } catch (e) {
-      Get.snackbar(
-        'Upload Error',
-        'Failed to upload file: ${e.toString()}',
-        backgroundColor: AppColors.error,
-        colorText: AppColors.white,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('File uploaded successfully'),
+          backgroundColor: AppColors.onlineGreen,
+        ),
       );
     }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to upload file'),
+        backgroundColor: AppColors.redColor,
+      ),
+    );
   }
+}
 
-  // FileType _getFileType(FileTypeEnum allowedTypes) {
-  //   switch (allowedTypes) {
-  //     case FileTypeEnum.image:
-  //       return FileType.image;
-  //     case FileTypeEnum.pdf:
-  //       return FileType.custom;
-  //     case FileTypeEnum.any:
-  //     default:
-  //       return FileType.any;
+  // Future<void> _handleAdditionalFileUpload() async {
+  //   try {
+  //     // First, ask for document title
+  //     String? title = await _showTitleDialog();
+  //     if (title == null || title.isEmpty) return;
+
+  //     FilePickerResult? result = await FilePicker.platform.pickFiles(
+  //       type: FileType.any,
+  //       allowMultiple: false,
+  //     );
+
+  //     if (result != null) {
+  //       final file = File(result.files.single.path!);
+  //       final nextIndex = _additionalFiles.keys.isNotEmpty 
+  //         ? _additionalFiles.keys.reduce((a, b) => a > b ? a : b) + 1 
+  //         : 1000; // Start from 1000 to avoid conflicts with required docs
+
+  //       setState(() {
+  //         _additionalFiles[nextIndex] = [file];
+  //         _additionalTitles[nextIndex] = [title];
+  //       });
+  //     }
+  //   } catch (e) {
+  //     Get.snackbar(
+  //       'Upload Error',
+  //       'Failed to upload additional document: ${e.toString()}',
+  //       backgroundColor: AppColors.error,
+  //       colorText: AppColors.white,
+  //     );
   //   }
   // }
+
+  Future<String?> _showTitleDialog() async {
+    String title = '';
+    return await Get.dialog<String>(
+      AlertDialog(
+        title: Text('Document Title'),
+        content: TextField(
+          onChanged: (value) => title = value,
+          decoration: InputDecoration(
+            hintText: 'Enter document title',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Get.back(result: title),
+            child: Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  FileType _getFileType(FileTypeEnum allowedTypes) {
+    switch (allowedTypes) {
+      case FileTypeEnum.image:
+        return FileType.image;
+      case FileTypeEnum.pdf:
+        return FileType.custom;
+      case FileTypeEnum.any:
+      default:
+        return FileType.any;
+    }
+  }
 
   List<String>? _getAllowedExtensions(FileTypeEnum allowedTypes) {
     switch (allowedTypes) {
       case FileTypeEnum.pdf:
         return ['pdf'];
       case FileTypeEnum.image:
-        return null; // Let FilePicker handle image extensions
+        return ['jpg', 'jpeg', 'png', 'webp'];
       case FileTypeEnum.any:
       default:
-        return null;
+        return ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
     }
   }
 
-  Future<void> _submitDocuments() async {
-    setState(() {
-      _isSubmitting = true;
+  IconData _getFileIcon(String filePath) {
+    final extension = filePath.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'webp':
+        return Icons.image;
+      default:
+        return Icons.insert_drive_file;
+    }
+  }
+
+ // Updated _submitDocuments method in DocumentUploadScreen
+Future<void> _submitDocuments() async {
+  setState(() {
+    _isSubmitting = true;
+  });
+
+  try {
+    // First validate that all required documents are uploaded
+    final allRequiredFieldsFilled = widget.documentFields.every((field) {
+      final index = widget.documentFields.indexOf(field);
+      return _uploadedFiles.containsKey(index) &&
+          _uploadedFiles[index]!.isNotEmpty;
     });
 
-    try {
-      // Create DocumentSubmission objects from uploaded files
-      final List<DocumentSubmission> uploadedDocs = [];
-
-      for (var entry in _uploadedFiles.entries) {
-        final fieldIndex = entry.key;
-        final files = entry.value;
-        final fieldTitle = widget.documentFields[fieldIndex].title;
-
-        for (var file in files) {
-          uploadedDocs.add(DocumentSubmission(
-            title: fieldTitle,
-            file: file.path,
-          ));
-        }
-      }
-
-      // Add documents to user fields
-      controler.user.value.fields.addAll(uploadedDocs);
-      // controler.user.update((user) {});
-      // Submit user data and documents
-      await controler.submitUserDataAndDocs(controler.user.value);
-
+    if (!allRequiredFieldsFilled) {
       Get.snackbar(
-        'Success',
-        'Documents submitted successfully!',
-        backgroundColor: AppColors.onlineGreen,
-        colorText: AppColors.white,
-      );
-
-      // Navigate back or to next screen
-      Get.back();
-    } catch (e) {
-      Get.snackbar(
-        'Submission Error',
-        'Failed to submit documents: ${e.toString()}',
+        'Missing Documents',
+        'Please upload all required documents before submitting',
         backgroundColor: AppColors.error,
         colorText: AppColors.white,
       );
-    } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      return;
     }
+
+    // Prepare required documents with proper document types
+    List<String> requiredDocuments = [];
+    List<String> requiredDocumentTypes = [];
+
+    for (var entry in _uploadedFiles.entries) {
+      final fieldIndex = entry.key;
+      final files = entry.value;
+      final fieldTitle = widget.documentFields[fieldIndex].title;
+      final documentType = _documentTypeMapping[fieldTitle] ?? 'unknown';
+
+      for (var file in files) {
+        requiredDocuments.add(file.path);
+        requiredDocumentTypes.add(documentType);
+      }
+    }
+
+    // Prepare additional documents
+    List<String> additionalDocuments = [];
+    List<String> additionalDocumentTitles = [];
+
+    for (var entry in _additionalFiles.entries) {
+      final index = entry.key;
+      final files = entry.value;
+      final titles = _additionalTitles[index] ?? [];
+
+      for (int i = 0; i < files.length; i++) {
+        additionalDocuments.add(files[i].path);
+        additionalDocumentTitles.add(i < titles.length ? titles[i] : 'Additional Document');
+      }
+    }
+
+    // Update user model with document information
+    controller.user.value = UserDataSubmissionModel(
+      uid: controller.user.value.uid,
+      firstName: controller.user.value.firstName,
+      lastName: controller.user.value.lastName,
+      address: controller.user.value.address,
+      citizenship: controller.user.value.citizenship,
+      email: controller.user.value.email,
+      mobile: controller.user.value.mobile,
+      propertyId: controller.user.value.propertyId,
+      unitId: controller.user.value.unitId,
+      requiredDocumentTypes: requiredDocumentTypes,
+      requiredDocuments: requiredDocuments,
+      additionalDocuments: additionalDocuments.isNotEmpty ? additionalDocuments : null,
+      additionalDocumentTitles: additionalDocumentTitles.isNotEmpty ? additionalDocumentTitles : null,
+      // Citizenship-specific fields
+      civilId: controller.user.value.civilId,
+      civilIdExpiry: controller.user.value.civilIdExpiry,
+      passportNo: controller.user.value.passportNo,
+      visaNo: controller.user.value.visaNo,
+      visaExpiryDate: controller.user.value.visaExpiryDate,
+      expatCivilId: controller.user.value.expatCivilId,
+      expatCivilIdExpiry: controller.user.value.expatCivilIdExpiry,
+    );
+
+    // Submit user data and documents using the controller's method
+    await controller.submitUserDataAndDocs(controller.user.value);
+
+    Get.snackbar(
+      'Success',
+      'Application submitted successfully! You will receive a confirmation email shortly.',
+      backgroundColor: AppColors.onlineGreen,
+      colorText: AppColors.white,
+      duration: Duration(seconds: 5),
+    );
+
+    // Navigate back to home or confirmation screen
+    Get.offAllNamed('/home'); // Adjust route as needed
+    
+  } catch (e) {
+    Get.snackbar(
+      'Submission Error',
+      'Failed to submit application: ${e.toString()}',
+      backgroundColor: AppColors.error,
+      colorText: AppColors.white,
+      duration: Duration(seconds: 5),
+    );
+  } finally {
+    setState(() {
+      _isSubmitting = false;
+    });
   }
+}
+
 }
 
 class DocumentField {

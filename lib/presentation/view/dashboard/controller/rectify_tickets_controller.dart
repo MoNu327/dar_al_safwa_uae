@@ -243,128 +243,131 @@ class RectifyTicketsController extends GetxController {
     }
   }
 
-  Future<void> submitUpdates(String complaintId) async {
-    if (isSubmitting.value) return;
-    
-    isSubmitting.value = true;
-    
-    try {
-      final description = workDescriptionController.text.trim();
-      final amount = amountController.text.trim();
+ Future<void> submitUpdates(String complaintId) async {
+  if (isSubmitting.value) return;
+  
+  isSubmitting.value = true;
+  
+  try {
+    final description = workDescriptionController.text.trim();
+    final amount = amountController.text.trim();
 
-      if (selectedWorkStatus.value.isEmpty) {
-        Get.snackbar('Error', 'Please select a work status',
-            backgroundColor: Colors.red, colorText: Colors.white);
-        return;
-      }
-
-      final String? technicianUid = FirebaseAuth.instance.currentUser?.uid;
-      if (technicianUid == null) {
-        Get.snackbar('Error', 'No logged-in technician found',
-            backgroundColor: Colors.red, colorText: Colors.white);
-        return;
-      }
-
-      final payments = amount.isNotEmpty ? [{
-        'amount_paid': amount,
-        'amount_status': paymentStatus.value.toString(),
-        'payment_method': paymentStatus.value != 0 
-            ? selectedPaymentMethod.value.toString()
-            : null,
-        'payment_date': paymentStatus.value != 0
-            ? DateTime.now().toIso8601String()
-            : null,
-      }] : [];
-
-      print("About to call API...");
-      
-      final dynamic apiResponse = await _apiService.updateComplaint(
-        uid: technicianUid,
-        complaintId: complaintId,
-        status: getStatusCode(selectedWorkStatus.value),
-        reply: description,
-        payments: payments.whereType<Map<String, dynamic>>().toList(),
-        images: uploadedImages,
-      );
-
-      // Debug: Print the actual response
-      print("Raw API Response: $apiResponse");
-      print("Response type: ${apiResponse.runtimeType}");
-      
-      // Safely convert to Map
-      Map<String, dynamic> response;
-      if (apiResponse is Map<String, dynamic>) {
-        response = apiResponse;
-      } else if (apiResponse is Map) {
-        response = Map<String, dynamic>.from(apiResponse);
-      } else {
-        print("Unexpected response type: ${apiResponse.runtimeType}");
-        throw Exception("Invalid API response format");
-      }
-      
-      print("Processed response: $response");
-
-      // Check for success with multiple possible formats
-      bool isSuccess = false;
-      final successField = response['success'];
-      
-      if (successField is bool) {
-        isSuccess = successField;
-      } else if (successField is String) {
-        isSuccess = successField.toLowerCase() == 'true';
-      } else if (successField is int) {
-        isSuccess = successField == 1;
-      } else if (response.containsKey('status')) {
-        final status = response['status'];
-        isSuccess = status == 'success' || status == 200 || status == '200';
-      }
-      
-      print("Final isSuccess: $isSuccess");
-
-      if (isSuccess) {
-        print("Success condition met, processing...");
-        
-        // ❌ REMOVED: Don't refresh here - it won't affect the screen we're going back to
-        // await fetchController.fetchTickets(technicianUid);
-        
-        // Close any existing snackbars or dialogs
-        if (Get.isSnackbarOpen == true) {
-          Get.closeAllSnackbars();
-        }
-        if (Get.isDialogOpen == true) {
-          Get.back();
-        }
-        
-        // Store the success message
-        final successMessage = response['message']?.toString() ?? 'Updated successfully';
-        
-        print("Navigating back with refresh flag...");
-        
-        // ✅ Navigate back with result data - let the receiving screen handle refresh
-        Get.back(result: {
-          'updated': true,
-          'complaintId': complaintId,
-          'needsRefresh': true,
-          'message': successMessage,
-          'technicianUid': technicianUid, // Pass UID for refresh
-        });
-        
-      } else {
-        print("Success condition not met");
-        Get.snackbar('Error', response['message']?.toString() ?? 'Failed to update',
-            backgroundColor: Colors.red, colorText: Colors.white);
-      }
-      
-    } catch (e, stackTrace) {
-      print("Submit error: $e");
-      print("Stack trace: $stackTrace");
-      Get.snackbar('Error', 'Something went wrong: $e',
+    if (selectedWorkStatus.value.isEmpty) {
+      Get.snackbar('Error', 'Please select a work status',
           backgroundColor: Colors.red, colorText: Colors.white);
-    } finally {
-      print("Setting isSubmitting to false");
-      isSubmitting.value = false;
+      return;
     }
+
+    final String? technicianUid = FirebaseAuth.instance.currentUser?.uid;
+    if (technicianUid == null) {
+      Get.snackbar('Error', 'No logged-in technician found',
+          backgroundColor: Colors.red, colorText: Colors.white);
+      return;
+    }
+
+    final payments = amount.isNotEmpty ? [{
+      'amount_paid': amount,
+      'amount_status': paymentStatus.value.toString(),
+      'payment_method': paymentStatus.value != 0 
+          ? selectedPaymentMethod.value.toString()
+          : null,
+      'payment_date': paymentStatus.value != 0
+          ? DateTime.now().toIso8601String()
+          : null,
+    }] : [];
+
+    print("About to call API...");
+    
+    final dynamic apiResponse = await _apiService.updateComplaint(
+      uid: technicianUid,
+      complaintId: complaintId,
+      status: getStatusCode(selectedWorkStatus.value),
+      reply: description,
+      payments: payments.whereType<Map<String, dynamic>>().toList(),
+      images: uploadedImages,
+    );
+
+    // Process response
+    Map<String, dynamic> response;
+    if (apiResponse is Map<String, dynamic>) {
+      response = apiResponse;
+    } else if (apiResponse is Map) {
+      response = Map<String, dynamic>.from(apiResponse);
+    } else {
+      throw Exception("Invalid API response format");
+    }
+
+    // Check for success
+    bool isSuccess = false;
+    final successField = response['success'];
+    
+    if (successField is bool) {
+      isSuccess = successField;
+    } else if (successField is String) {
+      isSuccess = successField.toLowerCase() == 'true';
+    } else if (successField is int) {
+      isSuccess = successField == 1;
+    } else if (response.containsKey('status')) {
+      final status = response['status'];
+      isSuccess = status == 'success' || status == 200 || status == '200';
+    }
+
+    if (isSuccess) {
+      print("Success condition met, processing...");
+      
+      final successMessage = response['message']?.toString() ?? 'Updated successfully';
+      
+      // ✅ OPTION 1: Navigate back first, then refresh in the receiving screen
+      print("Navigating back with refresh instructions...");
+      
+      Get.back(result: {
+        'updated': true,
+        'complaintId': complaintId,
+        'needsRefresh': true,
+        'needsSummaryRefresh': true,
+        'technicianUid': technicianUid,
+        'message': successMessage,
+      });
+      
+      // ✅ OPTION 2: If you prefer to refresh before navigation (alternative)
+      /*
+      try {
+        print("Refreshing data before navigation...");
+        await fetchController.refreshAllData(technicianUid);
+        print("✅ Data refreshed successfully");
+      } catch (refreshError) {
+        print("❌ Error refreshing data: $refreshError");
+        // Continue with navigation even if refresh fails
+      }
+      
+      // Show success message and navigate back
+      Get.snackbar('Success', successMessage,
+          backgroundColor: Colors.green, colorText: Colors.white);
+          
+      // Simple navigation back
+      Get.back(result: {
+        'updated': true,
+        'complaintId': complaintId,
+        'refreshed': true,
+      });
+      */
+      
+    } else {
+      print("API call was not successful");
+      Get.snackbar('Error', response['message']?.toString() ?? 'Failed to update',
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
+    
+  } catch (e, stackTrace) {
+    print("Submit error: $e");
+    print("Stack trace: $stackTrace");
+    Get.snackbar('Error', 'Something went wrong: $e',
+        backgroundColor: Colors.red, colorText: Colors.white);
+  } finally {
+    print("Setting isSubmitting to false");
+    isSubmitting.value = false;
   }
+}
 
   /// Convert Status to Code - Updated to handle "Started working" 
   String getStatusCode(String status) {

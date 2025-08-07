@@ -19,7 +19,7 @@ import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_widget.dart';
 import 'technician_rectify_ticket_screen.dart';
 
-Widget buildTicketCard({
+Widget  buildTicketCard({
   required String propertyName,
   required String category,
   required String issue,
@@ -641,11 +641,37 @@ Widget _buildActionButtonsSection(
         child: CustomButtonWidget(
           buttonHeight: screenHeight * 0.040,
           buttonTitle: 'Reply',
-          onPressed: () {
-            Get.to(() => RectifyTicketsScreen(
-              complaintId: complaintId,
-              category: category,
-            ));
+          onPressed: () async {
+           // In the screen that navigates to RectifyTicketsScreen
+// In the screen that navigates to RectifyTicketsScreen
+final result = await Get.to(() => RectifyTicketsScreen(
+  complaintId: complaintId,
+  category: category,
+));
+
+// Handle the result and refresh if needed
+if (result != null && result['needsRefresh'] == true) {
+  final technicianUid = result['technicianUid'];
+  
+  if (technicianUid != null) {
+    try {
+      final fetchController = Get.find<TechnicianTicketsController>();
+      
+      // Add the refreshAllData method first, then use it
+      await fetchController.refreshAllData(technicianUid);
+      
+      // Show success message after successful refresh
+      Get.snackbar('Success', result['message'] ?? 'Updated successfully',
+          backgroundColor: Colors.green, colorText: Colors.white);
+          
+    } catch (e) {
+      print("Error refreshing data in receiving screen: $e");
+      // Still show success message even if refresh fails
+      Get.snackbar('Success', result['message'] ?? 'Updated successfully',
+          backgroundColor: Colors.green, colorText: Colors.white);
+    }
+  }
+}
           },
           buttonShape: 'rect',
           borderColor: AppColors.darkGrey.withOpacity(0.2),

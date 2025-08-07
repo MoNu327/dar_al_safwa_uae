@@ -34,7 +34,7 @@ class Validator {
     }
     final mobileRegex = RegExp(r"^[0-9]{10}$");
     if (!mobileRegex.hasMatch(value.trim())) {
-      return "Enter a valid 10-digit mobile number";
+      return "Enter a valid 8-digit mobile number";
     }
     return null;
   }

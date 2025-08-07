@@ -352,7 +352,7 @@ Widget _buildSummarySection() {
     }
 
     // Show debug info in development
-    final isDebugMode = true; // Set to false in production
+    final isDebugMode = false; // Set to false in production
 
     return Container(
       margin: const EdgeInsets.all(12),
@@ -409,7 +409,7 @@ Widget _buildSummarySection() {
             children: [
               _buildStatItem(
                 icon: Icons.home_work_outlined,
-                value: propertyCount > 0 ? propertyCount.toString() : '1', // Show at least 1 if we have complaints
+                value: propertyCount.toString(), 
                 label: 'Properties',
                 color: AppColors.warning,
               ),
