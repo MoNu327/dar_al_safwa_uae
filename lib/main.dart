@@ -27,20 +27,19 @@ import 'presentation/view/profile/widgets/tenant_edit_profile_widget.dart';
 import 'presentation/view/property_details/widgets/cheque_submission_screen.dart';
 import 'presentation/view_model/localization_controller.dart';
 
-// Global navigator key for notification navigation
+// Global instances for notification handling
+late FirebaseNotificationService notificationService;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  Get.put(NetworkController());
 
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
 
-  // Initialize Firebase
+  // Initialize core services
   await _initializeFirebase();
   await _initializeNotifications();
   
@@ -65,6 +64,7 @@ Future<void> _initializeFirebase() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
     // Handle error appropriately for your app
@@ -74,14 +74,17 @@ Future<void> _initializeFirebase() async {
 Future<void> _initializeNotifications() async {
   try {
     // Initialize the notification service
-    final notificationService = FirebaseNotificationService();
+    notificationService = FirebaseNotificationService();
     await notificationService.initialize();
 
-    // Create additional notification channels if needed
+    // Create additional high-priority notification channel
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'high_importance_channel',
       'High Importance Notifications',
+      description: 'This channel is used for important notifications.',
       importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
     );
 
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -91,24 +94,91 @@ Future<void> _initializeNotifications() async {
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+
+    debugPrint('Notifications initialized successfully');
   } catch (e) {
     debugPrint('Notification initialization error: $e');
   }
 }
 
 void _initializeControllers() {
+  // Initialize network controller first
+  Get.put(NetworkController(), permanent: true);
+  
+  // Initialize other controllers
   Get.put(AgentController(), permanent: true);
   Get.put(UserController(), permanent: true);
   Get.put(AuthService(), permanent: true);
   Get.put(LocalizationController(), permanent: true);
   Get.put(TechnicianController(), permanent: true);
-  Get.put(TenantsTicketsController(), permanent: true); 
+  Get.put(TenantsTicketsController(), permanent: true);
+  
+  debugPrint('Controllers initialized successfully');
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   final bool isAuthenticated;
 
   const MyApp({super.key, required this.isAuthenticated});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Additional setup after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupAppLifecycleHandling();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // Clean up notification service when app is disposed
+    notificationService.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        debugPrint('App resumed - checking for pending notifications');
+        // Handle app resume - check for any pending notifications
+        _handleAppResume();
+        break;
+      case AppLifecycleState.paused:
+        debugPrint('App paused');
+        break;
+      case AppLifecycleState.detached:
+        debugPrint('App detached');
+        break;
+      case AppLifecycleState.inactive:
+        debugPrint('App inactive');
+        break;
+      case AppLifecycleState.hidden:
+        debugPrint('App hidden');
+        break;
+    }
+  }
+
+  void _setupAppLifecycleHandling() {
+    // Any additional setup that needs to happen after the app is fully initialized
+    debugPrint('App lifecycle handling setup complete');
+  }
+
+  void _handleAppResume() {
+    // Handle any notifications that might have been received while app was in background
+    // This is where you could check for any pending notifications or update app state
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,10 +194,10 @@ class MyApp extends StatelessWidget {
         locale: const Locale('en'),
         fallbackLocale: const Locale('en'),
         
-        // Add the navigator key for notification navigation
-        navigatorKey: navigatorKey,
+        // Use the navigator key from FirebaseNotificationService for consistency
+        navigatorKey: FirebaseNotificationService.navigatorKey,
         
-        initialRoute: isAuthenticated ? AppRoute.navbar : AppRoute.initial,
+        initialRoute: widget.isAuthenticated ? AppRoute.navbar : AppRoute.initial,
         getPages: AppRoute.routes,
         initialBinding: AppBindings(),
         
@@ -135,6 +205,16 @@ class MyApp extends StatelessWidget {
         navigatorObservers: [
           NotificationNavigationObserver(),
         ],
+        
+        // Handle unknown routes
+        unknownRoute: GetPage(
+          name: '/unknown',
+          page: () => const Scaffold(
+            body: Center(
+              child: Text('Page not found'),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -168,20 +248,41 @@ class AppBindings extends Bindings {
     Get.lazyPut<LocalizationController>(() => LocalizationController(),
         fenix: true);
     Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
+    Get.lazyPut<TenantsTicketsController>(() => TenantsTicketsController(), fenix: true);
+    
+    // Add notification service to GetX dependency injection
+    Get.put(notificationService, permanent: true);
   }
 }
 
-// Custom navigation observer for handling notification navigation
+// Enhanced navigation observer for handling notification navigation
 class NotificationNavigationObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
     debugPrint('Navigation: Pushed ${route.settings.name}');
+    
+    // Log additional route information for debugging
+    if (route.settings.arguments != null) {
+      debugPrint('Navigation: Route arguments: ${route.settings.arguments}');
+    }
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
     debugPrint('Navigation: Replaced ${oldRoute?.settings.name} with ${newRoute?.settings.name}');
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    debugPrint('Navigation: Popped ${route.settings.name}');
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didRemove(route, previousRoute);
+    debugPrint('Navigation: Removed ${route.settings.name}');
   }
 }

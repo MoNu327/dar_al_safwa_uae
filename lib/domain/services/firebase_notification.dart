@@ -584,7 +584,6 @@
 
 
 
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -593,6 +592,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:get/get.dart';
 
 class FirebaseNotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -621,19 +621,34 @@ class FirebaseNotificationService {
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
       
-      // Handle notification opened app (when app is terminated)
+      // Handle notification opened app (when app is opened from background)
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpenedApp);
       
       // Check for initial message (when app is launched from notification)
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-      if (initialMessage != null) {
-        _handleNotificationOpenedApp(initialMessage);
-      }
+      _checkForInitialMessage();
 
       // Start listening for auth state changes
       _setupAuthStateListener();
+      
+      debugPrint('Firebase notification service initialized successfully');
     } catch (e) {
       debugPrint('Error initializing Firebase notifications: $e');
+    }
+  }
+
+  // Enhanced method to check for initial message
+  Future<void> _checkForInitialMessage() async {
+    try {
+      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      if (initialMessage != null) {
+        debugPrint('App launched from notification: ${initialMessage.data}');
+        // Delay navigation to ensure app is fully initialized
+        Future.delayed(const Duration(seconds: 1), () {
+          _handleNotificationOpenedApp(initialMessage);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking initial message: $e');
     }
   }
 
@@ -644,6 +659,8 @@ class FirebaseNotificationService {
       'Chat Notifications',
       description: 'Incoming chat messages',
       importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
     );
 
     // Technician-specific channel
@@ -652,6 +669,8 @@ class FirebaseNotificationService {
       'Technician Notifications',
       description: 'Notifications for technician assignments and updates',
       importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
     );
 
     // Order updates channel
@@ -660,6 +679,7 @@ class FirebaseNotificationService {
       'Order Updates',
       description: 'Notifications about order status changes',
       importance: Importance.defaultImportance,
+      playSound: true,
     );
 
     final androidPlugin = _flutterLocalNotificationsPlugin
@@ -760,12 +780,17 @@ class FirebaseNotificationService {
 
   Future<void> _requestPermissions() async {
     try {
-      await _firebaseMessaging.requestPermission(
+      final settings = await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
+        criticalAlert: false,
+        carPlay: false,
+        announcement: false,
       );
+      
+      debugPrint('Notification permission status: ${settings.authorizationStatus}');
     } catch (e) {
       debugPrint('Error requesting notification permissions: $e');
     }
@@ -794,9 +819,12 @@ class FirebaseNotificationService {
       await _flutterLocalNotificationsPlugin.initialize(
         settings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
+          debugPrint('Local notification tapped: ${response.payload}');
           _handleNotificationTap(response.payload);
         },
       );
+      
+      debugPrint('Local notifications initialized successfully');
     } catch (e) {
       debugPrint('Error initializing local notifications: $e');
     }
@@ -810,7 +838,10 @@ class FirebaseNotificationService {
       final data = jsonDecode(payload) as Map<String, dynamic>;
       debugPrint('Notification tapped with payload: $data');
       
-      _navigateBasedOnNotificationType(data);
+      // Add a small delay to ensure the app is ready for navigation
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _navigateBasedOnNotificationType(data);
+      });
     } catch (e) {
       debugPrint('Error handling notification tap: $e');
     }
@@ -819,11 +850,68 @@ class FirebaseNotificationService {
   // Handle notification when app is opened from background/terminated state
   void _handleNotificationOpenedApp(RemoteMessage message) {
     debugPrint('Notification opened app: ${message.data}');
-    _navigateBasedOnNotificationType(message.data);
+    
+    // Add a delay to ensure the app context is available
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _navigateBasedOnNotificationType(message.data);
+    });
   }
 
-  // Navigation logic based on notification type
+  // Enhanced navigation logic based on notification type
   void _navigateBasedOnNotificationType(Map<String, dynamic> data) {
+    debugPrint('Attempting navigation with data: $data');
+    
+    // Try multiple navigation approaches
+    if (Get.context != null) {
+      _navigateUsingGetX(data);
+    } else if (navigatorKey.currentContext != null) {
+      _navigateUsingNavigatorKey(data);
+    } else {
+      // Retry navigation after a delay
+      debugPrint('No navigation context available, retrying...');
+      Future.delayed(const Duration(seconds: 1), () {
+        _navigateBasedOnNotificationType(data);
+      });
+    }
+  }
+
+  void _navigateUsingGetX(Map<String, dynamic> data) {
+    final notificationType = data['type'] as String?;
+    debugPrint('Navigating using GetX for type: $notificationType');
+    
+    try {
+      switch (notificationType) {
+        case 'chat':
+          _navigateToChatGetX(data);
+          break;
+        case 'technician_assignment':
+          _navigateToTechnicianAssignmentGetX(data);
+          break;
+        case 'order_update':
+          _navigateToOrderDetailsGetX(data);
+          break;
+        case 'job_update':
+          _navigateToJobDetailsGetX(data);
+          break;
+        case 'appointment':
+          _navigateToAppointmentGetX(data);
+          break;
+        case 'ticket':
+          _navigateToTicketDetailsGetX(data);
+          break;
+        default:
+          Get.offAllNamed('/home');
+      }
+    } catch (e) {
+      debugPrint('Error navigating with GetX: $e');
+      // Fallback to navigator key
+      if (navigatorKey.currentContext != null) {
+        _navigateUsingNavigatorKey(data);
+      }
+    }
+  }
+
+  void _navigateUsingNavigatorKey(Map<String, dynamic> data) {
     final context = navigatorKey.currentContext;
     if (context == null) {
       debugPrint('Navigation context is null');
@@ -831,6 +919,7 @@ class FirebaseNotificationService {
     }
 
     final notificationType = data['type'] as String?;
+    debugPrint('Navigating using Navigator key for type: $notificationType');
     
     switch (notificationType) {
       case 'chat':
@@ -848,11 +937,82 @@ class FirebaseNotificationService {
       case 'appointment':
         _navigateToAppointment(context, data);
         break;
+      case 'ticket':
+        _navigateToTicketDetails(context, data);
+        break;
       default:
         _navigateToHome(context);
     }
   }
 
+  // GetX Navigation Methods
+  void _navigateToChatGetX(Map<String, dynamic> data) {
+    final chatId = data['chatId'] as String?;
+    final userId = data['userId'] as String?;
+    final userName = data['userName'] as String?;
+    
+    if (chatId != null) {
+      Get.toNamed('/chat', arguments: {
+        'chatId': chatId,
+        'userId': userId,
+        'userName': userName,
+      });
+    }
+  }
+
+  void _navigateToTechnicianAssignmentGetX(Map<String, dynamic> data) {
+    final assignmentId = data['assignmentId'] as String?;
+    final jobId = data['jobId'] as String?;
+    
+    if (assignmentId != null || jobId != null) {
+      Get.toNamed('/technician-assignment', arguments: {
+        'assignmentId': assignmentId,
+        'jobId': jobId,
+      });
+    }
+  }
+
+  void _navigateToOrderDetailsGetX(Map<String, dynamic> data) {
+    final orderId = data['orderId'] as String?;
+    
+    if (orderId != null) {
+      Get.toNamed('/order-details', arguments: {
+        'orderId': orderId,
+      });
+    }
+  }
+
+  void _navigateToJobDetailsGetX(Map<String, dynamic> data) {
+    final jobId = data['jobId'] as String?;
+    
+    if (jobId != null) {
+      Get.toNamed('/job-details', arguments: {
+        'jobId': jobId,
+      });
+    }
+  }
+
+  void _navigateToAppointmentGetX(Map<String, dynamic> data) {
+    final appointmentId = data['appointmentId'] as String?;
+    
+    if (appointmentId != null) {
+      Get.toNamed('/appointment', arguments: {
+        'appointmentId': appointmentId,
+      });
+    }
+  }
+
+  void _navigateToTicketDetailsGetX(Map<String, dynamic> data) {
+    final ticketId = data['ticketId'] as String?;
+    
+    if (ticketId != null) {
+      Get.toNamed('/ticket-details', arguments: {
+        'ticketId': ticketId,
+      });
+    }
+  }
+
+  // Navigator Key Navigation Methods (Original methods with improvements)
   void _navigateToChat(BuildContext context, Map<String, dynamic> data) {
     final chatId = data['chatId'] as String?;
     final userId = data['userId'] as String?;
@@ -924,6 +1084,19 @@ class FirebaseNotificationService {
     }
   }
 
+  void _navigateToTicketDetails(BuildContext context, Map<String, dynamic> data) {
+    final ticketId = data['ticketId'] as String?;
+    
+    if (ticketId != null) {
+      Navigator.of(context).pushNamed(
+        '/ticket-details',
+        arguments: {
+          'ticketId': ticketId,
+        },
+      );
+    }
+  }
+
   void _navigateToHome(BuildContext context) {
     Navigator.of(context).pushNamedAndRemoveUntil(
       '/home',
@@ -936,19 +1109,13 @@ class FirebaseNotificationService {
       final notification = message.notification;
       final data = message.data;
 
+      debugPrint('Received foreground message: ${message.toMap()}');
+
       if (notification == null && data.isEmpty) return;
 
       // Determine which channel to use
-      String channelId = _chatChannelId;
-      String channelName = 'Chat Notifications';
-      
-      if (data['type'] == 'technician_assignment') {
-        channelId = _techChannelId;
-        channelName = 'Technician Assignment';
-      } else if (data['type'] == 'order_update') {
-        channelId = _orderChannelId;
-        channelName = 'Order Update';
-      }
+      String channelId = _getChannelId(data['type']);
+      String channelName = _getChannelName(data['type']);
 
       // Handle image notification
       String? imageUrl;
@@ -973,9 +1140,38 @@ class FirebaseNotificationService {
         platformDetails,
         payload: jsonEncode(data),
       );
+      
+      debugPrint('Foreground notification shown successfully');
     } catch (e, stack) {
       debugPrint('Error handling foreground message: $e');
       debugPrint('Stack trace: $stack');
+    }
+  }
+
+  String _getChannelId(String? type) {
+    switch (type) {
+      case 'technician_assignment':
+      case 'job_update':
+        return _techChannelId;
+      case 'order_update':
+        return _orderChannelId;
+      case 'chat':
+      default:
+        return _chatChannelId;
+    }
+  }
+
+  String _getChannelName(String? type) {
+    switch (type) {
+      case 'technician_assignment':
+        return 'Technician Assignment';
+      case 'job_update':
+        return 'Job Update';
+      case 'order_update':
+        return 'Order Update';
+      case 'chat':
+      default:
+        return 'Chat Notifications';
     }
   }
 
@@ -1008,6 +1204,9 @@ class FirebaseNotificationService {
         priority: Priority.high,
         styleInformation: bigPictureStyle,
         largeIcon: FilePathAndroidBitmap(imageUrl),
+        enableVibration: true,
+        playSound: true,
+        autoCancel: true,
       );
     } else {
       androidDetails = AndroidNotificationDetails(
@@ -1016,6 +1215,9 @@ class FirebaseNotificationService {
         channelDescription: 'Incoming notifications',
         importance: Importance.max,
         priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+        autoCancel: true,
       );
     }
 
@@ -1025,10 +1227,7 @@ class FirebaseNotificationService {
       presentBadge: true,
       presentSound: true,
       badgeNumber: 1,
-      attachments: [
-        // For iOS you can add attachments for images
-        // DarwinNotificationAttachment(imageUrl),
-      ],
+      interruptionLevel: InterruptionLevel.active,
     );
 
     return NotificationDetails(
@@ -1038,23 +1237,41 @@ class FirebaseNotificationService {
   }
 
   String _getDefaultTitle(Map<String, dynamic> data) {
-    if (data['type'] == 'technician_assignment') {
-      return 'New Assignment';
-    } else if (data['type'] == 'order_update') {
-      return 'Order Update';
+    switch (data['type']) {
+      case 'technician_assignment':
+        return 'New Assignment';
+      case 'order_update':
+        return 'Order Update';
+      case 'job_update':
+        return 'Job Update';
+      case 'ticket':
+        return 'Ticket Update';
+      case 'appointment':
+        return 'Appointment Reminder';
+      case 'chat':
+        return 'New Message';
+      default:
+        return 'New Notification';
     }
-    return 'New Notification';
   }
 
   String _getDefaultBody(Map<String, dynamic> data) {
-    if (data['type'] == 'technician_assignment') {
-      return 'You have been assigned a new job';
-    } else if (data['type'] == 'order_update') {
-      return 'Your order status has been updated';
-    } else if (data['message'] != null) {
-      return data['message'];
+    switch (data['type']) {
+      case 'technician_assignment':
+        return 'You have been assigned a new job';
+      case 'order_update':
+        return 'Your order status has been updated';
+      case 'job_update':
+        return 'Job status has been updated';
+      case 'ticket':
+        return 'Ticket has been updated';
+      case 'appointment':
+        return 'You have an upcoming appointment';
+      case 'chat':
+        return data['message'] ?? 'You have a new message';
+      default:
+        return data['message'] ?? 'You have a new notification';
     }
-    return 'You have a new notification';
   }
 
   Future<void> dispose() async {
@@ -1067,8 +1284,11 @@ class FirebaseNotificationService {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
-    final service = FirebaseNotificationService();
-    await service._handleForegroundMessage(message);
+    debugPrint('Background message received: ${message.data}');
+    
+    // Store the notification data for later processing when app opens
+    // You might want to save this to local storage or handle it appropriately
+    
   } catch (e) {
     debugPrint('Error in background handler: $e');
   }
