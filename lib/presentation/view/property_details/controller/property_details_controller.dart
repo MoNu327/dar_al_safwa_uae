@@ -52,6 +52,10 @@ class PropertyDetailsController extends GetxController {
     }
   }
 
+
+
+
+
   Future<void> fetchPropertyDetails(int propertyId) async {
     try {
       isLoading(true);

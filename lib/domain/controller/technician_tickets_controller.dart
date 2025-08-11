@@ -2,6 +2,7 @@
   import 'package:dar_al_safwa/data/datasources/api_client.dart';
   import 'package:dar_al_safwa/data/model/technican_list_model.dart';
   import 'package:dar_al_safwa/data/model/technican_summary_model.dart';
+import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
   import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
   import 'package:dio/dio.dart';
   import 'package:firebase_auth/firebase_auth.dart';
@@ -23,6 +24,9 @@
     final RxMap<String, String> assignedTechnicianNames = <String, String>{}.obs;
     final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs;
     final RxMap<String, bool> showAssignmentSection = <String, bool>{}.obs;
+    final RxList<ComplaintCategory> complaintCategory = <ComplaintCategory>[].obs;
+final RxInt selectedComplaintId = 0.obs;
+final RxBool isLoadingCompliantList = false.obs;
     
     // 🆕 Store assigned tickets to prevent removal
     final RxMap<String, Complaint> localAssignedTickets = <String, Complaint>{}.obs;
@@ -43,6 +47,9 @@ void onInit() {
   debugPrint("🚀 TechnicianTicketsController onInit called");
   _initializeController();
 }
+
+
+
 
 Future<void> _initializeController() async {
   try {
@@ -71,6 +78,9 @@ Future<void> _initializeController() async {
       debugPrint("🔄 TechnicianTicketsController onClose called");
       super.onClose();
     }
+
+
+    
 
     // ✅ UPDATED: Enhanced assignment method with ticket preservation
     Future<void> assignTechnicianWithoutRemoval(String complaintId, String technicianId) async {
@@ -395,9 +405,9 @@ Future<List<Complaint>> _fetchAssignedTickets(String userId) async {
     // Option 1: Try a different API endpoint for assigned tickets
     try {
       final response = await apiClient.request(
-        "technician/assigned-complaints", // Try this endpoint first
+        "technician/complaints", // Try this endpoint first
         method: "post",
-        data: {"technician_uid": userId},
+        data: {"uid": userId},
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -410,9 +420,9 @@ Future<List<Complaint>> _fetchAssignedTickets(String userId) async {
     // Option 2: Try getting all tickets for this technician
     try {
       final response = await apiClient.request(
-        "technician/all-complaints", // Try this endpoint
+        "technician/complaints", // Try this endpoint
         method: "post",
-        data: {"technician_uid": userId},
+        data: {"uid": userId},
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -429,7 +439,7 @@ Future<List<Complaint>> _fetchAssignedTickets(String userId) async {
         method: "post",
         data: {
           "uid": userId,
-          "include_assigned": true, // Try adding this parameter
+          // "include_assigned": true, // Try adding this parameter
         },
       );
 

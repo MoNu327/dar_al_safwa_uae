@@ -243,7 +243,7 @@ class RectifyTicketsController extends GetxController {
     }
   }
 
- Future<void> submitUpdates(String complaintId) async {
+Future submitUpdates(String complaintId) async {
   if (isSubmitting.value) return;
   
   isSubmitting.value = true;
@@ -251,33 +251,36 @@ class RectifyTicketsController extends GetxController {
   try {
     final description = workDescriptionController.text.trim();
     final amount = amountController.text.trim();
-
+    
     if (selectedWorkStatus.value.isEmpty) {
       Get.snackbar('Error', 'Please select a work status',
           backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
-
+    
     final String? technicianUid = FirebaseAuth.instance.currentUser?.uid;
     if (technicianUid == null) {
       Get.snackbar('Error', 'No logged-in technician found',
           backgroundColor: Colors.red, colorText: Colors.white);
       return;
     }
-
+    
     final payments = amount.isNotEmpty ? [{
       'amount_paid': amount,
       'amount_status': paymentStatus.value.toString(),
-      'payment_method': paymentStatus.value != 0 
+      'payment_method': paymentStatus.value != 0
           ? selectedPaymentMethod.value.toString()
           : null,
       'payment_date': paymentStatus.value != 0
           ? DateTime.now().toIso8601String()
           : null,
     }] : [];
-
-    print("About to call API...");
     
+    print("About to call API...");
+    print("Uploaded images count: ${uploadedImages.length}");
+    print("Technician UID: $technicianUid");
+    
+    // Enhanced API call with metadata to help with image categorization
     final dynamic apiResponse = await _apiService.updateComplaint(
       uid: technicianUid,
       complaintId: complaintId,
@@ -285,8 +288,9 @@ class RectifyTicketsController extends GetxController {
       reply: description,
       payments: payments.whereType<Map<String, dynamic>>().toList(),
       images: uploadedImages,
+      // Removed metadata parameter as it is not defined in the method signature
     );
-
+    
     // Process response
     Map<String, dynamic> response;
     if (apiResponse is Map<String, dynamic>) {
@@ -296,7 +300,7 @@ class RectifyTicketsController extends GetxController {
     } else {
       throw Exception("Invalid API response format");
     }
-
+    
     // Check for success
     bool isSuccess = false;
     final successField = response['success'];
@@ -311,49 +315,123 @@ class RectifyTicketsController extends GetxController {
       final status = response['status'];
       isSuccess = status == 'success' || status == 200 || status == '200';
     }
-
+    
     if (isSuccess) {
       print("Success condition met, processing...");
+      print("Response data keys: ${response['data']?.keys?.toList()}");
       
       final successMessage = response['message']?.toString() ?? 'Updated successfully';
       
-      // ✅ OPTION 1: Navigate back first, then refresh in the receiving screen
-      print("Navigating back with refresh instructions...");
-      
-      Get.back(result: {
-        'updated': true,
-        'complaintId': complaintId,
-        'needsRefresh': true,
-        'needsSummaryRefresh': true,
-        'technicianUid': technicianUid,
-        'message': successMessage,
-      });
-      
-      // ✅ OPTION 2: If you prefer to refresh before navigation (alternative)
-      /*
-      try {
-        print("Refreshing data before navigation...");
-        await fetchController.refreshAllData(technicianUid);
-        print("✅ Data refreshed successfully");
-      } catch (refreshError) {
-        print("❌ Error refreshing data: $refreshError");
-        // Continue with navigation even if refresh fails
-      }
-      
-      // Show success message and navigate back
-      Get.snackbar('Success', successMessage,
-          backgroundColor: Colors.green, colorText: Colors.white);
+      // If we have response data, try to update the complaint object directly
+      if (response.containsKey('data') && response['data'] is Map) {
+        try {
+          final updatedComplaintData = response['data'] as Map<String, dynamic>;
           
-      // Simple navigation back
-      Get.back(result: {
-        'updated': true,
-        'complaintId': complaintId,
-        'refreshed': true,
-      });
-      */
+          // Enhance the response data with technician context
+          if (!updatedComplaintData.containsKey('replybytechnician') || 
+              updatedComplaintData['replybytechnician'] == null) {
+            updatedComplaintData['replybytechnician'] = description;
+          }
+          
+          // Add technician update metadata
+          updatedComplaintData['last_updated'] = DateTime.now().toIso8601String();
+          updatedComplaintData['last_updated_by'] = 'technician';
+          updatedComplaintData['last_updated_by_uid'] = technicianUid;
+          
+          // If we uploaded images, make sure they're properly categorized
+          if (uploadedImages.isNotEmpty) {
+            // Add technician images to the response
+            if (updatedComplaintData['complaint_images'] is Map) {
+              final complaintImages = updatedComplaintData['complaint_images'] as Map<String, dynamic>;
+              
+              // Ensure technician_uploaded field exists and contains our images
+              if (!complaintImages.containsKey('technician_uploaded')) {
+                complaintImages['technician_uploaded'] = [];
+              }
+              
+              final List<String> existingTechImages = 
+                  (complaintImages['technician_uploaded'] as List?)?.cast<String>() ?? [];
+              
+              // Add new images if they're not already there
+              final Set<String> existingSet = existingTechImages.toSet();
+              final List<String> newImages = uploadedImages
+                  .map((img) => img.path)
+                  .where((path) => !existingSet.contains(path))
+                  .toList();
+              
+              if (newImages.isNotEmpty) {
+                complaintImages['technician_uploaded'] = [...existingTechImages, ...newImages];
+                print("Added ${newImages.length} new technician images");
+              }
+            } else {
+              // Create complaint_images structure if it doesn't exist
+              updatedComplaintData['complaint_images'] = {
+                'tenant_uploaded': [],
+                'admin_uploaded': [],
+                'technician_uploaded': uploadedImages,
+                'admin_technician_uploaded': [],
+              };
+            }
+            
+            // Also update the direct images field for backward compatibility
+            if (updatedComplaintData.containsKey('images')) {
+              final List<String> existingImages = 
+                  (updatedComplaintData['images'] as List?)?.cast<String>() ?? [];
+              final Set<String> existingSet = existingImages.toSet();
+              final List<String> newImages = uploadedImages
+                  .map((img) => img.path)
+                  .where((path) => !existingSet.contains(path))
+                  .toList();
+              
+              if (newImages.isNotEmpty) {
+                updatedComplaintData['images'] = [...existingImages, ...newImages];
+              }
+            } else {
+              updatedComplaintData['images'] = uploadedImages;
+            }
+          }
+          
+          print("Enhanced complaint data with technician context");
+          
+          // Navigate back with the enhanced data
+          Get.back(result: {
+            'updated': true,
+            'complaintId': complaintId,
+            'needsRefresh': true,
+            'needsSummaryRefresh': true,
+            'technicianUid': technicianUid,
+            'message': successMessage,
+            'updatedComplaintData': updatedComplaintData, // Pass the enhanced data
+            'technicianImagesAdded': uploadedImages.length,
+          });
+          
+        } catch (e) {
+          print("Error processing complaint data: $e");
+          // Fall back to simple refresh
+          Get.back(result: {
+            'updated': true,
+            'complaintId': complaintId,
+            'needsRefresh': true,
+            'needsSummaryRefresh': true,
+            'technicianUid': technicianUid,
+            'message': successMessage,
+          });
+        }
+      } else {
+        // No data in response, just trigger refresh
+        Get.back(result: {
+          'updated': true,
+          'complaintId': complaintId,
+          'needsRefresh': true,
+          'needsSummaryRefresh': true,
+          'technicianUid': technicianUid,
+          'message': successMessage,
+        });
+      }
       
     } else {
       print("API call was not successful");
+      print("Response: $response");
       Get.snackbar('Error', response['message']?.toString() ?? 'Failed to update',
           backgroundColor: Colors.red, colorText: Colors.white);
     }

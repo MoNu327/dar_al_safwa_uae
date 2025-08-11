@@ -6,6 +6,7 @@ import 'package:dar_al_safwa/data/model/user_data_submission_model.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http_parser/http_parser.dart';
 import '../datasources/api_client.dart';
 import '../model/agent_properties_response_model.dart';
 import '../model/compliant_model.dart';
@@ -559,14 +560,98 @@ Future<Response> updateTechnicianComplaint({
     }
   }
 
-  // Submit User Details for Booking result
-  Future<Response> submitUserDetailsAndDoc(
-      UserDataSubmissionModel userDataSubmission) async {
+
+
+Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userDataSubmission) async {
+  try {
+    // Create FormData for multipart upload
+    FormData formData = FormData();
+    
+    // Add all text fields
+    formData.fields.addAll([
+      MapEntry('uid', userDataSubmission.uid),
+      MapEntry('first_name', userDataSubmission.firstName),
+      MapEntry('last_name', userDataSubmission.lastName),
+      MapEntry('propertyid', userDataSubmission.propertyId.toString()),
+      MapEntry('unitid', userDataSubmission.unitId.toString()),
+      MapEntry('address', userDataSubmission.address),
+      MapEntry('citizenship', userDataSubmission.citizenship.toString()),
+      MapEntry('email', userDataSubmission.email),
+      MapEntry('mobile', userDataSubmission.mobile),
+      MapEntry('civil_id', userDataSubmission.civilId ?? ''),
+      MapEntry('civil_id_expiry', userDataSubmission.civilIdExpiry ?? ''),
+      MapEntry('property_type', userDataSubmission.propertyType ?? ''),
+    ]);
+    
+    // Add document types
+    if (userDataSubmission.requiredDocumentTypes != null) {
+      for (int i = 0; i < userDataSubmission.requiredDocumentTypes!.length; i++) {
+        formData.fields.add(
+          MapEntry('required_document_types[$i]', userDataSubmission.requiredDocumentTypes![i])
+        );
+      }
+    }
+    
+    // Add files as MultipartFile objects
+    if (userDataSubmission.requiredDocuments != null) {
+      for (int i = 0; i < userDataSubmission.requiredDocuments!.length; i++) {
+        String filePath = userDataSubmission.requiredDocuments![i];
+        File file = File(filePath);
+        
+        if (file.existsSync()) {
+          String fileName = filePath.split('/').last;
+          
+          MultipartFile multipartFile = await MultipartFile.fromFile(
+            filePath,
+            filename: fileName,
+            contentType: DioMediaType.parse(_getContentType(fileName)),
+          );
+          
+          formData.files.add(MapEntry('required_documents[$i]', multipartFile));
+        } else {
+          throw Exception('File not found: $filePath');
+        }
+      }
+    }
+    
+    final response = await apiClient.request(
+      "storebooking", 
+      method: "post",
+      data: formData,
+      isFormData: true, // Important for multipart uploads
+    );
+    
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+String _getContentType(String fileName) {
+  String extension = fileName.toLowerCase().split('.').last;
+  switch (extension) {
+    case 'pdf':
+      return 'application/pdf';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    default:
+      return 'application/octet-stream';
+  }
+}
+    Future<Response> getCommercialPropertyStatus(
+      int unitId
+      ) async {
     try {
       final response = await apiClient.request(
-        "storebooking",
+        "check-commercial-property",
         method: "post",
-        data: userDataSubmission.toJson(),
+        data:{
+          "unitid": unitId
+        }
       );
 
       return response;
@@ -574,6 +659,7 @@ Future<Response> updateTechnicianComplaint({
       rethrow;
     }
   }
+
 
   // Submit User Details for Booking result
   Future<Response> fetchingAgentChatReports(String uid) async {

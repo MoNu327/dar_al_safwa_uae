@@ -27,12 +27,12 @@ class HomeScreen extends StatelessWidget {
   final LoginController loginController = Get.put(LoginController());
   final NetworkController networkController = Get.find<NetworkController>();
   final RxBool showPropertySearchCard = false.obs;
-  final SearchScreenController searchScreenController =
-      Get.put(SearchScreenController());
-
-  final HomeScreenController homeScreenController =
-      Get.put(HomeScreenController());
+  
+  // Initialize search controller early and wait for it to be ready
+  final SearchScreenController searchScreenController = Get.put(SearchScreenController());
+  final HomeScreenController homeScreenController = Get.put(HomeScreenController());
   final FirebaseAuth auth = FirebaseAuth.instance;
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -114,7 +114,6 @@ class HomeScreen extends StatelessWidget {
                           return const Icon(
                             Icons.error,
                             color: AppColors.primaryColor,
-                            // size: radius ?? screenHeight5,
                           );
                         },
                       ),
@@ -125,7 +124,13 @@ class HomeScreen extends StatelessWidget {
             ],
           ),
           body: RefreshIndicator(
-            onRefresh: homeScreenController.refreshAll,
+            onRefresh: () async {
+              // Refresh both home content and search dropdown
+              await Future.wait([
+                homeScreenController.refreshAll(),
+                searchScreenController.refreshSearchDropdown(),
+              ]);
+            },
             child: Obx(() {
               // Show loader when loading or no internet
               if (homeScreenController.isLoading.value ||
@@ -150,33 +155,86 @@ class HomeScreen extends StatelessWidget {
                         );
                       }),
 
-                      PropertySearchCard(
-                        propertyOptions: searchScreenController
-                                .searchDropdownResponse
-                                .value
-                                ?.data
-                                .propertyOptions ??
-                            [],
-                        propertyTypes: searchScreenController
-                                .searchDropdownResponse
-                                .value
-                                ?.data
-                                .propertyTypes ??
-                            [],
-                        propertyLocations: searchScreenController
-                                .searchDropdownResponse
-                                .value
-                                ?.data
-                                .propertyLocations ??
-                            [],
-                        propertyBedsBaths: searchScreenController
-                                .searchDropdownResponse
-                                .value
-                                ?.data
-                                .propertyBedsBaths ??
-                            [],
-                      ),
+                      // Search Card with proper loading and error handling
+                      Obx(() {
+                        if (searchScreenController.isLoadingSearchDropdown.value) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(40),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(screenWidth6)),
+                              color: Colors.white,
+                              border: Border.all(
+                                color: AppColors.black800.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: const Center(child: CustomLoaderWidget()),
+                          );
+                        }
+
+                        if (searchScreenController.searchDropdownErrorMessage.value.isNotEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(screenWidth6)),
+                              color: Colors.white,
+                              border: Border.all(
+                                color: Colors.red.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red, size: 40),
+                                SizedBox(height: 10),
+                                CustomTextWidget(
+                                  title: searchScreenController.searchDropdownErrorMessage.value,
+                                  color: Colors.red,
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 10),
+                                ElevatedButton(
+                                  onPressed: () => searchScreenController.refreshSearchDropdown(),
+                                  child: Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final searchData = searchScreenController.searchDropdownResponse.value?.data;
+                        
+                        if (searchData == null) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(screenWidth6)),
+                              color: Colors.white,
+                              border: Border.all(
+                                color: AppColors.black800.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: CustomTextWidget(
+                              title: 'No search data available',
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
+
+                        return PropertySearchCard(
+                          propertyOptions: searchData.propertyOptions,
+                          propertyTypes: searchData.propertyTypes,
+                          propertyLocations: searchData.propertyLocations,
+                          propertyBedsBaths: searchData.propertyBedsBaths,
+                        );
+                      }),
+
                       kHeight(0.01),
+                      
                       // Banner Slider
                       Obx(() {
                         if (homeScreenController.errorMessage.isNotEmpty) {
@@ -198,72 +256,137 @@ class HomeScreen extends StatelessWidget {
                               .translate('popular_properties'),
                         );
                       }),
-                      SizedBox(child: Obx(() {
-                        debugPrint(
-                            homeScreenController.popularErrorMessage.value);
-                        if (homeScreenController
-                            .popularErrorMessage.value.isNotEmpty) {
-                          return CustomTextWidget(
-                            title:
-                                homeScreenController.popularErrorMessage.value,
-                            fontSize: tagTitle,
-                          );
-                        }
-
-                        final popularProperties = homeScreenController
-                                .popularProperties.value?.data ??
-                            [];
-                        final isArabic = Get.locale?.languageCode == 'ar';
-
-                        return GridView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: calculateChildAspectRatio(),
-                          ),
-                          itemCount: popularProperties.length,
-                          itemBuilder: (context, index) {
-                            final property = popularProperties[index];
-                            return GestureDetector(
-                              onTap: () {
-                                debugPrint(
-                                    "Property Id from popuar properties ==> ${property.id}");
-                                Get.toNamed('/propertyDetails',
-                                    arguments: {'propertyId': property.id});
-                              },
-                              child: CustomGridViewWidget(
-                                imageUrl: property.propertyImage ?? '',
-                                title: isArabic
-                                    ? property.propertyTitle?.ar ?? ''
-                                    : property.propertyTitle?.en ?? '',
-                                price: isArabic
-                                    ? property.propertyPrice?.formatted?.ar ??
-                                        ''
-                                    : property.propertyPrice?.formatted?.en ??
-                                        '',
-                                propertyDeal: isArabic
-                                    ? property.propertyDeal?.ar ?? ''
-                                    : property.propertyDeal?.en ?? '',
-                                propertyType: isArabic
-                                    ? property.propertyType?.ar ?? ''
-                                    : property.propertyType?.en ?? '',
-                                location: isArabic
-                                    ? property.propertyLocation?.ar ?? ''
-                                    : property.propertyLocation?.en ?? '',
-                                address: isArabic
-                                    ? property.propertyAddress?.ar ?? ''
-                                    : property.propertyAddress?.en ?? '',
-                              ),
+                      
+                      // Popular properties section
+                      SizedBox(
+                        child: Obx(() {
+                          debugPrint(homeScreenController.popularErrorMessage.value);
+                          
+                          if (homeScreenController.popularErrorMessage.value.isNotEmpty) {
+                            return CustomTextWidget(
+                              title: homeScreenController.popularErrorMessage.value,
+                              fontSize: tagTitle,
                             );
-                          },
-                        );
-                      })),
+                          }
 
-                      // featured properties
+                          final popularProperties = homeScreenController.popularProperties.value?.data ?? [];
+                          debugPrint("Popular properties count: ${popularProperties.length}");
+                          
+                          if (popularProperties.isEmpty) {
+                            return CustomTextWidget(
+                              title: "No popular properties available",
+                              fontSize: tagTitle,
+                            );
+                          }
+
+                          final isArabic = Get.locale?.languageCode == 'ar';
+
+                          return // Alternative approach with better touch handling:
+
+GridView.builder(
+  physics: const NeverScrollableScrollPhysics(),
+  shrinkWrap: true,
+  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 2,
+    crossAxisSpacing: 10,
+    mainAxisSpacing: 10,
+    childAspectRatio: calculateChildAspectRatio(),
+  ),
+  itemCount: popularProperties.length,
+  itemBuilder: (context, index) {
+    final property = popularProperties[index];
+    final isArabic = Get.locale?.languageCode == 'ar';
+    
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        borderRadius: BorderRadius.circular(8),
+        child: Listener( // Use Listener for more reliable touch detection
+          onPointerDown: (details) {
+            debugPrint("Pointer down on popular property: ${property?.id}");
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              debugPrint("Tapped popular property: ${property?.id}");
+              
+              if (property?.id == null) {
+                debugPrint("Property ID is null");
+                return;
+              }
+              
+              bool isCommercial = _isPropertyCommercial(property);
+              final propertyTitle = isArabic
+                  ? property.propertyTitle?.ar ?? property.propertyTitle?.en ?? ''
+                  : property.propertyTitle?.en ?? property.propertyTitle?.ar ?? '';
+              
+              debugPrint("Navigating to property details...");
+              
+              try {
+                Get.toNamed('/propertyDetails', arguments: {
+                  'propertyId': property.id,
+                  'unitId': property.id ?? 0,
+                  'unitType': isCommercial ? 1 : 0,
+                  'propertyTitle': propertyTitle,
+                  'propertyData': {
+                    'title': property.propertyTitle,
+                    'image': property.propertyImage,
+                    'price': property.propertyPrice,
+                    'deal': property.propertyDeal,
+                  }
+                });
+              } catch (e) {
+                debugPrint("Navigation error: $e");
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.white,
+              ),
+              child: CustomGridViewWidget(
+                imageUrl: property.propertyImage ?? '',
+                title: isArabic
+                    ? property.propertyTitle?.ar ?? ''
+                    : property.propertyTitle?.en ?? '',
+                price: isArabic
+                    ? property.propertyPrice?.formatted?.ar ?? ''
+                    : property.propertyPrice?.formatted?.en ?? '',
+                propertyDeal: isArabic
+                    ? property.propertyDeal?.ar ?? ''
+                    : property.propertyDeal?.en ?? '',
+                propertyType: isArabic
+                    ? property.propertyType?.ar ?? ''
+                    : property.propertyType?.en ?? '',
+                location: isArabic
+                    ? property.propertyLocation?.ar ?? ''
+                    : property.propertyLocation?.en ?? '',
+                address: isArabic
+                    ? property.propertyAddress?.ar ?? ''
+                    : property.propertyAddress?.en ?? '',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  },
+);
+                        }),
+                      ),
+
+                      // Featured properties title
                       Obx(() {
                         return CustomTextWidget(
                           fontWeight: FontWeight.w700,
@@ -273,75 +396,91 @@ class HomeScreen extends StatelessWidget {
                         );
                       }),
 
-                      Obx(() {
-                        // if (homeScreenController.isLoadingFeatured.value) {
-                        //   return const Center(child: CustomLoaderWidget());
-                        // }
+                    // Featured properties section - Fixed
+// Featured properties section
+Obx(() {
+  if (homeScreenController.featuredErrorMessage.value.isNotEmpty) {
+    return CustomTextWidget(
+      title: homeScreenController.featuredErrorMessage.value,
+      fontSize: tagTitle,
+    );
+  }
 
-                        if (homeScreenController
-                            .featuredErrorMessage.value.isNotEmpty) {
-                          return CustomTextWidget(
-                            title:
-                                homeScreenController.popularErrorMessage.value,
-                            fontSize: tagTitle,
-                          );
-                        }
-                        // if (homeScreenController
-                        //     .featuredErrorMessage.value.isEmpty) {
-                        //   return CustomTextWidget(
-                        //     title:
-                        //         homeScreenController.popularErrorMessage.value,
-                        //     fontSize: tagTitle,
-                        //   );
-                        // }
+  final featuredProperties = homeScreenController.featuredProperties.value?.data ?? [];
+  final isArabic = Get.locale?.languageCode == 'ar';
 
-                        final featuredProperties = homeScreenController
-                                .featuredProperties.value?.data ??
-                            [];
+  return ListView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: featuredProperties.length,
+    itemBuilder: (context, index) {
+      final property = featuredProperties[index];
 
-                        final isArabic = Get.locale?.languageCode == 'ar';
-
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: featuredProperties.length,
-                          itemBuilder: (context, index) {
-                            final property = featuredProperties[index];
-
-                            return GestureDetector(
-                              onTap: () {
-                                Get.toNamed('/propertyDetails',
-                                    arguments: {'propertyId': property.id});
-                              },
-                              child: CustomListWidget(
-                                imageUrl: property.image ?? '',
-                                title: localizationController
-                                    .translate('title_price'),
-                                price: isArabic
-                                    ? property.price?.formatted?.ar ?? ''
-                                    : property.price?.formatted?.en ?? '',
-                                propertyDeal: isArabic
-                                    ? property.dealType?.ar ?? ''
-                                    : property.dealType?.en ?? '',
-                                subtitle: isArabic
-                                    ? property.title?.ar ?? ''
-                                    : property.title?.en ?? '',
-                                type: isArabic
-                                    ? property.type?.ar ?? ''
-                                    : property.type?.en ?? '',
-                                location: isArabic
-                                    ? property.location?.ar ?? ''
-                                    : property.location?.en ?? '',
-                                bedrooms: property.bedrooms ?? 0,
-                                bathrooms: property.bathrooms ?? 0,
-                                area: isArabic
-                                    ? property.area?.ar ?? ''
-                                    : property.area?.en ?? '',
-                              ),
-                            );
-                          },
-                        );
-                      })
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          debugPrint("Tapped featured property: ${property?.id}");
+          
+          if (property?.id == null) return;
+          
+          bool isCommercial = _isPropertyCommercial(property);
+          final propertyTitle = isArabic
+              ? property.title?.ar ?? property.title?.en ?? ''
+              : property.title?.en ?? property.title?.ar ?? '';
+          
+          Get.toNamed('/propertyDetails', arguments: {
+            'propertyId': property.id,
+            'unitId': property.id ?? 0,
+            'unitType': isCommercial ? 1 : 0,
+            'propertyTitle': propertyTitle,
+            'propertyData': {
+              'title': property.title,
+              'image': property.image,
+              'price': property.price,
+              'deal': property.dealType,
+              'type': property.type,  // Note: Using type here
+              'location': property.location,
+              'bedrooms': property.bedrooms,
+              'bathrooms': property.bathrooms,
+              'area': property.area,
+            }
+          });
+        },
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 4),
+          child: Material(
+            elevation: 2,
+            borderRadius: BorderRadius.circular(8),
+            child: CustomListWidget(
+              imageUrl: property.image ?? '',
+              title: localizationController.translate('title_price'),
+              price: isArabic
+                  ? property.price?.formatted?.ar ?? ''
+                  : property.price?.formatted?.en ?? '',
+              propertyDeal: isArabic
+                  ? property.dealType?.ar ?? ''
+                  : property.dealType?.en ?? '',
+              subtitle: isArabic
+                  ? property.title?.ar ?? ''
+                  : property.title?.en ?? '',
+              type: isArabic
+                  ? property.type?.ar ?? ''  // Using type here
+                  : property.type?.en ?? '',
+              location: isArabic
+                  ? property.location?.ar ?? ''
+                  : property.location?.en ?? '',
+              bedrooms: property.bedrooms ?? 0,
+              bathrooms: property.bathrooms ?? 0,
+              area: isArabic
+                  ? property.area?.ar ?? ''
+                  : property.area?.en ?? '',
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}),
                     ],
                   ),
                 ),
@@ -350,4 +489,59 @@ class HomeScreen extends StatelessWidget {
           ),
         ));
   }
+
+  // Helper function to determine if a property is commercial
+  // You can modify this logic based on your property data structure
+  
+bool _isPropertyCommercial(dynamic property) {
+  try {
+    // First safely check for type information in either field
+    final dynamic typeData = (property is Map) 
+        ? (property['type'] ?? property['propertyType'])
+        : (property.type ?? property.propertyType);
+    
+    if (typeData != null) {
+      final typeEn = (typeData is Map)
+          ? (typeData['en']?.toString().toLowerCase() ?? '')
+          : (typeData.en?.toString().toLowerCase() ?? '');
+          
+      final typeAr = (typeData is Map)
+          ? (typeData['ar']?.toString().toLowerCase() ?? '')
+          : (typeData.ar?.toString().toLowerCase() ?? '');
+      
+      final commercialKeywords = [
+        'commercial', 'office', 'shop', 'retail', 'warehouse', 'industrial',
+        'تجاري', 'مكتب', 'متجر', 'مستودع', 'صناعي'
+      ];
+      
+      return commercialKeywords.any((keyword) => 
+        typeEn.contains(keyword) || 
+        typeAr.contains(keyword)
+      );
+    }
+    
+    // Fallback to other commercial indicators
+    final isCommercial = (property is Map)
+        ? property['isCommercial']
+        : property.isCommercial;
+        
+    if (isCommercial != null) {
+      return isCommercial == true;
+    }
+    
+    final categoryId = (property is Map)
+        ? property['categoryId']
+        : property.categoryId;
+        
+    if (categoryId != null) {
+      final commercialCategoryIds = [2, 3, 4]; // Adjust these IDs as needed
+      return commercialCategoryIds.contains(categoryId);
+    }
+  } catch (e) {
+    debugPrint("Error checking commercial status: $e");
+  }
+  
+  // Default to residential
+  return false;
+}
 }

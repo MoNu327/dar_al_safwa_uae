@@ -29,11 +29,16 @@ class TenantsTicketsListWidget extends StatefulWidget {
 }
 
 class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
-  final TextEditingController _searchController = TextEditingController();
   final TenantsTicketsController controller = Get.put(TenantsTicketsController());
 
   List<Complaint> complaints = [];
   List<Complaint> filteredComplaints = [];
+  
+  // Filter variables
+  String? selectedStatus;
+  String? selectedCategory;
+  DateTime? startDate;
+  DateTime? endDate;
 
   @override
   void initState() {
@@ -42,52 +47,120 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
     _loadData();
   }
   
-  
-
   Future<void> _loadData() async {
-  final userId = FirebaseAuth.instance.currentUser?.uid;
-  if (userId != null) {
-    await controller.getSummaryForTenant(userId);
-    await controller.fetchTenantComplaints();
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      await controller.getSummaryForTenant(userId);
+      await controller.fetchTenantComplaints();
+    }
   }
-}
 
   /// Fetch complaints from API
- Future<void> _loadComplaints() async {
-  try {
-    await controller.fetchTenantComplaints();
-    setState(() {
-      complaints = controller.complaints;
-      filteredComplaints = complaints;
-    });
-  } catch (e) {
-    debugPrint("Error loading complaints: $e");
-  }
-}
-
-
-
- void _searchTickets(String query) {
-  setState(() {
-    if (query.isEmpty) {
-      filteredComplaints = complaints;
-    } else {
-      filteredComplaints = complaints.where((complaint) {
-        return complaint.category.toLowerCase().contains(query.toLowerCase()) ||
-            complaint.description.toLowerCase().contains(query.toLowerCase()) ||
-            complaint.complaintNumber.toLowerCase().contains(query.toLowerCase());
-      }).toList();
+  Future<void> _loadComplaints() async {
+    try {
+      await controller.fetchTenantComplaints();
+      setState(() {
+        complaints = controller.complaints;
+        filteredComplaints = complaints;
+      });
+    } catch (e) {
+      debugPrint("Error loading complaints: $e");
     }
-  });
-}
+  }
 
+  /// Apply filters to the complaints list
+  void _applyFilters() {
+    debugPrint("Applying filters - Status: $selectedStatus, Start: $startDate, End: $endDate");
+    
+    setState(() {
+      filteredComplaints = complaints.where((complaint) {
+        // Status filter
+        if (selectedStatus != null && selectedStatus != 'All') {
+          final statusMatch = complaint.statusText.en.toLowerCase() == selectedStatus!.toLowerCase();
+          if (!statusMatch) return false;
+        }
 
+        // Category filter
+        // if (selectedCategory != null && selectedCategory != 'All') {
+        //   final categoryMatch = complaint.category.toLowerCase().contains(selectedCategory!.toLowerCase());
+        //   if (!categoryMatch) return false;
+        // }
+
+        // Date range filter
+        if (startDate != null || endDate != null) {
+          try {
+            // Parse the complaint date - adjust format according to your date format
+            DateTime complaintDate = DateFormat('dd/MM/yyyy').parse(complaint.formattedDate);
+            
+            if (startDate != null && complaintDate.isBefore(startDate!)) {
+              return false;
+            }
+            if (endDate != null && complaintDate.isAfter(endDate!.add(const Duration(days: 1)))) {
+              return false;
+            }
+          } catch (e) {
+            debugPrint("Error parsing date: ${complaint.formattedDate}");
+            // If date parsing fails, include the complaint
+          }
+        }
+
+        return true;
+      }).toList();
+    });
+    
+    debugPrint("Filtered complaints count: ${filteredComplaints.length}");
+  }
+
+  /// Get unique categories from complaints for filter dropdown
+  // List<String> _getUniqueCategories() {
+  //   final categories = complaints.map((c) => c.category).where((c) => c.isNotEmpty).toSet().toList();
+  //   categories.sort();
+  //   return ['All', ...categories];
+  // }
+
+  /// Select date for filtering
+  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isStartDate ? startDate ?? DateTime.now() : endDate ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.secondaryColor, // Header background color
+              onPrimary: Colors.white, // Header text color
+              onSurface: Colors.black, // Body text color
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.secondaryColor, // Button text color
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        if (isStartDate) {
+          startDate = picked;
+        } else {
+          endDate = picked;
+        }
+      });
+      _applyFilters();
+    }
+  }
 
   @override
   void dispose() {
-    _searchController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,60 +186,48 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
           children: [
             Column(
               children: [
-
-                 _buildSummarySection(),
-                // Search Bar
-                CustomTextFieldWidget(
-                  hintText: "Search ticket by ID or Issue...",
-                  keyboardType: TextInputType.text,
-                  prefixIcon: Icons.search,
-                  controller: _searchController,
-                  onChanged: _searchTickets,
-                ),
+                _buildSummarySection(),
+                
+                // Filters Section
+                _buildFiltersSection(),
 
                 // Tickets List
-               Expanded(
-  child: Obx(() {
-    if (controller.isComplaintLoading.value) {
-      return const Center(child: CircularProgressIndicator());
-    }
+                Expanded(
+                  child: Obx(() {
+                    if (controller.isComplaintLoading.value) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-    if (controller.complaintErrorMessage.isNotEmpty) {
-      return Center(
-        child: CustomTextWidget(
-          title: controller.complaintErrorMessage.value,
-          color: AppColors.black,
-          fontSize: Get.height * 0.018,
-        ),
-      );
-    }
+                    if (controller.complaintErrorMessage.isNotEmpty) {
+                      return Center(
+                        child: CustomTextWidget(
+                          title: controller.complaintErrorMessage.value,
+                          color: AppColors.black,
+                          fontSize: Get.height * 0.018,
+                        ),
+                      );
+                    }
 
-    // Use filteredComplaints if search is applied, else controller.complaints
-    final complaintsList = filteredComplaints.isEmpty && _searchController.text.isEmpty
-        ? controller.complaints
-        : filteredComplaints;
+                    // Use filteredComplaints
+                    if (filteredComplaints.isEmpty) {
+                      return _buildEmptyState(
+                        message: "No tickets found",
+                        showSearchHint: true
+                      );
+                    }
 
-    if (complaintsList.isEmpty) {
-     return _buildEmptyState(
-  message: "No complaints found", 
-  showSearchHint: false
-);
-    }
-
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth1,
-        vertical: screenHeight1,
-      ),
-      itemCount: complaintsList.length,
-      itemBuilder: (context, index) {
-        return _buildComplaintCard(complaintsList[index]);
-      },
-    );
-  }),
-),
-
-
+                    return ListView.builder(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth1,
+                        vertical: screenHeight1,
+                      ),
+                      itemCount: filteredComplaints.length,
+                      itemBuilder: (context, index) {
+                        return _buildComplaintCard(filteredComplaints[index]);
+                      },
+                    );
+                  }),
+                ),
               ],
             ),
             Positioned(
@@ -180,22 +241,19 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
                     buttonColor: AppColors.secondaryColor,
                     buttonTitle: "Create Ticket",
                     buttonTextColor: AppColors.white,
-                 onPressed: () async {
-  try {
-    await controller.fetchTenantProperties();
+                    onPressed: () async {
+                      try {
+                        await controller.fetchTenantProperties();
 
-    if (controller.properties.isNotEmpty) {
-      _showPropertySelectionBottomSheet(controller.properties);
-    } else {
-      Get.snackbar("No Properties", "No properties found for this user.");
-    }
-  } catch (e) {
-    Get.snackbar("Error", "Failed to fetch properties: $e");
-  }
-},
-
-
-
+                        if (controller.properties.isNotEmpty) {
+                          _showPropertySelectionBottomSheet(controller.properties);
+                        } else {
+                          Get.snackbar("No Properties", "No properties found for this user.");
+                        }
+                      } catch (e) {
+                        Get.snackbar("Error", "Failed to fetch properties: $e");
+                      }
+                    },
                   ),
                 ),
               ),
@@ -205,509 +263,654 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
       ),
     );
   }
-void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
-  final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-  Get.bottomSheet(
-    SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomTextWidget(
-              title: "Select Property",
-              fontSize: Get.height * 0.02,
-              fontWeight: FontWeight.bold,
-              color: AppColors.black,
-            ),
-            const SizedBox(height: 12),
-            ListView.builder(
-              shrinkWrap: true,
-              itemCount: properties.length,
-              itemBuilder: (context, index) {
-                final property = properties[index];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: CustomTextWidget(
-                    title: "${property.propertyTitle} - Flat No: ${property.unitNumber ?? 'N/A'}",
-                    fontSize: Get.height * 0.016,
-                    color: AppColors.black,
-                  ),
-                  // subtitle: CustomTextWidget(
-                  //   title: "ID: ${property.id}",
-                  //   fontSize: Get.height * 0.014,
-                  //   color: AppColors.grey,
-                  // ),
-                  onTap: () {
-                    debugPrint(
-                      'Selected Property: ${property.propertyTitle},  Flat No: ${property.unitNumber}, unitAddressId: ${property.unitAddressId}, userId: $userId',
-                    );
-
-                    Get.back(); // Close bottom sheet
-                    Get.to(() => TenantsCreateTicketScreen(
-                          propertyName: property.propertyTitle,
-                          propertyId: property.propertyId,
-                          unitAddressId: property.unitAddressId,
-                          userId: userId,
-                        ));
-                  },
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    ),
-    isScrollControlled: true, // <-- Allows full height if needed
-  );
-}
-
-Widget _buildSummarySection() {
-  return Obx(() {
-    debugPrint('[SummaryWidget] Building with:');
-    debugPrint('- isLoading: ${controller.isStatsLoading.value}');
-    debugPrint('- error: ${controller.statsErrorMessage.value}');
-    debugPrint('- stats: ${controller.technicianStats.value?.propertyStats.length} properties');
-    debugPrint('- complaints count: ${controller.complaints.length}');
-    
-    if (controller.isStatsLoading.value) {
-      return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: LinearProgressIndicator(),
-      );
-    }
-    
-    if (controller.statsErrorMessage.value.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Text(
-              controller.statsErrorMessage.value,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 8),
-            // Show fallback stats from complaints
-            if (controller.complaints.isNotEmpty)
-              Text(
-                'Fallback: Found ${controller.complaints.length} complaints',
-                style: const TextStyle(color: Colors.orange, fontSize: 12),
-              ),
-          ],
-        ),
-      );
-    }
-
-    final summary = controller.technicianStats.value;
-    
-    // Calculate totals - handle null/empty cases gracefully
-    final propertyCount = summary?.propertyStats.length ?? 0;
-    
-    // Enhanced calculation with more debugging
-    int totalTickets = 0;
-    int totalActive = 0;
-    int totalResolved = 0;
-    
-    if (summary?.propertyStats.isNotEmpty ?? false) {
-      // API-based calculation
-      debugPrint('[SummaryWidget] Using API data for calculations');
-      
-      for (final stat in summary!.propertyStats) {
-        final tickets = int.tryParse(stat.totalComplaints) ?? 0;
-        final started = int.tryParse(stat.startedWorking) ?? 0;
-        final inProgress = int.tryParse(stat.inProgress) ?? 0;
-        final resolved = int.tryParse(stat.resolved) ?? 0;
-        
-        debugPrint('[SummaryWidget] Property ${stat.propertyName}: $tickets total, $started started, $inProgress in progress, $resolved resolved');
-        
-        totalTickets += tickets;
-        totalActive += started + inProgress;
-        totalResolved += resolved;
-      }
-    } else {
-      // Fallback calculation from complaints list
-      debugPrint('[SummaryWidget] Using fallback calculation from complaints');
-      
-      totalTickets = controller.complaints.length;
-      
-      for (final complaint in controller.complaints) {
-        final status = complaint.status.toLowerCase();
-        final statusText = complaint.statusText.en.toLowerCase();
-        
-        if (status.contains('resolved') || status.contains('completed') || 
-            statusText.contains('resolved') || statusText.contains('completed')) {
-          totalResolved++;
-        } else {
-          totalActive++; // Everything else is considered active
-        }
-      }
-      
-      debugPrint('[SummaryWidget] Fallback calculation: $totalTickets total, $totalActive active, $totalResolved resolved');
-    }
-
-    // Show debug info in development
-    final isDebugMode = false; // Set to false in production
-
-    return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primaryColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primaryColor.withOpacity(0.2)),
-      ),
+  /// Build filters section
+  Widget _buildFiltersSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const CustomTextWidget(
-                title: 'Your Tickets Summary',
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.secondaryColor,
-              ),
-              if (isDebugMode)
-                Icon(
-                  summary?.propertyStats.isNotEmpty ?? false 
-                    ? Icons.api : Icons.list,
-                  size: 16,
-                  color: summary?.propertyStats.isNotEmpty ?? false 
-                    ? AppColors.onlineGreen : AppColors.warning,
+              // Status Filter
+              Expanded(
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: selectedStatus,
+                        hint: Text(
+                          'Filter by Status',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.black.withOpacity(0.5),
+                          ),
+                        ),
+                        items: [
+                          'All',
+                          'Pending',
+                          'In Progress',
+                          'Rectified',
+                          'Completed',
+                        ].map((status) {
+                          return DropdownMenuItem<String>(
+                            value: status,
+                            child: Text(
+                              status,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.black,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() => selectedStatus = value);
+                          _applyFilters();
+                        },
+                      ),
+                    ),
+                  ),
                 ),
-            ],
-          ),
-          
-          if (isDebugMode && (summary?.propertyStats != null && summary!.propertyStats.isEmpty))
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              // child: Text(
-              //   'Using fallback calculation from ${controller.complaints.length} complaints',
-              //   style: const TextStyle(
-              //     fontSize: 10,
-              //     color: Colors.orange,
-              //     fontStyle: FontStyle.italic,
+              ),
+              const SizedBox(width: 8),
+              // Category Filter
+              // Expanded(
+              //   child: Container(
+              //     height: 48,
+              //     decoration: BoxDecoration(
+              //       borderRadius: BorderRadius.circular(6),
+              //       border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
+              //     ),
+              //     child: Padding(
+              //       padding: const EdgeInsets.symmetric(horizontal: 12),
+              //       child: DropdownButtonHideUnderline(
+              //         child: DropdownButton<String>(
+              //           isExpanded: true,
+              //           value: selectedCategory,
+              //           hint: Text(
+              //             'Filter by Category',
+              //             style: TextStyle(
+              //               fontSize: 14,
+              //               color: AppColors.black.withOpacity(0.5),
+              //             ),
+              //           ),
+              //           items: _getUniqueCategories().map((category) {
+              //             return DropdownMenuItem<String>(
+              //               value: category,
+              //               child: Text(
+              //                 category,
+              //                 style: const TextStyle(
+              //                   fontSize: 14,
+              //                   color: AppColors.black,
+              //                 ),
+              //               ),
+              //             );
+              //           }).toList(),
+              //           onChanged: (value) {
+              //             setState(() => selectedCategory = value);
+              //             _applyFilters();
+              //           },
+              //         ),
+              //       ),
+              //     ),
               //   ),
               // ),
-            ),
-            
-          const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            childAspectRatio: 2.5,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            children: [
-              _buildStatItem(
-                icon: Icons.home_work_outlined,
-                value: propertyCount.toString(), 
-                label: 'Properties',
-                color: AppColors.warning,
-              ),
-              _buildStatItem(
-                icon: Icons.list_alt,
-                value: totalTickets.toString(),
-                label: 'Total Tickets',
-                color: AppColors.warning,
-              ),
-              _buildStatItem(
-                icon: Icons.pending_actions,
-                value: totalActive.toString(),
-                label: 'Active Tickets',
-                color: AppColors.warning,
-              ),
-              _buildStatItem(
-                icon: Icons.check_circle,
-                value: totalResolved.toString(),
-                label: 'Resolved',
-                color: AppColors.onlineGreen,
-              ),
             ],
           ),
-          
-          // Debug information
-          if (isDebugMode)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Debug: API Stats=${summary?.propertyStats.length ?? 0}, Complaints=${controller.complaints.length}',
-                style: const TextStyle(fontSize: 10, color: Colors.grey),
-              ),
+          const SizedBox(height: 8),
+          // Date Range Filter
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.darkGrey.withOpacity(0.2)),
             ),
+            child: Row(
+              children: [
+                // Start Date
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _selectDate(context, true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'From',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.black.withOpacity(0.6),
+                            ),
+                          ),
+                          Text(
+                            startDate != null 
+                                ? DateFormat('MMM dd').format(startDate!)
+                                : 'Select',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: startDate != null 
+                                  ? AppColors.secondaryColor 
+                                  : AppColors.black.withOpacity(0.5),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Divider
+                Container(
+                  height: 24,
+                  width: 1,
+                  color: AppColors.darkGrey.withOpacity(0.2),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                ),
+                // End Date
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _selectDate(context, false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'To',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.black.withOpacity(0.6),
+                            ),
+                          ),
+                          Text(
+                            endDate != null 
+                                ? DateFormat('MMM dd').format(endDate!)
+                                : 'Select',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: endDate != null 
+                                  ? AppColors.secondaryColor 
+                                  : AppColors.black.withOpacity(0.5),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Calendar Icon and Clear Button
+                Row(
+                  children: [
+                    if (startDate != null || endDate != null)
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            startDate = null;
+                            endDate = null;
+                          });
+                          _applyFilters();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            Icons.clear,
+                            size: 18,
+                            color: AppColors.redColor,
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Icon(
+                        Icons.calendar_today,
+                        size: 20,
+                        color: AppColors.secondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
-  });
-}
+  }
 
-Widget _buildStatItem({
-  required IconData icon,
-  required String value,
-  required String label,
-  Color color = AppColors.primaryColor,
-}) {
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(8),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.grey.withOpacity(0.1),
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    child: Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
+  void _showPropertySelectionBottomSheet(List<TenantPropertyModel> properties) {
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    Get.bottomSheet(
+      SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
+            color: AppColors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
-          child: Icon(icon, size: 20, color: color),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomTextWidget(
+                title: "Select Property",
+                fontSize: Get.height * 0.02,
                 fontWeight: FontWeight.bold,
-                color: color,
+                color: AppColors.black,
               ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.black,
+              const SizedBox(height: 12),
+              ListView.builder(
+                shrinkWrap: true,
+                itemCount: properties.length,
+                itemBuilder: (context, index) {
+                  final property = properties[index];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: CustomTextWidget(
+                      title: "${property.propertyTitle} - Flat No: ${property.unitNumber ?? 'N/A'}",
+                      fontSize: Get.height * 0.016,
+                      color: AppColors.black,
+                    ),
+                    onTap: () {
+                      debugPrint(
+                        'Selected Property: ${property.propertyTitle},  Flat No: ${property.unitNumber}, unitAddressId: ${property.unitAddressId}, userId: $userId',
+                      );
+
+                      Get.back(); // Close bottom sheet
+                      Get.to(() => TenantsCreateTicketScreen(
+                            propertyName: property.propertyTitle,
+                            propertyId: property.propertyId,
+                            unitAddressId: property.unitAddressId,
+                            userId: userId,
+                          ));
+                    },
+                  );
+                },
               ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildSummarySection() {
+    return Obx(() {
+      debugPrint('[SummaryWidget] Building with:');
+      debugPrint('- isLoading: ${controller.isStatsLoading.value}');
+      debugPrint('- error: ${controller.statsErrorMessage.value}');
+      debugPrint('- stats: ${controller.technicianStats.value?.propertyStats.length} properties');
+      debugPrint('- complaints count: ${controller.complaints.length}');
+      
+      if (controller.isStatsLoading.value) {
+        return const Padding(
+          padding: EdgeInsets.all(8.0),
+          child: LinearProgressIndicator(),
+        );
+      }
+      
+      if (controller.statsErrorMessage.value.isNotEmpty) {
+        return Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            children: [
+              Text(
+                controller.statsErrorMessage.value,
+                style: const TextStyle(color: Colors.red),
+              ),
+              const SizedBox(height: 8),
+              // Show fallback stats from complaints
+              if (controller.complaints.isNotEmpty)
+                Text(
+                  'Fallback: Found ${controller.complaints.length} complaints',
+                  style: const TextStyle(color: Colors.orange, fontSize: 12),
+                ),
+            ],
+          ),
+        );
+      }
+
+      final summary = controller.technicianStats.value;
+      
+      // Calculate totals - handle null/empty cases gracefully
+      final propertyCount = summary?.propertyStats.length ?? 0;
+      
+      // Enhanced calculation with more debugging
+      int totalTickets = 0;
+      int totalActive = 0;
+      int totalResolved = 0;
+      
+      if (summary?.propertyStats.isNotEmpty ?? false) {
+        // API-based calculation
+        debugPrint('[SummaryWidget] Using API data for calculations');
+        
+        for (final stat in summary!.propertyStats) {
+          final tickets = int.tryParse(stat.totalComplaints) ?? 0;
+          final started = int.tryParse(stat.startedWorking) ?? 0;
+          final inProgress = int.tryParse(stat.inProgress) ?? 0;
+          final resolved = int.tryParse(stat.resolved) ?? 0;
+          
+          debugPrint('[SummaryWidget] Property ${stat.propertyName}: $tickets total, $started started, $inProgress in progress, $resolved resolved');
+          
+          totalTickets += tickets;
+          totalActive += started + inProgress;
+          totalResolved += resolved;
+        }
+      } else {
+        // Fallback calculation from complaints list
+        debugPrint('[SummaryWidget] Using fallback calculation from complaints');
+        
+        totalTickets = controller.complaints.length;
+        
+        for (final complaint in controller.complaints) {
+          final status = complaint.status.toLowerCase();
+          final statusText = complaint.statusText.en.toLowerCase();
+          
+          if (status.contains('resolved') || status.contains('completed') || 
+              statusText.contains('resolved') || statusText.contains('completed')) {
+            totalResolved++;
+          } else {
+            totalActive++; // Everything else is considered active
+          }
+        }
+        
+        debugPrint('[SummaryWidget] Fallback calculation: $totalTickets total, $totalActive active, $totalResolved resolved');
+      }
+
+      // Show debug info in development
+      final isDebugMode = false; // Set to false in production
+
+      return Container(
+        margin: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primaryColor.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primaryColor.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const CustomTextWidget(
+                  title: 'Your Tickets Summary',
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.secondaryColor,
+                ),
+                if (isDebugMode)
+                  Icon(
+                    summary?.propertyStats.isNotEmpty ?? false 
+                      ? Icons.api : Icons.list,
+                    size: 16,
+                    color: summary?.propertyStats.isNotEmpty ?? false 
+                      ? AppColors.onlineGreen : AppColors.warning,
+                  ),
+              ],
             ),
+            
+            if (isDebugMode && (summary?.propertyStats != null && summary!.propertyStats.isEmpty))
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+              ),
+              
+            const SizedBox(height: 12),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              childAspectRatio: 2.5,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              children: [
+                _buildStatItem(
+                  icon: Icons.home_work_outlined,
+                  value: propertyCount.toString(), 
+                  label: 'Properties',
+                  color: AppColors.warning,
+                ),
+                _buildStatItem(
+                  icon: Icons.list_alt,
+                  value: totalTickets.toString(),
+                  label: 'Total Tickets',
+                  color: AppColors.warning,
+                ),
+                _buildStatItem(
+                  icon: Icons.pending_actions,
+                  value: totalActive.toString(),
+                  label: 'Active Tickets',
+                  color: AppColors.warning,
+                ),
+                _buildStatItem(
+                  icon: Icons.check_circle,
+                  value: totalResolved.toString(),
+                  label: 'Resolved',
+                  color: AppColors.onlineGreen,
+                ),
+              ],
+            ),
+            
+            // Debug information
+            if (isDebugMode)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Debug: API Stats=${summary?.propertyStats.length ?? 0}, Complaints=${controller.complaints.length}',
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                ),
+              ),
           ],
         ),
-      ],
-    ),
-  );
-}
+      );
+    });
+  }
 
-  /// Builds a single ticket card
-  Widget _buildComplaintCard(Complaint complaint) {
-  return InkWell(
-    onTap: () {
-      Get.to(() => TicketDetailsScreen(complaint: complaint,
-      // complaintId: complaint.complaintId,
-      ));
-    },
-    child: Container(
-      margin: EdgeInsets.only(bottom: screenHeight1),
-      padding: EdgeInsets.all(screenWidth1),
+  Widget _buildStatItem({
+    required IconData icon,
+    required String value,
+    required String label,
+    Color color = AppColors.primaryColor,
+  }) {
+    return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.grey.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
         children: [
-          CustomTextWidget(
-            title: "#${complaint.complaintNumber}",
-            fontSize: Get.height * 0.014,
-            fontWeight: FontWeight.w600,
-            color: AppColors.black800,
-          ),
-          SizedBox(height: screenHeight05),
-          CustomTextWidget(
-            title: complaint.category,
-            fontSize: Get.height * 0.018,
-            fontWeight: FontWeight.w600,
-            color: AppColors.black,
-            maxLines: 2,
-          ),
-          CustomTextWidget(
-            title: complaint.description,
-            fontSize: Get.height * 0.014,
-            fontWeight: FontWeight.w400,
-            color: AppColors.black,
-            maxLines: 2,
-          ),
-          SizedBox(height: screenHeight05),
-           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              CustomTextWidget(
-                title: "Last updated on ${complaint.formattedDate}",
-                fontSize: Get.height * 0.014,
-                fontWeight: FontWeight.w400,
-                color: AppColors.black500,
-              ),
-              _buildStatusChipFromComplaint(complaint.statusText.en),
-            ],
-          ),
-          kHeight(0.02),
           Container(
-            height: Get.height * 0.001,
-            width: Get.width * 0.90,
-            color: AppColors.grey.withValues(alpha: 0.6),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.black,
+                ),
+              ),
+            ],
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 
+  /// Builds a single ticket card
+  Widget _buildComplaintCard(Complaint complaint) {
+    return InkWell(
+      onTap: () {
+        Get.to(() => TicketDetailsScreen(complaint: complaint,
+        ));
+      },
+      child: Container(
+        margin: EdgeInsets.only(bottom: screenHeight1),
+        padding: EdgeInsets.all(screenWidth1),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CustomTextWidget(
+              title: "#${complaint.complaintNumber}",
+              fontSize: Get.height * 0.014,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black800,
+            ),
+            SizedBox(height: screenHeight05),
+            CustomTextWidget(
+              title: complaint.category,
+              fontSize: Get.height * 0.018,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black,
+              maxLines: 2,
+            ),
+            CustomTextWidget(
+              title: complaint.description,
+              fontSize: Get.height * 0.014,
+              fontWeight: FontWeight.w400,
+              color: AppColors.black,
+              maxLines: 2,
+            ),
+            SizedBox(height: screenHeight05),
+             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                CustomTextWidget(
+                  title: "Last updated on ${complaint.formattedDate}",
+                  fontSize: Get.height * 0.014,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.black500,
+                ),
+                _buildStatusChipFromComplaint(complaint.statusText.en),
+              ],
+            ),
+            kHeight(0.02),
+            Container(
+              height: Get.height * 0.001,
+              width: Get.width * 0.90,
+              color: AppColors.grey.withValues(alpha: 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   /// Builds the status chip
   Widget _buildStatusChipFromComplaint(String statusText) {
-  Color backgroundColor;
-  Color textColor;
+    Color backgroundColor;
+    Color textColor;
 
-  switch (statusText.toLowerCase()) {
-    case "pending":
-      backgroundColor = AppColors.primaryColor.withOpacity(0.1);
-      textColor = AppColors.primaryColor;
-      break;
-    case "rectified":
-      backgroundColor = AppColors.onlineGreen.withOpacity(0.1);
-      textColor = AppColors.onlineGreenDark;
-      break;
-    case "in progress":
-      backgroundColor = Colors.blue.withOpacity(0.1);
-      textColor = Colors.blue;
-      break;
-    case "completed":
-      backgroundColor = Colors.green.withOpacity(0.1);
-      textColor = Colors.green;
-      break;
-    default:
-      backgroundColor = AppColors.grey.withOpacity(0.1);
-      textColor = AppColors.grey;
-      break;
+    switch (statusText.toLowerCase()) {
+      case "pending":
+        backgroundColor = AppColors.primaryColor.withOpacity(0.1);
+        textColor = AppColors.primaryColor;
+        break;
+      case "rectified":
+        backgroundColor = AppColors.onlineGreen.withOpacity(0.1);
+        textColor = AppColors.onlineGreenDark;
+        break;
+      case "in progress":
+        backgroundColor = Colors.blue.withOpacity(0.1);
+        textColor = Colors.blue;
+        break;
+      case "completed":
+        backgroundColor = Colors.green.withOpacity(0.1);
+        textColor = Colors.green;
+        break;
+      default:
+        backgroundColor = AppColors.grey.withOpacity(0.1);
+        textColor = AppColors.grey;
+        break;
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.010,
+        vertical: screenHeight * 0.002,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: CustomTextWidget(
+        title: statusText,
+        fontSize: Get.height * 0.012,
+        fontWeight: FontWeight.w600,
+        color: textColor,
+      ),
+    );
   }
 
-  return Container(
-    padding: EdgeInsets.symmetric(
-      horizontal: screenWidth * 0.010,
-      vertical: screenHeight * 0.002,
-    ),
-    decoration: BoxDecoration(
-      color: backgroundColor,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: CustomTextWidget(
-      title: statusText,
-      fontSize: Get.height * 0.012,
-      fontWeight: FontWeight.w600,
-      color: textColor,
-    ),
-  );
-}
-  
-  // Add this widget inside your _TenantsTicketsListWidgetState class
-// Widget _buildComplaintItem(Complaint complaint) {
-//   return InkWell(
-//     onTap: () {
-//       Get.to(() => TicketDetailsScreen(complaint: complaint));
-//     },
-//     child: Container(
-//       margin: EdgeInsets.only(bottom: screenHeight1),
-//       padding: EdgeInsets.all(screenWidth1),
-//       decoration: BoxDecoration(
-//         color: AppColors.white,
-//         borderRadius: BorderRadius.circular(12),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(0.05),
-//             blurRadius: 4,
-//             offset: const Offset(0, 2),
-//           ),
-//         ],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           CustomTextWidget(
-//             title: "#${complaint.complaintNumber}",
-//             fontSize: Get.height * 0.014,
-//             fontWeight: FontWeight.w600,
-//             color: AppColors.black800,
-//           ),
-//           SizedBox(height: screenHeight05),
-//           CustomTextWidget(
-//             title: complaint.category,
-//             fontSize: Get.height * 0.018,
-//             fontWeight: FontWeight.w600,
-//             color: AppColors.black,
-//             maxLines: 2,
-//           ),
-//           CustomTextWidget(
-//             title: complaint.description,
-//             fontSize: Get.height * 0.014,
-//             fontWeight: FontWeight.w400,
-//             color: AppColors.black,
-//             maxLines: 2,
-//           ),
-//           SizedBox(height: screenHeight05),
-//           Row(
-//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//             children: [
-//               CustomTextWidget(
-//                 title: "Last updated on ${complaint.date}",
-//                 fontSize: Get.height * 0.014,
-//                 fontWeight: FontWeight.w400,
-//                 color: AppColors.black500,
-//               ),
-//               _buildStatusChipFromComplaint(complaint.statusText.en),
-//             ],
-//           ),
-//         ],
-//       ),
-//     ),
-//   );
-// }
-
-  /// Empty state
- Widget buildComplaintsList() {
-  return Obx(() {
-    if (controller.isComplaintLoading.value) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    
-    if (!controller.hasComplaints.value) {
-      return _buildEmptyState(
-        message: controller.complaintErrorMessage.value,
-        showSearchHint: controller.complaintErrorMessage.value == "No complaints found",
+  Widget buildComplaintsList() {
+    return Obx(() {
+      if (controller.isComplaintLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      
+      if (!controller.hasComplaints.value) {
+        return _buildEmptyState(
+          message: controller.complaintErrorMessage.value,
+          showSearchHint: controller.complaintErrorMessage.value == "No complaints found",
+        );
+      }
+      
+      return ListView.builder(
+        itemCount: filteredComplaints.length,
+        itemBuilder: (context, index) => _buildComplaintCard(filteredComplaints[index]),
       );
-    }
-    
-    return ListView.builder(
-      itemCount: controller.complaints.length,
-      itemBuilder: (context, index) => _buildComplaintCard(controller.complaints[index]),
-    );
-  });
-}
-
-  
+    });
+  }
 
   Widget _buildEmptyState({required String message, bool showSearchHint = false}) {
     return Center(

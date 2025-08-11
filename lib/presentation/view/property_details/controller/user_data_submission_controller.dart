@@ -1,3 +1,4 @@
+import 'package:dar_al_safwa/core/theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
@@ -11,9 +12,16 @@ class UserDataSubmissionController extends GetxController {
   RxBool isEditMode = true.obs;
   
   // File management observables
+    RxString propertyName = ''.obs;
+  RxString unitTypeName = ''.obs;
+  RxInt unitTypeId = 0.obs;
+  RxInt selectedCount = 1.obs;
   final RxMap<String, List<PlatformFile>> uploadedDocuments = <String, List<PlatformFile>>{}.obs;
   final RxMap<String, List<PlatformFile>> additionalDocuments = <String, List<PlatformFile>>{}.obs;
   final RxList<String> additionalDocumentTitles = <String>[].obs;
+   RxBool isCheckingCommercialStatus = false.obs;
+  RxBool isCommercialFromAPI = false.obs;
+  
   
   // Document validation status
   final RxMap<String, bool> documentValidationStatus = <String, bool>{}.obs;
@@ -34,6 +42,7 @@ class UserDataSubmissionController extends GetxController {
     email: '',
     mobile: '',
     requiredDocumentTypes: [],
+    propertyType: 'residential', // Default to residential
   ).obs;
 
   final ApiService apiService = ApiService();
@@ -58,67 +67,111 @@ class UserDataSubmissionController extends GetxController {
   final expatCivilIdCtrl = TextEditingController();
   final expatCivilIdExpiryCtrl = TextEditingController();
 
+  // Commercial property controllers
+  final crNumberCtrl = TextEditingController();
+  final crExpiryCtrl = TextEditingController();
+  final municipalityLicenseNumberCtrl = TextEditingController();
+  final municipalityLicenseDateCtrl = TextEditingController();
+  final companyAddressCtrl = TextEditingController();
+  final poBoxCtrl = TextEditingController();
+
   // Citizenship type selection
   RxInt selectedCitizenship = 1.obs; // 1 = native, 0 = foreign
+  RxString selectedPropertyType = 'residential'.obs; // 'residential' or 'commercial'
 
-  @override
-  void onInit() {
-    super.onInit();
+ @override
+void onInit() {
+  super.onInit();
 
-    final args = Get.arguments;
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+  final args = Get.arguments;
+  final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+  
+  if (args != null && args is Map<String, dynamic>) {
+    // DEBUG: Print received arguments
+    debugPrint('📥 Received arguments: $args');
     
-    if (args != null && args is Map<String, dynamic>) {
-      // Determine citizenship based on available data
-      int citizenship = 1; // Default to native
-      if (args.containsKey('passportNo') && args['passportNo']?.isNotEmpty == true) {
-        citizenship = 0; // Foreign if passport data exists
-      }
-
-      selectedCitizenship.value = citizenship;
-
-      if (citizenship == 1) {
-        // Native citizen
-        user.value = UserDataSubmissionModel.native(
-          propertyId: _parseToInt(args['propertyId']) ?? 0,
-          unitId: _parseToInt(args['unitId']) ?? 0,
-          uid: uid,
-          firstName: args['firstName'] ?? '',
-          lastName: args['lastName'] ?? '',
-          address: args['address'] ?? '',
-          email: args['email'] ?? '',
-          mobile: args['mobileNo'] ?? '',
-          civilId: args['civilId'] ?? '',
-          civilIdExpiry: args['civilIdExpiry'] ?? '',
-          requiredDocumentTypes: getRequiredDocTypes(citizenship),
-        );
-      } else {
-        // Foreign citizen
-        user.value = UserDataSubmissionModel.foreign(
-          propertyId: _parseToInt(args['propertyId']) ?? 0,
-          unitId: _parseToInt(args['unitId']) ?? 0,
-          uid: uid,
-          firstName: args['firstName'] ?? '',
-          lastName: args['lastName'] ?? '',
-          address: args['address'] ?? '',
-          email: args['email'] ?? '',
-          mobile: args['mobileNo'] ?? '',
-          passportNo: args['passportNo'] ?? '',
-          visaNo: args['visa'] ?? '',
-          visaExpiryDate: args['visaExpiryDate'] ?? '',
-          expatCivilId: args['expatCivilId'] ?? '',
-          expatCivilIdExpiry: args['expatCivilIdExpiry'] ?? '',
-          requiredDocumentTypes: getRequiredDocTypes(citizenship),
-        );
-      }
-
-      _populateControllers();
-      
-      debugPrint('✅ User model initialized from arguments: ${user.value.toJson()}');
+    // Determine citizenship based on available data - FIXED LOGIC
+    int citizenship = 1; // Default to native
+    if (args.containsKey('passportNo') && args['passportNo']?.toString().isNotEmpty == true) {
+      citizenship = 0; // Foreign if passport data exists
+      debugPrint('🔍 Found passport data, setting citizenship to Foreign (0)');
     } else {
-      debugPrint('⚠️ No valid arguments passed to DocumentUploadScreen.');
+      debugPrint('🔍 No passport data found, keeping citizenship as Native (1)');
     }
+
+    // Determine property type
+    String propertyType = args['propertyType']?.toString() ?? 'residential';
+    debugPrint('🔍 Property type: $propertyType');
+
+    // IMPORTANT: Set the reactive values BEFORE creating the user model
+    selectedCitizenship.value = citizenship;
+    selectedPropertyType.value = propertyType;
+    
+    debugPrint('✅ Set selectedCitizenship: ${selectedCitizenship.value}');
+    debugPrint('✅ Set selectedPropertyType: ${selectedPropertyType.value}');
+
+    // Create user model based on citizenship type
+    if (citizenship == 1) {
+      // Native citizen
+      user.value = UserDataSubmissionModel.native(
+        uid: uid,
+        firstName: args['firstName']?.toString() ?? '',
+        lastName: args['lastName']?.toString() ?? '',
+        address: args['address']?.toString() ?? '',
+        email: args['email']?.toString() ?? '',
+        mobile: args['mobileNo']?.toString() ?? '',
+        propertyId: _parseToInt(args['propertyId']) ?? 0,
+        unitId: _parseToInt(args['unitId']) ?? 0,
+        civilId: args['civilId']?.toString() ?? '',
+        civilIdExpiry: args['civilIdExpiry']?.toString() ?? '',
+        requiredDocumentTypes: getRequiredDocTypes(1, propertyType),
+        propertyType: propertyType,
+        // Commercial fields if applicable
+        crNumber: propertyType == 'commercial' ? args['crNumber']?.toString() : null,
+        crExpiryDate: propertyType == 'commercial' ? args['crExpiryDate']?.toString() : null,
+        municipalityLicenseNumber: propertyType == 'commercial' ? args['municipalityLicenseNumber']?.toString() : null,
+        municipalityLicenseDate: propertyType == 'commercial' ? args['municipalityLicenseDate']?.toString() : null,
+        companyAddress: propertyType == 'commercial' ? args['companyAddress']?.toString() : null,
+        poBox: propertyType == 'commercial' ? args['poBox']?.toString() : null,
+      );
+    } else {
+      // Foreign citizen
+      user.value = UserDataSubmissionModel.foreign(
+        uid: uid,
+        firstName: args['firstName']?.toString() ?? '',
+        lastName: args['lastName']?.toString() ?? '',
+        address: args['address']?.toString() ?? '',
+        email: args['email']?.toString() ?? '',
+        mobile: args['mobileNo']?.toString() ?? '',
+        propertyId: _parseToInt(args['propertyId']) ?? 0,
+        unitId: _parseToInt(args['unitId']) ?? 0,
+        passportNo: args['passportNo']?.toString() ?? '',
+        visaNo: args['visa']?.toString() ?? '',
+        visaExpiryDate: args['visaExpiryDate']?.toString() ?? '',
+        expatCivilId: args['expatCivilId']?.toString() ?? '',
+        expatCivilIdExpiry: args['expatCivilIdExpiry']?.toString() ?? '',
+        requiredDocumentTypes: getRequiredDocTypes(0, propertyType),
+        propertyType: propertyType,
+        // Commercial fields if applicable
+        crNumber: propertyType == 'commercial' ? args['crNumber']?.toString() : null,
+        crExpiryDate: propertyType == 'commercial' ? args['crExpiryDate']?.toString() : null,
+        municipalityLicenseNumber: propertyType == 'commercial' ? args['municipalityLicenseNumber']?.toString() : null,
+        municipalityLicenseDate: propertyType == 'commercial' ? args['municipalityLicenseDate']?.toString() : null,
+        companyAddress: propertyType == 'commercial' ? args['companyAddress']?.toString() : null,
+        poBox: propertyType == 'commercial' ? args['poBox']?.toString() : null,
+      );
+    }
+
+    _populateControllers();
+    
+    debugPrint('✅ User model initialized - Citizenship: ${user.value.citizenship} (${user.value.isNative ? "Native" : "Foreign"})');
+    debugPrint('✅ User model created: ${user.value.toJson()}');
+  } else {
+    debugPrint('⚠️ No valid arguments passed to DocumentUploadScreen.');
   }
+}
+
+
 
   @override
   void onClose() {
@@ -135,6 +188,12 @@ class UserDataSubmissionController extends GetxController {
     visaExpiryCtrl.dispose();
     expatCivilIdCtrl.dispose();
     expatCivilIdExpiryCtrl.dispose();
+    crNumberCtrl.dispose();
+    crExpiryCtrl.dispose();
+    municipalityLicenseNumberCtrl.dispose();
+    municipalityLicenseDateCtrl.dispose();
+    companyAddressCtrl.dispose();
+    poBoxCtrl.dispose();
     super.onClose();
   }
 
@@ -146,23 +205,36 @@ class UserDataSubmissionController extends GetxController {
     return null;
   }
 
-  // Get required document types based on citizenship (public method)
-  List<String> getRequiredDocTypes(int citizenship) {
-    if (citizenship == 1) {
-      // Native citizen documents
-      return ['civil_id_front', 'civil_id_back'];
-    } else {
-      // Foreign citizen documents
-      return [
-        'passport_first_page',
-        'passport_last_page',
-        'expat_civil_id_front',
-        'expat_civil_id_back',
-        'resident_visa'
-      ];
-    }
+  // Get required document types based on citizenship and property type
+  List<String> getRequiredDocTypes(int citizenship, String propertyType) {
+  List<String> documents = [];
+  
+  if (citizenship == 1) {
+    // Native citizen documents
+    documents.addAll(['civil_id_front', 'civil_id_back']);
+  } else {
+    // Foreign citizen documents  
+    documents.addAll([
+      'passport_first_page',
+      'passport_last_page', 
+      'passport_visa_page', // Added this back
+      'resident_visa',
+      'expat_civil_id_front',
+      'expat_civil_id_back'
+    ]);
   }
-
+  
+  if (propertyType == 'commercial') {
+    // Commercial documents (matching Laravel backend)
+    documents.addAll([
+      'commercial_registration',
+      'municipality_license',
+      'board_resolution' // This matches your Laravel backend
+    ]);
+  }
+  
+  return documents;
+}
   // Populate form controllers with user data
   void _populateControllers() {
     firstNameCtrl.text = user.value.firstName;
@@ -170,6 +242,7 @@ class UserDataSubmissionController extends GetxController {
     addressCtrl.text = user.value.address;
     emailCtrl.text = user.value.email;
     mobileCtrl.text = user.value.mobile;
+    selectedPropertyType.value = user.value.propertyType ?? 'residential';
 
     if (user.value.isNative) {
       civilIdCtrl.text = user.value.civilId ?? '';
@@ -181,51 +254,124 @@ class UserDataSubmissionController extends GetxController {
       expatCivilIdCtrl.text = user.value.expatCivilId ?? '';
       expatCivilIdExpiryCtrl.text = user.value.expatCivilIdExpiry ?? '';
     }
+
+    // Commercial fields
+    if (user.value.isCommercial) {
+      crNumberCtrl.text = user.value.crNumber ?? '';
+      crExpiryCtrl.text = user.value.crExpiryDate ?? '';
+      municipalityLicenseNumberCtrl.text = user.value.municipalityLicenseNumber ?? '';
+      municipalityLicenseDateCtrl.text = user.value.municipalityLicenseDate ?? '';
+      companyAddressCtrl.text = user.value.companyAddress ?? '';
+      poBoxCtrl.text = user.value.poBox ?? '';
+    }
   }
 
   // Update user data from form controllers
-  void updateUserFromControllers() {
-    if (selectedCitizenship.value == 1) {
-      // Native citizen
-      user.value = UserDataSubmissionModel.native(
-        propertyId: user.value.propertyId,
-        unitId: user.value.unitId,
-        uid: user.value.uid,
-        firstName: firstNameCtrl.text,
-        lastName: lastNameCtrl.text,
-        address: addressCtrl.text,
-        email: emailCtrl.text,
-        mobile: mobileCtrl.text,
-        civilId: civilIdCtrl.text,
-        civilIdExpiry: civilIdExpiryCtrl.text,
-        requiredDocumentTypes: getRequiredDocTypes(1),
-        requiredDocuments: _getDocumentPaths(uploadedDocuments),
-        additionalDocuments: _getDocumentPaths(additionalDocuments),
-        additionalDocumentTitles: additionalDocumentTitles.toList(),
-      );
-    } else {
-      // Foreign citizen
-      user.value = UserDataSubmissionModel.foreign(
-        propertyId: user.value.propertyId,
-        unitId: user.value.unitId,
-        uid: user.value.uid,
-        firstName: firstNameCtrl.text,
-        lastName: lastNameCtrl.text,
-        address: addressCtrl.text,
-        email: emailCtrl.text,
-        mobile: mobileCtrl.text,
-        passportNo: passportCtrl.text,
-        visaNo: visaCtrl.text,
-        visaExpiryDate: visaExpiryCtrl.text,
-        expatCivilId: expatCivilIdCtrl.text,
-        expatCivilIdExpiry: expatCivilIdExpiryCtrl.text,
-        requiredDocumentTypes: getRequiredDocTypes(0),
-        requiredDocuments: _getDocumentPaths(uploadedDocuments),
-        additionalDocuments: _getDocumentPaths(additionalDocuments),
-        additionalDocumentTitles: additionalDocumentTitles.toList(),
-      );
-    }
+void updateUserFromControllers() {
+  // Clean mobile number first
+  String cleanMobile = mobileCtrl.text.replaceAll(RegExp(r'[^\d]'), '');
+  
+  if (selectedCitizenship.value == 1) {
+    // Native citizen - Make sure foreign fields are null
+    user.value = UserDataSubmissionModel.native(
+      propertyId: user.value.propertyId,
+      unitId: user.value.unitId,
+      uid: user.value.uid,
+      firstName: firstNameCtrl.text.trim(),
+      lastName: lastNameCtrl.text.trim(),
+      address: addressCtrl.text.trim(),
+      email: emailCtrl.text.trim(),
+      mobile: cleanMobile,
+      civilId: civilIdCtrl.text.trim(),
+      civilIdExpiry: civilIdExpiryCtrl.text.trim(),
+      requiredDocumentTypes: getRequiredDocTypes(1, selectedPropertyType.value),
+      requiredDocuments: _getDocumentPaths(uploadedDocuments),
+      additionalDocuments: _getDocumentPaths(additionalDocuments),
+      additionalDocumentTitles: additionalDocumentTitles.toList(),
+      propertyType: selectedPropertyType.value,
+      // Commercial fields
+      crNumber: selectedPropertyType.value == 'commercial' ? crNumberCtrl.text.trim() : null,
+      crExpiryDate: selectedPropertyType.value == 'commercial' ? crExpiryCtrl.text.trim() : null,
+      municipalityLicenseNumber: selectedPropertyType.value == 'commercial' ? municipalityLicenseNumberCtrl.text.trim() : null,
+      municipalityLicenseDate: selectedPropertyType.value == 'commercial' ? municipalityLicenseDateCtrl.text.trim() : null,
+      companyAddress: selectedPropertyType.value == 'commercial' ? companyAddressCtrl.text.trim() : null,
+      poBox: selectedPropertyType.value == 'commercial' ? poBoxCtrl.text.trim() : null,
+    );
+  } else {
+    // Foreign citizen - Make sure native fields are null
+    user.value = UserDataSubmissionModel.foreign(
+      propertyId: user.value.propertyId,
+      unitId: user.value.unitId,
+      uid: user.value.uid,
+      firstName: firstNameCtrl.text.trim(),
+      lastName: lastNameCtrl.text.trim(),
+      address: addressCtrl.text.trim(),
+      email: emailCtrl.text.trim(),
+      mobile: cleanMobile,
+      passportNo: passportCtrl.text.trim(),
+      visaNo: visaCtrl.text.trim(),
+      visaExpiryDate: visaExpiryCtrl.text.trim(),
+      expatCivilId: expatCivilIdCtrl.text.trim(),
+      expatCivilIdExpiry: expatCivilIdExpiryCtrl.text.trim(),
+      requiredDocumentTypes: getRequiredDocTypes(0, selectedPropertyType.value),
+      requiredDocuments: _getDocumentPaths(uploadedDocuments),
+      additionalDocuments: _getDocumentPaths(additionalDocuments),
+      additionalDocumentTitles: additionalDocumentTitles.toList(),
+      propertyType: selectedPropertyType.value,
+      // Commercial fields
+      crNumber: selectedPropertyType.value == 'commercial' ? crNumberCtrl.text.trim() : null,
+      crExpiryDate: selectedPropertyType.value == 'commercial' ? crExpiryCtrl.text.trim() : null,
+      municipalityLicenseNumber: selectedPropertyType.value == 'commercial' ? municipalityLicenseNumberCtrl.text.trim() : null,
+      municipalityLicenseDate: selectedPropertyType.value == 'commercial' ? municipalityLicenseDateCtrl.text.trim() : null,
+      companyAddress: selectedPropertyType.value == 'commercial' ? companyAddressCtrl.text.trim() : null,
+      poBox: selectedPropertyType.value == 'commercial' ? poBoxCtrl.text.trim() : null,
+    );
   }
+  
+  debugPrint('🔄 Updated user model - Citizenship: ${selectedCitizenship.value == 1 ? "Native" : "Foreign"}');
+  debugPrint('📋 User data: ${user.value.toJson()}');
+}
+
+void debugSubmissionData() {
+  updateUserFromControllers();
+  
+  debugPrint('=== SUBMISSION DEBUG INFO ===');
+  debugPrint('Selected Citizenship: ${selectedCitizenship.value} (${selectedCitizenship.value == 1 ? "Native" : "Foreign"})');
+  debugPrint('Selected Property Type: ${selectedPropertyType.value}');
+  debugPrint('User Model Citizenship: ${user.value.citizenship}');
+  debugPrint('User Model isNative: ${user.value.isNative}');
+  debugPrint('User Model isForeign: ${!user.value.isNative}');
+  
+  if (selectedCitizenship.value == 1) {
+    debugPrint('--- Native Fields ---');
+    debugPrint('Civil ID: "${civilIdCtrl.text}"');
+    debugPrint('Civil ID Expiry: "${civilIdExpiryCtrl.text}"');
+    debugPrint('Passport (should be null): ${user.value.passportNo}');
+    debugPrint('Visa (should be null): ${user.value.visaNo}');
+  } else {
+    debugPrint('--- Foreign Fields ---');
+    debugPrint('Passport: "${passportCtrl.text}"');
+    debugPrint('Visa: "${visaCtrl.text}"');
+    debugPrint('Visa Expiry: "${visaExpiryCtrl.text}"');
+    debugPrint('Expat Civil ID: "${expatCivilIdCtrl.text}"');
+    debugPrint('Expat Civil ID Expiry: "${expatCivilIdExpiryCtrl.text}"');
+    debugPrint('Civil ID (should be null): ${user.value.civilId}');
+  }
+  
+  if (selectedPropertyType.value == 'commercial') {
+    debugPrint('--- Commercial Fields ---');
+    debugPrint('CR Number: "${crNumberCtrl.text}"');
+    debugPrint('CR Expiry: "${crExpiryCtrl.text}"');
+    debugPrint('Municipality License: "${municipalityLicenseNumberCtrl.text}"');
+    debugPrint('Municipality License Date: "${municipalityLicenseDateCtrl.text}"');
+    debugPrint('Company Address: "${companyAddressCtrl.text}"');
+    debugPrint('PO Box: "${poBoxCtrl.text}"');
+  }
+  
+  debugPrint('Mobile (cleaned): ${user.value.mobile}');
+  debugPrint('Required Doc Types: ${user.value.requiredDocumentTypes}');
+  debugPrint('=== END DEBUG INFO ===');
+}
 
   // Helper method to extract file paths from PlatformFile objects
   List<String>? _getDocumentPaths(Map<String, List<PlatformFile>> documents) {
@@ -268,70 +414,184 @@ class UserDataSubmissionController extends GetxController {
     debugPrint('🔄 Changed citizenship type to: ${citizenshipType == 1 ? 'Native' : 'Foreign'}');
   }
 
-  // FILE PICKER METHODS
+  // Switch between residential and commercial property type
+  void changePropertyType(String type) {
+    selectedPropertyType.value = type;
+    
+    // Clear commercial fields if switching to residential
+    if (type == 'residential') {
+      crNumberCtrl.clear();
+      crExpiryCtrl.clear();
+      municipalityLicenseNumberCtrl.clear();
+      municipalityLicenseDateCtrl.clear();
+      companyAddressCtrl.clear();
+      poBoxCtrl.clear();
+    }
+    
+    // Clear all documents as requirements change
+    clearAllDocuments();
+    
+    updateUserFromControllers();
+    
+    debugPrint('🔄 Changed property type to: $type');
+  }
 
-  // Pick files using file picker
-  Future<List<PlatformFile>?> _pickFiles({
-    bool allowMultiple = false,
-    List<String>? allowedExtensions,
-    FileType fileType = FileType.any,
-  }) async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        allowMultiple: allowMultiple,
-        type: fileType,
-        allowedExtensions: allowedExtensions,
-        allowCompression: true,
-      );
+  // FILE PICKER METHODS (remain the same as before)
+Future<List<PlatformFile>?> _pickFiles({
+  bool allowMultiple = false,
+  List<String>? allowedExtensions,
+  FileType fileType = FileType.any,
+}) async {
+  try {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: allowMultiple,
+      type: fileType,
+      allowedExtensions: allowedExtensions,
+      allowCompression: true,
+      withData: false, // Don't load file data into memory
+      withReadStream: false, // Don't create read streams
+    );
 
-      if (result != null && result.files.isNotEmpty) {
-        // Validate files before returning
-        List<PlatformFile> validFiles = [];
+    if (result != null && result.files.isNotEmpty) {
+      List<PlatformFile> validFiles = [];
+      
+      for (PlatformFile file in result.files) {
+        debugPrint('📁 Checking file: ${file.name} (${getFileSize(file)})');
         
-        for (PlatformFile file in result.files) {
-          if (await _validateFile(file)) {
-            validFiles.add(file);
-          }
+        if (await _validateFile(file)) {
+          validFiles.add(file);
+          debugPrint('✅ File valid: ${file.name}');
+        } else {
+          debugPrint('❌ File invalid: ${file.name}');
         }
-        
-        return validFiles.isNotEmpty ? validFiles : null;
       }
       
-      return null;
-    } catch (e) {
-      debugPrint('❌ Error picking files: $e');
-      errorMessage('Error selecting files: ${e.toString()}');
-      return null;
+      if (validFiles.isEmpty) {
+        errorMessage('No valid files selected');
+        return null;
+      }
+      
+      return validFiles;
     }
+    
+    return null;
+  } catch (e) {
+    debugPrint('❌ FilePicker error: $e');
+    errorMessage('Error selecting files: ${e.toString()}');
+    return null;
   }
+}
 
-  // Validate selected file
-  Future<bool> _validateFile(PlatformFile file) async {
-    try {
-      // Check file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        errorMessage('File "${file.name}" is too large. Maximum size is 10MB.');
-        return false;
-      }
-
-      // Check if file path exists (for mobile platforms)
-      if (file.path != null) {
-        final fileObj = File(file.path!);
-        if (!await fileObj.exists()) {
-          errorMessage('File "${file.name}" not found.');
-          return false;
-        }
-      }
-
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error validating file: $e');
-      errorMessage('Error validating file "${file.name}": ${e.toString()}');
+Future<bool> _validateFile(PlatformFile file) async {
+  try {
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      errorMessage('File "${file.name}" is too large (${getFileSize(file)}). Max: 10MB');
       return false;
     }
-  }
 
-  // Pick and add required document
+    // Minimum file size check (1KB)
+    if (file.size < 1024) {
+      errorMessage('File "${file.name}" is too small (${file.size} bytes). Minimum: 1KB');
+      return false;
+    }
+
+    // Check if file path exists (for mobile platforms)
+    if (file.path != null) {
+      final fileObj = File(file.path!);
+      if (!await fileObj.exists()) {
+        errorMessage('File "${file.name}" not found at path');
+        return false;
+      }
+      
+      // Check readable
+      try {
+        await fileObj.readAsBytes();
+      } catch (e) {
+        errorMessage('Cannot read file "${file.name}"');
+        return false;
+      }
+    }
+
+    // Check file extension
+    final extension = file.extension?.toLowerCase();
+    final allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+    
+    if (extension == null || !allowedExtensions.contains(extension)) {
+      errorMessage('Invalid file type "${extension}". Allowed: ${allowedExtensions.join(', ')}');
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    debugPrint('❌ File validation error: $e');
+    errorMessage('Error validating "${file.name}": ${e.toString()}');
+    return false;
+  }
+}
+    Future<void> checkCommercialPropertyStatus(int unitId) async {
+  try {
+    isCheckingCommercialStatus(true);
+    errorMessage(null);
+    
+    debugPrint('🔍 Checking commercial status for unit: $unitId');
+    
+    // Create minimal payload
+    final requestPayload = {
+      'unitid': unitId,
+      'user_id': FirebaseAuth.instance.currentUser?.uid ?? "",
+    };
+    
+    debugPrint('📤 Request payload: $requestPayload');
+    
+    final response = await apiService.getCommercialPropertyStatus(unitId);
+    
+    debugPrint('📡 Response: ${response.statusCode}');
+    debugPrint('📄 Response data: ${response.data}');
+    
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final responseData = response.data;
+      
+      if (responseData['success'] == true) {
+        bool isCommercial = responseData['data']['is_commercial'] ?? false;
+        isCommercialFromAPI.value = isCommercial;
+        changePropertyType(isCommercial ? "commercial" : "residential");
+        
+        debugPrint('✅ Property type: ${isCommercial ? "Commercial" : "Residential"}');
+      } else {
+        String errorMsg = responseData['message']?['en'] ?? 'Failed to check property type';
+        errorMessage(errorMsg);
+        debugPrint('❌ API Error: $errorMsg');
+      }
+    } else if (response.statusCode == 422) {
+      // Special handling for validation errors
+      final errorData = response.data;
+      String errorMsg = 'Validation Error: ';
+      
+      if (errorData is Map && errorData.containsKey('errors')) {
+        errorMsg += errorData['errors'].entries
+          .map((e) => '${e.key}: ${e.value.join(', ')}')
+          .join('; ');
+      } else {
+        errorMsg += 'Invalid request data';
+      }
+      
+      debugPrint('❌ 422 Validation Error Details: $errorMsg');
+      errorMessage(errorMsg);
+    } else {
+      String httpErrorMsg = 'HTTP Error ${response.statusCode}';
+      errorMessage(httpErrorMsg);
+      debugPrint('❌ HTTP Error: $httpErrorMsg');
+    }
+  } catch (e) {
+    debugPrint('💥 Exception: $e');
+    errorMessage('Failed to check property type');
+  } finally {
+    isCheckingCommercialStatus(false);
+  }
+}
+  
+
   Future<bool> pickAndAddRequiredDocument(String documentType) async {
     try {
       isUploadingFiles(true);
@@ -341,7 +601,7 @@ class UserDataSubmissionController extends GetxController {
       List<String> allowedExtensions = _getAllowedExtensions(documentType);
       
       List<PlatformFile>? files = await _pickFiles(
-        allowMultiple: false, // Most documents should be single files
+        allowMultiple: false,
         allowedExtensions: allowedExtensions,
         fileType: FileType.custom,
       );
@@ -349,13 +609,11 @@ class UserDataSubmissionController extends GetxController {
       if (files != null && files.isNotEmpty) {
         PlatformFile file = files.first;
         
-        // Additional validation for specific document types
         if (!_isValidFileTypeForDocument(file, documentType)) {
           errorMessage('Invalid file type for ${_getDocumentDisplayName(documentType)}. Please select: ${allowedExtensions.join(', ')}');
           return false;
         }
 
-        // Add to uploaded documents
         if (!uploadedDocuments.containsKey(documentType)) {
           uploadedDocuments[documentType] = [];
         }
@@ -364,7 +622,6 @@ class UserDataSubmissionController extends GetxController {
         documentValidationStatus[documentType] = true;
         uploadProgress[documentType] = 1.0;
         
-        // Update the user model
         updateUserFromControllers();
         
         debugPrint('✅ Added document: $documentType -> ${file.name}');
@@ -391,7 +648,6 @@ class UserDataSubmissionController extends GetxController {
     }
   }
 
-  // Pick and add additional document with title
   Future<bool> pickAndAddAdditionalDocument(String title) async {
     if (title.trim().isEmpty) {
       errorMessage('Please provide a title for the additional document');
@@ -444,27 +700,21 @@ class UserDataSubmissionController extends GetxController {
     }
   }
 
-  // Get allowed extensions for document type
   List<String> _getAllowedExtensions(String documentType) {
-    // Images are required for ID documents
     final imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
     final pdfExtensions = ['pdf'];
     
-    // ID documents typically need to be images for better OCR
     if (documentType.contains('civil_id') || documentType.contains('passport')) {
       return imageExtensions;
     }
     
-    // Visa documents can be PDF or images
-    if (documentType.contains('visa')) {
+    if (documentType.contains('visa') || documentType.contains('license')) {
       return [...imageExtensions, ...pdfExtensions];
     }
     
-    // Default: allow all supported formats
     return [...imageExtensions, ...pdfExtensions];
   }
 
-  // Check if file type is valid for specific document
   bool _isValidFileTypeForDocument(PlatformFile file, String documentType) {
     final allowedExtensions = _getAllowedExtensions(documentType);
     final fileExtension = file.extension?.toLowerCase();
@@ -472,7 +722,6 @@ class UserDataSubmissionController extends GetxController {
     return fileExtension != null && allowedExtensions.contains(fileExtension);
   }
 
-  // Remove required document
   void removeRequiredDocument(String documentType, PlatformFile file) {
     try {
       if (uploadedDocuments.containsKey(documentType)) {
@@ -498,8 +747,49 @@ class UserDataSubmissionController extends GetxController {
       debugPrint('❌ Error removing document: $e');
     }
   }
+     
+//      void debugSubmissionData() {
+//   updateUserFromControllers();
+  
+//   debugPrint('=== SUBMISSION DEBUG INFO ===');
+//   debugPrint('Selected Citizenship: ${selectedCitizenship.value} (${selectedCitizenship.value == 1 ? "Native" : "Foreign"})');
+//   debugPrint('Selected Property Type: ${selectedPropertyType.value}');
+//   debugPrint('User Model Citizenship: ${user.value.citizenship}');
+//   debugPrint('User Model isNative: ${user.value.isNative}');
+//   debugPrint('User Model isForeign: ${!user.value.isNative}');
+  
+//   if (selectedCitizenship.value == 1) {
+//     debugPrint('--- Native Fields ---');
+//     debugPrint('Civil ID: "${civilIdCtrl.text}"');
+//     debugPrint('Civil ID Expiry: "${civilIdExpiryCtrl.text}"');
+//     debugPrint('Passport (should be null): ${user.value.passportNo}');
+//     debugPrint('Visa (should be null): ${user.value.visaNo}');
+//   } else {
+//     debugPrint('--- Foreign Fields ---');
+//     debugPrint('Passport: "${passportCtrl.text}"');
+//     debugPrint('Visa: "${visaCtrl.text}"');
+//     debugPrint('Visa Expiry: "${visaExpiryCtrl.text}"');
+//     debugPrint('Expat Civil ID: "${expatCivilIdCtrl.text}"');
+//     debugPrint('Expat Civil ID Expiry: "${expatCivilIdExpiryCtrl.text}"');
+//     debugPrint('Civil ID (should be null): ${user.value.civilId}');
+//   }
+  
+//   if (selectedPropertyType.value == 'commercial') {
+//     debugPrint('--- Commercial Fields ---');
+//     debugPrint('CR Number: "${crNumberCtrl.text}"');
+//     debugPrint('CR Expiry: "${crExpiryCtrl.text}"');
+//     debugPrint('Municipality License: "${municipalityLicenseNumberCtrl.text}"');
+//     debugPrint('Municipality License Date: "${municipalityLicenseDateCtrl.text}"');
+//     debugPrint('Company Address: "${companyAddressCtrl.text}"');
+//     debugPrint('PO Box: "${poBoxCtrl.text}"');
+//   }
+  
+//   debugPrint('Mobile (cleaned): ${user.value.mobile}');
+//   debugPrint('Required Doc Types: ${user.value.requiredDocumentTypes}');
+//   debugPrint('=== END DEBUG INFO ===');
+// }
+   
 
-  // Remove additional document
   void removeAdditionalDocument(String documentId, PlatformFile file) {
     try {
       if (additionalDocuments.containsKey(documentId)) {
@@ -531,28 +821,6 @@ class UserDataSubmissionController extends GetxController {
     }
   }
 
-  // Validate documents based on citizenship
-  bool validateDocuments() {
-    try {
-      final requiredTypes = getRequiredDocTypes(selectedCitizenship.value);
-      
-      for (var docType in requiredTypes) {
-        if (!uploadedDocuments.containsKey(docType) || uploadedDocuments[docType]!.isEmpty) {
-          errorMessage('Missing required document: ${_getDocumentDisplayName(docType)}');
-          return false;
-        }
-      }
-      
-      errorMessage(null);
-      return true;
-    } catch (e) {
-      debugPrint('❌ Error validating documents: $e');
-      errorMessage('Error validating documents: ${e.toString()}');
-      return false;
-    }
-  }
-
-  // Get human-readable document name
   String _getDocumentDisplayName(String documentType) {
     final displayNames = {
       'civil_id_front': 'Civil ID Front',
@@ -563,76 +831,16 @@ class UserDataSubmissionController extends GetxController {
       'resident_visa': 'Resident Visa',
       'expat_civil_id_front': 'Expat Civil ID Front',
       'expat_civil_id_back': 'Expat Civil ID Back',
+      'cr_copy': 'Commercial Registration Copy',
+      'municipality_license': 'Municipality License',
+      'company_authorization_letter': 'Company Authorization Letter',
     };
     
     return displayNames[documentType] ?? documentType.replaceAll('_', ' ').toUpperCase();
   }
 
-  // Get document completion status
-  double get documentCompletionPercentage {
-    final requiredTypes = getRequiredDocTypes(selectedCitizenship.value);
-    if (requiredTypes.isEmpty) return 1.0;
-    
-    int completedDocs = 0;
-    for (var docType in requiredTypes) {
-      if (uploadedDocuments.containsKey(docType) && uploadedDocuments[docType]!.isNotEmpty) {
-        completedDocs++;
-      }
-    }
-    
-    return completedDocs / requiredTypes.length;
-  }
-
-  // Get missing documents
-  List<String> get missingDocuments {
-    final requiredTypes = getRequiredDocTypes(selectedCitizenship.value);
-    final missing = <String>[];
-    
-    for (var docType in requiredTypes) {
-      if (!uploadedDocuments.containsKey(docType) || uploadedDocuments[docType]!.isEmpty) {
-        missing.add(_getDocumentDisplayName(docType));
-      }
-    }
-    
-    return missing;
-  }
-
-  // Check if specific document type is uploaded
-  bool isDocumentUploaded(String documentType) {
-    return uploadedDocuments.containsKey(documentType) && 
-           uploadedDocuments[documentType]!.isNotEmpty;
-  }
-
-  // Get uploaded files count for a document type
-  int getUploadedFilesCount(String documentType) {
-    return uploadedDocuments[documentType]?.length ?? 0;
-  }
-
-  // Get uploaded files for a document type
-  List<PlatformFile> getUploadedFiles(String documentType) {
-    return uploadedDocuments[documentType] ?? [];
-  }
-
-  // Get file size in readable format
-  String getFileSize(PlatformFile file) {
-    double sizeInMB = file.size / (1024 * 1024);
-    return '${sizeInMB.toStringAsFixed(2)} MB';
-  }
-
-  // Clear all documents (useful when switching citizenship types)
-  void clearAllDocuments() {
-    uploadedDocuments.clear();
-    additionalDocuments.clear();
-    additionalDocumentTitles.clear();
-    documentValidationStatus.clear();
-    uploadProgress.clear();
-    updateUserFromControllers();
-    debugPrint('🧹 Cleared all documents');
-  }
-
   // Enhanced form validation
- // Enhanced form validation - FIXED VERSION
-bool validateForm() {
+ bool validateForm() {
   updateUserFromControllers();
   
   // Basic validation
@@ -651,121 +859,258 @@ bool validateForm() {
     return false;
   }
 
-  // Mobile validation (simple check)
-  if (user.value.mobile.length < 8) {
-    errorMessage('Please enter a valid mobile number');
+  // Mobile validation - simplified
+  String cleanMobile = user.value.mobile.replaceAll(RegExp(r'[^\d]'), '');
+  if (cleanMobile.length < 8) {
+    errorMessage('Please enter a valid mobile number (minimum 8 digits)');
     return false;
   }
 
-  // Citizenship-specific validation
-  if (!user.value.isValid()) {
-    if (user.value.isNative) {
-      errorMessage('Please fill all required native citizen fields (Civil ID and expiry date)');
-    } else {
-      errorMessage('Please fill all required foreign citizen fields (Passport, Visa, Expat Civil ID details)');
-    }
-    return false;
-  }
-
-  // REMOVE DOCUMENT VALIDATION FROM HERE - Documents are validated on the upload screen
-  // Document validation should only happen after user uploads documents
+  // Update mobile with clean digits
+  mobileCtrl.text = cleanMobile;
   
+  // CITIZENSHIP-SPECIFIC VALIDATION - This is the key fix
+  if (selectedCitizenship.value == 1) {
+    // Native citizen validation
+    if (civilIdCtrl.text.isEmpty || civilIdExpiryCtrl.text.isEmpty) {
+      errorMessage('Please fill all required native citizen fields (Civil ID and expiry date)');
+      return false;
+    }
+  } else {
+    // Foreign citizen validation - Make sure ALL foreign fields are filled
+    if (passportCtrl.text.isEmpty || 
+        visaCtrl.text.isEmpty || 
+        visaExpiryCtrl.text.isEmpty || 
+        expatCivilIdCtrl.text.isEmpty || 
+        expatCivilIdExpiryCtrl.text.isEmpty) {
+      errorMessage('Please fill all required foreign citizen fields:\n• Passport Number\n• Visa Number\n• Visa Expiry Date\n• Expat Civil ID\n• Expat Civil ID Expiry');
+      return false;
+    }
+  }
+
+  // Commercial property validation
+  if (selectedPropertyType.value == 'commercial') {
+    if (crNumberCtrl.text.isEmpty || 
+        crExpiryCtrl.text.isEmpty ||
+        municipalityLicenseNumberCtrl.text.isEmpty || 
+        municipalityLicenseDateCtrl.text.isEmpty ||
+        companyAddressCtrl.text.isEmpty || 
+        poBoxCtrl.text.isEmpty) {
+      errorMessage('Please fill all required commercial property fields');
+      return false;
+    }
+  }
+
   errorMessage(null);
   return true;
 }
-
-// Separate method for document validation - only call this on document upload screen
 bool validateDocumentsForSubmission() {
   try {
-    final requiredTypes = getRequiredDocTypes(selectedCitizenship.value);
+    final requiredTypes = getRequiredDocTypes(selectedCitizenship.value, selectedPropertyType.value);
     
+    // Check if we have files for each required type
     for (var docType in requiredTypes) {
       if (!uploadedDocuments.containsKey(docType) || uploadedDocuments[docType]!.isEmpty) {
-        errorMessage('Missing required document: ${_getDocumentDisplayName(docType)}');
+        errorMessage('Missing: ${_getDocumentDisplayName(docType)}');
         return false;
+      }
+      
+      // Check if files actually exist
+      for (var file in uploadedDocuments[docType]!) {
+        if (file.path == null || !File(file.path!).existsSync()) {
+          errorMessage('File not found: ${file.name}');
+          return false;
+        }
       }
     }
     
     errorMessage(null);
+    debugPrint('✅ All ${requiredTypes.length} required documents validated');
     return true;
   } catch (e) {
-    debugPrint('❌ Error validating documents: $e');
-    errorMessage('Error validating documents: ${e.toString()}');
+    debugPrint('❌ Document validation error: $e');
+    errorMessage('Document validation failed');
     return false;
   }
 }
 
-// Updated submission method that validates documents only when submitting
-Future<void> submitWithValidation() async {
-  // First validate form data (without documents)
-  if (validateForm()) {
-    // Then validate documents only if we're submitting (documents should be uploaded by now)
-    if (validateDocumentsForSubmission()) {
-      await submitUserDataAndDocs(user.value);
+  Future<void> submitWithValidation() async {
+    if (validateForm()) {
+      if (validateDocumentsForSubmission()) {
+        await submitUserDataAndDocs(user.value);
+      }
     }
+  }
+
+Future<void> submitUserDataAndDocs(UserDataSubmissionModel userData) async {
+  try {
+    debugPrint('🔹 [1] Function called: submitUserDataAndDocs');
+    isLoading(true);
+    debugPrint('📋 USER DATA DETAILS:');
+    debugPrint('   📱 Mobile: ${userData.mobile}');
+    debugPrint('   🆔 Civil ID: ${userData.civilId}');
+    debugPrint('   🏛️ Citizenship: ${userData.isForeign ? "Foreign" : "Native"}');
+    debugPrint('   🏢 Property Type: ${userData.propertyType}');
+    // debugPrint('   📅 Date of Birth: ${userData..}');
+    debugPrint('🔹 [2] isLoading set to TRUE');
+
+     if (userData.isForeign) {
+      debugPrint('🛂 FOREIGN NATIONAL DETAILS:');
+      debugPrint('   🛂 Passport No: ${userData.passportNo}');
+      debugPrint('   ✈️ Visa No: ${userData.visaNo}');
+      debugPrint('   📅 Visa Expiry: ${userData.visaExpiryDate}');
+      debugPrint('   🆔 Expat Civil ID: ${userData.expatCivilId}');
+      debugPrint('   📅 Expat Civil ID Expiry: ${userData.expatCivilIdExpiry}');
+      final missingFields = <String>[];
+      if (userData.passportNo?.isEmpty ?? true) missingFields.add('passport_no');
+      if (userData.visaNo?.isEmpty ?? true) missingFields.add('visa_no');
+      if (userData.visaExpiryDate?.isEmpty ?? true) missingFields.add('visa_expiry_date');
+      if (userData.expatCivilId?.isEmpty ?? true) missingFields.add('expat_civil_id');
+      if (userData.expatCivilIdExpiry?.isEmpty ?? true) missingFields.add('expat_civil_id_expiry');
+
+      if (missingFields.isNotEmpty) {
+        throw Exception('Missing required fields for foreign nationals: ${missingFields.join(', ')}');
+      }
+    }
+
+    errorMessage(null);
+    debugPrint('🔹 [3] errorMessage reset to null');
+
+    // Clean mobile number before submission
+    debugPrint('🔹 [4] Original mobile: ${userData.mobile}');
+    String cleanMobile = userData.mobile.replaceAll(RegExp(r'[^\d]'), '');
+    debugPrint('🔹 [5] Cleaned mobile: $cleanMobile');
+
+    // Create a copy with cleaned mobile
+    var cleanedUserData = userData.copyWith(mobile: cleanMobile);
+    debugPrint('🔹 [6] Created cleanedUserData object');
+
+    // Log user data fields for verification
+    debugPrint('📤 [7] Preparing submission...');
+    debugPrint('   📱 Mobile: $cleanMobile');
+    debugPrint('   📄 Documents count: ${cleanedUserData.requiredDocuments?.length ?? 0}');
+    debugPrint('   🏛️ Citizenship: ${cleanedUserData.isNative ? 'Native' : 'Foreign'}');
+    debugPrint('   🏢 Property Type: ${cleanedUserData.propertyType}');
+
+    // Verify all required files exist before submission
+    if (cleanedUserData.requiredDocuments != null) {
+      debugPrint('🔹 [8] Checking document list...');
+      for (var filePath in cleanedUserData.requiredDocuments!) {
+        debugPrint('   ➡ Checking file: $filePath');
+        File file = File(filePath);
+
+        if (!file.existsSync()) {
+          debugPrint('💥 File not found: $filePath');
+          throw Exception('File not found: $filePath');
+        } else {
+          debugPrint('✅ File exists: ${filePath.split('/').last}');
+        }
+
+        int fileSize = await file.length();
+        debugPrint('   📏 File size: ${(fileSize / 1024).toStringAsFixed(1)} KB');
+
+        if (fileSize > 10 * 1024 * 1024) {
+          debugPrint('💥 File too large: ${filePath.split('/').last} - ${(fileSize / 1024 / 1024).toStringAsFixed(1)} MB');
+          throw Exception('File too large: ${filePath.split('/').last} (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB). Maximum size is 10MB.');
+        }
+      }
+    } else {
+      debugPrint('ℹ No documents provided');
+    }
+
+    debugPrint('🔹 [9] Sending API request...');
+    final response = await apiService.submitUserDetailsAndDoc(cleanedUserData);
+    debugPrint('📡 [10] API Response Status: ${response.statusCode}');
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      debugPrint('🔹 [11] Success HTTP code received');
+      final responseData = response.data;
+      debugPrint('📦 [12] Response Data: $responseData');
+
+      if (responseData['success'] == true) {
+        debugPrint('✅ [13] Submission marked as successful by server');
+        _clearFormAfterSubmission();
+        debugPrint('🔹 [14] Form cleared');
+
+        Get.snackbar(
+          'Success',
+          'Application submitted successfully!',
+          backgroundColor: AppColors.onlineGreen,
+          colorText: AppColors.white,
+          duration: const Duration(seconds: 3),
+        );
+
+        debugPrint('🔹 [15] Navigating to /home');
+        Get.offAllNamed('/navbar', arguments: {'initialIndex': 0});
+      
+      } else {
+        debugPrint('💥 [16] Server responded with success=false');
+        throw Exception(responseData['message'] ?? 'Submission failed');
+      }
+    } else {
+      debugPrint('💥 [17] Non-success HTTP status: ${response.statusCode}');
+      final errorData = response.data;
+      debugPrint('📦 Error Response Data: $errorData');
+
+      String errorMsg = 'HTTP ${response.statusCode}';
+      if (errorData is Map) {
+        if (errorData.containsKey('message')) {
+          errorMsg += ': ${errorData['message']}';
+        }
+
+        if (errorData.containsKey('errors')) {
+          errorMsg += '\nDetails: ';
+          final errors = errorData['errors'] as Map;
+          errors.forEach((key, value) {
+            if (value is List) {
+              errorMsg += '\n• $key: ${value.join(', ')}';
+            } else {
+              errorMsg += '\n• $key: $value';
+            }
+          });
+        }
+
+        if (errorData.containsKey('debug_info')) {
+          debugPrint('🐛 Debug info: ${errorData['debug_info']}');
+        }
+      }
+
+      throw Exception(errorMsg);
+    }
+  } catch (e) {
+    debugPrint('💥 [CATCH] Exception caught: $e');
+    String friendlyError = e.toString();
+
+    // Make errors more user-friendly
+    if (friendlyError.contains('mobile field format is invalid')) {
+      friendlyError = 'Invalid mobile number format. Please check your mobile number.';
+    } else if (friendlyError.contains('required_documents') || friendlyError.contains('must be a file')) {
+      friendlyError = 'Document upload failed. Please try selecting your documents again.';
+    } else if (friendlyError.contains('File too large')) {
+      friendlyError = friendlyError.replaceAll('Exception: ', '');
+    } else if (friendlyError.contains('File not found')) {
+      friendlyError = 'One or more selected files could not be found. Please select your documents again.';
+    } else if (friendlyError.contains('NetworkException') || friendlyError.contains('DioException')) {
+      friendlyError = 'Network error. Please check your connection and try again.';
+    }
+
+    errorMessage(friendlyError);
+    debugPrint('💬 [Error Message Set] $friendlyError');
+
+    Get.snackbar(
+      'Submission Failed',
+      friendlyError,
+      backgroundColor: AppColors.redColor,
+      colorText: AppColors.white,
+      duration: const Duration(seconds: 5),
+    );
+  } finally {
+    debugPrint('🔹 [FINALLY] Setting isLoading to FALSE');
+    isLoading(false);
   }
 }
 
-  // Enhanced submission with better error handling
-  Future<void> submitUserDataAndDocs(UserDataSubmissionModel userData) async {
-    try {
-      isLoading(true);
-      errorMessage(null);
-
-      debugPrint('📤 Submitting user data: ${userData.firstName} ${userData.lastName}');
-      debugPrint('📄 Documents: ${userData.requiredDocuments?.length ?? 0} required, ${userData.additionalDocuments?.length ?? 0} additional');
-      debugPrint('🏛️ Citizenship: ${userData.isNative ? 'Native' : 'Foreign'}');
-      
-      final response = await apiService.submitUserDetailsAndDoc(userData);
-      
-      debugPrint('📡 API Response: ${response.statusCode} - ${response.statusMessage}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final submitResponse = response.data;
-        debugPrint("✅ Submission successful: ${submitResponse["data"]}");
-        
-        // Clear form after successful submission
-        _clearFormAfterSubmission();
-        
-        Get.snackbar(
-          'Success',
-          'Application submitted successfully! You will receive a confirmation email shortly.',
-          snackPosition: SnackPosition.TOP,
-          backgroundColor: Get.theme.colorScheme.primary,
-          colorText: Get.theme.colorScheme.onPrimary,
-          duration: const Duration(seconds: 5),
-        );
-        
-        // Navigate to success screen or home
-        Get.offAllNamed('/home');
-        
-      } else {
-        debugPrint('❌ Submission failed: ${response.statusMessage}');
-        throw Exception("Failed to submit application: ${response.statusMessage}");
-      }
-    } catch (e) {
-      debugPrint('💥 Submission error: $e');
-      errorMessage('Submission failed: ${e.toString()}');
-      
-      Get.snackbar(
-        'Submission Error',
-        'Failed to submit application. Please try again.',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Get.theme.colorScheme.error,
-        colorText: Get.theme.colorScheme.onError,
-        duration: const Duration(seconds: 5),
-      );
-    } finally {
-      isLoading(false);
-      debugPrint('📋 Submission process completed');
-    }
-  }
-
-  
-
-  // Clear form after successful submission
   void _clearFormAfterSubmission() {
-    // Clear controllers
     firstNameCtrl.clear();
     lastNameCtrl.clear();
     addressCtrl.clear();
@@ -778,22 +1123,20 @@ Future<void> submitWithValidation() async {
     visaExpiryCtrl.clear();
     expatCivilIdCtrl.clear();
     expatCivilIdExpiryCtrl.clear();
+    crNumberCtrl.clear();
+    crExpiryCtrl.clear();
+    municipalityLicenseNumberCtrl.clear();
+    municipalityLicenseDateCtrl.clear();
+    companyAddressCtrl.clear();
+    poBoxCtrl.clear();
     
-    // Clear documents
     clearAllDocuments();
     
-    // Reset form state
     isEditMode.value = true;
     selectedCitizenship.value = 1;
+    selectedPropertyType.value = 'residential';
     errorMessage(null);
   }
-
-  // Submit with validation
-  // Future<void> submitWithValidation() async {
-  //   if (validateForm()) {
-  //     await submitUserDataAndDocs(user.value);
-  //   }
-  // }
 
   void toggleEdit() {
     isEditMode.value = !isEditMode.value;
@@ -802,46 +1145,107 @@ Future<void> submitWithValidation() async {
   // Helper getters for UI
   bool get isNativeCitizen => selectedCitizenship.value == 1;
   bool get isForeignCitizen => selectedCitizenship.value == 0;
+  bool get isResidentialProperty => selectedPropertyType.value == 'residential';
+  bool get isCommercialProperty => selectedPropertyType.value == 'commercial';
   
   String get citizenshipLabel => isNativeCitizen ? 'Native' : 'Foreign';
+  String get propertyTypeLabel => isResidentialProperty ? 'Residential' : 'Commercial';
   
   List<String> get requiredDocumentLabels {
-    if (isNativeCitizen) {
-      return ['Civil ID Front', 'Civil ID Back'];
-    } else {
-      return [
-        'Passport First Page',
-        'Passport Last Page', 
-        'Expat Civil ID Front',
-        'Expat Civil ID Back',
-        'Resident Visa'
-      ];
-    }
+    return getRequiredDocTypes(selectedCitizenship.value, selectedPropertyType.value)
+      .map((type) => _getDocumentDisplayName(type))
+      .toList();
   }
 
-
-
-  // Get document types mapped to display names
   Map<String, String> get documentTypeMapping {
+    Map<String, String> mapping = {};
+    
     if (isNativeCitizen) {
-      return {
+      mapping.addAll({
         'civil_id_front': 'Civil ID Front',
         'civil_id_back': 'Civil ID Back',
-      };
+      });
     } else {
-      return {
+      mapping.addAll({
         'passport_first_page': 'Passport First Page',
         'passport_last_page': 'Passport Last Page',
         'expat_civil_id_front': 'Expat Civil ID Front',
         'expat_civil_id_back': 'Expat Civil ID Back',
         'resident_visa': 'Resident Visa',
-      };
+      });
     }
+    
+    if (isCommercialProperty) {
+      mapping.addAll({
+        'cr_copy': 'Commercial Registration Copy',
+        'municipality_license': 'Municipality License',
+        'company_authorization_letter': 'Company Authorization Letter',
+      });
+    }
+    
+    return mapping;
   }
 
-  // Get progress information for UI
   String get progressText {
+    final requiredTypes = getRequiredDocTypes(selectedCitizenship.value, selectedPropertyType.value);
+    if (requiredTypes.isEmpty) return '100% Complete';
+    
     final percentage = (documentCompletionPercentage * 100).toStringAsFixed(1);
-    return 'Documents completed: $percentage% (${uploadedDocuments.length} of ${getRequiredDocTypes(selectedCitizenship.value).length})';
+    return 'Documents completed: $percentage% (${uploadedDocuments.length} of ${requiredTypes.length})';
+  }
+
+  double get documentCompletionPercentage {
+    final requiredTypes = getRequiredDocTypes(selectedCitizenship.value, selectedPropertyType.value);
+    if (requiredTypes.isEmpty) return 1.0;
+    
+    int completedDocs = 0;
+    for (var docType in requiredTypes) {
+      if (uploadedDocuments.containsKey(docType) && uploadedDocuments[docType]!.isNotEmpty) {
+        completedDocs++;
+      }
+    }
+    
+    return completedDocs / requiredTypes.length;
+  }
+
+  List<String> get missingDocuments {
+    final requiredTypes = getRequiredDocTypes(selectedCitizenship.value, selectedPropertyType.value);
+    final missing = <String>[];
+    
+    for (var docType in requiredTypes) {
+      if (!uploadedDocuments.containsKey(docType) || uploadedDocuments[docType]!.isEmpty) {
+        missing.add(_getDocumentDisplayName(docType));
+      }
+    }
+    
+    return missing;
+  }
+
+  bool isDocumentUploaded(String documentType) {
+    return uploadedDocuments.containsKey(documentType) && 
+           uploadedDocuments[documentType]!.isNotEmpty;
+  }
+
+  int getUploadedFilesCount(String documentType) {
+    return uploadedDocuments[documentType]?.length ?? 0;
+  }
+
+  List<PlatformFile> getUploadedFiles(String documentType) {
+    return uploadedDocuments[documentType] ?? [];
+  }
+
+  String getFileSize(PlatformFile file) {
+    double sizeInMB = file.size / (1024 * 1024);
+    return '${sizeInMB.toStringAsFixed(2)} MB';
+  }
+
+  void clearAllDocuments() {
+    uploadedDocuments.clear();
+    additionalDocuments.clear();
+    additionalDocumentTitles.clear();
+    documentValidationStatus.clear();
+    uploadProgress.clear();
+    updateUserFromControllers();
+    debugPrint('🧹 Cleared all documents');
   }
 }

@@ -415,7 +415,7 @@ class AboutContent extends StatelessWidget {
         InkWell(
           onTap: () {
             // For call
-            controller.showUnitTypeBottomSheetForCall(phone, propertyId);
+            controller.showUnitTypeBottomSheetForCall(phone, propertyId,);
           },
           child: CircleAvatar(
             backgroundColor: AppColors.whiteLight,

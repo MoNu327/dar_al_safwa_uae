@@ -44,6 +44,7 @@ class SearchScreenController extends GetxController {
       debugPrint('📦 [fetchSearchDropdown] Response data: ${response.data}');
 
       if (response.statusCode == 200) {
+        debugPrint('📥 [fetchSearchDropdown] Parsing response data...');
         final dropdownData = SearchDropdownResponse.fromJson(response.data);
         searchDropdownResponse.value = dropdownData;
         debugPrint('📍 [fetchSearchDropdown] Received dropdown data');

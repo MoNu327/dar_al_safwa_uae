@@ -14,11 +14,13 @@ import '../controller/user_data_submission_controller.dart';
 class DocumentUploadScreen extends StatefulWidget {
   final String screenTitle;
   final List<DocumentField> documentFields;
+  final bool isCommercialProperty;
 
   const DocumentUploadScreen({
     super.key,
     required this.screenTitle,
     required this.documentFields,
+    this.isCommercialProperty = false,
   });
 
   @override
@@ -43,27 +45,30 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
     'Resident Visa': 'resident_visa',
     'Expat Civil ID Front': 'expat_civil_id_front',
     'Expat Civil ID Back': 'expat_civil_id_back',
+    'Commercial Registration': 'cr_document',
+    'Municipality License': 'municipality_license',
   };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          automaticallyImplyLeading: false,
-          leading: IconButton(
-            onPressed: () {
-              Get.back();
-            },
-            icon: Icon(Icons.arrow_back),
-            color: AppColors.white,
-          ),
-          backgroundColor: AppColors.secondaryColor,
-          title: CustomTextWidget(
-            color: AppColors.white,
-            title: widget.screenTitle,
-            fontSize: appBarTitles,
-            overflow: TextOverflow.ellipsis,
-          )),
+        automaticallyImplyLeading: false,
+        leading: IconButton(
+          onPressed: () {
+            Get.back();
+          },
+          icon: Icon(Icons.arrow_back),
+          color: AppColors.white,
+        ),
+        backgroundColor: AppColors.secondaryColor,
+        title: CustomTextWidget(
+          color: AppColors.white,
+          title: widget.screenTitle,
+          fontSize: appBarTitles,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
       body: SingleChildScrollView(
         padding: EdgeInsets.symmetric(
           horizontal: screenWidth5,
@@ -100,6 +105,15 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
                       color: AppColors.black600,
                     ),
                   ),
+                  if (widget.isCommercialProperty) ...[
+                    Text(
+                      "Property Type: Commercial",
+                      style: TextStyle(
+                        fontSize: detailContentTitle,
+                        color: AppColors.black600,
+                      ),
+                    ),
+                  ],
                   Text(
                     "Email: ${controller.user.value.email}",
                     style: TextStyle(
@@ -282,197 +296,101 @@ class _DocumentUploadScreenState extends State<DocumentUploadScreen> {
   }
 
   Widget _buildAdditionalDocumentsSection() {
-  return Container(
-    padding: EdgeInsets.all(screenWidth3),
-    decoration: BoxDecoration(
-      color: AppColors.lightGrey.withOpacity(0.3),
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: AppColors.lightGrey),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section Title
-        Text(
-          'Additional Documents',
-          style: TextStyle(
-            fontSize: detailContentTitle,
-            fontWeight: FontWeight.w600,
-            color: AppColors.black,
+    return Container(
+      padding: EdgeInsets.all(screenWidth3),
+      decoration: BoxDecoration(
+        color: AppColors.lightGrey.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.lightGrey),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Additional Documents',
+            style: TextStyle(
+              fontSize: detailContentTitle,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black,
+            ),
           ),
-        ),
-        kHeight(0.02),
-        
-        // Display existing additional documents
-        if (_additionalFiles.isNotEmpty) ...[
-          ..._additionalFiles.entries.map((entry) {
-            final index = entry.key;
-            final files = entry.value;
-            final titles = _additionalTitles[index] ?? [];
-                           
-            return Column(
-              children: files.asMap().entries.map((fileEntry) {
-                final fileIndex = fileEntry.key;
-                final file = fileEntry.value;
-                final title = fileIndex < titles.length ? titles[fileIndex] : 'Additional Document';
-                                   
-                return Container(
-                  margin: EdgeInsets.only(bottom: 8),
-                  child: _buildUploadedFileItem(file, index, false, title: title),
-                );
-              }).toList(),
-            );
-          }).toList(),
           kHeight(0.02),
-        ],
+          
+          if (_additionalFiles.isNotEmpty) ...[
+            ..._additionalFiles.entries.map((entry) {
+              final index = entry.key;
+              final files = entry.value;
+              final titles = _additionalTitles[index] ?? [];
+                           
+              return Column(
+                children: files.asMap().entries.map((fileEntry) {
+                  final fileIndex = fileEntry.key;
+                  final file = fileEntry.value;
+                  final title = fileIndex < titles.length ? titles[fileIndex] : 'Additional Document';
+                                   
+                  return Container(
+                    margin: EdgeInsets.only(bottom: 8),
+                    child: _buildUploadedFileItem(file, index, false, title: title),
+                  );
+                }).toList(),
+              );
+            }).toList(),
+            kHeight(0.02),
+          ],
                    
-        // Add additional document button with file picker
-        InkWell(
-          onTap: () => _handleAdditionalFileUpload(),
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal: screenWidth3, 
-              vertical: screenHeight2
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.white,
-              border: Border.all(
-                color: AppColors.black.withOpacity(0.2),
-                style: BorderStyle.solid,
-                width: 1,
+          InkWell(
+            onTap: () => _handleAdditionalFileUpload(),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth3, 
+                vertical: screenHeight2
               ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.upload_file_outlined,
-                  size: iconSize,
-                  color: AppColors.black.withOpacity(0.6),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                border: Border.all(
+                  color: AppColors.black.withOpacity(0.2),
+                  style: BorderStyle.solid,
+                  width: 1,
                 ),
-                kWidth(0.02),
-                Text(
-                  'Upload Additional Document',
-                  style: TextStyle(
-                    fontSize: detailContentTitle,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.upload_file_outlined,
+                    size: iconSize,
                     color: AppColors.black.withOpacity(0.6),
-                    fontWeight: FontWeight.w500,
                   ),
-                ),
-              ],
+                  kWidth(0.02),
+                  Text(
+                    'Upload Additional Document',
+                    style: TextStyle(
+                      fontSize: detailContentTitle,
+                      color: AppColors.black.withOpacity(0.6),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        
-        // Optional: Show supported file types
-        kHeight(0.01),
-        Text(
-          'Supported formats: PDF, DOC, DOCX, JPG, PNG',
-          style: TextStyle(
-            fontSize: detailContentTitle * 0.8,
-            color: AppColors.black.withOpacity(0.4),
-            fontStyle: FontStyle.italic,
+          
+          kHeight(0.01),
+          Text(
+            'Supported formats: PDF, DOC, DOCX, JPG, PNG',
+            style: TextStyle(
+              fontSize: detailContentTitle * 0.8,
+              color: AppColors.black.withOpacity(0.4),
+              fontStyle: FontStyle.italic,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Make sure your _handleAdditionalFileUpload method looks something like this:
-// Fixed _handleAdditionalFileUpload method
-Future<void> _handleAdditionalFileUpload() async {
-  try {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-    );
-
-    if (result != null) {
-      _addAdditionalFile(result.files.single);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Document uploaded successfully'),
-          backgroundColor: AppColors.onlineGreen,
-        ),
-      );
-    }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to upload document'),
-        backgroundColor: AppColors.redColor,
+        ],
       ),
     );
   }
-}
-// Alternative version if you want to allow multiple files
-Future<void> _handleAdditionalFileUploadMultiple() async {
-  try {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.any, // Changed to FileType.any for multiple files
-      allowMultiple: true,
-    );
 
-    if (result != null) {
-      // Filter files by extension manually
-      List<PlatformFile> validFiles = result.files.where((file) {
-        String extension = file.extension?.toLowerCase() ?? '';
-        return ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'].contains(extension);
-      }).toList();
-
-      if (validFiles.isNotEmpty) {
-        setState(() {
-          for (PlatformFile file in validFiles) {
-            _addAdditionalFile(file);
-          }
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${validFiles.length} document(s) uploaded successfully'),
-            backgroundColor: AppColors.onlineGreen,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('No valid files selected. Please choose PDF, DOC, DOCX, JPG, or PNG files.'),
-            backgroundColor: AppColors.warning,
-          ),
-        );
-      }
-    }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to upload document: $e'),
-        backgroundColor: AppColors.redColor,
-      ),
-    );
-  }
-}
-
-// Also fix your _addAdditionalFile method to handle the type conversion properly
-void _addAdditionalFile(PlatformFile platformFile) {
-  int newIndex = _additionalFiles.length;
-  
-  if (platformFile.path != null) {
-    File file = File(platformFile.path!);
-    
-    if (_additionalFiles[newIndex] == null) {
-      _additionalFiles[newIndex] = [];
-      _additionalTitles[newIndex] = [];
-    }
-    
-    _additionalFiles[newIndex]!.add(file);
-    _additionalTitles[newIndex]!.add(platformFile.name);
-    
-    setState(() {});
-  }
-}
   Widget _buildUploadedFileItem(File file, int fieldIndex, bool isRequired, {String? title}) {
     return Container(
       margin: EdgeInsets.only(bottom: screenHeight1),
@@ -633,26 +551,78 @@ void _addAdditionalFile(PlatformFile platformFile) {
     );
   }
 
-  Future<void> _handleFileUpload(int index, DocumentField field) async {
+ Future<void> _handleFileUpload(int index, DocumentField field) async {
   try {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+      allowMultiple: field.maxFiles > 1,
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      final files = result.files.where((f) => f.path != null).map((f) => File(f.path!)).toList();
+      
+      if (files.isNotEmpty) {
+        setState(() {
+          if (_uploadedFiles.containsKey(index)) {
+            // Check if adding these files would exceed maxFiles limit
+            if ((_uploadedFiles[index]!.length + files.length) <= field.maxFiles) {
+              _uploadedFiles[index]!.addAll(files);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('You can only upload ${field.maxFiles} files for this field'),
+                  backgroundColor: AppColors.redColor,
+                ),
+              );
+            }
+          } else {
+            _uploadedFiles[index] = files;
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${files.length} file(s) uploaded successfully'),
+            backgroundColor: AppColors.onlineGreen,
+          ),
+        );
+      }
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to upload file: ${e.toString()}'),
+        backgroundColor: AppColors.redColor,
+      ),
+    );
+  }
+}
+
+Future<void> _handleAdditionalFileUpload() async {
+  try {
+    // First get document title
+    String? title = await _showTitleDialog();
+    if (title == null || title.isEmpty) return;
+
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
       allowMultiple: false,
     );
 
-    if (result != null) {
-      final file = File(result.files.single.path!);
+    if (result != null && result.files.isNotEmpty) {
+      final file = File(result.files.first.path!);
+      final nextIndex = _additionalFiles.keys.isEmpty ? 0 : _additionalFiles.keys.last + 1;
 
       setState(() {
-        if (_uploadedFiles.containsKey(index)) {
-          _uploadedFiles[index]!.add(file);
-        } else {
-          _uploadedFiles[index] = [file];
-        }
+        _additionalFiles[nextIndex] = [file];
+        _additionalTitles[nextIndex] = [title];
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('File uploaded successfully'),
+          content: Text('Additional document uploaded successfully'),
           backgroundColor: AppColors.onlineGreen,
         ),
       );
@@ -660,69 +630,151 @@ void _addAdditionalFile(PlatformFile platformFile) {
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Failed to upload file'),
+        content: Text('Failed to upload additional document: ${e.toString()}'),
         backgroundColor: AppColors.redColor,
       ),
     );
   }
 }
 
-  // Future<void> _handleAdditionalFileUpload() async {
-  //   try {
-  //     // First, ask for document title
-  //     String? title = await _showTitleDialog();
-  //     if (title == null || title.isEmpty) return;
-
-  //     FilePickerResult? result = await FilePicker.platform.pickFiles(
-  //       type: FileType.any,
-  //       allowMultiple: false,
-  //     );
-
-  //     if (result != null) {
-  //       final file = File(result.files.single.path!);
-  //       final nextIndex = _additionalFiles.keys.isNotEmpty 
-  //         ? _additionalFiles.keys.reduce((a, b) => a > b ? a : b) + 1 
-  //         : 1000; // Start from 1000 to avoid conflicts with required docs
-
-  //       setState(() {
-  //         _additionalFiles[nextIndex] = [file];
-  //         _additionalTitles[nextIndex] = [title];
-  //       });
-  //     }
-  //   } catch (e) {
-  //     Get.snackbar(
-  //       'Upload Error',
-  //       'Failed to upload additional document: ${e.toString()}',
-  //       backgroundColor: AppColors.error,
-  //       colorText: AppColors.white,
-  //     );
-  //   }
-  // }
-
   Future<String?> _showTitleDialog() async {
     String title = '';
-    return await Get.dialog<String>(
-      AlertDialog(
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
         title: Text('Document Title'),
         content: TextField(
           onChanged: (value) => title = value,
           decoration: InputDecoration(
-            hintText: 'Enter document title',
+            hintText: 'Enter document title (e.g. Salary Certificate)',
             border: OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.pop(context),
             child: Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Get.back(result: title),
+            onPressed: () => Navigator.pop(context, title),
             child: Text('Add'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _submitDocuments() async {
+    setState(() {
+      _isSubmitting = true;
+      controller.errorMessage.value = null;
+    });
+
+    try {
+      // Validate all required documents are uploaded
+      final allRequiredFieldsFilled = widget.documentFields.every((field) {
+        final index = widget.documentFields.indexOf(field);
+        return _uploadedFiles.containsKey(index) && _uploadedFiles[index]!.isNotEmpty;
+      });
+
+      if (!allRequiredFieldsFilled) {
+        controller.errorMessage.value = 'Please upload all required documents before submitting';
+        return;
+      }
+
+      // Prepare required documents with proper document types
+      List<String> requiredDocuments = [];
+      List<String> requiredDocumentTypes = [];
+
+      for (var entry in _uploadedFiles.entries) {
+        final fieldIndex = entry.key;
+        final files = entry.value;
+        final fieldTitle = widget.documentFields[fieldIndex].title;
+        final documentType = _documentTypeMapping[fieldTitle] ?? 'unknown';
+
+        for (var file in files) {
+          requiredDocuments.add(file.path);
+          requiredDocumentTypes.add(documentType);
+        }
+      }
+
+      // Prepare additional documents
+      List<String> additionalDocuments = [];
+      List<String> additionalDocumentTitles = [];
+
+      for (var entry in _additionalFiles.entries) {
+        final index = entry.key;
+        final files = entry.value;
+        final titles = _additionalTitles[index] ?? [];
+
+        for (int i = 0; i < files.length; i++) {
+          additionalDocuments.add(files[i].path);
+          additionalDocumentTitles.add(i < titles.length ? titles[i] : 'Additional Document');
+        }
+      }
+
+      // Update user model with document information
+      controller.user.value = UserDataSubmissionModel(
+        uid: controller.user.value.uid,
+        firstName: controller.user.value.firstName,
+        lastName: controller.user.value.lastName,
+        address: controller.user.value.address,
+        citizenship: controller.user.value.citizenship,
+        email: controller.user.value.email,
+        mobile: controller.user.value.mobile,
+        propertyId: controller.user.value.propertyId,
+        unitId: controller.user.value.unitId,
+        propertyType: widget.isCommercialProperty ? 'commercial' : 'residential',
+        requiredDocumentTypes: requiredDocumentTypes,
+        requiredDocuments: requiredDocuments,
+        additionalDocuments: additionalDocuments.isNotEmpty ? additionalDocuments : null,
+        additionalDocumentTitles: additionalDocumentTitles.isNotEmpty ? additionalDocumentTitles : null,
+        // Citizenship-specific fields
+        civilId: controller.user.value.civilId,
+        civilIdExpiry: controller.user.value.civilIdExpiry,
+        passportNo: controller.user.value.passportNo,
+        visaNo: controller.user.value.visaNo,
+        visaExpiryDate: controller.user.value.visaExpiryDate,
+        expatCivilId: controller.user.value.expatCivilId,
+        expatCivilIdExpiry: controller.user.value.expatCivilIdExpiry,
+        // Commercial fields if applicable
+        crNumber: widget.isCommercialProperty ? controller.user.value.crNumber : null,
+        crExpiryDate: widget.isCommercialProperty ? controller.user.value.crExpiryDate : null,
+        municipalityLicenseNumber: widget.isCommercialProperty ? controller.user.value.municipalityLicenseNumber : null,
+        municipalityLicenseDate: widget.isCommercialProperty ? controller.user.value.municipalityLicenseDate : null,
+        companyAddress: widget.isCommercialProperty ? controller.user.value.companyAddress : null,
+        poBox: widget.isCommercialProperty ? controller.user.value.poBox : null,
+      );
+
+      // Submit user data and documents
+      await controller.submitUserDataAndDocs(controller.user.value);
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Application submitted successfully!'),
+          backgroundColor: AppColors.onlineGreen,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Navigate back to home or confirmation screen
+      // Get.offAllNamed('/home'); // Adjust route as needed
+      
+    } catch (e) {
+      controller.errorMessage.value = 'Failed to submit application: ${e.toString()}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Submission failed. Please try again.'),
+          backgroundColor: AppColors.redColor,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
   }
 
   FileType _getFileType(FileTypeEnum allowedTypes) {
@@ -745,7 +797,7 @@ void _addAdditionalFile(PlatformFile platformFile) {
         return ['jpg', 'jpeg', 'png', 'webp'];
       case FileTypeEnum.any:
       default:
-        return ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+        return null; // No restrictions
     }
   }
 
@@ -759,120 +811,13 @@ void _addAdditionalFile(PlatformFile platformFile) {
       case 'png':
       case 'webp':
         return Icons.image;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
       default:
         return Icons.insert_drive_file;
     }
   }
-
- // Updated _submitDocuments method in DocumentUploadScreen
-Future<void> _submitDocuments() async {
-  setState(() {
-    _isSubmitting = true;
-  });
-
-  try {
-    // First validate that all required documents are uploaded
-    final allRequiredFieldsFilled = widget.documentFields.every((field) {
-      final index = widget.documentFields.indexOf(field);
-      return _uploadedFiles.containsKey(index) &&
-          _uploadedFiles[index]!.isNotEmpty;
-    });
-
-    if (!allRequiredFieldsFilled) {
-      Get.snackbar(
-        'Missing Documents',
-        'Please upload all required documents before submitting',
-        backgroundColor: AppColors.error,
-        colorText: AppColors.white,
-      );
-      return;
-    }
-
-    // Prepare required documents with proper document types
-    List<String> requiredDocuments = [];
-    List<String> requiredDocumentTypes = [];
-
-    for (var entry in _uploadedFiles.entries) {
-      final fieldIndex = entry.key;
-      final files = entry.value;
-      final fieldTitle = widget.documentFields[fieldIndex].title;
-      final documentType = _documentTypeMapping[fieldTitle] ?? 'unknown';
-
-      for (var file in files) {
-        requiredDocuments.add(file.path);
-        requiredDocumentTypes.add(documentType);
-      }
-    }
-
-    // Prepare additional documents
-    List<String> additionalDocuments = [];
-    List<String> additionalDocumentTitles = [];
-
-    for (var entry in _additionalFiles.entries) {
-      final index = entry.key;
-      final files = entry.value;
-      final titles = _additionalTitles[index] ?? [];
-
-      for (int i = 0; i < files.length; i++) {
-        additionalDocuments.add(files[i].path);
-        additionalDocumentTitles.add(i < titles.length ? titles[i] : 'Additional Document');
-      }
-    }
-
-    // Update user model with document information
-    controller.user.value = UserDataSubmissionModel(
-      uid: controller.user.value.uid,
-      firstName: controller.user.value.firstName,
-      lastName: controller.user.value.lastName,
-      address: controller.user.value.address,
-      citizenship: controller.user.value.citizenship,
-      email: controller.user.value.email,
-      mobile: controller.user.value.mobile,
-      propertyId: controller.user.value.propertyId,
-      unitId: controller.user.value.unitId,
-      requiredDocumentTypes: requiredDocumentTypes,
-      requiredDocuments: requiredDocuments,
-      additionalDocuments: additionalDocuments.isNotEmpty ? additionalDocuments : null,
-      additionalDocumentTitles: additionalDocumentTitles.isNotEmpty ? additionalDocumentTitles : null,
-      // Citizenship-specific fields
-      civilId: controller.user.value.civilId,
-      civilIdExpiry: controller.user.value.civilIdExpiry,
-      passportNo: controller.user.value.passportNo,
-      visaNo: controller.user.value.visaNo,
-      visaExpiryDate: controller.user.value.visaExpiryDate,
-      expatCivilId: controller.user.value.expatCivilId,
-      expatCivilIdExpiry: controller.user.value.expatCivilIdExpiry,
-    );
-
-    // Submit user data and documents using the controller's method
-    await controller.submitUserDataAndDocs(controller.user.value);
-
-    Get.snackbar(
-      'Success',
-      'Application submitted successfully! You will receive a confirmation email shortly.',
-      backgroundColor: AppColors.onlineGreen,
-      colorText: AppColors.white,
-      duration: Duration(seconds: 5),
-    );
-
-    // Navigate back to home or confirmation screen
-    Get.offAllNamed('/home'); // Adjust route as needed
-    
-  } catch (e) {
-    Get.snackbar(
-      'Submission Error',
-      'Failed to submit application: ${e.toString()}',
-      backgroundColor: AppColors.error,
-      colorText: AppColors.white,
-      duration: Duration(seconds: 5),
-    );
-  } finally {
-    setState(() {
-      _isSubmitting = false;
-    });
-  }
-}
-
 }
 
 class DocumentField {

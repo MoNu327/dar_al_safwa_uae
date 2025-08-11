@@ -28,6 +28,15 @@ UserDataSubmissionModel _$UserDataSubmissionModelFromJson(
       visaExpiryDate: json['visa_expiry_date'] as String?,
       expatCivilId: json['expat_civil_id'] as String?,
       expatCivilIdExpiry: json['expat_civil_id_expiry'] as String?,
+      crNumber: json['cr_number'] as String?,
+      crExpiryDate: json['cr_expiry_date'] as String?,
+      municipalityLicenseNumber: json['municipality_license_number'] as String?,
+      municipalityLicenseDate: json['municipality_license_date'] as String?,
+      companyAddress: json['company_address'] as String?,
+      poBox: json['po_box'] as String?,
+      propertyType: json['property_type'] as String?,
+      flag: (json['flag'] as num?)?.toInt(),
+      status: (json['status'] as num?)?.toInt(),
       requiredDocuments: (json['required_documents'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
@@ -60,6 +69,17 @@ Map<String, dynamic> _$UserDataSubmissionModelToJson(
       if (instance.expatCivilId case final value?) 'expat_civil_id': value,
       if (instance.expatCivilIdExpiry case final value?)
         'expat_civil_id_expiry': value,
+      if (instance.crNumber case final value?) 'cr_number': value,
+      if (instance.crExpiryDate case final value?) 'cr_expiry_date': value,
+      if (instance.municipalityLicenseNumber case final value?)
+        'municipality_license_number': value,
+      if (instance.municipalityLicenseDate case final value?)
+        'municipality_license_date': value,
+      if (instance.companyAddress case final value?) 'company_address': value,
+      if (instance.poBox case final value?) 'po_box': value,
+      if (instance.propertyType case final value?) 'property_type': value,
+      if (instance.flag case final value?) 'flag': value,
+      if (instance.status case final value?) 'status': value,
       if (instance.requiredDocuments case final value?)
         'required_documents': value,
       'required_document_types': instance.requiredDocumentTypes,
