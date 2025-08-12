@@ -37,6 +37,8 @@ Future<void> main() async {
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown, // Added this line
+
   ]);
 
   // Initialize core services
