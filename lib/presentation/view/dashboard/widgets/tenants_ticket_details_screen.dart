@@ -31,28 +31,32 @@ void initState() {
   
   _debugComplaintStructure();
 
-  // SINGLE IMAGE INITIALIZATION - Remove duplicates
-  complaintImages = widget.complaint?.complaintImages ?? ComplaintImages();
-  
   debugPrint('=== IMAGES INITIALIZATION ===');
-  debugPrint('Initial complaint images:');
-  debugPrint('- Tenant: ${complaintImages.tenantUploaded.length} images');
-  debugPrint('- Admin: ${complaintImages.adminUploaded.length} images'); 
-  debugPrint('- Technician: ${complaintImages.technicianUploaded.length} images');
-  debugPrint('- Admin/Technician: ${complaintImages.adminTechnicianUploaded.length} images');
+  
+  // Get initial complaint images (could be empty)
+  final originalComplaintImages = widget.complaint?.complaintImages ?? ComplaintImages();
+  
+  debugPrint('Original complaint images:');
+  debugPrint('- Tenant: ${originalComplaintImages.tenantUploaded.length} images');
+  debugPrint('- Admin: ${originalComplaintImages.adminUploaded.length} images'); 
+  debugPrint('- Technician: ${originalComplaintImages.technicianUploaded.length} images');
+  debugPrint('- Admin/Technician: ${originalComplaintImages.adminTechnicianUploaded.length} images');
   debugPrint('- Direct images: ${widget.complaint?.images?.length ?? 0} images');
 
-  // ONLY use fallback if ALL complaint image categories are empty
-  final bool hasComplaintImages = complaintImages.tenantUploaded.isNotEmpty ||
-                                  complaintImages.adminUploaded.isNotEmpty ||
-                                  complaintImages.technicianUploaded.isNotEmpty ||
-                                  complaintImages.adminTechnicianUploaded.isNotEmpty;
+  // Check if ANY categorized images exist
+  final bool hasComplaintImages = originalComplaintImages.tenantUploaded.isNotEmpty ||
+                                  originalComplaintImages.adminUploaded.isNotEmpty ||
+                                  originalComplaintImages.technicianUploaded.isNotEmpty ||
+                                  originalComplaintImages.adminTechnicianUploaded.isNotEmpty;
 
-  // FIXED FALLBACK LOGIC - Only apply when no categorized images exist
-  if (!hasComplaintImages && widget.complaint?.images?.isNotEmpty == true) {
-    debugPrint('No categorized images found, using direct images as fallback');
+  if (hasComplaintImages) {
+    // Use the original categorized images as-is
+    complaintImages = originalComplaintImages;
+    debugPrint('Using original categorized images');
+  } else if (widget.complaint?.images?.isNotEmpty == true) {
+    // Only use fallback logic when NO categorized images exist
+    debugPrint('No categorized images found, applying fallback logic to direct images');
     
-    // Create new ComplaintImages with enhanced categorization
     final directImages = widget.complaint!.images!;
     
     // Try to categorize based on complaint context
@@ -74,15 +78,24 @@ void initState() {
       );
       debugPrint('Split ${directImages.length} images between tenant (${midPoint}) and technician (${directImages.length - midPoint})');
     } else {
-      // Default to tenant
+      // Default: assign all direct images to tenant
       complaintImages = ComplaintImages(
         tenantUploaded: directImages,
         adminUploaded: [],
         technicianUploaded: [],
         adminTechnicianUploaded: [],
       );
-      debugPrint('Used all ${directImages.length} direct images as tenant uploaded');
+      debugPrint('Assigned all ${directImages.length} direct images to tenant');
     }
+  } else {
+    // No images at all
+    complaintImages = ComplaintImages(
+      tenantUploaded: [],
+      adminUploaded: [],
+      technicianUploaded: [],
+      adminTechnicianUploaded: [],
+    );
+    debugPrint('No images found anywhere - using empty ComplaintImages');
   }
 
   debugPrint('Final image counts:');
