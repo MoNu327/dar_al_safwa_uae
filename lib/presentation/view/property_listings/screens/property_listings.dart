@@ -361,10 +361,10 @@ class PropertyListings extends StatelessWidget {
     final formattedPrice = isArabic
         ? (price?.formatted?.ar?.isNotEmpty ?? false
             ? price!.formatted!.ar
-            : '${price?.raw ?? 0} OMR')
+            : '${price?.raw ?? 0} AED')
         : (price?.formatted?.en?.isNotEmpty ?? false
             ? price!.formatted!.en
-            : '${price?.raw ?? 0} OMR');
+            : '${price?.raw ?? 0} AED');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
