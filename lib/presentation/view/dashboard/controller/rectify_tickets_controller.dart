@@ -322,6 +322,16 @@ Future submitUpdates(String complaintId) async {
       
       final successMessage = response['message']?.toString() ?? 'Updated successfully';
       
+      // Refresh the tickets data after successful update
+      print("Refreshing tickets data...");
+      await refreshData();
+      print("Tickets data refreshed successfully");
+      
+      // Refresh the tickets data after successful update
+      print("Refreshing tickets data...");
+      await refreshData();
+      print("Tickets data refreshed successfully");
+      
       // If we have response data, try to update the complaint object directly
       if (response.containsKey('data') && response['data'] is Map) {
         try {
@@ -403,6 +413,7 @@ Future submitUpdates(String complaintId) async {
             'message': successMessage,
             'updatedComplaintData': updatedComplaintData, // Pass the enhanced data
             'technicianImagesAdded': uploadedImages.length,
+            'dataRefreshed': true, // Indicate that data was already refreshed
           });
           
         } catch (e) {
@@ -415,6 +426,7 @@ Future submitUpdates(String complaintId) async {
             'needsSummaryRefresh': true,
             'technicianUid': technicianUid,
             'message': successMessage,
+            'dataRefreshed': true, // Indicate that data was already refreshed
           });
         }
       } else {
@@ -426,6 +438,7 @@ Future submitUpdates(String complaintId) async {
           'needsSummaryRefresh': true,
           'technicianUid': technicianUid,
           'message': successMessage,
+          'dataRefreshed': true, // Indicate that data was already refreshed
         });
       }
       
@@ -446,7 +459,6 @@ Future submitUpdates(String complaintId) async {
     isSubmitting.value = false;
   }
 }
-
   /// Convert Status to Code - Updated to handle "Started working" 
   String getStatusCode(String status) {
     switch (status.toLowerCase()) {
