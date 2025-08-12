@@ -564,10 +564,12 @@ Future<Response> updateTechnicianComplaint({
 
 Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userDataSubmission) async {
   try {
+    debugPrint('🚀 API Service: Starting submission for ${userDataSubmission.isNative ? "Native" : "Foreign"} citizen');
+    
     // Create FormData for multipart upload
     FormData formData = FormData();
     
-    // Add all text fields
+    // Add basic required fields for all users
     formData.fields.addAll([
       MapEntry('uid', userDataSubmission.uid),
       MapEntry('first_name', userDataSubmission.firstName),
@@ -578,22 +580,98 @@ Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userDataSubmiss
       MapEntry('citizenship', userDataSubmission.citizenship.toString()),
       MapEntry('email', userDataSubmission.email),
       MapEntry('mobile', userDataSubmission.mobile),
-      MapEntry('civil_id', userDataSubmission.civilId ?? ''),
-      MapEntry('civil_id_expiry', userDataSubmission.civilIdExpiry ?? ''),
-      MapEntry('property_type', userDataSubmission.propertyType ?? ''),
+      MapEntry('property_type', userDataSubmission.propertyType ?? 'residential'),
     ]);
+
+    // Add citizenship-specific fields
+    if (userDataSubmission.isNative) {
+      // Native citizen fields
+      debugPrint('📋 Adding Native citizen fields');
+      if (userDataSubmission.civilId != null && userDataSubmission.civilId!.isNotEmpty) {
+        formData.fields.add(MapEntry('civil_id', userDataSubmission.civilId!));
+      }
+      if (userDataSubmission.civilIdExpiry != null && userDataSubmission.civilIdExpiry!.isNotEmpty) {
+        formData.fields.add(MapEntry('civil_id_expiry', userDataSubmission.civilIdExpiry!));
+      }
+    } else {
+      // Foreign citizen fields - THIS WAS MISSING!
+      debugPrint('🛂 Adding Foreign citizen fields');
+      
+      if (userDataSubmission.passportNo != null && userDataSubmission.passportNo!.isNotEmpty) {
+        formData.fields.add(MapEntry('passport_no', userDataSubmission.passportNo!));
+        debugPrint('   ✅ Added passport_no: ${userDataSubmission.passportNo}');
+      }
+      
+      if (userDataSubmission.visaNo != null && userDataSubmission.visaNo!.isNotEmpty) {
+        formData.fields.add(MapEntry('visa_no', userDataSubmission.visaNo!));
+        debugPrint('   ✅ Added visa_no: ${userDataSubmission.visaNo}');
+      }
+      
+      if (userDataSubmission.visaExpiryDate != null && userDataSubmission.visaExpiryDate!.isNotEmpty) {
+        formData.fields.add(MapEntry('visa_expiry_date', userDataSubmission.visaExpiryDate!));
+        debugPrint('   ✅ Added visa_expiry_date: ${userDataSubmission.visaExpiryDate}');
+      }
+      
+      if (userDataSubmission.expatCivilId != null && userDataSubmission.expatCivilId!.isNotEmpty) {
+        formData.fields.add(MapEntry('expat_civil_id', userDataSubmission.expatCivilId!));
+        debugPrint('   ✅ Added expat_civil_id: ${userDataSubmission.expatCivilId}');
+      }
+      
+      if (userDataSubmission.expatCivilIdExpiry != null && userDataSubmission.expatCivilIdExpiry!.isNotEmpty) {
+        formData.fields.add(MapEntry('expat_civil_id_expiry', userDataSubmission.expatCivilIdExpiry!));
+        debugPrint('   ✅ Added expat_civil_id_expiry: ${userDataSubmission.expatCivilIdExpiry}');
+      }
+    }
+
+    // Add commercial property fields if applicable
+    if (userDataSubmission.propertyType == 'commercial') {
+      debugPrint('🏢 Adding Commercial property fields');
+      
+      if (userDataSubmission.crNumber != null && userDataSubmission.crNumber!.isNotEmpty) {
+        formData.fields.add(MapEntry('cr_number', userDataSubmission.crNumber!));
+      }
+      if (userDataSubmission.crExpiryDate != null && userDataSubmission.crExpiryDate!.isNotEmpty) {
+        formData.fields.add(MapEntry('cr_expiry_date', userDataSubmission.crExpiryDate!));
+      }
+      if (userDataSubmission.municipalityLicenseNumber != null && userDataSubmission.municipalityLicenseNumber!.isNotEmpty) {
+        formData.fields.add(MapEntry('municipality_license_number', userDataSubmission.municipalityLicenseNumber!));
+      }
+      if (userDataSubmission.municipalityLicenseDate != null && userDataSubmission.municipalityLicenseDate!.isNotEmpty) {
+        formData.fields.add(MapEntry('municipality_license_date', userDataSubmission.municipalityLicenseDate!));
+      }
+      if (userDataSubmission.companyAddress != null && userDataSubmission.companyAddress!.isNotEmpty) {
+        formData.fields.add(MapEntry('company_address', userDataSubmission.companyAddress!));
+      }
+      if (userDataSubmission.poBox != null && userDataSubmission.poBox!.isNotEmpty) {
+        formData.fields.add(MapEntry('po_box', userDataSubmission.poBox!));
+      }
+    }
     
     // Add document types
-    if (userDataSubmission.requiredDocumentTypes != null) {
-      for (int i = 0; i < userDataSubmission.requiredDocumentTypes!.length; i++) {
+    if (userDataSubmission.requiredDocumentTypes.isNotEmpty) {
+      debugPrint('📋 Adding ${userDataSubmission.requiredDocumentTypes.length} document types');
+      for (int i = 0; i < userDataSubmission.requiredDocumentTypes.length; i++) {
         formData.fields.add(
-          MapEntry('required_document_types[$i]', userDataSubmission.requiredDocumentTypes![i])
+          MapEntry('required_document_types[$i]', userDataSubmission.requiredDocumentTypes[i])
+        );
+        debugPrint('   • ${userDataSubmission.requiredDocumentTypes[i]}');
+      }
+    }
+
+    // Add additional document titles if any
+    if (userDataSubmission.additionalDocumentTitles != null && userDataSubmission.additionalDocumentTitles!.isNotEmpty) {
+      debugPrint('📋 Adding ${userDataSubmission.additionalDocumentTitles!.length} additional document titles');
+      for (int i = 0; i < userDataSubmission.additionalDocumentTitles!.length; i++) {
+        formData.fields.add(
+          MapEntry('additional_document_titles[$i]', userDataSubmission.additionalDocumentTitles![i])
         );
       }
     }
     
-    // Add files as MultipartFile objects
-    if (userDataSubmission.requiredDocuments != null) {
+    // Add required document files
+    if (userDataSubmission.requiredDocuments != null && userDataSubmission.requiredDocuments!.isNotEmpty) {
+      debugPrint('📁 Adding ${userDataSubmission.requiredDocuments!.length} required document files');
+      
       for (int i = 0; i < userDataSubmission.requiredDocuments!.length; i++) {
         String filePath = userDataSubmission.requiredDocuments![i];
         File file = File(filePath);
@@ -608,12 +686,57 @@ Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userDataSubmiss
           );
           
           formData.files.add(MapEntry('required_documents[$i]', multipartFile));
+          debugPrint('   📎 Added file: $fileName');
         } else {
+          debugPrint('   ❌ File not found: $filePath');
           throw Exception('File not found: $filePath');
         }
       }
     }
+
+    // Add additional document files
+    if (userDataSubmission.additionalDocuments != null && userDataSubmission.additionalDocuments!.isNotEmpty) {
+      debugPrint('📁 Adding ${userDataSubmission.additionalDocuments!.length} additional document files');
+      
+      for (int i = 0; i < userDataSubmission.additionalDocuments!.length; i++) {
+        String filePath = userDataSubmission.additionalDocuments![i];
+        File file = File(filePath);
+        
+        if (file.existsSync()) {
+          String fileName = filePath.split('/').last;
+          
+          MultipartFile multipartFile = await MultipartFile.fromFile(
+            filePath,
+            filename: fileName,
+            contentType: DioMediaType.parse(_getContentType(fileName)),
+          );
+          
+          formData.files.add(MapEntry('additional_documents[$i]', multipartFile));
+          debugPrint('   📎 Added additional file: $fileName');
+        } else {
+          debugPrint('   ❌ Additional file not found: $filePath');
+          throw Exception('Additional file not found: $filePath');
+        }
+      }
+    }
+
+    // Debug: Print all form fields being sent
+    debugPrint('📤 FORM DATA FIELDS BEING SENT:');
+    for (var field in formData.fields) {
+      // Don't log sensitive data in production
+      if (field.key.contains('email') || field.key.contains('mobile')) {
+        debugPrint('   ${field.key}: ***masked***');
+      } else {
+        debugPrint('   ${field.key}: ${field.value}');
+      }
+    }
     
+    debugPrint('📤 FORM DATA FILES BEING SENT:');
+    for (var file in formData.files) {
+      debugPrint('   ${file.key}: ${file.value.filename}');
+    }
+    
+    debugPrint('🚀 Sending request to server...');
     final response = await apiClient.request(
       "storebooking", 
       method: "post",
@@ -621,11 +744,14 @@ Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userDataSubmiss
       isFormData: true, // Important for multipart uploads
     );
     
+    debugPrint('✅ API Request successful: ${response.statusCode}');
     return response;
   } catch (e) {
+    debugPrint('💥 API Service Error: $e');
     rethrow;
   }
 }
+
 String _getContentType(String fileName) {
   String extension = fileName.toLowerCase().split('.').last;
   switch (extension) {

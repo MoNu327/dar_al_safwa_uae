@@ -843,7 +843,7 @@ Future<bool> _validateFile(PlatformFile file) async {
  bool validateForm() {
   updateUserFromControllers();
   
-  // Basic validation
+  // Basic validation for all users
   if (user.value.firstName.isEmpty ||
       user.value.lastName.isEmpty ||
       user.value.address.isEmpty ||
@@ -859,7 +859,7 @@ Future<bool> _validateFile(PlatformFile file) async {
     return false;
   }
 
-  // Mobile validation - simplified
+  // Mobile validation
   String cleanMobile = user.value.mobile.replaceAll(RegExp(r'[^\d]'), '');
   if (cleanMobile.length < 8) {
     errorMessage('Please enter a valid mobile number (minimum 8 digits)');
@@ -869,34 +869,42 @@ Future<bool> _validateFile(PlatformFile file) async {
   // Update mobile with clean digits
   mobileCtrl.text = cleanMobile;
   
-  // CITIZENSHIP-SPECIFIC VALIDATION - This is the key fix
-  if (selectedCitizenship.value == 1) {
+  // CITIZENSHIP-SPECIFIC VALIDATION
+  if (isNativeCitizen) {
     // Native citizen validation
     if (civilIdCtrl.text.isEmpty || civilIdExpiryCtrl.text.isEmpty) {
       errorMessage('Please fill all required native citizen fields (Civil ID and expiry date)');
       return false;
     }
   } else {
-    // Foreign citizen validation - Make sure ALL foreign fields are filled
-    if (passportCtrl.text.isEmpty || 
-        visaCtrl.text.isEmpty || 
-        visaExpiryCtrl.text.isEmpty || 
-        expatCivilIdCtrl.text.isEmpty || 
-        expatCivilIdExpiryCtrl.text.isEmpty) {
-      errorMessage('Please fill all required foreign citizen fields:\n• Passport Number\n• Visa Number\n• Visa Expiry Date\n• Expat Civil ID\n• Expat Civil ID Expiry');
+    // Foreign citizen validation - more detailed checks
+    final missingFields = <String>[];
+    
+    if (passportCtrl.text.isEmpty) missingFields.add('Passport Number');
+    if (visaCtrl.text.isEmpty) missingFields.add('Visa Number');
+    if (visaExpiryCtrl.text.isEmpty) missingFields.add('Visa Expiry Date');
+    if (expatCivilIdCtrl.text.isEmpty) missingFields.add('Expat Civil ID');
+    if (expatCivilIdExpiryCtrl.text.isEmpty) missingFields.add('Expat Civil ID Expiry');
+    
+    if (missingFields.isNotEmpty) {
+      errorMessage('Missing required foreign citizen fields:\n${missingFields.join('\n')}');
       return false;
     }
   }
 
   // Commercial property validation
-  if (selectedPropertyType.value == 'commercial') {
-    if (crNumberCtrl.text.isEmpty || 
-        crExpiryCtrl.text.isEmpty ||
-        municipalityLicenseNumberCtrl.text.isEmpty || 
-        municipalityLicenseDateCtrl.text.isEmpty ||
-        companyAddressCtrl.text.isEmpty || 
-        poBoxCtrl.text.isEmpty) {
-      errorMessage('Please fill all required commercial property fields');
+  if (isCommercialProperty) {
+    final missingCommercialFields = <String>[];
+    
+    if (crNumberCtrl.text.isEmpty) missingCommercialFields.add('CR Number');
+    if (crExpiryCtrl.text.isEmpty) missingCommercialFields.add('CR Expiry Date');
+    if (municipalityLicenseNumberCtrl.text.isEmpty) missingCommercialFields.add('Municipality License Number');
+    if (municipalityLicenseDateCtrl.text.isEmpty) missingCommercialFields.add('Municipality License Date');
+    if (companyAddressCtrl.text.isEmpty) missingCommercialFields.add('Company Address');
+    if (poBoxCtrl.text.isEmpty) missingCommercialFields.add('PO Box');
+    
+    if (missingCommercialFields.isNotEmpty) {
+      errorMessage('Missing required commercial fields:\n${missingCommercialFields.join('\n')}');
       return false;
     }
   }
@@ -951,26 +959,15 @@ Future<void> submitUserDataAndDocs(UserDataSubmissionModel userData) async {
     debugPrint('   🆔 Civil ID: ${userData.civilId}');
     debugPrint('   🏛️ Citizenship: ${userData.isForeign ? "Foreign" : "Native"}');
     debugPrint('   🏢 Property Type: ${userData.propertyType}');
-    // debugPrint('   📅 Date of Birth: ${userData..}');
     debugPrint('🔹 [2] isLoading set to TRUE');
 
-     if (userData.isForeign) {
+    if (userData.isForeign) {
       debugPrint('🛂 FOREIGN NATIONAL DETAILS:');
       debugPrint('   🛂 Passport No: ${userData.passportNo}');
       debugPrint('   ✈️ Visa No: ${userData.visaNo}');
       debugPrint('   📅 Visa Expiry: ${userData.visaExpiryDate}');
       debugPrint('   🆔 Expat Civil ID: ${userData.expatCivilId}');
       debugPrint('   📅 Expat Civil ID Expiry: ${userData.expatCivilIdExpiry}');
-      final missingFields = <String>[];
-      if (userData.passportNo?.isEmpty ?? true) missingFields.add('passport_no');
-      if (userData.visaNo?.isEmpty ?? true) missingFields.add('visa_no');
-      if (userData.visaExpiryDate?.isEmpty ?? true) missingFields.add('visa_expiry_date');
-      if (userData.expatCivilId?.isEmpty ?? true) missingFields.add('expat_civil_id');
-      if (userData.expatCivilIdExpiry?.isEmpty ?? true) missingFields.add('expat_civil_id_expiry');
-
-      if (missingFields.isNotEmpty) {
-        throw Exception('Missing required fields for foreign nationals: ${missingFields.join(', ')}');
-      }
     }
 
     errorMessage(null);
@@ -981,9 +978,88 @@ Future<void> submitUserDataAndDocs(UserDataSubmissionModel userData) async {
     String cleanMobile = userData.mobile.replaceAll(RegExp(r'[^\d]'), '');
     debugPrint('🔹 [5] Cleaned mobile: $cleanMobile');
 
-    // Create a copy with cleaned mobile
-    var cleanedUserData = userData.copyWith(mobile: cleanMobile);
+    // CRITICAL FIX: Ensure all foreign fields are properly set from controllers
+    UserDataSubmissionModel cleanedUserData;
+    
+    if (userData.isForeign) {
+      // For foreign nationals, explicitly ensure all required fields are set
+      cleanedUserData = UserDataSubmissionModel.foreign(
+        uid: userData.uid,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        address: userData.address,
+        email: userData.email,
+        mobile: cleanMobile,
+        propertyId: userData.propertyId,
+        unitId: userData.unitId,
+        passportNo: passportCtrl.text.trim().isNotEmpty ? passportCtrl.text.trim() : userData.passportNo ?? '',
+        visaNo: visaCtrl.text.trim().isNotEmpty ? visaCtrl.text.trim() : userData.visaNo ?? '',
+        visaExpiryDate: visaExpiryCtrl.text.trim().isNotEmpty ? visaExpiryCtrl.text.trim() : userData.visaExpiryDate ?? '',
+        expatCivilId: expatCivilIdCtrl.text.trim().isNotEmpty ? expatCivilIdCtrl.text.trim() : userData.expatCivilId ?? '',
+        expatCivilIdExpiry: expatCivilIdExpiryCtrl.text.trim().isNotEmpty ? expatCivilIdExpiryCtrl.text.trim() : userData.expatCivilIdExpiry ?? '',
+        requiredDocumentTypes: userData.requiredDocumentTypes,
+        propertyType: userData.propertyType,
+        requiredDocuments: userData.requiredDocuments,
+        additionalDocuments: userData.additionalDocuments,
+        additionalDocumentTitles: userData.additionalDocumentTitles,
+        // Commercial fields if applicable
+        crNumber: userData.propertyType == 'commercial' ? crNumberCtrl.text.trim() : null,
+        crExpiryDate: userData.propertyType == 'commercial' ? crExpiryCtrl.text.trim() : null,
+        municipalityLicenseNumber: userData.propertyType == 'commercial' ? municipalityLicenseNumberCtrl.text.trim() : null,
+        municipalityLicenseDate: userData.propertyType == 'commercial' ? municipalityLicenseDateCtrl.text.trim() : null,
+        companyAddress: userData.propertyType == 'commercial' ? companyAddressCtrl.text.trim() : null,
+        poBox: userData.propertyType == 'commercial' ? poBoxCtrl.text.trim() : null,
+      );
+    } else {
+      // For native citizens
+      cleanedUserData = UserDataSubmissionModel.native(
+        uid: userData.uid,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        address: userData.address,
+        email: userData.email,
+        mobile: cleanMobile,
+        propertyId: userData.propertyId,
+        unitId: userData.unitId,
+        civilId: civilIdCtrl.text.trim().isNotEmpty ? civilIdCtrl.text.trim() : userData.civilId ?? '',
+        civilIdExpiry: civilIdExpiryCtrl.text.trim().isNotEmpty ? civilIdExpiryCtrl.text.trim() : userData.civilIdExpiry ?? '',
+        requiredDocumentTypes: userData.requiredDocumentTypes,
+        propertyType: userData.propertyType,
+        requiredDocuments: userData.requiredDocuments,
+        additionalDocuments: userData.additionalDocuments,
+        additionalDocumentTitles: userData.additionalDocumentTitles,
+        // Commercial fields if applicable
+        crNumber: userData.propertyType == 'commercial' ? crNumberCtrl.text.trim() : null,
+        crExpiryDate: userData.propertyType == 'commercial' ? crExpiryCtrl.text.trim() : null,
+        municipalityLicenseNumber: userData.propertyType == 'commercial' ? municipalityLicenseNumberCtrl.text.trim() : null,
+        municipalityLicenseDate: userData.propertyType == 'commercial' ? municipalityLicenseDateCtrl.text.trim() : null,
+        companyAddress: userData.propertyType == 'commercial' ? companyAddressCtrl.text.trim() : null,
+        poBox: userData.propertyType == 'commercial' ? poBoxCtrl.text.trim() : null,
+      );
+    }
+    
     debugPrint('🔹 [6] Created cleanedUserData object');
+
+    // Validate foreign national fields before submission
+    if (cleanedUserData.isForeign) {
+      final missingFields = <String>[];
+      if (cleanedUserData.passportNo?.isEmpty ?? true) missingFields.add('passport_no');
+      if (cleanedUserData.visaNo?.isEmpty ?? true) missingFields.add('visa_no');
+      if (cleanedUserData.visaExpiryDate?.isEmpty ?? true) missingFields.add('visa_expiry_date');
+      if (cleanedUserData.expatCivilId?.isEmpty ?? true) missingFields.add('expat_civil_id');
+      if (cleanedUserData.expatCivilIdExpiry?.isEmpty ?? true) missingFields.add('expat_civil_id_expiry');
+
+      if (missingFields.isNotEmpty) {
+        throw Exception('Missing required fields for foreign nationals: ${missingFields.join(', ')}');
+      }
+      
+      debugPrint('✅ All foreign national fields validated');
+      debugPrint('   🛂 Final Passport No: ${cleanedUserData.passportNo}');
+      debugPrint('   ✈️ Final Visa No: ${cleanedUserData.visaNo}');
+      debugPrint('   📅 Final Visa Expiry: ${cleanedUserData.visaExpiryDate}');
+      debugPrint('   🆔 Final Expat Civil ID: ${cleanedUserData.expatCivilId}');
+      debugPrint('   📅 Final Expat Civil ID Expiry: ${cleanedUserData.expatCivilIdExpiry}');
+    }
 
     // Log user data fields for verification
     debugPrint('📤 [7] Preparing submission...');
@@ -1018,19 +1094,24 @@ Future<void> submitUserDataAndDocs(UserDataSubmissionModel userData) async {
       debugPrint('ℹ No documents provided');
     }
 
-    debugPrint('🔹 [9] Sending API request...');
+    // Final validation before API call
+    debugPrint('🔹 [9] Final model validation...');
+    final modelJson = cleanedUserData.toJson();
+    debugPrint('📦 Final model JSON: $modelJson');
+
+    debugPrint('🔹 [10] Sending API request...');
     final response = await apiService.submitUserDetailsAndDoc(cleanedUserData);
-    debugPrint('📡 [10] API Response Status: ${response.statusCode}');
+    debugPrint('📡 [11] API Response Status: ${response.statusCode}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      debugPrint('🔹 [11] Success HTTP code received');
+      debugPrint('🔹 [12] Success HTTP code received');
       final responseData = response.data;
-      debugPrint('📦 [12] Response Data: $responseData');
+      debugPrint('📦 [13] Response Data: $responseData');
 
       if (responseData['success'] == true) {
-        debugPrint('✅ [13] Submission marked as successful by server');
+        debugPrint('✅ [14] Submission marked as successful by server');
         _clearFormAfterSubmission();
-        debugPrint('🔹 [14] Form cleared');
+        debugPrint('🔹 [15] Form cleared');
 
         Get.snackbar(
           'Success',
@@ -1040,15 +1121,15 @@ Future<void> submitUserDataAndDocs(UserDataSubmissionModel userData) async {
           duration: const Duration(seconds: 3),
         );
 
-        debugPrint('🔹 [15] Navigating to /home');
+        debugPrint('🔹 [16] Navigating to /home');
         Get.offAllNamed('/navbar', arguments: {'initialIndex': 0});
       
       } else {
-        debugPrint('💥 [16] Server responded with success=false');
+        debugPrint('💥 [17] Server responded with success=false');
         throw Exception(responseData['message'] ?? 'Submission failed');
       }
     } else {
-      debugPrint('💥 [17] Non-success HTTP status: ${response.statusCode}');
+      debugPrint('💥 [18] Non-success HTTP status: ${response.statusCode}');
       final errorData = response.data;
       debugPrint('📦 Error Response Data: $errorData');
 
