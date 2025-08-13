@@ -153,7 +153,7 @@ class SignUpScreen extends StatelessWidget {
                                     return 'Mobile number should not start with a space';
                                   }
                                   if (value.length != 10) {
-                                    return 'Mobile number must be 10 digits';
+                                    return 'Mobile number must be 8 digits';
                                   }
                                   return null;
                                 },

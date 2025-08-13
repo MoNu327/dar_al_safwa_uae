@@ -236,13 +236,13 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
           color: AppColors.black,
           fontWeight: FontWeight.w600,
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.black),
-            onPressed: _refreshData,
-          ),
-        ],
-      ),
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.refresh, color: AppColors.black),
+        //     onPressed: _refreshData,
+        //   ),
+        // ],
+      ),  
       body: isInitializing 
           ? const Center(child: CircularProgressIndicator())
           : Column(

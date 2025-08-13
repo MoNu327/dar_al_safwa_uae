@@ -222,10 +222,11 @@ Future<void> handleCallOrChat({
           navigateToChat: !isCall,
           propertyName: propertyName,
           agentEmail: agentEmail,
+          // ✅ Don't pass unitId here since no unit is selected yet
         ));
 
     if (result != null && result['mobile'] != null) {
-      // After saving mobile, continue
+      // After saving mobile, continue with unit selection
       if (isCall) {
         showUnitTypeBottomSheetForCall(phone, propertyId);
       } else {
@@ -233,7 +234,7 @@ Future<void> handleCallOrChat({
       }
     }
   } else {
-    // Already has mobile number
+    // Already has mobile number, proceed with unit selection
     if (isCall) {
       showUnitTypeBottomSheetForCall(phone, propertyId);
     } else {
@@ -241,7 +242,6 @@ Future<void> handleCallOrChat({
     }
   }
 }
-
 
 
   // Helper method to get localized property title
@@ -390,18 +390,28 @@ Future<void> handleCallOrChat({
   }
 
 // In your PropertyDetailsController
-  void navigateToAgentChat(String agentEmail, String? propertyId,
-      String? propertyName, String? unitId) {
-    Get.toNamed(
-      AppRoute.agent,
-      arguments: {
-        'email': agentEmail,
-        'propertyId': propertyId ?? "0",
-        'propertyName': propertyName ?? "",
-        'unitId': unitId ?? "0",
-      }, // Pass the agent's email as argument
-    );
-  }
+void navigateToAgentChat(String agentEmail, String? propertyId, String? propertyName, String? unitId) {
+  // Debug prints to verify data
+  debugPrint("🚀 Navigating to Agent Chat:");
+  debugPrint("📧 Agent Email: $agentEmail");
+  debugPrint("🏠 Property ID: $propertyId");
+  debugPrint("🏷️ Property Name: $propertyName");
+  debugPrint("🏗️ Unit ID: $unitId");
+  debugPrint("🔢 Unit ID Type: ${unitId.runtimeType}");
+  
+  Get.toNamed(
+    AppRoute.agent,
+    arguments: {
+      'email': agentEmail,
+      'propertyId': propertyId ?? "0",
+      'propertyName': propertyName ?? "",
+      'unitId': unitId ?? "0",
+    },
+  );
+  
+  // Additional debug after navigation
+  debugPrint("✅ Navigation arguments sent: ${Get.arguments}");
+}
 
   // Bottom sheet methods
   void showUnitTypeBottomSheetForChat(String gmail, String propertyId,
@@ -699,111 +709,111 @@ Future<void> handleCallOrChat({
     );
   }
 
-  void _handleUnitTypeSelectionForChat(String gmail, String propertyId,
-      String propertyName) async {
-    try {
-      final unitTypes = property.value?.unitTypes?.data ?? [];
-      final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
-      final unitTypeId = selectedUnitType.unitType?.id ?? 0;
-      final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
-
-      // Post property interest with enquiry type as 1 for chat
-      await postPropertyInterest(
-        propertyId,
-        unitTypeId,
-        selectedCount.value,
-        "Interested in $unitTypeName", // Comments
-        1, // Enquiry type set to 1 for chat
-        "", // Mobile number - you can get from auth if needed
-      );
-
-      // Navigate to agent chat after successful API call
-
-      navigateToAgentChat(gmail, propertyId, propertyName, unitTypeName);
-    } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Failed to submit interest: ${e.toString()}",
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
-  }
-
-  void _handleUnitTypeSelectionForCall(String phone, String propertyId) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final isFirstTime = await isFirstTimeUser(uid);
-
+void _handleUnitTypeSelectionForChat(String gmail, String propertyId, String propertyName) async {
+  try {
     final unitTypes = property.value?.unitTypes?.data ?? [];
     final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
     final unitTypeId = selectedUnitType.unitType?.id ?? 0;
     final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
 
-    if (isFirstTime) {
-      final result = await Get.to(() =>
-          MobileNumberUpdatePage(
-            phone: phone,
-            propertyId: propertyId,
-          ));
+    // Post property interest with enquiry type as 1 for chat
+    await postPropertyInterest(
+      propertyId,
+      unitTypeId,
+      selectedCount.value,
+      "Interested in $unitTypeName", // Comments
+      1, // Enquiry type set to 1 for chat
+      "", // Mobile number - you can get from auth if needed
+    );
 
-      if (result != null && result['mobile'] != null) {
-        final updatedMobile = result['mobile'];
+    // ✅ Fix: Pass unitTypeId.toString() instead of unitTypeName
+    navigateToAgentChat(gmail, propertyId, propertyName, unitTypeId.toString());
+  } catch (e) {
+    Get.snackbar(
+      "Error",
+      "Failed to submit interest: ${e.toString()}",
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+}
 
-        // ⏬ Post interest after mobile updated
-        await postPropertyInterest(
-          propertyId,
-          unitTypeId,
-          selectedCount.value,
-          "Interested in $unitTypeName - Call request",
-          0, // enqtype
-          updatedMobile,
-        );
+ void _handleUnitTypeSelectionForCall(String phone, String propertyId) async {
+  final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  final isFirstTime = await isFirstTimeUser(uid);
 
-        // ⏬ Trigger call
-        await callToAgent(phone);
+  final unitTypes = property.value?.unitTypes?.data ?? [];
+  final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
+  final unitTypeId = selectedUnitType.unitType?.id ?? 0;
+  final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
 
-        Get.snackbar(
-          "Success",
-          "Mobile updated and call initiated!",
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      } else {
-        Get.snackbar("Cancelled", "Mobile number update was cancelled.");
-      }
+  if (isFirstTime) {
+    final result = await Get.to(() => MobileNumberUpdatePage(
+      phone: phone,
+      propertyId: propertyId,
+      navigateToChat: false,
+      navigateToCall: true,
+      // ✅ Fix: Pass unitTypeId.toString() instead of unitTypeName
+      unitId: unitTypeId.toString(),
+      propertyName: property.value?.title?.en ?? "",
+      agentEmail: property.value?.agent?.email ?? "",
+    ));
 
-      return; // ⛔ Skip rest
-    }
-
-    // ✅ Regular flow for non-first-time users
-    try {
-      // Fetch mobile from Firestore if needed
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .get();
-      final mobile = doc.data()?['mobile'] ?? "";
+    if (result != null && result['mobile'] != null) {
+      final updatedMobile = result['mobile'];
 
       await postPropertyInterest(
         propertyId,
         unitTypeId,
         selectedCount.value,
         "Interested in $unitTypeName - Call request",
-        0,
-        mobile,
+        0, // enqtype
+        updatedMobile,
       );
 
       await callToAgent(phone);
 
       Get.snackbar(
         "Success",
-        "Interest logged and call initiated!",
+        "Mobile updated and call initiated!",
         snackPosition: SnackPosition.BOTTOM,
       );
-    } catch (e) {
-      Get.snackbar(
-        "Error",
-        "Failed: ${e.toString()}",
-        snackPosition: SnackPosition.BOTTOM,
-      );
+    } else {
+      Get.snackbar("Cancelled", "Mobile number update was cancelled.");
     }
+
+    return;
   }
+
+  // ✅ Regular flow for non-first-time users
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+    final mobile = doc.data()?['mobile'] ?? "";
+
+    await postPropertyInterest(
+      propertyId,
+      unitTypeId,
+      selectedCount.value,
+      "Interested in $unitTypeName - Call request",
+      0,
+      mobile,
+    );
+
+    await callToAgent(phone);
+
+    Get.snackbar(
+      "Success",
+      "Interest logged and call initiated!",
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  } catch (e) {
+    Get.snackbar(
+      "Error",
+      "Failed: ${e.toString()}",
+      snackPosition: SnackPosition.BOTTOM,
+    );
+  }
+}
 }
