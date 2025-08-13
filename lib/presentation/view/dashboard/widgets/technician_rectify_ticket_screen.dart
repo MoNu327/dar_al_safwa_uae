@@ -279,7 +279,7 @@ class RectifyTicketsScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   CustomTextWidget(
-                    title: 'AED',
+                    title: 'OMR',
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: AppColors.black,

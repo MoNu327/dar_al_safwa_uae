@@ -13,7 +13,7 @@ class AgentRegisteredPropertyController extends GetxController {
   final errorMessage = RxString('');
   final count = 0.obs;
 
-  final selectedCurrency = 'AED'.obs;
+  final selectedCurrency = 'OMR'.obs;
   final selectedStatus = 'Available'.obs;
 
   final List<String> currencies = [
