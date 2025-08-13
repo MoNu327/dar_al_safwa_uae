@@ -227,13 +227,13 @@ class PropertyDetailsScreen extends StatelessWidget {
                         children: [
                           Icon(
                             unitType == 1 ? Icons.business : Icons.home,
-                            color: unitType == 1 ? AppColors.secondaryColor : AppColors.primaryColor,
+                            color: unitType == 1 ? AppColors.secondaryColor : AppColors.secondaryColor,
                             size: 16,
                           ),
                           SizedBox(width: 8),
                           CustomTextWidget(
                             title: propertyType.toUpperCase(),
-                            color: unitType == 1 ? AppColors.secondaryColor : AppColors.primaryColor,
+                            color: unitType == 1 ? AppColors.secondaryColor : AppColors.secondaryColor,
                             fontSize: Get.height * 0.014,
                             fontWeight: FontWeight.w600,
                           ),
@@ -628,7 +628,7 @@ void _handleBookNowPressed(int propertyId, int unitId, int unitType, String prop
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border.all(
-            color: isSelected ? AppColors.primaryColor : AppColors.lightGrey,
+            color: isSelected ? AppColors.secondaryColor : AppColors.lightGrey,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(12),

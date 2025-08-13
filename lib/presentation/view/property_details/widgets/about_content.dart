@@ -180,6 +180,9 @@ class AboutContent extends StatelessWidget {
     if (overview == null || overview.items == null || overview.items!.isEmpty) {
       return const Text('No overview information available');
     }
+     overview.items?.forEach((item) {
+    print('DEBUG Item: ${item.title?.en} - Value type: ${item.value.runtimeType} - Value: ${item.value}');
+  });
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -222,14 +225,81 @@ class AboutContent extends StatelessWidget {
     );
   }
 
- String _formatOverviewValue(dynamic value) {
+String _formatOverviewValue(dynamic value) {
   if (value == null) return 'N/A';
-  if (value is int || value is String) return value.toString();
-  // if (value is AreaValue) return value.formatted?.en ?? '';
+  
+  // Debug: Print the value and its type
+  print('Overview value: $value');
+  print('Overview value type: ${value.runtimeType}');
+  
+  // Handle simple types
+  if (value is int || value is String) {
+    print('Returning simple value: ${value.toString()}');
+    return value.toString();
+  }
+  
+  // Handle OverviewValue object
+  if (value is OverviewValue) {
+    print('Handling OverviewValue object');
+    // First try to use the formatted value
+    if (value.formatted != null) {
+      String formattedText = isArabic 
+          ? (value.formatted?.ar ?? '') 
+          : (value.formatted?.en ?? '');
+      if (formattedText.isNotEmpty) {
+        print('Returning formatted text: $formattedText');
+        return formattedText;
+      }
+    }
+    
+    // If no formatted value, try to construct from number and unit
+    if (value.number != null) {
+      String numberText = value.number.toString();
+      if (value.unit != null) {
+        String unitText = isArabic 
+            ? (value.unit?.ar ?? '') 
+            : (value.unit?.en ?? '');
+        String result = unitText.isNotEmpty ? '$numberText $unitText' : numberText;
+        print('Returning number + unit: $result');
+        return result;
+      }
+      print('Returning number only: $numberText');
+      return numberText;
+    }
+  }
+  
+  // Handle Map (in case the JSON wasn't properly converted)
+  if (value is Map<String, dynamic>) {
+    print('Handling Map value: $value');
+    try {
+      OverviewValue overviewValue = OverviewValue.fromJson(value);
+      return _formatOverviewValue(overviewValue); // Recursive call
+    } catch (e) {
+      print('Error parsing OverviewValue from Map: $e');
+      
+      // Try to extract direct values from the map
+      if (value.containsKey('en') || value.containsKey('ar')) {
+        String result = isArabic ? (value['ar'] ?? '') : (value['en'] ?? '');
+        if (result.isNotEmpty) {
+          print('Returning localized value from map: $result');
+          return result;
+        }
+      }
+    }
+  }
+  
+  // Handle Message object (similar to what you have in other parts of your code)
+  if (value is Message) {
+    String result = isArabic ? (value.ar ?? '') : (value.en ?? '');
+    if (result.isNotEmpty) {
+      print('Returning Message value: $result');
+      return result;
+    }
+  }
+  
+  print('Falling back to N/A for value: $value');
   return 'N/A';
 }
-
-
   IconData _getIconForOverviewItem(String? iconName) {
     switch (iconName ?? '') {
       case 'bed':
@@ -323,61 +393,6 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  // Widget _buildAgentActions(PropertyDetailsController controler) {
-  //   final property = controler.property.value;
-
-  //   final gmail = property?.agent?.email ?? "teat@gmail.com";
-  //   final phone = property?.agent?.phone ?? "9544418765";
-  //   final propertyId = property?.id ?? "0";
-  //   final propertyName = property?.title?.en ?? "0";
-  //   final unitId = property?.unitTypes?.data?.first.unitType?.name?.en ?? "0";
-
-  //   return Row(
-  //     spacing: Get.width * 0.02,
-  //     children: [
-  //       InkWell(
-  //         onTap: () {
-  //           auth.currentUser == null
-  //               ? Get.toNamed(AppRoute.signupWarning)
-  //               : auth.currentUser != null &&
-  //                       auth.currentUser?.displayName != null
-  //                   ? propertyDetailsController.navigateToAgentChat(
-  //                       "$gmail", "$propertyId", "$propertyName", "$unitId")
-  //                   : auth.currentUser?.email == null
-  //                       ? propertyDetailsController.navigateToAgentChat(
-  //                           "teat@gmail.com", "0", "Riverview Retreat", "")
-  //                       : CustomSnackbar.show(
-  //                           title: "Failed",
-  //                           message:
-  //                               "Currently, the agent is unable to connect.");
-  //         },
-  //         child: CircleAvatar(
-  //           backgroundColor: AppColors.whiteLight,
-  //           radius: Get.height * 0.026,
-  //           child: Icon(
-  //             Icons.message,
-  //             color: AppColors.secondaryColor,
-  //             size: Get.height * 0.023,
-  //           ),
-  //         ),
-  //       ),
-  //       InkWell(
-  //         onTap: () {
-  //           propertyDetailsController.callToAgent(phone);
-  //         },
-  //         child: CircleAvatar(
-  //           backgroundColor: AppColors.whiteLight,
-  //           radius: Get.height * 0.026,
-  //           child: Icon(
-  //             Icons.call,
-  //             color: AppColors.secondaryColor,
-  //             size: Get.height * 0.023,
-  //           ),
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
 
   Widget _buildAgentActions(PropertyDetailsController controller) {
     final property = controller.property.value;
@@ -427,194 +442,7 @@ class AboutContent extends StatelessWidget {
     );
   }
 
-  // Widget _buildVideoTourSection() {
-  //   return Container(
-  //     width: double.infinity,
-  //     height: Get.height * 0.25,
-  //     decoration: BoxDecoration(
-  //       color: AppColors.redColor,
-  //       borderRadius: BorderRadius.circular(16),
-  //     ),
-  //     child: Stack(
-  //       children: [
-  //         Obx(() => videoController.isInitialized.value
-  //             ? ClipRRect(
-  //                 borderRadius: BorderRadius.circular(16),
-  //                 child: VideoPlayer(videoController.videoPlayerController),
-  //               )
-  //             : const Center(child: CircularProgressIndicator())),
-  //         Positioned(
-  //           bottom: 5,
-  //           left: 8,
-  //           child: ElevatedButton(
-  //             onPressed: () {},
-  //             child: const Text("View All"),
-  //           ),
-  //         ),
-  //         const Padding(
-  //           padding: EdgeInsets.all(16),
-  //           child: CustomTextWidget(
-  //             title: "Watch the video for taking your\n decision easily.",
-  //             color: AppColors.white,
-  //           ),
-  //         )
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildYoutubeViewerSection(String youtubeUrl) {
-  //   final videoController = Get.find<VideoController>();
-
-  //   if (youtubeUrl.isNotEmpty && !videoController.isYoutubeInitialized.value) {
-  //     videoController.initializeYoutubePlayerFromUrl(youtubeUrl);
-  //   }
-
-  //   return Container(
-  //     width: double.infinity,
-  //     height: Get.height * 0.24,
-  //     margin: const EdgeInsets.only(bottom: 16),
-  //     decoration: BoxDecoration(
-  //       color: AppColors.primaryColor,
-  //       borderRadius: BorderRadius.circular(16),
-  //     ),
-  //     child: Stack(
-  //       children: [
-  //         // YouTube Player
-  //         Obx(() {
-  //           if (videoController.isYoutubeInitialized.value &&
-  //               videoController.youtubeController != null) {
-  //             return ClipRRect(
-  //               borderRadius: BorderRadius.circular(16),
-  //               child: YoutubePlayer(
-  //                 controller: videoController.youtubeController!,
-  //                 showVideoProgressIndicator: true,
-  //                 progressIndicatorColor: AppColors.primaryColor,
-  //                 progressColors: ProgressBarColors(
-  //                   playedColor: AppColors.primaryColor,
-  //                   handleColor: AppColors.primaryColor,
-  //                 ),
-  //                 thumbnail: propertyDetailsController
-  //                             .property.value?.youtubeVideo?.thumbnail !=
-  //                         null
-  //                     ? Image.network(
-  //                         propertyDetailsController
-  //                             .property.value!.youtubeVideo!.thumbnail!,
-  //                         fit: BoxFit.cover,
-  //                       )
-  //                     : const SizedBox.shrink(),
-  //                 onReady: () {
-  //                   debugPrint('YouTube player onReady called');
-  //                   videoController.debugMessage.value = 'Player ready!';
-  //                 },
-  //               ),
-  //             );
-  //           } else {
-  //             return Container(
-  //               decoration: BoxDecoration(
-  //                 color: Colors.black54,
-  //                 borderRadius: BorderRadius.circular(16),
-  //               ),
-  //               child: Center(
-  //                 child: Column(
-  //                   mainAxisAlignment: MainAxisAlignment.center,
-  //                   children: [
-  //                     const CircularProgressIndicator(color: Colors.white),
-  //                     const SizedBox(height: 16),
-  //                     Obx(() => Padding(
-  //                           padding: const EdgeInsets.all(16.0),
-  //                           child: Text(
-  //                             videoController.debugMessage.value,
-  //                             style: const TextStyle(
-  //                               color: Colors.white,
-  //                               fontSize: 12,
-  //                             ),
-  //                             textAlign: TextAlign.center,
-  //                           ),
-  //                         )),
-  //                     const SizedBox(height: 16),
-  //                     ElevatedButton(
-  //                       onPressed: videoController.retryYoutubeInitialization,
-  //                       child:
-  //                           const Text('Retry', style: TextStyle(fontSize: 10)),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             );
-  //           }
-  //         }),
-
-  //         // Mute Button
-  //         Positioned(
-  //           top: 8,
-  //           left: 8,
-  //           child: Obx(() => GestureDetector(
-  //                 onTap: videoController.toggleMute,
-  //                 child: Container(
-  //                   padding: const EdgeInsets.all(6),
-  //                   decoration: BoxDecoration(
-  //                     color: Colors.black54,
-  //                     shape: BoxShape.circle,
-  //                   ),
-  //                   child: Icon(
-  //                     videoController.isMuted.value
-  //                         ? Icons.volume_off
-  //                         : Icons.volume_up,
-  //                     color: Colors.white,
-  //                     size: 20,
-  //                   ),
-  //                 ),
-  //               )),
-  //         ),
-
-  //         // View More Button
-  //         Positioned(
-  //           top: 8,
-  //           right: 8,
-  //           child: SizedBox(
-  //             height: screenHeight * 0.04,
-  //             width: screenWidth * 0.25,
-  //             child: ElevatedButton(
-  //               onPressed: () {
-  //                 if (youtubeUrl.isNotEmpty) {
-  //                   videoController.launchYouTubeVideo(youtubeUrl);
-  //                 }
-  //               },
-  //               style: ElevatedButton.styleFrom(
-  //                 shape: StadiumBorder(),
-  //                 padding: EdgeInsets.all(4),
-  //                 backgroundColor: AppColors.secondaryColor,
-  //               ),
-  //               child: CustomTextWidget(
-  //                 fontSize: tagTitle,
-  //                 title: "View More",
-  //                 color: AppColors.primaryColor,
-  //               ),
-  //             ),
-  //           ),
-  //         ),
-
-  //         // Information Text
-  //         Positioned(
-  //           top: 8,
-  //           left: 48,
-  //           child: Container(
-  //             padding: const EdgeInsets.all(8),
-  //             decoration: BoxDecoration(
-  //               color: Colors.black54,
-  //               borderRadius: BorderRadius.circular(8),
-  //             ),
-  //             child: const Text(
-  //               "Watch our YouTube videos\nfor more information.",
-  //               style: TextStyle(color: Colors.white, fontSize: 12),
-  //             ),
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
+  
 
   Widget _buildFeatures(PropertyFeatures? features) {
     if (features == null || features.items == null || features.items!.isEmpty) {
