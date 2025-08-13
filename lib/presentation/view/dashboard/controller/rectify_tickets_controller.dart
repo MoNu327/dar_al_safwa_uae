@@ -252,7 +252,6 @@ Future submitUpdates(String complaintId) async {
     final description = workDescriptionController.text.trim();
     final amount = amountController.text.trim();
     
-    
     if (selectedWorkStatus.value.isEmpty) {
       Get.snackbar('Error', 'Please select a work status',
           backgroundColor: Colors.red, colorText: Colors.white);
@@ -289,7 +288,6 @@ Future submitUpdates(String complaintId) async {
       reply: description,
       payments: payments.whereType<Map<String, dynamic>>().toList(),
       images: uploadedImages,
-      // Removed metadata parameter as it is not defined in the method signature
     );
     
     // Process response
@@ -323,15 +321,8 @@ Future submitUpdates(String complaintId) async {
       
       final successMessage = response['message']?.toString() ?? 'Updated successfully';
       
-      // Refresh the tickets data after successful update
-      print("Refreshing tickets data...");
-      await refreshData();
-      print("Tickets data refreshed successfully");
-      
-      // Refresh the tickets data after successful update
-      print("Refreshing tickets data...");
-      await refreshData();
-      print("Tickets data refreshed successfully");
+      // Don't refresh data here - let the receiving screen handle it
+      print("Ticket update successful, will refresh in receiving screen...");
       
       // If we have response data, try to update the complaint object directly
       if (response.containsKey('data') && response['data'] is Map) {
@@ -412,12 +403,10 @@ Future submitUpdates(String complaintId) async {
             'needsSummaryRefresh': true,
             'technicianUid': technicianUid,
             'message': successMessage,
-            'updatedComplaintData': updatedComplaintData, // Pass the enhanced data
+            'updatedComplaintData': updatedComplaintData,
             'technicianImagesAdded': uploadedImages.length,
-            'dataRefreshed': true, // Indicate that data was already refreshed
+            'dataRefreshed': false, // Let receiving screen handle refresh
           });
-                await fetchController.fetchTickets(FirebaseAuth.instance.currentUser?.uid ?? '');
-
           
         } catch (e) {
           print("Error processing complaint data: $e");
@@ -429,7 +418,7 @@ Future submitUpdates(String complaintId) async {
             'needsSummaryRefresh': true,
             'technicianUid': technicianUid,
             'message': successMessage,
-            'dataRefreshed': true, // Indicate that data was already refreshed
+            'dataRefreshed': false, // Let receiving screen handle refresh
           });
         }
       } else {
@@ -441,7 +430,7 @@ Future submitUpdates(String complaintId) async {
           'needsSummaryRefresh': true,
           'technicianUid': technicianUid,
           'message': successMessage,
-          'dataRefreshed': true, // Indicate that data was already refreshed
+          'dataRefreshed': false, // Let receiving screen handle refresh
         });
       }
       

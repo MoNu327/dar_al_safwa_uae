@@ -594,7 +594,7 @@ void _handleBookNowPressed(int propertyId, int unitId, int unitType, String prop
                         Get.back(); // Close bottom sheet
                         _proceedToBooking(propertyId, unitId, propertyName);
                       },
-                      buttonColor: AppColors.primaryColor,
+                      buttonColor: AppColors.secondaryColor,
                       buttonTextColor: Colors.white,
                       buttonHeight: Get.height * 0.06,
                       buttonTitle: _getBookingButtonText(unitTypes),

@@ -604,7 +604,6 @@ Widget _buildAssignButton(
   });
 }
 
-// Helper method to build action buttons section
 Widget _buildActionButtonsSection(
   Complaint? complaint,
   String complaintId,
@@ -642,36 +641,71 @@ Widget _buildActionButtonsSection(
           buttonHeight: screenHeight * 0.040,
           buttonTitle: 'Reply',
           onPressed: () async {
-           // In the screen that navigates to RectifyTicketsScreen
-// In the screen that navigates to RectifyTicketsScreen
-final result = await Get.to(() => RectifyTicketsScreen(
-  complaintId: complaintId,
-  category: category,
-));
+            // Navigate to RectifyTicketsScreen and handle the result
+            final result = await Get.to(() => RectifyTicketsScreen(
+              complaintId: complaintId,
+              category: category,
+            ));
 
-// Handle the result and refresh if needed
-if (result != null && result['needsRefresh'] == true) {
-  final technicianUid = result['technicianUid'];
-  
-  if (technicianUid != null) {
-    try {
-      final fetchController = Get.find<TechnicianTicketsController>();
-      
-      // Add the refreshAllData method first, then use it
-      await fetchController.refreshAllData(technicianUid);
-      
-      // Show success message after successful refresh
-      Get.snackbar('Success', result['message'] ?? 'Updated successfully',
-          backgroundColor: Colors.green, colorText: Colors.white);
-          
-    } catch (e) {
-      print("Error refreshing data in receiving screen: $e");
-      // Still show success message even if refresh fails
-      Get.snackbar('Success', result['message'] ?? 'Updated successfully',
-          backgroundColor: Colors.green, colorText: Colors.white);
-    }
-  }
-}
+            // Handle the result and refresh if needed
+            if (result != null && result is Map<String, dynamic>) {
+              print("Received result from rectify form: $result");
+              
+              if (result['updated'] == true) {
+                final technicianUid = result['technicianUid'];
+                
+                if (technicianUid != null) {
+                  try {
+                    final fetchController = Get.find<TechnicianTicketsController>();
+                    
+                    // Always force refresh all data to ensure UI is up to date
+                    print("Force refreshing all data after ticket update...");
+                    await fetchController.forceRefreshAllTickets(technicianUid);
+                    
+                    // Also refresh summary stats
+                    try {
+                      await fetchController.refreshSummaryOnly(technicianUid);
+                      print("Summary refreshed successfully");
+                    } catch (summaryError) {
+                      print("Summary refresh failed: $summaryError");
+                      // Continue even if summary fails
+                    }
+                    
+                    // Show success message after successful refresh
+                    Get.snackbar(
+                      'Success', 
+                      result['message'] ?? 'Updated successfully',
+                      backgroundColor: Colors.green, 
+                      colorText: Colors.white,
+                      snackPosition: SnackPosition.BOTTOM,
+                      duration: Duration(seconds: 3),
+                    );
+                    
+                  } catch (e) {
+                    print("Error refreshing data in receiving screen: $e");
+                    // Still show success message even if refresh fails
+                    Get.snackbar(
+                      'Success', 
+                      result['message'] ?? 'Updated successfully',
+                      backgroundColor: Colors.green, 
+                      colorText: Colors.white,
+                      snackPosition: SnackPosition.BOTTOM,
+                      duration: Duration(seconds: 3),
+                    );
+                  }
+                } else {
+                  // Show success message even without technician UID
+                  Get.snackbar(
+                    'Success', 
+                    result['message'] ?? 'Updated successfully',
+                    backgroundColor: Colors.green, 
+                    colorText: Colors.white,
+                    snackPosition: SnackPosition.BOTTOM,
+                    duration: Duration(seconds: 3),
+                  );
+                }
+              }
+            }
           },
           buttonShape: 'rect',
           borderColor: AppColors.darkGrey.withOpacity(0.2),
@@ -682,6 +716,42 @@ if (result != null && result['needsRefresh'] == true) {
       ),
     ],
   );
+}
+
+// Helper method to update local complaint data
+void _updateLocalComplaintData(
+  String complaintId, 
+  Map<String, dynamic> updatedData, 
+  TechnicianTicketsController fetchController
+) {
+  try {
+    // Find and update the complaint in the tickets list
+    final ticketIndex = fetchController.tickets.indexWhere(
+      (ticket) => ticket.complaintId == complaintId
+    );
+    
+    if (ticketIndex != -1) {
+      // You'll need to create a method in your Complaint model to update from Map
+      // or create a new Complaint object from the updated data
+      // For now, we'll trigger a refresh of the reactive list
+      fetchController.tickets.refresh();
+      
+      // Also update filtered tickets if they exist
+      final filteredIndex = fetchController.filteredTickets.indexWhere(
+        (ticket) => ticket.complaintId == complaintId
+      );
+      
+      if (filteredIndex != -1) {
+        fetchController.filteredTickets.refresh();
+      }
+      
+      print("✅ Updated local complaint data for $complaintId");
+    } else {
+      print("⚠️ Complaint $complaintId not found in local list");
+    }
+  } catch (e) {
+    print("❌ Error updating local complaint data: $e");
+  }
 }
 
 // Helper method to build image preview
