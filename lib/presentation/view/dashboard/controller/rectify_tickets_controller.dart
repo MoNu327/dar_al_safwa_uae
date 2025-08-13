@@ -252,6 +252,7 @@ Future submitUpdates(String complaintId) async {
     final description = workDescriptionController.text.trim();
     final amount = amountController.text.trim();
     
+    
     if (selectedWorkStatus.value.isEmpty) {
       Get.snackbar('Error', 'Please select a work status',
           backgroundColor: Colors.red, colorText: Colors.white);
@@ -415,6 +416,8 @@ Future submitUpdates(String complaintId) async {
             'technicianImagesAdded': uploadedImages.length,
             'dataRefreshed': true, // Indicate that data was already refreshed
           });
+                await fetchController.fetchTickets(FirebaseAuth.instance.currentUser?.uid ?? '');
+
           
         } catch (e) {
           print("Error processing complaint data: $e");
@@ -484,21 +487,21 @@ Future submitUpdates(String complaintId) async {
   }
 
   /// Reset Form - Updated to preserve status when needed
-  void resetForm({bool preserveStatus = false}) {
-    workDescriptionController.clear();
-    amountController.text = '';
-    if (!preserveStatus) {
-      selectedWorkStatus.value = 'Started working';
-    }
-    amountChanged.value = false;
-    isPaid.value = false;
-    paymentStatus.value = 0;
-    selectedPaymentMethod.value = 1;
-    paymentTitleController.clear();
-    paidByController.clear();
-    uploadedImages.clear();
-    ticketLoaded.value = false;
+  void resetForm({bool preserveStatus = true}) {  // Changed default to true
+  workDescriptionController.clear();
+  amountController.text = '';
+  if (!preserveStatus) {
+    selectedWorkStatus.value = 'Started working';
   }
+  amountChanged.value = false;
+  isPaid.value = false;
+  paymentStatus.value = 0;
+  selectedPaymentMethod.value = 1;
+  paymentTitleController.clear();
+  paidByController.clear();
+  uploadedImages.clear();
+  ticketLoaded.value = false;
+}
 
   /// Clear form when controller is disposed or new ticket is loaded
   void clearFormForNewTicket() {

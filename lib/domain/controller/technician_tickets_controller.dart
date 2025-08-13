@@ -1,10 +1,8 @@
-// COMPREHENSIVE FIX - Ensures assigned tickets ALWAYS remain visible after API refresh
 import 'package:dar_al_safwa/data/datasources/api_client.dart';
 import 'package:dar_al_safwa/data/model/technican_list_model.dart';
 import 'package:dar_al_safwa/data/model/technican_summary_model.dart';
 import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
 import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -70,36 +68,49 @@ class TechnicianTicketsController extends GetxController {
     super.onClose();
   }
 
+  // Public methods to access private storage methods (for UI compatibility)
+  Future<void> loadAssignmentsFromStorage() async {
+    await _loadAssignmentsFromStorage();
+  }
+
+  Future<void> loadAssignedTicketsFromStorage() async {
+    await _loadAssignedTicketsFromStorage();
+  }
+
+  Future<void> loadAssignmentHistoryFromStorage() async {
+    await _loadAssignmentHistoryFromStorage();
+  }
+
   // 🚨 MAJOR FIX: Enhanced merging to ALWAYS include assigned tickets
   List<Complaint> _mergeWithAssignedTickets(List<Complaint> apiComplaints, String currentUserId) {
-  final Map<String, Complaint> mergedTickets = {};
-  
-  // 1. Add all API tickets
-  for (final complaint in apiComplaints) {
-    mergedTickets[complaint.complaintId] = complaint;
-  }
-  
-  // 2. Add all locally assigned tickets
-  for (final entry in localAssignedTickets.entries) {
-    if (!mergedTickets.containsKey(entry.key)) {
-      mergedTickets[entry.key] = entry.value;
+    final Map<String, Complaint> mergedTickets = {};
+    
+    // 1. Add all API tickets
+    for (final complaint in apiComplaints) {
+      mergedTickets[complaint.complaintId] = complaint;
     }
-  }
-  
-  // 3. Apply any stored assignments
-  for (final entry in assignedTechnicianIds.entries) {
-    if (mergedTickets.containsKey(entry.key)) {
-      final ticket = mergedTickets[entry.key]!;
-      mergedTickets[entry.key] = ticket.copyWith(
-        assignedTechnicianId: entry.value,
-        assignedTechnicianName: assignedTechnicianNames[entry.key],
-        status: 'Assigned',
-      );
+    
+    // 2. Add all locally assigned tickets
+    for (final entry in localAssignedTickets.entries) {
+      if (!mergedTickets.containsKey(entry.key)) {
+        mergedTickets[entry.key] = entry.value;
+      }
     }
+    
+    // 3. Apply any stored assignments
+    for (final entry in assignedTechnicianIds.entries) {
+      if (mergedTickets.containsKey(entry.key)) {
+        final ticket = mergedTickets[entry.key]!;
+        mergedTickets[entry.key] = ticket.copyWith(
+          assignedTechnicianId: entry.value,
+          assignedTechnicianName: assignedTechnicianNames[entry.key],
+          status: 'Assigned',
+        );
+      }
+    }
+    
+    return mergedTickets.values.toList();
   }
-  
-  return mergedTickets.values.toList();
-}
 
   Future<void> _saveAssignmentHistory(String complaintId, String fromTechnicianId, String toTechnicianId, String toTechnicianName) async {
     try {
@@ -164,15 +175,17 @@ class TechnicianTicketsController extends GetxController {
         throw Exception('User not logged in');
       }
 
-      // 🚨 CRITICAL: Find and store the ticket IMMEDIATELY before assignment
+      // 🚨 CRITICAL: Clear previous assignment state before new assignment
+      await _clearPreviousAssignmentState(complaintId);
+
+      // Find and store the ticket
       final ticketToAssign = _findTicketInAllLists(complaintId);
       if (ticketToAssign != null) {
         await _saveAssignedTicketToStorage(complaintId, ticketToAssign);
         debugPrint("💾 Ticket saved to storage before assignment: $complaintId");
-      } else {
-        debugPrint("⚠️ WARNING: Could not find ticket to assign: $complaintId");
       }
 
+      // Make API call
       final response = await apiClient.request(
         "complaints/escalate",
         method: "post",
@@ -183,17 +196,20 @@ class TechnicianTicketsController extends GetxController {
         },
       );
       
-      debugPrint("📡 Escalate API Status: ${response.statusCode}");
-      debugPrint("📥 Escalate API Response: ${response.data}");
-      
       if (response.data['success'] == true) {
         final techName = availableTechnicians.firstWhere(
           (t) => t['id'] == technicianId,
           orElse: () => {'name': 'Unknown Technician'},
         )['name'] ?? 'Unknown Technician';
         
-        await _saveAssignmentHistory(complaintId, userUid, technicianId, techName);
-        await _updateAssignmentState(complaintId, technicianId);
+        // 🚨 CRITICAL: Force update all assignment states
+        await _forceUpdateAssignmentState(
+          complaintId: complaintId,
+          technicianId: technicianId,
+          technicianName: techName,
+          fromTechnicianId: userUid,
+        );
+        
         debugPrint("✅ Technician assigned successfully");
       } else {
         final errorMsg = response.data['message']?['en'] ?? 'Assignment failed';
@@ -204,6 +220,106 @@ class TechnicianTicketsController extends GetxController {
       rethrow;
     } finally {
       setAssigning(complaintId, false);
+    }
+  }
+
+  Future<void> _forceUpdateAssignmentState({
+    required String complaintId,
+    required String technicianId,
+    required String technicianName,
+    required String fromTechnicianId,
+  }) async {
+    try {
+      // 1. Update all local state maps
+      assignedTechnicianIds[complaintId] = technicianId;
+      assignedTechnicianNames[complaintId] = technicianName;
+      selectedTechnicianIds.remove(complaintId);
+      showAssignmentSection[complaintId] = false;
+
+      // 2. Update storage
+      await _saveAssignmentToStorage(complaintId, technicianId, technicianName);
+      await _saveAssignmentHistory(complaintId, fromTechnicianId, technicianId, technicianName);
+
+      // 3. Update all ticket lists
+      _updateTicketInAllLists(
+        complaintId: complaintId,
+        technicianId: technicianId,
+        technicianName: technicianName,
+      );
+
+      // 4. Force UI refresh
+      tickets.refresh();
+      filteredTickets.refresh();
+
+      debugPrint("✅ FORCE UPDATED assignment state for $complaintId -> $technicianName");
+    } catch (e) {
+      debugPrint("❌ Error in force update assignment: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> _clearPreviousAssignmentState(String complaintId) async {
+    try {
+      debugPrint("🧹 Clearing previous assignment state for $complaintId");
+      
+      // Clear from memory
+      assignedTechnicianIds.remove(complaintId);
+      assignedTechnicianNames.remove(complaintId);
+      selectedTechnicianIds.remove(complaintId);
+      showAssignmentSection.remove(complaintId);
+      
+      // Clear from storage
+      await _storage.remove('assigned_$complaintId');
+      await _storage.remove('assignment_history_$complaintId');
+      
+      debugPrint("✅ Cleared previous assignment state");
+    } catch (e) {
+      debugPrint("❌ Error clearing previous assignment: $e");
+    }
+  }
+
+  void _updateTicketInAllLists({
+    required String complaintId,
+    required String technicianId,
+    required String technicianName,
+  }) {
+    try {
+      // Update in main tickets list
+      tickets.value = tickets.map((ticket) {
+        if (ticket.complaintId == complaintId) {
+          return ticket.copyWith(
+            assignedTechnicianId: technicianId,
+            assignedTechnicianName: technicianName,
+            status: 'Assigned',
+          );
+        }
+        return ticket;
+      }).toList();
+
+      // Update in filtered tickets list
+      filteredTickets.value = filteredTickets.map((ticket) {
+        if (ticket.complaintId == complaintId) {
+          return ticket.copyWith(
+            assignedTechnicianId: technicianId,
+            assignedTechnicianName: technicianName,
+            status: 'Assigned',
+          );
+        }
+        return ticket;
+      }).toList();
+
+      // Update in local assigned tickets
+      if (localAssignedTickets.containsKey(complaintId)) {
+        localAssignedTickets[complaintId] = localAssignedTickets[complaintId]!.copyWith(
+          assignedTechnicianId: technicianId,
+          assignedTechnicianName: technicianName,
+          status: 'Assigned',
+        );
+      }
+
+      debugPrint("✅ Updated ticket in all lists: $complaintId -> $technicianName");
+    } catch (e) {
+      debugPrint("❌ Error updating ticket in all lists: $e");
     }
   }
 
@@ -239,119 +355,219 @@ class TechnicianTicketsController extends GetxController {
   }
 
   // 🚨 ENHANCED: Ticket fetching with comprehensive assigned ticket preservation
-  Future<void> fetchTickets(String userId) async {
-    try {
-      debugPrint("🔄 Fetching ALL tickets for user: $userId");
-      isLoading.value = true;
-      
-      // STEP 1: Load all stored assignment data FIRST (critical!)
-      await _loadAssignmentsFromStorage();
-      await _loadAssignedTicketsFromStorage();
-      await _loadAssignmentHistoryFromStorage();
-      
-      debugPrint("📂 Loaded storage data:");
-      debugPrint("  - Assignments: ${assignedTechnicianIds.length}");
-      debugPrint("  - Local tickets: ${localAssignedTickets.length}");
-      debugPrint("  - Assignment history: ${assignmentHistory.length}");
+Future<void> fetchTickets(String userId) async {
+  try {
+    debugPrint("🔄 Fetching ALL tickets for user: $userId");
+    isLoading.value = true;
+    
+    // STEP 1: Load all stored assignment data FIRST (critical!)
+    await _loadAssignmentsFromStorage();
+    await _loadAssignedTicketsFromStorage();
+    await _loadAssignmentHistoryFromStorage();
+    
+    debugPrint("📂 Loaded storage data:");
+    debugPrint("  - Assignments: ${assignedTechnicianIds.length}");
+    debugPrint("  - Local tickets: ${localAssignedTickets.length}");
+    debugPrint("  - Assignment history: ${assignmentHistory.length}");
 
-      // STEP 2: Fetch tickets from API
-      final List<Complaint> apiComplaints = await _fetchTicketsFromAPI(userId);
-      debugPrint("📥 API tickets fetched: ${apiComplaints.length}");
+    // STEP 2: Fetch current tickets from API (these are tickets currently assigned TO this technician)
+    final List<Complaint> currentApiTickets = await _fetchTicketsFromAPI(userId);
+    debugPrint("📥 Current API tickets: ${currentApiTickets.length}");
 
-      // STEP 3: 🚨 COMPREHENSIVE MERGE - Always include assigned tickets
-      final mergedComplaints = _mergeWithAssignedTickets(apiComplaints, userId);
-      debugPrint("🔄 After COMPREHENSIVE merge: ${mergedComplaints.length} tickets");
-      
-      // STEP 4: Apply stored assignments to ensure consistency
-      final updatedComplaints = _applyStoredAssignmentsToComplaints(mergedComplaints);
-      debugPrint("✅ After applying assignments: ${updatedComplaints.length} tickets");
-      
-      // STEP 5: Update the observable lists
-      tickets.clear();
-      filteredTickets.clear();
-      tickets.addAll(updatedComplaints);
-      filteredTickets.addAll(updatedComplaints);
-      
-      // STEP 6: Final verification and recovery
-      await _verifyAndRecoverAssignedTickets();
-      
-      debugPrint("✅ Final ticket count: ${tickets.length}");
-      debugTicketVisibility();
-      
-    } catch (e, st) {
-      debugPrint("❌ Error fetching tickets: $e");
-      debugPrint(st.toString());
-      _showLocallyAssignedTicketsOnly();
-    } finally {
-      isLoading.value = false;
-    }
+    // STEP 3: 🚨 PRESERVE ASSIGNED TICKETS - Include tickets that were assigned BY this technician
+    final List<Complaint> assignedByThisTechnician = await _getTicketsAssignedByThisTechnician(userId);
+    debugPrint("📤 Tickets assigned BY this technician: ${assignedByThisTechnician.length}");
+    
+    // STEP 4: 🚨 COMPREHENSIVE MERGE - Combine all tickets
+    final mergedComplaints = _comprehensiveMergeAllTickets(
+      currentApiTickets, 
+      assignedByThisTechnician, 
+      userId
+    );
+    debugPrint("🔄 After COMPREHENSIVE merge: ${mergedComplaints.length} tickets");
+    
+    // STEP 5: Apply stored assignments to ensure consistency
+    final updatedComplaints = _applyStoredAssignmentsToComplaints(mergedComplaints);
+    debugPrint("✅ After applying assignments: ${updatedComplaints.length} tickets");
+    
+    // STEP 6: Update the observable lists
+    tickets.clear();
+    filteredTickets.clear();
+    tickets.addAll(updatedComplaints);
+    filteredTickets.addAll(updatedComplaints);
+    
+    // STEP 7: Final verification and recovery
+    await _verifyAndRecoverAssignedTickets();
+    
+    debugPrint("✅ Final ticket count: ${tickets.length}");
+    debugTicketVisibility();
+    
+  } catch (e, st) {
+    debugPrint("❌ Error fetching tickets: $e");
+    debugPrint(st.toString());
+    _showLocallyAssignedTicketsOnly();
+  } finally {
+    isLoading.value = false;
   }
+}
 
-  // 🆕 CRITICAL: Verification and recovery method for assigned tickets
-  Future<void> _verifyAndRecoverAssignedTickets() async {
-    debugPrint("🔍 VERIFICATION: Checking all assigned tickets are present...");
-    
-    final missingTickets = <Complaint>[];
-    
-    // Check assignments
-    for (final entry in assignedTechnicianIds.entries) {
-      final complaintId = entry.key;
-      final assignedTechName = assignedTechnicianNames[complaintId] ?? 'Unknown';
-      
-      final ticketPresent = tickets.any((t) => t.complaintId == complaintId);
-      if (!ticketPresent) {
-        debugPrint("❌ MISSING: Assigned ticket not in UI: $complaintId -> $assignedTechName");
-        
-        // Try to recover from local storage
-        if (localAssignedTickets.containsKey(complaintId)) {
-          missingTickets.add(localAssignedTickets[complaintId]!);
-          debugPrint("🔧 Will recover: $complaintId");
-        }
-      } else {
-        debugPrint("✅ PRESENT: $complaintId -> $assignedTechName");
-      }
-    }
-    
-    // Check assignment history
+Future<List<Complaint>> _getTicketsAssignedByThisTechnician(String currentUserId) async {
+  final List<Complaint> assignedTickets = [];
+  
+  try {
+    // Get tickets from assignment history where this technician was the assignor
     for (final entry in assignmentHistory.entries) {
       final complaintId = entry.key;
       final historyData = entry.value;
-      final fromTechId = historyData['fromTechnicianId']?.toString() ?? '';
-      final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final fromTechnicianId = historyData['fromTechnicianId']?.toString() ?? '';
       
-      // Only check tickets assigned BY this technician
-      if (fromTechId == currentUserId) {
-        final ticketPresent = tickets.any((t) => t.complaintId == complaintId);
-        if (!ticketPresent && localAssignedTickets.containsKey(complaintId)) {
-          // Don't add duplicates
-          if (!missingTickets.any((t) => t.complaintId == complaintId)) {
-            missingTickets.add(localAssignedTickets[complaintId]!);
-            debugPrint("🔧 Will recover from history: $complaintId");
-          }
+      // Only include tickets assigned BY this technician
+      if (fromTechnicianId == currentUserId) {
+        // Check if we have the ticket in local storage
+        if (localAssignedTickets.containsKey(complaintId)) {
+          final ticket = localAssignedTickets[complaintId]!;
+          assignedTickets.add(ticket);
+          debugPrint("📤 Including ticket assigned BY this technician: $complaintId -> ${historyData['toTechnicianName']}");
         }
       }
     }
     
-    // Recover missing tickets
-    if (missingTickets.isNotEmpty) {
-      debugPrint("🔧 RECOVERING ${missingTickets.length} missing assigned tickets...");
+    // Also include any currently assigned tickets (from assignedTechnicianIds)
+    for (final entry in assignedTechnicianIds.entries) {
+      final complaintId = entry.key;
+      final technicianId = entry.value;
+      final technicianName = assignedTechnicianNames[complaintId] ?? 'Unknown';
       
-      final updatedMissingTickets = _applyStoredAssignmentsToComplaints(missingTickets);
+      // Skip if already added from history
+      if (assignedTickets.any((t) => t.complaintId == complaintId)) {
+        continue;
+      }
       
-      tickets.addAll(updatedMissingTickets);
-      filteredTickets.addAll(updatedMissingTickets);
-      
-      // Force UI refresh
-      tickets.refresh();
-      filteredTickets.refresh();
-      
-      debugPrint("✅ RECOVERY COMPLETE: Added ${updatedMissingTickets.length} tickets");
-      debugPrint("✅ New total ticket count: ${tickets.length}");
+      // Include if we have the ticket in local storage
+      if (localAssignedTickets.containsKey(complaintId)) {
+        final ticket = localAssignedTickets[complaintId]!;
+        assignedTickets.add(ticket);
+        debugPrint("📤 Including currently assigned ticket: $complaintId -> $technicianName");
+      }
+    }
+    
+    debugPrint("✅ Found ${assignedTickets.length} tickets assigned by this technician");
+    return assignedTickets;
+    
+  } catch (e) {
+    debugPrint("❌ Error getting assigned tickets: $e");
+    return [];
+  }
+}
+
+// 🆕 ENHANCED: Comprehensive merge that handles all ticket sources
+List<Complaint> _comprehensiveMergeAllTickets(
+  List<Complaint> currentApiTickets, 
+  List<Complaint> assignedByThisTechnician, 
+  String currentUserId
+) {
+  final Map<String, Complaint> mergedTickets = {};
+  
+  // 1. Add current API tickets (tickets currently assigned TO this technician)
+  for (final complaint in currentApiTickets) {
+    mergedTickets[complaint.complaintId] = complaint;
+    debugPrint("➕ API ticket: ${complaint.complaintId} - ${complaint.status}");
+  }
+  
+  // 2. Add tickets assigned BY this technician (even if no longer in API)
+  for (final complaint in assignedByThisTechnician) {
+    if (!mergedTickets.containsKey(complaint.complaintId)) {
+      mergedTickets[complaint.complaintId] = complaint;
+      debugPrint("➕ Assigned ticket: ${complaint.complaintId} - ${complaint.status}");
     } else {
-      debugPrint("✅ VERIFICATION PASSED: All assigned tickets are present");
+      // If ticket exists in both, prefer the one with assignment info
+      final existingTicket = mergedTickets[complaint.complaintId]!;
+      if (complaint.assignedTechnicianId != null && existingTicket.assignedTechnicianId == null) {
+        mergedTickets[complaint.complaintId] = complaint;
+        debugPrint("🔄 Updated with assignment info: ${complaint.complaintId}");
+      }
     }
   }
+  
+  // 3. Add any other locally stored tickets
+  for (final entry in localAssignedTickets.entries) {
+    final complaintId = entry.key;
+    final localTicket = entry.value;
+    
+    if (!mergedTickets.containsKey(complaintId)) {
+      mergedTickets[complaintId] = localTicket;
+      debugPrint("➕ Local ticket: $complaintId - ${localTicket.status}");
+    }
+  }
+  
+  debugPrint("🔄 COMPREHENSIVE MERGE COMPLETE: ${mergedTickets.length} total tickets");
+  return mergedTickets.values.toList();
+}
 
+  // 🆕 CRITICAL: Verification and recovery method for assigned tickets
+  Future<void> _verifyAndRecoverAssignedTickets() async {
+  debugPrint("🔍 VERIFICATION: Checking all assigned tickets are present...");
+  
+  final missingTickets = <Complaint>[];
+  final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  
+  // Check assignments (tickets currently assigned to others)
+  for (final entry in assignedTechnicianIds.entries) {
+    final complaintId = entry.key;
+    final assignedTechName = assignedTechnicianNames[complaintId] ?? 'Unknown';
+    
+    final ticketPresent = tickets.any((t) => t.complaintId == complaintId);
+    if (!ticketPresent) {
+      debugPrint("❌ MISSING: Assigned ticket not in UI: $complaintId -> $assignedTechName");
+      
+      // Try to recover from local storage
+      if (localAssignedTickets.containsKey(complaintId)) {
+        missingTickets.add(localAssignedTickets[complaintId]!);
+        debugPrint("🔧 Will recover: $complaintId");
+      }
+    } else {
+      debugPrint("✅ PRESENT: $complaintId -> $assignedTechName");
+    }
+  }
+  
+  // Check assignment history (tickets assigned BY this technician)
+  for (final entry in assignmentHistory.entries) {
+    final complaintId = entry.key;
+    final historyData = entry.value;
+    final fromTechnicianId = historyData['fromTechnicianId']?.toString() ?? '';
+    
+    // Only check tickets assigned BY this technician
+    if (fromTechnicianId == currentUserId) {
+      final ticketPresent = tickets.any((t) => t.complaintId == complaintId);
+      if (!ticketPresent && localAssignedTickets.containsKey(complaintId)) {
+        // Don't add duplicates
+        if (!missingTickets.any((t) => t.complaintId == complaintId)) {
+          missingTickets.add(localAssignedTickets[complaintId]!);
+          debugPrint("🔧 Will recover from history: $complaintId -> ${historyData['toTechnicianName']}");
+        }
+      }
+    }
+  }
+  
+  // Recover missing tickets
+  if (missingTickets.isNotEmpty) {
+    debugPrint("🔧 RECOVERING ${missingTickets.length} missing assigned tickets...");
+    
+    final updatedMissingTickets = _applyStoredAssignmentsToComplaints(missingTickets);
+    
+    tickets.addAll(updatedMissingTickets);
+    filteredTickets.addAll(updatedMissingTickets);
+    
+    // Force UI refresh
+    tickets.refresh();
+    filteredTickets.refresh();
+    
+    debugPrint("✅ RECOVERY COMPLETE: Added ${updatedMissingTickets.length} tickets");
+    debugPrint("✅ New total ticket count: ${tickets.length}");
+  } else {
+    debugPrint("✅ VERIFICATION PASSED: All assigned tickets are present");
+  }
+}
   Future<void> _updateAssignmentState(String complaintId, String technicianId) async {
     try {
       final tech = availableTechnicians.firstWhere(
@@ -480,57 +696,59 @@ class TechnicianTicketsController extends GetxController {
   }
 
   Future<void> _saveAssignmentToStorage(String complaintId, String technicianId, String technicianName) async {
-  try {
-    // Save to memory
-    assignedTechnicianIds[complaintId] = technicianId;
-    assignedTechnicianNames[complaintId] = technicianName;
-    
-    // Save to persistent storage
-    await _storage.write('assigned_$complaintId', {
-      'technicianId': technicianId,
-      'technicianName': technicianName,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
-    
-    debugPrint("💾 Assignment saved for $complaintId");
-  } catch (e) {
-    debugPrint("❌ Failed to save assignment: $e");
-  }
-}
-Future<void> _loadAssignmentsFromStorage() async {
-  try {
-    final allKeys = _storage.getKeys();
-    final List<String> assignmentKeys = [];
-    
-    // First collect all relevant keys
-    for (final key in allKeys) {
-      if (key is String && key.startsWith('assigned_') && !key.contains('ticket') && !key.contains('history')) {
-        assignmentKeys.add(key);
-      }
+    try {
+      // Save to memory
+      assignedTechnicianIds[complaintId] = technicianId;
+      assignedTechnicianNames[complaintId] = technicianName;
+      
+      // Save to persistent storage
+      await _storage.write('assigned_$complaintId', {
+        'technicianId': technicianId,
+        'technicianName': technicianName,
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+      
+      debugPrint("💾 Assignment saved for $complaintId");
+    } catch (e) {
+      debugPrint("❌ Failed to save assignment: $e");
     }
-    
-    debugPrint("📂 Found ${assignmentKeys.length} assignment records");
-    
-    // Now load each assignment
-    for (final key in assignmentKeys) {
-      try {
-        final data = _storage.read(key);
-        if (data is Map) {
-          final complaintId = key.replaceFirst('assigned_', '');
-          assignedTechnicianIds[complaintId] = data['technicianId']?.toString() ?? '';
-          assignedTechnicianNames[complaintId] = data['technicianName']?.toString() ?? '';
-          debugPrint("📂 Loaded assignment: $complaintId -> ${assignedTechnicianNames[complaintId]}");
+  }
+
+  Future<void> _loadAssignmentsFromStorage() async {
+    try {
+      final allKeys = _storage.getKeys();
+      final List<String> assignmentKeys = [];
+      
+      // First collect all relevant keys
+      for (final key in allKeys) {
+        if (key is String && key.startsWith('assigned_') && !key.contains('ticket') && !key.contains('history')) {
+          assignmentKeys.add(key);
         }
-      } catch (e) {
-        debugPrint("❌ Error loading assignment for key $key: $e");
       }
+      
+      debugPrint("📂 Found ${assignmentKeys.length} assignment records");
+      
+      // Now load each assignment
+      for (final key in assignmentKeys) {
+        try {
+          final data = _storage.read(key);
+          if (data is Map) {
+            final complaintId = key.replaceFirst('assigned_', '');
+            assignedTechnicianIds[complaintId] = data['technicianId']?.toString() ?? '';
+            assignedTechnicianNames[complaintId] = data['technicianName']?.toString() ?? '';
+            debugPrint("📂 Loaded assignment: $complaintId -> ${assignedTechnicianNames[complaintId]}");
+          }
+        } catch (e) {
+          debugPrint("❌ Error loading assignment for key $key: $e");
+        }
+      }
+      
+      debugPrint("✅ Successfully loaded ${assignedTechnicianIds.length} assignments");
+    } catch (e) {
+      debugPrint("❌ Failed to load assignments from storage: $e");
     }
-    
-    debugPrint("✅ Successfully loaded ${assignedTechnicianIds.length} assignments");
-  } catch (e) {
-    debugPrint("❌ Failed to load assignments from storage: $e");
   }
-}
+
   Future<List<Complaint>> _fetchTicketsFromAPI(String userId) async {
     try {
       final response = await apiClient.request(

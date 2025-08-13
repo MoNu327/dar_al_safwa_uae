@@ -17,16 +17,7 @@ import 'package:get/get.dart';
 import 'domain/controller/agent_controller.dart';
 import 'domain/controller/user_controller.dart';
 import 'firebase_options.dart';
-import 'presentation/view/dashboard/widgets/technician_rectify_ticket_screen.dart';
-import 'presentation/view/dashboard/widgets/technician_view_tickets.dart';
-import 'presentation/view/dashboard/widgets/tenants_documents_widget.dart';
-import 'presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
-import 'presentation/view/home/screens/home_screen.dart';
-import 'presentation/view/profile/widgets/technician_profile_page.dart';
-import 'presentation/view/profile/widgets/tenant_edit_profile_widget.dart';
-import 'presentation/view/property_details/widgets/cheque_submission_screen.dart';
 import 'presentation/view_model/localization_controller.dart';
-
 // Global instances for notification handling
 late FirebaseNotificationService notificationService;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -37,7 +28,7 @@ Future<void> main() async {
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown, // Added this line
+        DeviceOrientation.portraitDown, 
 
   ]);
 
