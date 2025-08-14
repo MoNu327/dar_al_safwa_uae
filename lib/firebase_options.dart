@@ -41,48 +41,58 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBZcJeBEHZt8ons81Pc135o6kCAGxAAUdY',
-    appId: '1:359242778179:web:ceeb1d43fa0e199714f6f6',
-    messagingSenderId: '359242778179',
-    projectId: 'dar-al-safwa-96fc0',
-    authDomain: 'dar-al-safwa-96fc0.firebaseapp.com',
-    storageBucket: 'dar-al-safwa-96fc0.firebasestorage.app',
-    measurementId: 'G-NXV5Q1RG5N',
+    apiKey: 'AIzaSyCzKL01-PPK2rlhGjwFCK-V6JV6EtwNkYk',
+    appId: '1:961349068661:web:9f07200674806e8de8553c',
+    messagingSenderId: '961349068661',
+    projectId: 'dar-al-safwa-uae',
+    authDomain: 'dar-al-safwa-uae.firebaseapp.com',
+    databaseURL: 'https://dar-al-safwa-uae-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'dar-al-safwa-uae.firebasestorage.app',
+    measurementId: 'G-RXXSN0TPVM',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC67CkS9v-jrQfKZCf_rM4UwRwH8euZdf4',
-    appId: '1:359242778179:android:0da7216b54e6ef0b14f6f6',
-    messagingSenderId: '359242778179',
-    projectId: 'dar-al-safwa-96fc0',
-    storageBucket: 'dar-al-safwa-96fc0.firebasestorage.app',
+    apiKey: 'AIzaSyDRWoCgF777mRLB4Tbo9RkhuOAPzN8rhzA',
+    appId: '1:961349068661:android:7716650debfb343be8553c',
+    messagingSenderId: '961349068661',
+    projectId: 'dar-al-safwa-uae',
+    databaseURL: 'https://dar-al-safwa-uae-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'dar-al-safwa-uae.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCOOsV_MKHunreR1Dy8SIhay5Ys1cC9WSQ',
-    appId: '1:359242778179:ios:cbaeb390ce9e2ed714f6f6',
-    messagingSenderId: '359242778179',
-    projectId: 'dar-al-safwa-96fc0',
-    storageBucket: 'dar-al-safwa-96fc0.firebasestorage.app',
+    apiKey: 'AIzaSyCdgXxICK_0qRcQGjMJ6jwYHGPGoL6TKus',
+    appId: '1:961349068661:ios:d9a719dac6f589e2e8553c',
+    messagingSenderId: '961349068661',
+    projectId: 'dar-al-safwa-uae',
+    databaseURL: 'https://dar-al-safwa-uae-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'dar-al-safwa-uae.firebasestorage.app',
+    androidClientId: '961349068661-0fjbomrve552u4vtpmi8gvknstn7btiu.apps.googleusercontent.com',
+    iosClientId: '961349068661-r2utatjsi00r545enqdtb80fa0204ekv.apps.googleusercontent.com',
     iosBundleId: 'com.example.darAlSafwa',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCOOsV_MKHunreR1Dy8SIhay5Ys1cC9WSQ',
-    appId: '1:359242778179:ios:cbaeb390ce9e2ed714f6f6',
-    messagingSenderId: '359242778179',
-    projectId: 'dar-al-safwa-96fc0',
-    storageBucket: 'dar-al-safwa-96fc0.firebasestorage.app',
+    apiKey: 'AIzaSyCdgXxICK_0qRcQGjMJ6jwYHGPGoL6TKus',
+    appId: '1:961349068661:ios:d9a719dac6f589e2e8553c',
+    messagingSenderId: '961349068661',
+    projectId: 'dar-al-safwa-uae',
+    databaseURL: 'https://dar-al-safwa-uae-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'dar-al-safwa-uae.firebasestorage.app',
+    androidClientId: '961349068661-0fjbomrve552u4vtpmi8gvknstn7btiu.apps.googleusercontent.com',
+    iosClientId: '961349068661-r2utatjsi00r545enqdtb80fa0204ekv.apps.googleusercontent.com',
     iosBundleId: 'com.example.darAlSafwa',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBZcJeBEHZt8ons81Pc135o6kCAGxAAUdY',
-    appId: '1:359242778179:web:0ed3effdbc33035414f6f6',
-    messagingSenderId: '359242778179',
-    projectId: 'dar-al-safwa-96fc0',
-    authDomain: 'dar-al-safwa-96fc0.firebaseapp.com',
-    storageBucket: 'dar-al-safwa-96fc0.firebasestorage.app',
-    measurementId: 'G-0Q0KJCDJ4Z',
+    apiKey: 'AIzaSyCzKL01-PPK2rlhGjwFCK-V6JV6EtwNkYk',
+    appId: '1:961349068661:web:fd4aaa9d7324cebce8553c',
+    messagingSenderId: '961349068661',
+    projectId: 'dar-al-safwa-uae',
+    authDomain: 'dar-al-safwa-uae.firebaseapp.com',
+    databaseURL: 'https://dar-al-safwa-uae-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'dar-al-safwa-uae.firebasestorage.app',
+    measurementId: 'G-ZZ62KPRKSJ',
   );
+
 }

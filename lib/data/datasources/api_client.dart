@@ -7,7 +7,7 @@ import 'package:get/get.dart' as getx;
 class ApiClient {
   final Dio _dio = Dio();
   final String baseUrl =
-      "https://webdesignilluminati.in/Projects/websites/daralsafwa/api/0/";
+      "https://webdesignilluminati.in/Projects/websites/daralsafwauae/api/0/";
 
   final _secureStorage = const FlutterSecureStorage();
 

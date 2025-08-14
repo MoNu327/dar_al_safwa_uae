@@ -16,7 +16,7 @@ class CustomBottomSheet extends StatelessWidget {
 
   const CustomBottomSheet({
     Key? key,
-    this.totalPrice = "3000 OMR",
+    this.totalPrice = "3000 AED",
     this.period = "month",
     this.onWhatsAppPressed,
     this.onCallPressed,

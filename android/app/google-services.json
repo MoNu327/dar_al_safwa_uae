@@ -1,61 +1,82 @@
 {
   "project_info": {
-    "project_number": "359242778179",
-    "project_id": "dar-al-safwa-96fc0",
-    "storage_bucket": "dar-al-safwa-96fc0.firebasestorage.app"
+    "project_number": "961349068661",
+    "firebase_url": "https://dar-al-safwa-uae-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "dar-al-safwa-uae",
+    "storage_bucket": "dar-al-safwa-uae.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:359242778179:android:0da7216b54e6ef0b14f6f6",
+        "mobilesdk_app_id": "1:961349068661:android:7716650debfb343be8553c",
         "android_client_info": {
-          "package_name": "com.example.dar_al_safwa"
+          "package_name": "com.example.daralsafwa_uae"
         }
       },
       "oauth_client": [
         {
-          "client_id": "359242778179-2ijc17k63m81e0ep0ld8ne8ukrtgn3f9.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.dar_al_safwa",
-            "certificate_hash": "bc4134d13fe84399154e142ed4ed6b4c41e6e264"
-          }
-        },
-        {
-          "client_id": "359242778179-opd3i1auum095bj8dksgnmca9veu92l8.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.dar_al_safwa",
-            "certificate_hash": "2c06dd1eb3314df7d6540e665f45f09377840f4f"
-          }
-        },
-        {
-          "client_id": "359242778179-tou0o2afmeh38g580tcjeb1ubr1av32p.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.dar_al_safwa",
-            "certificate_hash": "8ed3a1ebfbf7fde1d4dd319d3cf4012e50e6127f"
-          }
-        },
-        {
-          "client_id": "359242778179-cspc996mhtc41dpgnur3j4tq91trb53d.apps.googleusercontent.com",
+          "client_id": "961349068661-hocj0h0sbp0a3dc838mram47moija8m5.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyC67CkS9v-jrQfKZCf_rM4UwRwH8euZdf4"
+          "current_key": "AIzaSyDRWoCgF777mRLB4Tbo9RkhuOAPzN8rhzA"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "359242778179-cspc996mhtc41dpgnur3j4tq91trb53d.apps.googleusercontent.com",
+              "client_id": "961349068661-hocj0h0sbp0a3dc838mram47moija8m5.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "359242778179-7rfmq5bh0ibmr1uvah6mh9gobbt8jf8b.apps.googleusercontent.com",
+              "client_id": "961349068661-r2utatjsi00r545enqdtb80fa0204ekv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.darAlSafwa"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:961349068661:android:cbed468af055f07ae8553c",
+        "android_client_info": {
+          "package_name": "com.example.daralsafwa_uae"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "961349068661-0fjbomrve552u4vtpmi8gvknstn7btiu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.daralsafwa_uae",
+            "certificate_hash": "44c7169487971db4b91cdf7638ccab214ecc8ded"
+          }
+        },
+        {
+          "client_id": "961349068661-hocj0h0sbp0a3dc838mram47moija8m5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDRWoCgF777mRLB4Tbo9RkhuOAPzN8rhzA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "961349068661-hocj0h0sbp0a3dc838mram47moija8m5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "961349068661-r2utatjsi00r545enqdtb80fa0204ekv.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.example.darAlSafwa"

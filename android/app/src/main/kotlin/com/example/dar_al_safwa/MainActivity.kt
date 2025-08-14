@@ -1,4 +1,4 @@
-package com.example.dar_al_safwa
+package com.example.daralsafwa_uae
 
 import io.flutter.embedding.android.FlutterActivity
 

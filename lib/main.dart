@@ -7,6 +7,7 @@ import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_ticke
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_dashboard.dart';
 import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_properties_list.dart';
+import 'package:dar_al_safwa/presentation/view/search/controllers/search_screen_controller.dart';
 import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -105,6 +106,8 @@ void _initializeControllers() {
   Get.put(LocalizationController(), permanent: true);
   Get.put(TechnicianController(), permanent: true);
   Get.put(TenantsTicketsController(), permanent: true);
+  Get.put(SearchScreenController(), permanent: true);
+
   
   debugPrint('Controllers initialized successfully');
 }
@@ -242,6 +245,7 @@ class AppBindings extends Bindings {
         fenix: true);
     Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
     Get.lazyPut<TenantsTicketsController>(() => TenantsTicketsController(), fenix: true);
+      Get.lazyPut<SearchScreenController>(() => SearchScreenController(), fenix: true);
     
     // Add notification service to GetX dependency injection
     Get.put(notificationService, permanent: true);
