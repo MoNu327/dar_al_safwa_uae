@@ -31,7 +31,7 @@ class CustomDashboard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'DAR AL SAFWA',
+                        'MAJAN',
                         style: TextStyle(
                           fontSize: appBarTitles,
                           fontWeight: FontWeight.w600,
