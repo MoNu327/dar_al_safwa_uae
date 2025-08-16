@@ -1,6 +1,6 @@
-import 'package:dar_al_safwa/data/datasources/api_client.dart';
-import 'package:dar_al_safwa/data/model/history_ticket_model.dart';
-import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
+import 'package:majan/data/datasources/api_client.dart';
+import 'package:majan/data/model/history_ticket_model.dart';
+import 'package:majan/data/model/technican_ticket_view_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

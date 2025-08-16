@@ -1,10 +1,11 @@
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 
 import '../../core/theme/app_colors.dart';
 import 'custom_elevated_button.dart';

@@ -1,7 +1,7 @@
 // import 'dart:io';
-// import 'package:dar_al_safwa/data/repositories/api_services.dart';
+// import 'package:majan/data/repositories/api_services.dart';
 // import 'package:get/get.dart';
-// import 'package:dar_al_safwa/data/model/tenant_ticket.dart';
+// import 'package:majan/data/model/tenant_ticket.dart';
 
 // class TenantTicketController extends GetxController {
 //   final ApiService _apiService = ApiService();
@@ -85,12 +85,12 @@
 //   }
 // }
 import 'dart:convert';
-import 'package:dar_al_safwa/data/datasources/api_client.dart';
-import 'package:dar_al_safwa/data/model/full_complaint_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_summary_model.dart';
-import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:majan/data/datasources/api_client.dart';
+import 'package:majan/data/model/full_complaint_model.dart';
+import 'package:majan/data/model/tenant_summary_model.dart';
+import 'package:majan/data/model/tenatpropertymodel.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
+import 'package:majan/data/repositories/api_services.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';

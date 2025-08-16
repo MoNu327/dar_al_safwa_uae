@@ -1,13 +1,13 @@
 import 'dart:convert';
 
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/video_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_snackbar.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/presentation/widgets/loader_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:majan/presentation/view_model/video_controller.dart';
+import 'package:majan/presentation/widgets/custom_snackbar.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/presentation/widgets/loader_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';

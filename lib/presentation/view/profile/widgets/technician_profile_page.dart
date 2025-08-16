@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/domain/controller/technician_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/domain/controller/technician_controller.dart';
+import 'package:majan/presentation/widgets/notification_navigation_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 

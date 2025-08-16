@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
-import 'package:dar_al_safwa/data/model/technician_complaints_response.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart' show TicketDetailsScreen;
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/data/model/technican_ticket_view_model.dart';
+import 'package:majan/data/model/technician_complaints_response.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
+import 'package:majan/domain/controller/technician_tickets_controller.dart';
+import 'package:majan/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart' show TicketDetailsScreen;
+import 'package:majan/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';

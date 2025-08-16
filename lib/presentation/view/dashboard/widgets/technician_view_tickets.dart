@@ -1,9 +1,9 @@
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/data/model/technician_complaints_response.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_ticket_card_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/data/model/technician_complaints_response.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
+import 'package:majan/domain/controller/technician_tickets_controller.dart';
+import 'package:majan/presentation/view/dashboard/widgets/technician_ticket_card_widget.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

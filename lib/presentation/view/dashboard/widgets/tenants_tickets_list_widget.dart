@@ -1,12 +1,12 @@
-import 'package:dar_al_safwa/core/utils/date_formater.dart';
-import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart'
+import 'package:majan/core/utils/date_formater.dart';
+import 'package:majan/data/model/technican_ticket_view_model.dart'
     show TicketModel, TicketStatus;
-import 'package:dar_al_safwa/data/model/tenatpropertymodel.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_tickets_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_view_tickets.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget.dart';
+import 'package:majan/data/model/tenatpropertymodel.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
+import 'package:majan/presentation/view/dashboard/controller/tenant_tickets_controller.dart';
+import 'package:majan/presentation/view/dashboard/widgets/technician_view_tickets.dart';
+import 'package:majan/presentation/widgets/custom_text_formfield_widget.dart';
+import 'package:majan/presentation/widgets/notification_navigation_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';

@@ -1,5 +1,5 @@
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
+import 'package:majan/core/routes/app_route.dart';
 import 'package:get/get.dart';
 
 class MobileLoginController extends GetxController {

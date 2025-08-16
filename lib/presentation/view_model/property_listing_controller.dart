@@ -1,7 +1,7 @@
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/core/utils/data_utlis.dart';
-import 'package:dar_al_safwa/data/model/search_property_model.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/core/utils/data_utlis.dart';
+import 'package:majan/data/model/search_property_model.dart';
+import 'package:majan/data/repositories/api_services.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

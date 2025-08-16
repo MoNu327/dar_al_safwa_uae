@@ -1,10 +1,12 @@
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/agent_dashboard.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/no_property_purchase%20.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_dashboard.dart';
-import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/signup_warning_screen.dart';
+
+import 'package:majan/presentation/view/dashboard/widgets/agent_dashboard.dart';
+import 'package:majan/presentation/view/dashboard/widgets/no_property_purchase%20.dart';
+import 'package:majan/presentation/view/dashboard/widgets/tenant_dashboard.dart';
+import 'package:majan/presentation/view_model/firebase_auth_controller.dart';
+import 'package:majan/presentation/widgets/signup_warning_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 
 import '../../../controllers/network_controller.dart';
 import '../../../widgets/no_internet_widegt.dart';

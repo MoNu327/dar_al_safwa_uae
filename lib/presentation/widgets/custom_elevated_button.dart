@@ -1,6 +1,6 @@
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 
 import '../../core/constants/custom_size.dart';
 import '../../core/theme/app_colors.dart';

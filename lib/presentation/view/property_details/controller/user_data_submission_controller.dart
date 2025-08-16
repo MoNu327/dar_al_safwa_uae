@@ -1,4 +1,4 @@
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:majan/core/theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';

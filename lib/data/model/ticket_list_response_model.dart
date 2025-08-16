@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:dar_al_safwa/core/utils/date_formater.dart';
+import 'package:majan/core/utils/date_formater.dart';
 import 'package:flutter/material.dart';
 
 class ComplaintsResponse {

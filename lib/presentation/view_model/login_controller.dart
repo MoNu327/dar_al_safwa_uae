@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_details_submission.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/data/repositories/api_services.dart';
+import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:majan/presentation/view/property_details/widgets/user_details_submission.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';

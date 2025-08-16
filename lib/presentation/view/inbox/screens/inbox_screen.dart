@@ -1,11 +1,11 @@
-// import 'package:dar_al_safwa/core/constants/custom_size.dart';
-// import 'package:dar_al_safwa/core/theme/app_colors.dart';
-// import 'package:dar_al_safwa/presentation/view/inbox/controller/inbox_controller.dart';
-// import 'package:dar_al_safwa/presentation/view/inbox/widgets/inbox_chats_view_screen_widget.dart';
-// import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-// import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
-// import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-// import 'package:dar_al_safwa/presentation/widgets/language_text_button.dart';
+// import 'package:majan/core/constants/custom_size.dart';
+// import 'package:majan/core/theme/app_colors.dart';
+// import 'package:majan/presentation/view/inbox/controller/inbox_controller.dart';
+// import 'package:majan/presentation/view/inbox/widgets/inbox_chats_view_screen_widget.dart';
+// import 'package:majan/presentation/view_model/localization_controller.dart';
+// import 'package:majan/presentation/view_model/login_controller.dart';
+// import 'package:majan/presentation/widgets/custom_text_widget.dart';
+// import 'package:majan/presentation/widgets/language_text_button.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 // import 'package:get/get_core/src/get_main.dart';
@@ -192,14 +192,14 @@
 //     );
 //   }
 // }
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
-import 'package:dar_al_safwa/presentation/view/inbox/controller/inbox_controller.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/no_internet_widegt.dart';
-import 'package:dar_al_safwa/presentation/widgets/periodic_text_swapper_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/domain/controller/agent_controller.dart';
+import 'package:majan/presentation/view/inbox/controller/inbox_controller.dart';
+import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/no_internet_widegt.dart';
+import 'package:majan/presentation/widgets/periodic_text_swapper_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 

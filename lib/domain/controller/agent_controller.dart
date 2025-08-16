@@ -1,4 +1,4 @@
-import 'package:dar_al_safwa/data/model/agent_model.dart';
+import 'package:majan/data/model/agent_model.dart';
 import 'package:get/get.dart';
 
 class AgentController extends GetxController {

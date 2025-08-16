@@ -1,8 +1,8 @@
-import 'package:dar_al_safwa/data/datasources/api_client.dart';
-import 'package:dar_al_safwa/data/model/technican_list_model.dart';
-import 'package:dar_al_safwa/data/model/technican_summary_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
+import 'package:majan/data/datasources/api_client.dart';
+import 'package:majan/data/model/technican_list_model.dart';
+import 'package:majan/data/model/technican_summary_model.dart';
+import 'package:majan/data/model/tenant_compliant_model.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

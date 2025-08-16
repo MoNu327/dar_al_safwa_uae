@@ -1,22 +1,22 @@
 import 'dart:io';
-import 'package:dar_al_safwa/data/model/compliant_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_complain_from_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_compliant_subtitle.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_tickets_controller.dart' show TenantsTicketsController;
+import 'package:majan/data/model/compliant_model.dart';
+import 'package:majan/data/model/tenant_complain_from_model.dart';
+import 'package:majan/data/model/tenant_compliant_model.dart';
+import 'package:majan/data/model/tenant_compliant_subtitle.dart';
+import 'package:majan/data/repositories/api_services.dart';
+import 'package:majan/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
+import 'package:majan/presentation/view/dashboard/controller/tenant_tickets_controller.dart' show TenantsTicketsController;
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/presentation/widgets/custom_elevated_button.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/custom_text_formfield_widget.dart';
 
 class TenantsCreateTicketScreen extends StatefulWidget {
   final String propertyName;

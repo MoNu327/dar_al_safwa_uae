@@ -1,7 +1,7 @@
-import 'package:dar_al_safwa/data/model/agent_model.dart';
-import 'package:dar_al_safwa/data/model/user_model.dart';
-import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
-import 'package:dar_al_safwa/domain/controller/user_controller.dart';
+import 'package:majan/data/model/agent_model.dart';
+import 'package:majan/data/model/user_model.dart';
+import 'package:majan/domain/controller/agent_controller.dart';
+import 'package:majan/domain/controller/user_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

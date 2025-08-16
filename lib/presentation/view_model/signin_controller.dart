@@ -1,4 +1,4 @@
-import 'package:dar_al_safwa/core/routes/app_route.dart';
+import 'package:majan/core/routes/app_route.dart';
 import 'package:get/get.dart';
 
 class SigninController extends GetxController {

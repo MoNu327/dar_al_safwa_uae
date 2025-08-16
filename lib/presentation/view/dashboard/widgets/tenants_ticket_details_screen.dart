@@ -1,6 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/utils/date_formater.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
+import 'package:majan/core/utils/date_formater.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hugeicons/hugeicons.dart';

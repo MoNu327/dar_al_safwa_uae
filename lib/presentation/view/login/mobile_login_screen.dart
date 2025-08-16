@@ -1,12 +1,12 @@
 // import 'package:country_code_picker/country_code_picker.dart';
-// import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
+// import 'package:majan/presentation/view_model/localization_controller.dart';
 import 'package:country_code_picker/country_code_picker.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/mobile_login_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/language_text_button.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/view_model/mobile_login_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/language_text_button.dart';
+import 'package:majan/core/theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -299,10 +299,10 @@ class MobileLoginScreen extends StatelessWidget {
   // }
 }
 
-// import 'package:dar_al_safwa/presentation/view_model/mobile_login_controller.dart';
-// import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-// import 'package:dar_al_safwa/presentation/widgets/language_text_button.dart';
-// import 'package:dar_al_safwa/core/theme/app_colors.dart';
+// import 'package:majan/presentation/view_model/mobile_login_controller.dart';
+// import 'package:majan/presentation/widgets/custom_text_widget.dart';
+// import 'package:majan/presentation/widgets/language_text_button.dart';
+// import 'package:majan/core/theme/app_colors.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 // import 'package:google_fonts/google_fonts.dart';

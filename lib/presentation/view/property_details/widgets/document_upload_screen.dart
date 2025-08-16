@@ -1,6 +1,6 @@
-import 'package:dar_al_safwa/data/model/user_data_submission_model.dart';
-import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/data/model/user_data_submission_model.dart';
+import 'package:majan/presentation/view_model/firebase_auth_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

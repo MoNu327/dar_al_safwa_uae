@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
-import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart' show TechnicianTicketsController;
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
+import 'package:majan/data/repositories/api_services.dart';
+import 'package:majan/domain/controller/technician_tickets_controller.dart' show TechnicianTicketsController;
+import 'package:majan/presentation/view/dashboard/widgets/technician_dashboard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

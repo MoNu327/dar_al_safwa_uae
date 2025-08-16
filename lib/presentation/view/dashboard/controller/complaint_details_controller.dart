@@ -1,6 +1,6 @@
-import 'package:dar_al_safwa/data/model/complaint_details_model.dart';
+import 'package:majan/data/model/complaint_details_model.dart';
 import 'package:get/get.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
+import 'package:majan/data/repositories/api_services.dart';
 
 class ComplaintDetailsController extends GetxController {
   final ApiService _apiService = ApiService();

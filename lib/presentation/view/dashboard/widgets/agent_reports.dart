@@ -1,10 +1,10 @@
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/property_interests_controller.dart';
-import 'package:dar_al_safwa/presentation/view/inbox/controller/inbox_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/loader_widget.dart';
+import 'package:majan/presentation/view/dashboard/controller/property_interests_controller.dart';
+import 'package:majan/presentation/view/inbox/controller/inbox_controller.dart';
+import 'package:majan/presentation/widgets/loader_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dar_al_safwa/data/model/agent_chat_response.dart';
+import 'package:majan/data/model/agent_chat_response.dart';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';

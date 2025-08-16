@@ -1,9 +1,9 @@
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/screens/dashboard_screen.dart';
-import 'package:dar_al_safwa/presentation/view/home/screens/home_screen.dart';
-import 'package:dar_al_safwa/presentation/view/inbox/screens/inbox_screen.dart';
-import 'package:dar_al_safwa/presentation/view/profile/screens/profile_screen.dart';
-import 'package:dar_al_safwa/presentation/view/search/screens/search_screen.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/presentation/view/dashboard/screens/dashboard_screen.dart';
+import 'package:majan/presentation/view/home/screens/home_screen.dart';
+import 'package:majan/presentation/view/inbox/screens/inbox_screen.dart';
+import 'package:majan/presentation/view/profile/screens/profile_screen.dart';
+import 'package:majan/presentation/view/search/screens/search_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 

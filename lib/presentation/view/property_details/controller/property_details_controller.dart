@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
-import 'package:dar_al_safwa/presentation/view/home/screens/home_screen.dart';
-import 'package:dar_al_safwa/presentation/widgets/bottom_navbar_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/data/repositories/api_services.dart';
+import 'package:majan/presentation/view/home/screens/home_screen.dart';
+import 'package:majan/presentation/widgets/bottom_navbar_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

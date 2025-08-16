@@ -1,9 +1,9 @@
 import 'dart:io';
-import 'package:dar_al_safwa/data/model/compliant_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_compliant_subtitle.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_snackbar.dart';
+import 'package:majan/data/model/compliant_model.dart';
+import 'package:majan/data/model/tenant_compliant_model.dart';
+import 'package:majan/data/model/tenant_compliant_subtitle.dart';
+import 'package:majan/data/repositories/api_services.dart';
+import 'package:majan/presentation/widgets/custom_snackbar.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

@@ -1,4 +1,4 @@
-// import 'package:dar_al_safwa/core/constants/custom_size.dart';
+// import 'package:majan/core/constants/custom_size.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 
@@ -165,7 +165,7 @@
 //   }
 // }
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
+import 'package:majan/core/constants/custom_size.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
