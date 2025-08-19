@@ -934,11 +934,37 @@ Widget _buildImagesSection() {
   debugPrint('Admin/Technician images: ${complaintImages.adminTechnicianUploaded.length}');
   debugPrint('=== END IMAGE SECTION DEBUG ===');
 
-  // FIXED: Show section if ANY category has images
+  // Check if ANY category has images
   if (!_hasAnyImages()) {
     debugPrint('No images found in any category - hiding section');
     return SizedBox.shrink();
   }
+
+  // Create a list of all image categories that have images
+  List<Widget> imageCategories = [];
+
+  // Add each category only if it has images
+  if (complaintImages.tenantUploaded.isNotEmpty) {
+    imageCategories.add(_buildImageCategory("Tenant Uploaded", complaintImages.tenantUploaded, Colors.blue));
+    debugPrint('Added tenant images section with ${complaintImages.tenantUploaded.length} images');
+  }
+  
+  if (complaintImages.adminUploaded.isNotEmpty) {
+    imageCategories.add(_buildImageCategory("Admin Uploaded", complaintImages.adminUploaded, Colors.green));
+    debugPrint('Added admin images section with ${complaintImages.adminUploaded.length} images');
+  }
+  
+  if (complaintImages.technicianUploaded.isNotEmpty) {
+    imageCategories.add(_buildImageCategory("Technician Uploaded", complaintImages.technicianUploaded, Colors.orange));
+    debugPrint('Added technician images section with ${complaintImages.technicianUploaded.length} images');
+  }
+  
+  if (complaintImages.adminTechnicianUploaded.isNotEmpty) {
+    imageCategories.add(_buildImageCategory("Admin/Technician Uploaded", complaintImages.adminTechnicianUploaded, Colors.purple));
+    debugPrint('Added admin/technician images section with ${complaintImages.adminTechnicianUploaded.length} images');
+  }
+
+  debugPrint('Total image categories to display: ${imageCategories.length}');
 
   return _buildSection(
     title: "Attachments",
@@ -946,25 +972,11 @@ Widget _buildImagesSection() {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ALWAYS check each category individually
-        if (complaintImages.tenantUploaded.isNotEmpty) ...[
-          _buildImageCategory("Tenant Uploaded", complaintImages.tenantUploaded, Colors.blue),
-          SizedBox(height: screenHeight1),
-        ],
-        
-        if (complaintImages.adminUploaded.isNotEmpty) ...[
-          _buildImageCategory("Admin Uploaded", complaintImages.adminUploaded, Colors.green),
-          SizedBox(height: screenHeight1),
-        ],
-        
-        if (complaintImages.technicianUploaded.isNotEmpty) ...[
-          _buildImageCategory("Technician Uploaded", complaintImages.technicianUploaded, Colors.orange),
-          SizedBox(height: screenHeight1),
-        ],
-        
-        if (complaintImages.adminTechnicianUploaded.isNotEmpty) ...[
-          _buildImageCategory("Admin/Technician Uploaded", complaintImages.adminTechnicianUploaded, Colors.purple),
-          SizedBox(height: screenHeight1),
+        // Join all image categories with spacing
+        for (int i = 0; i < imageCategories.length; i++) ...[
+          imageCategories[i],
+          // Add spacing between categories (but not after the last one)
+          if (i < imageCategories.length - 1) SizedBox(height: screenHeight1),
         ],
       ],
     ),
@@ -1130,66 +1142,80 @@ Color _getCategoryColor(String category) {
     );
   }
 
-  Widget _buildImageCategory(String title, List<String> images, Color accentColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 4,
-              height: 16,
-              decoration: BoxDecoration(
-                color: accentColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            SizedBox(width: Get.width * 0.02),
-            CustomTextWidget(
-              title: "$title (${images.length})",
-              fontSize: Get.height * 0.015,
-              fontWeight: FontWeight.w600,
+Widget _buildImageCategory(String title, List<String> images, Color accentColor) {
+  debugPrint('Building image category: $title with ${images.length} images');
+  
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            width: 4,
+            height: 16,
+            decoration: BoxDecoration(
               color: accentColor,
+              borderRadius: BorderRadius.circular(2),
             ),
-          ],
-        ),
-        SizedBox(height: screenHeight1),
-        SizedBox(
-          height: Get.height * 0.12,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: images.length,
-            itemBuilder: (context, index) {
-              return Container(
-                width: Get.width * 0.25,
-                margin: EdgeInsets.only(right: screenWidth1),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: accentColor.withOpacity(0.3)),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: CachedNetworkImage(
-                    imageUrl: images[index],
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: accentColor.withOpacity(0.1),
-                      child: Icon(Icons.image, color: accentColor.withOpacity(0.5)),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.red.withOpacity(0.1),
-                      child: Icon(Icons.error, color: Colors.red.withOpacity(0.5)),
+          ),
+          SizedBox(width: Get.width * 0.02),
+          CustomTextWidget(
+            title: "$title (${images.length})",
+            fontSize: Get.height * 0.015,
+            fontWeight: FontWeight.w600,
+            color: accentColor,
+          ),
+        ],
+      ),
+      SizedBox(height: screenHeight1),
+      SizedBox(
+        height: Get.height * 0.12,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: images.length,
+          itemBuilder: (context, index) {
+            return Container(
+              width: Get.width * 0.25,
+              margin: EdgeInsets.only(right: screenWidth1),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: accentColor.withOpacity(0.3)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: images[index],
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: accentColor.withOpacity(0.1),
+                    child: Icon(Icons.image, color: accentColor.withOpacity(0.5)),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.red.withOpacity(0.1),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error, color: Colors.red.withOpacity(0.5)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Load Error',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.red.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
-        SizedBox(height: screenHeight1),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 }
 
 // Timeline data models
