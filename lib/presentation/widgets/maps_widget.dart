@@ -67,8 +67,7 @@ class LocationPreview extends StatelessWidget {
                     ),
                     children: [
                       TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        urlTemplate: "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=RmG5wF8CW3leywuSejul",
                         userAgentPackageName: 'com.example.app',
                         maxZoom: 19,
                       ),
@@ -149,7 +148,7 @@ class FullScreenMap extends StatelessWidget {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: "https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=RmG5wF8CW3leywuSejul",
                 userAgentPackageName: 'com.example.app',
                 maxZoom: 19,
               ),

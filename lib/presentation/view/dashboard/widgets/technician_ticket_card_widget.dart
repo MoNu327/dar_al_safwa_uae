@@ -891,7 +891,7 @@ void _updateTicketInList(
 
 // Helper method to get first available image
 String _getFirstAvailableImage(Complaint complaint) {
-  if (complaint.images.isNotEmpty) return complaint.images.first;
+  // if (complaint.complaintImages.isNotEmpty) return complaint.images.first;
 
   if (complaint.complaintImages.tenantUploaded.isNotEmpty) {
     return complaint.complaintImages.tenantUploaded.first;
@@ -916,8 +916,8 @@ String _getFirstAvailableImage(Complaint complaint) {
 bool _hasImages(Complaint? complaint) {
   if (complaint == null) return false;
   
-  return complaint.images.isNotEmpty ||
-      complaint.complaintImages.tenantUploaded.isNotEmpty ||
+  // return complaint.images.isNotEmpty ||
+     return complaint.complaintImages.tenantUploaded.isNotEmpty ||
       complaint.complaintImages.adminUploaded.isNotEmpty ||
       complaint.complaintImages.technicianUploaded.isNotEmpty ||
       complaint.complaintImages.adminTechnicianUploaded.isNotEmpty;

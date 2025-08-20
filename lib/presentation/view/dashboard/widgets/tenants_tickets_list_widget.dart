@@ -297,8 +297,8 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
                           'All',
                           'Pending',
                           'In Progress',
-                          'Rectified',
-                          'Completed',
+                          'Resolved',
+                          
                         ].map((status) {
                           return DropdownMenuItem<String>(
                             value: status,
@@ -1046,7 +1046,7 @@ void _createNewComplaint(String category, String description) {
     unitType: '',           
     fullAddress: '',         
     flatnoId: '',            
-    images: [],              
+    // images: [],              
     assignedTechnicians: [], 
     complaintImages: ComplaintImages(  
       tenantUploaded: [],

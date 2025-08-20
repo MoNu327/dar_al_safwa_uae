@@ -389,8 +389,9 @@ Reviews _$ReviewsFromJson(Map<String, dynamic> json) => Reviews(
           ? null
           : OverallRating.fromJson(json['overall'] as Map<String, dynamic>),
       recentReviews: (json['recent_reviews'] as List<dynamic>?)
-          ?.map((e) => RecentReview.fromJson(e as Map<String, dynamic>))
-          .toList(),
+              ?.map((e) => RecentReview.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$ReviewsToJson(Reviews instance) => <String, dynamic>{

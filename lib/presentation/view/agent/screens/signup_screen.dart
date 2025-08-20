@@ -55,7 +55,7 @@ class SignUpScreen extends StatelessWidget {
                             kHeight(0.005),
                             Center(
                               child: Image.asset(
-                                "assets/logo/launcher.png",
+                                "assets/logo/launcher.jpg",
                                 width: Get.width * 0.3,
                                 height: Get.height * 0.1,
                                 fit: BoxFit.cover,

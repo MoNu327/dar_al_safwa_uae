@@ -42,11 +42,10 @@ class ReviewController extends GetxController {
     }
   }
 
-  void loadReviews() {
-    List<RecentReview> dummyReviews = propertiesController
-            .property?.value?.reviews?.recentReviews as List<RecentReview> ??
-        [];
+ void loadReviews() {
+  List<RecentReview> dummyReviews =
+      propertiesController.property?.value?.reviews?.recentReviews ?? [];
 
-    reviews.value = dummyReviews;
-  }
+  reviews.value = dummyReviews;
+}
 }

@@ -1459,7 +1459,7 @@ Widget _buildStatItem({
       unitType: '',
       fullAddress: '',
       flatnoId: '',
-      images: [],
+      // images: [],
       assignedTechnicians: [],
       complaintImages: ComplaintImages(
         tenantUploaded: [],

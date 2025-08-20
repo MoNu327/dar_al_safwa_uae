@@ -77,7 +77,7 @@ class Complaint {
   final String unitType;  
   final String fullAddress;
   final String flatnoId;
-  final List<String> images;
+  // final List<String> images;
   final List<Technician> assignedTechnicians;
   final ComplaintImages complaintImages;
   
@@ -110,7 +110,7 @@ class Complaint {
     this.unitType = '',
     required this.fullAddress,
     required this.flatnoId,
-    required this.images,
+    // required this.images,
     this.assignedTechnicians = const [],
     required this.complaintImages,
     this.createdBy,
@@ -266,7 +266,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
       unitType: unit['type']?.toString() ?? property['unit_type']?.toString() ?? '',
       fullAddress: unit['address_format']?.toString() ?? property['address_format']?.toString() ?? complaint['full_address']?.toString() ?? '',
       flatnoId: property['id']?.toString() ?? complaint['flatno_id']?.toString() ?? '',
-      images: directImages, // Use the direct images list
+      // images: directImages, // Use the direct images list
       assignedTechnicians: parsedTechnicians,
       // Use the improved parser with fallback images
       complaintImages: ComplaintImages.fromJson(complaintImagesData, fallbackImages: directImages),
@@ -349,7 +349,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
       unitType: unitType ?? this.unitType,
       fullAddress: fullAddress ?? this.fullAddress,
       flatnoId: flatnoId ?? this.flatnoId,
-      images: images ?? this.images,
+      // images: images ?? this.images,
       assignedTechnicians: assignedTechnicians ?? this.assignedTechnicians,
       complaintImages: complaintImages ?? this.complaintImages,
       createdBy: createdBy ?? this.createdBy,
@@ -382,7 +382,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
     'unit_type': unitType,
     'full_address': fullAddress,
     'flatno_id': flatnoId,
-    'images': images,
+    // 'images': images,
     'created_by': createdBy?.toJson(),
     'timeline': timeline.map((e) => e.toJson()).toList(),
     'assigned_technician_id': assignedTechnicianId,
@@ -592,198 +592,154 @@ class ComplaintImages {
     this.adminTechnicianUploaded = const [],
   });
 // Enhanced ComplaintImages.fromJson method with better technician image detection
+// Simplified and more reliable ComplaintImages.fromJson method
 factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallbackImages}) {
-  debugPrint('=== PARSING COMPLAINT IMAGES ===');
-  debugPrint('Raw JSON: $json');
-  debugPrint('JSON keys: ${json.keys.toList()}');
-  debugPrint('Fallback images count: ${fallbackImages?.length ?? 0}');
+  debugPrint('=== SIMPLIFIED COMPLAINT IMAGES PARSING ===');
+  debugPrint('Input JSON: $json');
+  debugPrint('Fallback images: $fallbackImages');
   
-  // Enhanced key matching with more variations
-  List<String> getImages(String key) {
-    final List<String> keyVariations = [
-      key,
-      key.toLowerCase(),
-      key.replaceAll('_', ''),
-      key.replaceAll('_', '').toLowerCase(),
-      key.replaceAll('_', '-'),
-      key.replaceAll('_', '-').toLowerCase(),
-      '${key}Images',
-      '${key}_images',
-      '${key}Uploaded',
-      '${key}_uploaded',
-    ];
-    
-    for (String keyVar in keyVariations) {
-      final dynamic value = json[keyVar];
-      debugPrint('Checking key "$keyVar": $value (type: ${value.runtimeType})');
-      
-      if (value is List) {
-        final List<String> images = value.map((e) => e.toString()).where((img) => img.isNotEmpty).toList();
-        debugPrint('Found ${images.length} images for key "$keyVar": $images');
-        return images;
-      }
+  // Helper function to safely extract image list
+  List<String> extractImageList(dynamic value) {
+    if (value == null) return [];
+    if (value is List) {
+      return value
+          .map((e) => e.toString())
+          .where((img) => img.isNotEmpty && img != 'null')
+          .toList();
     }
-    
-    debugPrint('No images found for key variations of "$key"');
+    if (value is String && value.isNotEmpty && value != 'null') {
+      return [value];
+    }
     return [];
   }
 
-  // Try to get images from all possible field variations
-  final tenantImages = getImages('tenant_uploaded') + getImages('tenant') + getImages('user_uploaded') + getImages('customer_uploaded');
-  final adminImages = getImages('admin_uploaded') + getImages('admin');
-  final technicianImages = getImages('technician_uploaded') + getImages('technician') + getImages('tech_uploaded') + getImages('tech');
-  final adminTechnicianImages = getImages('admin_technician_uploaded') + getImages('admin_tech_uploaded') + getImages('shared_uploaded');
+  // Try direct field extraction first
+  List<String> tenantImages = extractImageList(json['tenant_uploaded']) +
+                              extractImageList(json['tenant']) +
+                              extractImageList(json['user_uploaded']) +
+                              extractImageList(json['customer_uploaded']);
+
+  List<String> adminImages = extractImageList(json['admin_uploaded']) +
+                             extractImageList(json['admin']);
+
+  List<String> technicianImages = extractImageList(json['technician_uploaded']) +
+                                  extractImageList(json['technician']) +
+                                  extractImageList(json['tech_uploaded']);
+
+  List<String> adminTechnicianImages = extractImageList(json['admin_technician_uploaded']) +
+                                       extractImageList(json['admin_tech_uploaded']) +
+                                       extractImageList(json['shared_uploaded']);
+
+  debugPrint('Direct extraction results:');
+  debugPrint('- Tenant: ${tenantImages.length} images');
+  debugPrint('- Admin: ${adminImages.length} images');
+  debugPrint('- Technician: ${technicianImages.length} images');
+  debugPrint('- Admin/Tech: ${adminTechnicianImages.length} images');
+
+  // If no categorized images found, use fallback logic
+  if (tenantImages.isEmpty && adminImages.isEmpty && 
+      technicianImages.isEmpty && adminTechnicianImages.isEmpty) {
+    
+    debugPrint('No categorized images found, using fallback...');
+    
+    // Try to find images in other common field names
+    List<String> allImages = [];
+    
+    // Check various possible field names
+    final possibleImageFields = [
+      'images', 'all_images', 'attachments', 'files', 'photos',
+      'complaint_images', 'ticket_images', 'uploaded_files'
+    ];
+    
+    for (String field in possibleImageFields) {
+      final fieldImages = extractImageList(json[field]);
+      allImages.addAll(fieldImages);
+      if (fieldImages.isNotEmpty) {
+        debugPrint('Found ${fieldImages.length} images in field "$field"');
+      }
+    }
+    
+    // Add fallback images if provided
+    if (fallbackImages != null) {
+      allImages.addAll(fallbackImages);
+      debugPrint('Added ${fallbackImages.length} fallback images');
+    }
+    
+    // Remove duplicates
+    allImages = allImages.toSet().toList();
+    
+    if (allImages.isNotEmpty) {
+      debugPrint('Total images to distribute: ${allImages.length}');
+      
+      // Simple distribution logic
+      if (allImages.length == 1) {
+        tenantImages = allImages;
+      } else if (allImages.length == 2) {
+        tenantImages = [allImages[0]];
+        technicianImages = [allImages[1]];
+      } else if (allImages.length == 3) {
+        tenantImages = [allImages[0]];
+        technicianImages = [allImages[1]];
+        adminImages = [allImages[2]];
+      } else {
+        // For 4+ images, distribute evenly
+        final third = (allImages.length / 3).ceil();
+        tenantImages = allImages.take(third).toList();
+        technicianImages = allImages.skip(third).take(third).toList();
+        adminImages = allImages.skip(third * 2).toList();
+      }
+      
+      debugPrint('Distributed images:');
+      debugPrint('- Tenant: ${tenantImages.length}');
+      debugPrint('- Technician: ${technicianImages.length}');
+      debugPrint('- Admin: ${adminImages.length}');
+    }
+  }
+
+  // Check complaint context for better categorization
+  bool hasTechnicianActivity = false;
   
-  // Check for recent technician updates - this is key for your use case
-  bool hasTechnicianUpdate = false;
-  DateTime? lastTechnicianUpdate;
-  
-  // Check if there's a recent technician reply or update
-  if (json.containsKey('replybytechnician') && 
-      json['replybytechnician'] != null && 
+  // Check for technician reply
+  if (json['replybytechnician'] != null && 
       json['replybytechnician'].toString().isNotEmpty &&
       json['replybytechnician'].toString() != "No reply from technician") {
-    hasTechnicianUpdate = true;
+    hasTechnicianActivity = true;
   }
   
-  // Check for last updated timestamp
-  if (json.containsKey('last_updated')) {
-    try {
-      lastTechnicianUpdate = DateTime.parse(json['last_updated'].toString());
-      // If updated recently (within last hour), likely technician update
-      if (DateTime.now().difference(lastTechnicianUpdate).inHours < 1) {
-        hasTechnicianUpdate = true;
-      }
-    } catch (e) {
-      debugPrint('Could not parse last_updated: ${json['last_updated']}');
-    }
+  // Check status for technician involvement
+  final status = json['status']?.toString().toLowerCase() ?? '';
+  if (status.contains('progress') || status.contains('assigned') || 
+      status.contains('working') || status.contains('completed')) {
+    hasTechnicianActivity = true;
   }
   
-  // Additional check: Look for any images field that might contain all images
-  List<String> allFoundImages = [];
-  List<String> recentlyAddedImages = [];
-  
-  if (json.containsKey('all_images') || json.containsKey('images')) {
-    final allImagesData = json['all_images'] ?? json['images'];
-    if (allImagesData is List) {
-      allFoundImages = (allImagesData as List).map((e) => e.toString()).where((img) => img.isNotEmpty).toList();
-      
-      // If we have a technician update, consider these recent images as technician uploaded
-      if (hasTechnicianUpdate) {
-        recentlyAddedImages = [...allFoundImages];
-      }
-    } else if (allImagesData is Map) {
-      // If images is a map with categories
-      allImagesData.forEach((key, value) {
-        if (value is List) {
-          final categoryImages = (value as List).map((e) => e.toString()).where((img) => img.isNotEmpty).toList();
-          debugPrint('Found images in category "$key": ${categoryImages.length}');
-          
-          // Categorize based on key name
-          switch (key.toString().toLowerCase()) {
-            case 'tenant':
-            case 'user':
-            case 'customer':
-            case 'tenant_uploaded':
-              tenantImages.addAll(categoryImages);
-              break;
-            case 'admin':
-            case 'admin_uploaded':
-              adminImages.addAll(categoryImages);
-              break;
-            case 'technician':
-            case 'tech':
-            case 'technician_uploaded':
-            case 'tech_uploaded':
-              technicianImages.addAll(categoryImages);
-              break;
-            case 'admin_technician':
-            case 'admin_tech':
-            case 'shared':
-            case 'admin_technician_uploaded':
-              adminTechnicianImages.addAll(categoryImages);
-              break;
-            default:
-              allFoundImages.addAll(categoryImages);
-              // If we have technician update context, treat unknown categories as technician
-              if (hasTechnicianUpdate) {
-                recentlyAddedImages.addAll(categoryImages);
-              }
-          }
-        }
-      });
-    }
-  }
-  
-  // Process fallback images with enhanced context awareness
-  List<String> imagesToCategorize = [...(fallbackImages ?? []), ...allFoundImages];
-  
-  // Remove duplicates
-  final Set<String> existingImages = {
-    ...tenantImages,
-    ...adminImages,
-    ...technicianImages,
-    ...adminTechnicianImages,
-  };
-  
-  imagesToCategorize = imagesToCategorize.where((img) => !existingImages.contains(img)).toList();
-  
-  List<String> finalTenantImages = [...tenantImages];
-  List<String> finalAdminImages = [...adminImages];
-  List<String> finalTechnicianImages = [...technicianImages];
-  List<String> finalAdminTechnicianImages = [...adminTechnicianImages];
-  
-  if (imagesToCategorize.isNotEmpty) {
-    debugPrint('=== CATEGORIZING ${imagesToCategorize.length} ADDITIONAL IMAGES ===');
-    debugPrint('Has technician update: $hasTechnicianUpdate');
-    debugPrint('Recently added images count: ${recentlyAddedImages.length}');
+  // If we have technician activity but no technician images, 
+  // move some tenant images to technician
+  if (hasTechnicianActivity && technicianImages.isEmpty && tenantImages.length > 1) {
+    final halfPoint = (tenantImages.length / 2).ceil();
+    technicianImages = tenantImages.skip(halfPoint).toList();
+    tenantImages = tenantImages.take(halfPoint).toList();
     
-    for (String imageUrl in imagesToCategorize) {
-      String category = _determineImageCategoryEnhanced(imageUrl, json, hasTechnicianUpdate);
-      debugPrint('Image: $imageUrl -> Category: $category');
-      
-      switch (category) {
-        case 'tenant':
-          finalTenantImages.add(imageUrl);
-          break;
-        case 'admin':
-          finalAdminImages.add(imageUrl);
-          break;
-        case 'technician':
-          finalTechnicianImages.add(imageUrl);
-          break;
-        case 'admin_technician':
-          finalAdminTechnicianImages.add(imageUrl);
-          break;
-        default:
-          // Enhanced fallback logic based on context
-          if (hasTechnicianUpdate || recentlyAddedImages.contains(imageUrl)) {
-            // If there's recent technician activity, new images likely from technician
-            finalTechnicianImages.add(imageUrl);
-          } else if (finalTechnicianImages.length < finalTenantImages.length) {
-            finalTechnicianImages.add(imageUrl);
-          } else if (finalAdminImages.length < finalTenantImages.length) {
-            finalAdminImages.add(imageUrl);
-          } else {
-            finalTenantImages.add(imageUrl);
-          }
-      }
-    }
+    debugPrint('Redistributed due to technician activity:');
+    debugPrint('- Tenant: ${tenantImages.length}');
+    debugPrint('- Technician: ${technicianImages.length}');
   }
-  
-  debugPrint('=== FINAL IMAGE COUNTS ===');
-  debugPrint('Tenant: ${finalTenantImages.length}');
-  debugPrint('Admin: ${finalAdminImages.length}');
-  debugPrint('Technician: ${finalTechnicianImages.length}');
-  debugPrint('Admin/Technician: ${finalAdminTechnicianImages.length}');
-  debugPrint('=== END COMPLAINT IMAGES PARSING ===');
 
-  return ComplaintImages(
-    tenantUploaded: finalTenantImages,
-    adminUploaded: finalAdminImages,
-    technicianUploaded: finalTechnicianImages,
-    adminTechnicianUploaded: finalAdminTechnicianImages,
+  final result = ComplaintImages(
+    tenantUploaded: tenantImages,
+    adminUploaded: adminImages,
+    technicianUploaded: technicianImages,
+    adminTechnicianUploaded: adminTechnicianImages,
   );
+  
+  debugPrint('=== FINAL RESULT ===');
+  debugPrint('- Tenant: ${result.tenantUploaded}');
+  debugPrint('- Admin: ${result.adminUploaded}');
+  debugPrint('- Technician: ${result.technicianUploaded}');
+  debugPrint('- Admin/Tech: ${result.adminTechnicianUploaded}');
+  debugPrint('=== END SIMPLIFIED PARSING ===');
+  
+  return result;
 }
 
 // Enhanced category determination with technician update context

@@ -52,7 +52,7 @@ class SigninScreen extends StatelessWidget {
                             _buildHeader(),
                             Center(
                               child: Image.asset(
-                                "assets/logo/launcher.png",
+                                "assets/logo/launcher.jpg",
                                 width: Get.width * 0.3,
                                 height: Get.height * 0.1,
                                 fit: BoxFit.cover,

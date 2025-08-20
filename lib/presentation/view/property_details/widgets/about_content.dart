@@ -126,27 +126,29 @@ class AboutContent extends StatelessWidget {
                   // Extra space to prevent content from being hidden behind bottom sheet
                   const SizedBox(height: 20),
 
-                  CustomBottomSheet(
-  onCallPressed: () {
-    propertyDetailsController.handleCallOrChat(
-      isCall: true,
-      phone: property?.agent?.phone ?? "9544418765",
-      propertyId: property?.id.toString() ?? "0",
-      propertyName: property?.title?.en ?? "",
-      agentEmail: property?.agent?.email ?? "test@gmail.com",
-    );
-  },
-  onWhatsAppPressed: () {
-    propertyDetailsController.handleCallOrChat(
-      isCall: false,
-      phone: property?.agent?.phone ?? "9544418765",
-      propertyId: property?.id.toString() ?? "0",
-      propertyName: property?.title?.en ?? "",
-      agentEmail: property?.agent?.email ?? "test@gmail.com",
-    );
-  },
-  height: 80,
-),
+                  SafeArea(
+                    child: CustomBottomSheet(
+                      onCallPressed: () {
+                        propertyDetailsController.handleCallOrChat(
+                          isCall: true,
+                          phone: property?.agent?.phone ?? "9544418765",
+                          propertyId: property?.id.toString() ?? "0",
+                          propertyName: property?.title?.en ?? "",
+                          agentEmail: property?.agent?.email ?? "test@gmail.com",
+                        );
+                      },
+                      onWhatsAppPressed: () {
+                        propertyDetailsController.handleCallOrChat(
+                          isCall: false,
+                          phone: property?.agent?.phone ?? "9544418765",
+                          propertyId: property?.id.toString() ?? "0",
+                          propertyName: property?.title?.en ?? "",
+                          agentEmail: property?.agent?.email ?? "test@gmail.com",
+                        );
+                      },
+                      height: 80,
+                    ),
+                  ),
 
                 ],
               ),

@@ -343,15 +343,17 @@ class NearbyType {
 @JsonSerializable()
 class Reviews {
   final OverallRating? overall;
-  @JsonKey(name: 'recent_reviews')
-  final List<RecentReview>? recentReviews;
 
-  Reviews({this.overall, this.recentReviews});
+  @JsonKey(name: 'recent_reviews', defaultValue: [])
+  final List<RecentReview> recentReviews;
+
+  Reviews({this.overall, this.recentReviews = const []});
 
   factory Reviews.fromJson(Map<String, dynamic> json) =>
       _$ReviewsFromJson(json);
   Map<String, dynamic> toJson() => _$ReviewsToJson(this);
 }
+
 
 @JsonSerializable()
 class OverallRating {
