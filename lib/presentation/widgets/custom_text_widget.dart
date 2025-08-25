@@ -5,12 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/utils/core.dart';
 
-import 'package:majan/core/theme/app_colors.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../core/utils/core.dart';
 
 class CustomTextWidget extends StatelessWidget {
   const CustomTextWidget({

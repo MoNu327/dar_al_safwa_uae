@@ -19,7 +19,6 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../view_model/firebase_auth_controller.dart';
-import '../widgets/property_unit_selector_widget.dart';
 
 class PropertyDetailsScreen extends StatelessWidget {
   PropertyDetailsScreen({super.key});

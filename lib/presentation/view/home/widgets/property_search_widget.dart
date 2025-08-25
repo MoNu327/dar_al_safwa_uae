@@ -187,25 +187,48 @@
                   ? AppColors.black
                   : Colors.grey.shade600,
                 // In your search button onPressed handler:
+// Improved commercial detection logic
 onPressed: searchController.isFormComplete ? () {
-  // Get the selected property type
   final selectedType = searchController.selectedPropertyType.value;
+  final selectedOption = searchController.selectedPropertyOption.value;
   
-  // Determine if this is a commercial search based on the type name
+  // Determine if this is a commercial search based on multiple factors
   bool isCommercial = false;
+  
   if (selectedType != null) {
     final typeNameEn = selectedType.name.en?.toLowerCase() ?? '';
     final typeNameAr = selectedType.name.ar?.toLowerCase() ?? '';
     
+    // Expanded commercial keywords
     final commercialKeywords = [
       'commercial', 'office', 'shop', 'retail', 'warehouse', 'industrial',
-      'تجاري', 'مكتب', 'متجر', 'مستودع', 'صناعي'
+      'store', 'building', 'complex', 'tower', 'center', 'mall',
+      'تجاري', 'مكتب', 'متجر', 'مستودع', 'صناعي', 'مبنى', 'مجمع', 'برج'
     ];
     
     isCommercial = commercialKeywords.any((keyword) => 
       typeNameEn.contains(keyword) || 
       typeNameAr.contains(keyword)
     );
+    
+    debugPrint('🏢 Type analysis - Name: $typeNameEn/$typeNameAr, Is Commercial: $isCommercial');
+  }
+  
+  // Also check property option if available
+  if (selectedOption != null) {
+    final optionNameEn = selectedOption.name.en?.toLowerCase() ?? '';
+    final optionNameAr = selectedOption.name.ar?.toLowerCase() ?? '';
+    
+    final commercialOptions = ['commercial', 'business', 'تجاري', 'أعمال'];
+    
+    if (commercialOptions.any((keyword) => 
+      optionNameEn.contains(keyword) || 
+      optionNameAr.contains(keyword)
+    )) {
+      isCommercial = true;
+    }
+    
+    debugPrint('🏗️ Option analysis - Name: $optionNameEn/$optionNameAr');
   }
 
   final params = <String, dynamic>{
@@ -213,8 +236,8 @@ onPressed: searchController.isFormComplete ? () {
     'property_type': searchController.selectedPropertyType.value?.id ?? 0,
     'property_locations': searchController.selectedPropertyLocation.value?.id ?? 0,
     'beds_bath': searchController.selectedBedsBath.value?.id ?? 0,
-    // Add explicit commercial filter
     'is_commercial': isCommercial,
+    'filter_commercial': true, // Add explicit filter flag
     
     // Additional UI data
     'property_option_name': isArabic

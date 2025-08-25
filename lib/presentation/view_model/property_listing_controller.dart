@@ -17,6 +17,11 @@ class PropertyListingController extends GetxController {
   int? propertyLocation;  // This will be mapped from 'property_locations'
   int? propertyBedsBath;  // This will be mapped from 'beds_bath'
 
+  // ADD: Commercial filtering flag
+  bool? isCommercialSearch;
+  bool? shouldFilterCommercial;
+  String? locationSearchQuery;
+
   // filter names
   String? propertyOptionName;
   String? propertyTypeName;
@@ -24,10 +29,12 @@ class PropertyListingController extends GetxController {
   String? propertyBedsBathName;
 
   // Fetch Property Search Results
-  final Rxn<SearchPropertyResponse> searchResults =
-      Rxn<SearchPropertyResponse>();
+  final Rxn<SearchPropertyResponse> searchResults = Rxn<SearchPropertyResponse>();
   final RxString searchResultErrorMessage = ''.obs;
   final RxBool isLoadingSearchResults = false.obs;
+  
+  // ADD: Store original unfiltered results for debugging
+  List<Property>? originalResults;
 
   @override
   void onInit() {
@@ -52,11 +59,17 @@ class PropertyListingController extends GetxController {
     propertyLocation = _safeIntCast(params['property_locations']); // Note: 'property_locations' with 's'
     propertyBedsBath = _safeIntCast(params['beds_bath']); // Note: 'beds_bath' not 'property_beds_bath'
 
+    // ADD: Get commercial filtering parameters
+    isCommercialSearch = params['is_commercial'] as bool?;
+    shouldFilterCommercial = params['filter_commercial'] as bool? ?? true; // Default to true
+
     debugPrint('🎯 Parsed search parameters:');
     debugPrint('Property Option: $propertyOption');
     debugPrint('Property Type: $propertyType');
     debugPrint('Property Location: $propertyLocation');
     debugPrint('Property Beds/Bath: $propertyBedsBath');
+    debugPrint('🏢 Is Commercial Search: $isCommercialSearch');
+    debugPrint('🔍 Should Filter Commercial: $shouldFilterCommercial');
 
     // Store the names
     propertyOptionName = params['property_option_name']?.toString();
@@ -82,6 +95,229 @@ class PropertyListingController extends GetxController {
     }
     return null;
   }
+
+ 
+
+
+List<Property> _filterPropertiesByType(List<Property> properties, {String? searchQuery}) {
+  if (shouldFilterCommercial != true) {
+    debugPrint('🚫 Filtering disabled, returning all properties');
+    return properties;
+  }
+
+  final filtered = properties.where((property) {
+    // === LOCATION FILTERING (NEW) ===
+    bool passesLocationFilter = true;
+    
+    if (searchQuery != null && searchQuery.trim().isNotEmpty) {
+      final propertyLocationEn = property.location?.en?.toLowerCase() ?? '';
+      final propertyLocationAr = property.location?.ar?.toLowerCase() ?? '';
+      final query = searchQuery.toLowerCase().trim();
+      
+      // Check if location contains the search query
+      passesLocationFilter = propertyLocationEn.contains(query) || 
+                           propertyLocationAr.contains(query);
+      
+      debugPrint('🌍 Location Filter Check:');
+      debugPrint('   Search Query: "$query"');
+      debugPrint('   Property Location EN: "$propertyLocationEn"');
+      debugPrint('   Property Location AR: "$propertyLocationAr"');
+      debugPrint('   Passes Location Filter: $passesLocationFilter');
+    }
+    
+    // === EXISTING TYPE FILTERING ===
+    final typeEn = property.type?.en?.toLowerCase() ?? '';
+    final typeAr = property.type?.ar?.toLowerCase() ?? '';
+    final titleEn = property.title?.en?.toLowerCase() ?? '';
+    final titleAr = property.title?.ar?.toLowerCase() ?? '';
+    
+    // Define commercial indicators
+    final commercialKeywords = [
+      'commercial', 'office', 'shop', 'retail', 'warehouse', 'industrial',
+      'store', 'building', 'tower', 'center', 'mall', 'cbd',
+      'business', 'corporate', 'plaza', 'showroom',
+      'تجاري', 'مكتب', 'متجر', 'مستودع', 'صناعي', 'برج',
+      'أعمال', 'تجارة', 'معرض'
+    ];
+    
+    // Define residential indicators
+    final residentialKeywords = [
+      'residential', 'apartment', 'flat', 'house', 'villa', 'home',
+      'duplex', 'penthouse', 'studio',
+      'سكني', 'شقة', 'منزل', 'فيلا', 'بيت', 'سكن', 'استوديو'
+    ];
+    
+    // Check for explicit residential first
+    bool hasResidentialIndicator = residentialKeywords.any((keyword) => 
+      typeEn.contains(keyword) || 
+      typeAr.contains(keyword)
+    );
+    
+    // Check for commercial indicators
+    bool hasCommercialIndicator = commercialKeywords.any((keyword) => 
+      typeEn.contains(keyword) || 
+      typeAr.contains(keyword) ||
+      titleEn.contains(keyword) ||
+      titleAr.contains(keyword)
+    );
+    
+    // Classification logic
+    bool isCommercialProperty;
+    bool isResidentialProperty;
+    
+    if (hasResidentialIndicator && !hasCommercialIndicator) {
+      isCommercialProperty = false;
+      isResidentialProperty = true;
+    } else if (hasCommercialIndicator && !hasResidentialIndicator) {
+      isCommercialProperty = true;
+      isResidentialProperty = false;
+    } else if (hasResidentialIndicator && hasCommercialIndicator) {
+      if (typeEn.contains('residential') || typeAr.contains('سكني')) {
+        isCommercialProperty = false;
+        isResidentialProperty = true;
+      } else {
+        isCommercialProperty = true;
+        isResidentialProperty = false;
+      }
+    } else {
+      if (typeEn.contains('apartment') || typeEn.contains('flat') || 
+          typeAr.contains('شقة')) {
+        isCommercialProperty = false;
+        isResidentialProperty = true;
+      } else {
+        isCommercialProperty = true;
+        isResidentialProperty = false;
+      }
+    }
+    
+    // Check if property passes TYPE filtering
+    bool passesTypeFilter;
+    if (isCommercialSearch == true) {
+      passesTypeFilter = isCommercialProperty;
+    } else {
+      passesTypeFilter = isResidentialProperty;
+    }
+    
+    // === BEDS AND BATHS FILTERING ===
+    bool passesBedsBathsFilter = true;
+    
+    bool shouldApplyBedsBathFilter = propertyBedsBath != null && 
+                                   propertyBedsBath != 0 && 
+                                   isResidentialProperty &&
+                                   propertyBedsBathName != null &&
+                                   propertyBedsBathName != '--Select--' &&
+                                   propertyBedsBathName!.trim().isNotEmpty;
+    
+    if (shouldApplyBedsBathFilter) {
+      final propertyBeds = property.specs?.beds ?? 0;
+      final propertyBaths = property.specs?.baths ?? 0;
+      
+      passesBedsBathsFilter = _matchesBedsBathsCriteria(propertyBeds, propertyBaths, propertyBedsBath!);
+    }
+    
+    debugPrint('🏠 Property: ${property.title?.en}');
+    debugPrint('   Location: ${property.location?.en} | ${property.location?.ar}');
+    debugPrint('   Type: $typeEn | $typeAr');
+    debugPrint('   Passes Location Filter: $passesLocationFilter');
+    debugPrint('   Passes Type Filter: $passesTypeFilter');
+    debugPrint('   Passes Beds/Baths Filter: $passesBedsBathsFilter');
+    debugPrint('   Final Result: ${passesLocationFilter && passesTypeFilter && passesBedsBathsFilter}');
+    
+    // Return true only if property passes ALL filters
+    return passesLocationFilter && passesTypeFilter && passesBedsBathsFilter;
+    
+  }).toList();
+
+  debugPrint('📊 Original properties: ${properties.length}');
+  debugPrint('📊 Filtered properties: ${filtered.length}');
+  debugPrint('🌍 Search Query: "$searchQuery"');
+  debugPrint('🎯 Showing commercial: ${isCommercialSearch == true}');
+
+  return filtered;
+}
+// NEW: Helper method to match beds/baths criteria
+// FIXED: Helper method to match beds/baths criteria
+bool _matchesBedsBathsCriteria(int propertyBeds, int propertyBaths, int selectedBedsBathId) {
+  debugPrint('🔍 Matching beds/baths: Property($propertyBeds bed, $propertyBaths bath) vs Selected ID($selectedBedsBathId)');
+  
+  // Based on your debug logs showing ID: 1 is being used, let me map it correctly
+  switch (selectedBedsBathId) {
+    case 1: // 1 bed, 1 bath (this is what your properties have)
+      bool matches = propertyBeds == 1 && propertyBaths >= 1;
+      debugPrint('   Case 1 (1 bed, 1+ bath): $matches');
+      return matches;
+      
+    case 2: // 2 beds, 1+ baths
+      bool matches2 = propertyBeds == 2 && propertyBaths >= 1;
+      debugPrint('   Case 2 (2 beds, 1+ bath): $matches2');
+      return matches2;
+      
+    case 3: // 2 beds, 2 baths
+      bool matches3 = propertyBeds == 2 && propertyBaths >= 2;
+      debugPrint('   Case 3 (2 beds, 2+ bath): $matches3');
+      return matches3;
+      
+    case 4: // 3 beds, 2+ baths
+      bool matches4 = propertyBeds == 3 && propertyBaths >= 2;
+      debugPrint('   Case 4 (3 beds, 2+ bath): $matches4');
+      return matches4;
+      
+    case 5: // 3 beds, 3+ baths
+      bool matches5 = propertyBeds == 3 && propertyBaths >= 3;
+      debugPrint('   Case 5 (3 beds, 3+ bath): $matches5');
+      return matches5;
+      
+    case 6: // 4+ beds, 3+ baths
+      bool matches6 = propertyBeds >= 4 && propertyBaths >= 3;
+      debugPrint('   Case 6 (4+ beds, 3+ bath): $matches6');
+      return matches6;
+      
+    case 7: // 5+ beds, 4+ baths
+      bool matches7 = propertyBeds >= 5 && propertyBaths >= 4;
+      debugPrint('   Case 7 (5+ beds, 4+ bath): $matches7');
+      return matches7;
+      
+    case 8: // Studio (0 bed, 1 bath)
+      bool matches8 = propertyBeds == 0 && propertyBaths >= 1;
+      debugPrint('   Case 8 (Studio - 0 bed, 1+ bath): $matches8');
+      return matches8;
+      
+    // Add more cases based on your actual dropdown options
+    default:
+      debugPrint('⚠️ Unknown beds/baths selection ID: $selectedBedsBathId - allowing all');
+      return true; // If unknown, don't filter out
+  }
+}
+
+// ALTERNATIVE: Dynamic beds/baths matching (if you have the actual bed/bath names)
+bool _matchesBedsBathsCriteriaByName(int propertyBeds, int propertyBaths, String? bedsBathName) {
+  if (bedsBathName == null || bedsBathName.isEmpty || bedsBathName == '--Select--') {
+    return true; // No filtering if not selected
+  }
+  
+  final name = bedsBathName.toLowerCase();
+  
+  // Match patterns like "1 bed 1 bath", "2 beds 2 baths", "studio", etc.
+  if (name.contains('studio')) {
+    return propertyBeds == 0; // Studios typically have 0 bedrooms
+  }
+  
+  // Extract numbers from the name
+  final bedMatch = RegExp(r'(\d+)\s*bed').firstMatch(name);
+  final bathMatch = RegExp(r'(\d+)\s*bath').firstMatch(name);
+  
+  if (bedMatch != null) {
+    final requiredBeds = int.parse(bedMatch.group(1)!);
+    if (propertyBeds != requiredBeds) return false;
+  }
+  
+  if (bathMatch != null) {
+    final requiredBaths = int.parse(bathMatch.group(1)!);
+    if (propertyBaths < requiredBaths) return false; // Use >= for baths
+  }
+  
+  return true;
+}
 
   Future<void> fetchSearchResult() async {
     try {
@@ -121,19 +357,22 @@ class PropertyListingController extends GetxController {
 
         // Try to parse the response
         try {
-          searchResults.value = SearchPropertyResponse.fromJson(response.data);
+          final rawResponse = SearchPropertyResponse.fromJson(response.data);
           debugPrint('✅ Successfully parsed response');
+          
+          // Store original results for debugging
+          originalResults = rawResponse.data;
           
           // Log the parsed data structure
           debugPrint('📊 Parsed Response Details:');
-          debugPrint('Success: ${searchResults.value?.success}');
-          debugPrint('Data is null: ${searchResults.value?.data == null}');
-          debugPrint('Data length: ${searchResults.value?.data?.length ?? 0}');
+          debugPrint('Success: ${rawResponse.success}');
+          debugPrint('Data is null: ${rawResponse.data == null}');
+          debugPrint('Data length: ${rawResponse.data?.length ?? 0}');
           
           // If data exists, log first property details
-          if (searchResults.value?.data != null && searchResults.value!.data!.isNotEmpty) {
+          if (rawResponse.data != null && rawResponse.data!.isNotEmpty) {
             debugPrint('🏠 First Property Details:');
-            final firstProperty = searchResults.value!.data!.first;
+            final firstProperty = rawResponse.data!.first;
             debugPrint('Property ID: ${firstProperty.id}');
             debugPrint('Property Title EN: ${firstProperty.title?.en}');
             debugPrint('Property Title AR: ${firstProperty.title?.ar}');
@@ -142,15 +381,39 @@ class PropertyListingController extends GetxController {
             debugPrint('Property Location EN: ${firstProperty.location?.en}');
             debugPrint('Property Location AR: ${firstProperty.location?.ar}');
             debugPrint('Property Price Raw: ${firstProperty.price?.raw}');
-            debugPrint('Property Price EN: ${firstProperty.price?.formatted?.en}');
-            debugPrint('Property Price AR: ${firstProperty.price?.formatted?.ar}');
             debugPrint('Property Deal Type EN: ${firstProperty.dealType?.en}');
             debugPrint('Property Deal Type AR: ${firstProperty.dealType?.ar}');
             debugPrint('Property Beds: ${firstProperty.specs?.beds}');
             debugPrint('Property Baths: ${firstProperty.specs?.baths}');
             debugPrint('Property Area EN: ${firstProperty.specs?.area?.en}');
-            debugPrint('Property Area AR: ${firstProperty.specs?.area?.ar}');
             debugPrint('Property Image: ${firstProperty.image}');
+
+            // Log all property titles and types for debugging
+            debugPrint('🎯 All returned properties before filtering:');
+            for (int i = 0; i < rawResponse.data!.length; i++) {
+              final property = rawResponse.data![i];
+              debugPrint('  [$i] ID: ${property.id}, Title: ${property.title?.en}, Type: ${property.type?.en}');
+            }
+          }
+
+          // APPLY FILTERING HERE
+          if (rawResponse.data != null && rawResponse.data!.isNotEmpty) {
+            final filteredProperties = _filterPropertiesByType(rawResponse.data!);
+            
+            // Create new response with filtered data
+            searchResults.value = SearchPropertyResponse(
+              success: rawResponse.success,
+              data: filteredProperties,
+            );
+            
+            debugPrint('🎯 Final filtered properties:');
+            for (int i = 0; i < filteredProperties.length; i++) {
+              final property = filteredProperties[i];
+              debugPrint('  [$i] ID: ${property.id}, Title: ${property.title?.en}, Type: ${property.type?.en}');
+            }
+            
+          } else {
+            searchResults.value = rawResponse;
           }
 
         } catch (parseError) {
@@ -160,26 +423,16 @@ class PropertyListingController extends GetxController {
           return;
         }
 
-        // Check if we have results
+        // Check if we have results after filtering
         if (searchResults.value?.data == null || searchResults.value!.data!.isEmpty) {
-          debugPrint('📭 No properties found in response');
+          debugPrint('📭 No properties found after filtering');
           searchResultErrorMessage(Get.locale?.languageCode == 'ar'
               ? 'لا توجد عقارات تطابق معايير البحث'
               : 'No properties found matching your criteria');
-          
-          // Don't set searchResults.value = null here, keep the empty response
-          // searchResults.value = null;  // Comment this out
           return;
         }
 
-        debugPrint('✅ Found ${searchResults.value!.data!.length} properties');
-        
-        // Log all property IDs to verify filtering
-        debugPrint('🎯 All returned property IDs:');
-        for (int i = 0; i < searchResults.value!.data!.length; i++) {
-          final property = searchResults.value!.data![i];
-          debugPrint('  [$i] ID: ${property.id}, Title: ${property.title?.en}');
-        }
+        debugPrint('✅ Final result: ${searchResults.value!.data!.length} properties after filtering');
         
       } else {
         debugPrint('❌ API Error - Status: ${response.statusCode}');
@@ -272,5 +525,28 @@ class PropertyListingController extends GetxController {
   // Method to clear search and go back
   void goBackToSearch() {
     Get.back();
+  }
+
+  // ADD: Debug method to show original vs filtered results
+  void debugResults() {
+    debugPrint('🔍 DEBUG RESULTS:');
+    debugPrint('Original results count: ${originalResults?.length ?? 0}');
+    debugPrint('Filtered results count: ${searchResults.value?.data?.length ?? 0}');
+    debugPrint('Is commercial search: $isCommercialSearch');
+    debugPrint('Should filter: $shouldFilterCommercial');
+    
+    if (originalResults != null) {
+      debugPrint('Original properties:');
+      for (var prop in originalResults!) {
+        debugPrint('  - ${prop.title?.en} (${prop.type?.en})');
+      }
+    }
+    
+    if (searchResults.value?.data != null) {
+      debugPrint('Filtered properties:');
+      for (var prop in searchResults.value!.data!) {
+        debugPrint('  - ${prop.title?.en} (${prop.type?.en})');
+      }
+    }
   }
 }

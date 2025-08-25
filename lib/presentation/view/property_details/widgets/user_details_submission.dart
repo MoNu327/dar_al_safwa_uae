@@ -1,13 +1,12 @@
 import 'package:majan/presentation/view/property_details/controller/user_data_submission_controller.dart';
 import 'package:majan/presentation/view/property_details/widgets/document_upload_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/validator.dart';
-import '../../../../data/model/document_submission_model.dart';
+
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_formfield_widget.dart';
 import '../../../widgets/custom_text_widget.dart';

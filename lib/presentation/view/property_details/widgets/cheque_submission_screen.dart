@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 
@@ -19,10 +18,7 @@ class ChequeSubmissionScreen extends StatefulWidget {
 }
 
 class _ChequeSubmissionScreenState extends State<ChequeSubmissionScreen> {
-  // final ChequeSubmissionController _chequeController = Get.find<ChequeSubmissionController>();
-
-  final TextEditingController _accountNumberController =
-      TextEditingController();
+  final TextEditingController _accountNumberController = TextEditingController();
   final TextEditingController _accountNameController = TextEditingController();
   final TextEditingController _bankNameController = TextEditingController();
   final TextEditingController _bankCodeController = TextEditingController();

@@ -2,7 +2,7 @@
 import 'package:majan/core/constants/custom_size.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+
 
 
 class CustomDashboard extends StatelessWidget {

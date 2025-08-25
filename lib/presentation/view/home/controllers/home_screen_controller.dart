@@ -291,6 +291,8 @@ class HomeScreenController extends GetxController {
     }
   }
 
+
+
   // fetch popular properties
   Future<void> fetchPopularProperties() async {
     try {

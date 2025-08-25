@@ -17,7 +17,7 @@ import 'domain/controller/agent_controller.dart';
 import 'domain/controller/user_controller.dart';
 import 'firebase_options.dart';
 import 'presentation/view_model/localization_controller.dart';
-// Global instances for notification handling
+
 late FirebaseNotificationService notificationService;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 

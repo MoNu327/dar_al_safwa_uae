@@ -122,7 +122,12 @@ class LocalizationController extends GetxController {
       <String, dynamic>{}.obs; // Observable Map to hold dynamic values
   var currentLocale = const Locale('en').obs;
 
-  get isEnglish => null; // Default English
+  // Fixed getter for isEnglish
+  bool get isEnglish => currentLocale.value.languageCode == 'en';
+  
+  // Added missing isArabic getter
+  bool get isArabic => currentLocale.value.languageCode == 'ar';
+
   @override
   void onInit() {
     super.onInit();
@@ -144,6 +149,12 @@ class LocalizationController extends GetxController {
 
   bool isRTL() {
     return currentLocale.value.languageCode == 'ar'; // Arabic should be RTL
+  }
+
+  // Method to change language
+  Future<void> changeLanguage(String langCode) async {
+    await loadTranslations(langCode);
+    Get.updateLocale(Locale(langCode));
   }
 
   // Load from assets (Fallback)
@@ -197,6 +208,18 @@ class LocalizationController extends GetxController {
   Future<void> saveToCache(String langCode, String jsonData) async {
     var box = GetStorage();
     await box.write('lang_$langCode', jsonData);
+  }
+
+  // Get current language name
+  String get currentLanguageName {
+    switch (currentLocale.value.languageCode) {
+      case 'ar':
+        return 'العربية';
+      case 'en':
+        return 'English';
+      default:
+        return 'English';
+    }
   }
 
   // Translate function (handles strings, lists, and dynamic types)

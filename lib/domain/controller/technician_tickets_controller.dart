@@ -897,6 +897,7 @@ List<Complaint> _comprehensiveMergeAllTickets(
       
       // Step 2: Fetch fresh tickets (which will automatically merge with stored assignments)
       await fetchTickets(userId);
+      await _fetchTicketsFromAPI(userId);
       
       // Step 3: Ensure ALL assigned tickets are visible (redundant safety check)
       await _ensureAssignedTicketsVisible();

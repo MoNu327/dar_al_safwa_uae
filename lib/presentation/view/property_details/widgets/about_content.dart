@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:majan/core/constants/custom_size.dart';
 import 'package:majan/core/routes/app_route.dart';
 import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
@@ -12,11 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:video_player/video_player.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-
 import '../../../../data/model/property_details_model.dart';
 import '../../../view_model/localization_controller.dart';
 import '../../../widgets/maps_widget.dart';

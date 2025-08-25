@@ -8,7 +8,6 @@ import 'dart:io';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../data/model/document_submission_model.dart';
 import '../controller/user_data_submission_controller.dart';
 
 class DocumentUploadScreen extends StatefulWidget {

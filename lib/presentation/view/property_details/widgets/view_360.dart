@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

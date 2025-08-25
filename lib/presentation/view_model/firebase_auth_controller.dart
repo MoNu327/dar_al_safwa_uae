@@ -1390,16 +1390,11 @@
 
 import 'dart:async';
 import 'dart:core';
-import 'dart:ffi';
-
 import 'package:majan/core/routes/app_route.dart';
 import 'package:majan/data/model/agent_model.dart';
 import 'package:majan/data/model/technician_model.dart';
 import 'package:majan/domain/controller/agent_controller.dart';
 import 'package:majan/domain/controller/technician_controller.dart';
-import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
-import 'package:majan/presentation/view_model/login_controller.dart';
-import 'package:email_validator/email_validator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
