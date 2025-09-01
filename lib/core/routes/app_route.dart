@@ -168,7 +168,7 @@ class AppRoute {
     ),
     GetPage(
       name: mobileLoginOtp,
-      page: () => MobileLoginOtp(),
+      page: () => MobileOtpScreen(),
     ),
     GetPage(
   name: tenantComplaintReg,

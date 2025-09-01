@@ -586,13 +586,17 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:majan/domain/controller/notification.dart';
 
 class FirebaseNotificationService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
@@ -602,30 +606,58 @@ class FirebaseNotificationService {
   StreamSubscription? _authSubscription;
   StreamSubscription? _tokenRefreshSubscription;
 
-  // Add navigation key for global navigation
-  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> navigatorKey;
 
   // Notification channels for different types
   static const String _chatChannelId = 'chat_channel';
   static const String _techChannelId = 'tech_channel';
   static const String _orderChannelId = 'order_channel';
 
+  // Constructor that accepts the navigator key
+  FirebaseNotificationService({required this.navigatorKey});
+
+  // Get the notification controller
+  NotificationController get _notificationController {
+    if (!Get.isRegistered<NotificationController>()) {
+      Get.put(NotificationController());
+    }
+    return Get.find<NotificationController>();
+  }
+
   Future<void> initialize() async {
     try {
+      // Initialize notification controller first
+      Get.put(NotificationController());
+      
       // Initialize notification infrastructure
       await _requestPermissions();
       await _initLocalNotifications();
       await _createNotificationChannels();
 
-      // Set up message handlers
+      // Set up message handlers with storage
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
       
       // Handle notification opened app (when app is opened from background)
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationOpenedApp);
-      
-      // Check for initial message (when app is launched from notification)
-      _checkForInitialMessage();
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('Notification opened app: ${message.data}');
+        _notificationController.addNotificationFromRemoteMessage(message);
+        _notificationController.markAsRead(message.messageId ?? '');
+        _handleNotificationNavigation(message.data);
+      });
+
+      // Handle notification when app is terminated and opened via notification
+      FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+        if (message != null) {
+          debugPrint('App opened from terminated state via notification: ${message.data}');
+          _notificationController.addNotificationFromRemoteMessage(message);
+          _notificationController.markAsRead(message.messageId ?? '');
+          // Delay navigation to ensure app is fully loaded
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            _handleNotificationNavigation(message.data);
+          });
+        }
+      });
 
       // Start listening for auth state changes
       _setupAuthStateListener();
@@ -636,24 +668,268 @@ class FirebaseNotificationService {
     }
   }
 
-  // Enhanced method to check for initial message
-  Future<void> _checkForInitialMessage() async {
+  void _handleNotificationNavigation(Map<String, dynamic> data) {
+    debugPrint('Attempting navigation with data: $data');
+    
+    // Try GetX first (more reliable in Flutter apps using GetX)
+    if (Get.context != null) {
+      _navigateUsingGetX(data);
+    } else if (navigatorKey.currentContext != null) {
+      _navigateUsingNavigatorKey(data);
+    } else {
+      // Retry navigation after a delay
+      debugPrint('No navigation context available, retrying in 2 seconds...');
+      Future.delayed(const Duration(seconds: 2), () {
+        _handleNotificationNavigation(data);
+      });
+    }
+  }
+
+  void _navigateUsingGetX(Map<String, dynamic> data) {
+    final notificationType = data['type'] as String?;
+    debugPrint('Navigating using GetX for type: $notificationType');
+    
     try {
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-      if (initialMessage != null) {
-        debugPrint('App launched from notification: ${initialMessage.data}');
-        // Delay navigation to ensure app is fully initialized
-        Future.delayed(const Duration(seconds: 1), () {
-          _handleNotificationOpenedApp(initialMessage);
-        });
+      switch (notificationType) {
+        case 'chat':
+        case 'message':
+          final chatId = data['chatId'] as String?;
+          final userId = data['userId'] as String?;
+          final userName = data['userName'] as String?;
+          
+          // Navigate to agent chat screen (based on your routes)
+          Get.toNamed('/agent', arguments: {
+            'chatId': chatId,
+            'userId': userId,
+            'userName': userName,
+          });
+          break;
+
+        case 'technician_assignment':
+        case 'technician_ticket':
+        case 'job_update':
+          final ticketId = data['ticketId'] as String?;
+          final assignmentId = data['assignmentId'] as String?;
+          final jobId = data['jobId'] as String?;
+          
+          if (ticketId != null || assignmentId != null || jobId != null) {
+            // Navigate to technician tickets view
+            Get.toNamed('/technician-tickets', arguments: {
+              'ticketId': ticketId,
+              'assignmentId': assignmentId,
+              'jobId': jobId,
+            });
+          } else {
+            // Fallback to technician dashboard
+            Get.toNamed('/technicianDashboard');
+          }
+          break;
+
+        case 'ticket':
+        case 'complaint':
+        case 'tenant_ticket':
+          final ticketId = data['ticketId'] as String?;
+          final complaintId = data['complaintId'] as String?;
+          
+          if (ticketId != null || complaintId != null) {
+            // For now, navigate to dashboard since tenantTicketDetails route is commented out
+            // When you uncomment the route, use this:
+            // Get.toNamed('/tenantTicketDetails', arguments: {
+            //   'ticketId': ticketId ?? complaintId,
+            // });
+            
+            // For now, navigate to dashboard
+            Get.toNamed('/navbar');
+          }
+          break;
+
+        case 'property':
+        case 'property_update':
+          final propertyId = data['propertyId'] as String?;
+          
+          if (propertyId != null) {
+            Get.toNamed('/propertyDetails', arguments: {
+              'propertyId': propertyId,
+            });
+          } else {
+            // Navigate to properties list
+            Get.toNamed('/properties');
+          }
+          break;
+
+        case 'tenant_property':
+          // Navigate to tenant properties list
+          Get.toNamed('/tenantPropertyList');
+          break;
+
+        case 'tenant_documents':
+          // Navigate to tenant documents
+          Get.toNamed('/tenantDocumentsList');
+          break;
+
+        case 'tenant_complaint':
+          final propertyName = data['propertyName'] as String?;
+          final propertyId = data['propertyId'];
+          final unitAddressId = data['unitAddressId'];
+          
+          Get.toNamed('/tenantComplaintReg', arguments: {
+            'propertyName': propertyName ?? '',
+            'propertyId': propertyId ?? 0,
+            'unitAddressId': unitAddressId ?? 0,
+          });
+          break;
+
+        case 'technician_rectify':
+          final complaintId = data['complaintId'] as String?;
+          final category = data['category'] as String?;
+          
+          Get.toNamed('/technician-rectify-ticket', arguments: {
+            'complaintId': complaintId ?? '',
+            'category': category ?? '',
+          });
+          break;
+
+        case 'profile':
+        case 'technician_profile':
+          // Check if user is technician and navigate accordingly
+          Get.toNamed('/technician-profile');
+          break;
+
+        case 'enquiry':
+        case 'customer_enquiry':
+          Get.toNamed('/enquiry');
+          break;
+
+        case 'property_listing':
+          Get.toNamed('/propertyListing');
+          break;
+
+        case 'inbox':
+          Get.toNamed('/inbox');
+          break;
+
+        case 'search':
+          Get.toNamed('/search');
+          break;
+
+        case 'user_details':
+          Get.toNamed('/userDetailsSubmission');
+          break;
+
+        case 'approval_pending':
+          Get.toNamed('/approvalPendingPage');
+          break;
+
+        default:
+          // Navigate to dashboard as fallback
+          debugPrint('Unknown notification type: $notificationType, navigating to dashboard');
+          Get.offAllNamed('/navbar');
+          break;
       }
     } catch (e) {
-      debugPrint('Error checking initial message: $e');
+      debugPrint('Error navigating with GetX: $e');
+      // Fallback to navigator key
+      if (navigatorKey.currentContext != null) {
+        _navigateUsingNavigatorKey(data);
+      } else {
+        // Ultimate fallback to dashboard
+        Get.offAllNamed('/navbar');
+      }
+    }
+  }
+
+  void _navigateUsingNavigatorKey(Map<String, dynamic> data) {
+    final context = navigatorKey.currentContext;
+    if (context == null) {
+      debugPrint('Navigation context is null');
+      return;
+    }
+
+    final notificationType = data['type'] as String?;
+    debugPrint('Navigating using Navigator key for type: $notificationType');
+    
+    try {
+      switch (notificationType) {
+        case 'chat':
+        case 'message':
+          Navigator.of(context).pushNamed('/agent', arguments: data);
+          break;
+
+        case 'technician_assignment':
+        case 'technician_ticket':
+        case 'job_update':
+          Navigator.of(context).pushNamed('/technician-tickets', arguments: data);
+          break;
+
+        case 'ticket':
+        case 'complaint':
+        case 'tenant_ticket':
+          Navigator.of(context).pushNamed('/navbar', arguments: data);
+          break;
+
+        case 'property':
+        case 'property_update':
+          Navigator.of(context).pushNamed('/propertyDetails', arguments: data);
+          break;
+
+        case 'tenant_property':
+          Navigator.of(context).pushNamed('/tenantPropertyList', arguments: data);
+          break;
+
+        case 'tenant_documents':
+          Navigator.of(context).pushNamed('/tenantDocumentsList', arguments: data);
+          break;
+
+        case 'tenant_complaint':
+          Navigator.of(context).pushNamed('/tenantComplaintReg', arguments: data);
+          break;
+
+        case 'technician_rectify':
+          Navigator.of(context).pushNamed('/technician-rectify-ticket', arguments: data);
+          break;
+
+        case 'profile':
+        case 'technician_profile':
+          Navigator.of(context).pushNamed('/technician-profile', arguments: data);
+          break;
+
+        case 'enquiry':
+        case 'customer_enquiry':
+          Navigator.of(context).pushNamed('/enquiry', arguments: data);
+          break;
+
+        case 'property_listing':
+          Navigator.of(context).pushNamed('/propertyListing', arguments: data);
+          break;
+
+        case 'inbox':
+          Navigator.of(context).pushNamed('/inbox', arguments: data);
+          break;
+
+        case 'search':
+          Navigator.of(context).pushNamed('/search', arguments: data);
+          break;
+
+        case 'user_details':
+          Navigator.of(context).pushNamed('/userDetailsSubmission', arguments: data);
+          break;
+
+        case 'approval_pending':
+          Navigator.of(context).pushNamed('/approvalPendingPage', arguments: data);
+          break;
+
+        default:
+          Navigator.of(context).pushNamedAndRemoveUntil('/navbar', (route) => false);
+          break;
+      }
+    } catch (e) {
+      debugPrint('Error navigating with Navigator key: $e');
+      // Fallback to dashboard
+      Navigator.of(context).pushNamedAndRemoveUntil('/navbar', (route) => false);
     }
   }
 
   Future<void> _createNotificationChannels() async {
-    // Chat channel with high importance
     const AndroidNotificationChannel chatChannel = AndroidNotificationChannel(
       _chatChannelId,
       'Chat Notifications',
@@ -663,7 +939,6 @@ class FirebaseNotificationService {
       enableVibration: true,
     );
 
-    // Technician-specific channel
     const AndroidNotificationChannel techChannel = AndroidNotificationChannel(
       _techChannelId,
       'Technician Notifications',
@@ -673,7 +948,6 @@ class FirebaseNotificationService {
       enableVibration: true,
     );
 
-    // Order updates channel
     const AndroidNotificationChannel orderChannel = AndroidNotificationChannel(
       _orderChannelId,
       'Order Updates',
@@ -683,8 +957,7 @@ class FirebaseNotificationService {
     );
 
     final androidPlugin = _flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
 
     await androidPlugin?.createNotificationChannel(chatChannel);
     await androidPlugin?.createNotificationChannel(techChannel);
@@ -709,11 +982,8 @@ class FirebaseNotificationService {
 
   Future<void> _setupTokenManagement(User user) async {
     _tokenRefreshSubscription?.cancel();
-
     await _forceTokenRefresh(user);
-
-    _tokenRefreshSubscription =
-        _firebaseMessaging.onTokenRefresh.listen((newToken) {
+    _tokenRefreshSubscription = _firebaseMessaging.onTokenRefresh.listen((newToken) {
       _saveTokenToFirestore(newToken, user);
     });
   }
@@ -721,11 +991,7 @@ class FirebaseNotificationService {
   Future<void> _forceTokenRefresh(User user) async {
     try {
       await _firebaseMessaging.deleteToken();
-      debugPrint('Successfully deleted old FCM token');
-
       final token = await _firebaseMessaging.getToken();
-      debugPrint('New FCM token generated: $token');
-
       await _saveTokenToFirestore(token, user);
     } catch (e) {
       debugPrint('Error forcing token refresh: $e');
@@ -733,10 +999,7 @@ class FirebaseNotificationService {
   }
 
   Future<void> _cleanupToken() async {
-    debugPrint("Deleting FCM token");
     _tokenRefreshSubscription?.cancel();
-    _tokenRefreshSubscription = null;
-
     try {
       await _firebaseMessaging.deleteToken();
     } catch (e) {
@@ -746,17 +1009,10 @@ class FirebaseNotificationService {
 
   Future<void> _saveTokenToFirestore(String? token, User user) async {
     if (token == null) return;
-
-    debugPrint('[FCM] Saving token for user ${user.uid}: $token');
-
     try {
       final isTechnician = await _isUserTechnician(user.uid);
       final collectionName = isTechnician ? 'technicians' : 'users';
-
-      await FirebaseFirestore.instance
-          .collection(collectionName)
-          .doc(user.uid)
-          .set({
+      await FirebaseFirestore.instance.collection(collectionName).doc(user.uid).set({
         'fcmToken': token,
         'lastUpdated': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -767,30 +1023,21 @@ class FirebaseNotificationService {
 
   Future<bool> _isUserTechnician(String uid) async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('technicians')
-          .doc(uid)
-          .get();
+      final doc = await FirebaseFirestore.instance.collection('technicians').doc(uid).get();
       return doc.exists;
     } catch (e) {
-      debugPrint('Error checking technician status: $e');
       return false;
     }
   }
 
   Future<void> _requestPermissions() async {
     try {
-      final settings = await _firebaseMessaging.requestPermission(
+      await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
         provisional: false,
-        criticalAlert: false,
-        carPlay: false,
-        announcement: false,
       );
-      
-      debugPrint('Notification permission status: ${settings.authorizationStatus}');
     } catch (e) {
       debugPrint('Error requesting notification permissions: $e');
     }
@@ -800,17 +1047,11 @@ class FirebaseNotificationService {
     try {
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/launcher_icon');
-
-      const DarwinInitializationSettings iosSettings =
-          DarwinInitializationSettings(
+      const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
-        defaultPresentAlert: true,
-        defaultPresentBadge: true,
-        defaultPresentSound: true,
       );
-
       const InitializationSettings settings = InitializationSettings(
         android: androidSettings,
         iOS: iosSettings,
@@ -823,316 +1064,57 @@ class FirebaseNotificationService {
           _handleNotificationTap(response.payload);
         },
       );
-      
-      debugPrint('Local notifications initialized successfully');
     } catch (e) {
       debugPrint('Error initializing local notifications: $e');
     }
   }
 
-  // Enhanced notification tap handler with navigation
   void _handleNotificationTap(String? payload) {
     if (payload == null) return;
-    
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      debugPrint('Notification tapped with payload: $data');
-      
-      // Add a small delay to ensure the app is ready for navigation
       Future.delayed(const Duration(milliseconds: 300), () {
-        _navigateBasedOnNotificationType(data);
+        _handleNotificationNavigation(data);
       });
     } catch (e) {
       debugPrint('Error handling notification tap: $e');
     }
   }
 
-  // Handle notification when app is opened from background/terminated state
-  void _handleNotificationOpenedApp(RemoteMessage message) {
-    debugPrint('Notification opened app: ${message.data}');
-    
-    // Add a delay to ensure the app context is available
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _navigateBasedOnNotificationType(message.data);
-    });
-  }
-
-  // Enhanced navigation logic based on notification type
-  void _navigateBasedOnNotificationType(Map<String, dynamic> data) {
-    debugPrint('Attempting navigation with data: $data');
-    
-    // Try multiple navigation approaches
-    if (Get.context != null) {
-      _navigateUsingGetX(data);
-    } else if (navigatorKey.currentContext != null) {
-      _navigateUsingNavigatorKey(data);
-    } else {
-      // Retry navigation after a delay
-      debugPrint('No navigation context available, retrying...');
-      Future.delayed(const Duration(seconds: 1), () {
-        _navigateBasedOnNotificationType(data);
-      });
-    }
-  }
-
-  void _navigateUsingGetX(Map<String, dynamic> data) {
-    final notificationType = data['type'] as String?;
-    debugPrint('Navigating using GetX for type: $notificationType');
-    
-    try {
-      switch (notificationType) {
-        case 'chat':
-          _navigateToChatGetX(data);
-          break;
-        case 'technician_assignment':
-          _navigateToTechnicianAssignmentGetX(data);
-          break;
-        case 'order_update':
-          _navigateToOrderDetailsGetX(data);
-          break;
-        case 'job_update':
-          _navigateToJobDetailsGetX(data);
-          break;
-        case 'appointment':
-          _navigateToAppointmentGetX(data);
-          break;
-        case 'ticket':
-          _navigateToTicketDetailsGetX(data);
-          break;
-        default:
-          Get.offAllNamed('/home');
-      }
-    } catch (e) {
-      debugPrint('Error navigating with GetX: $e');
-      // Fallback to navigator key
-      if (navigatorKey.currentContext != null) {
-        _navigateUsingNavigatorKey(data);
-      }
-    }
-  }
-
-  void _navigateUsingNavigatorKey(Map<String, dynamic> data) {
-    final context = navigatorKey.currentContext;
-    if (context == null) {
-      debugPrint('Navigation context is null');
-      return;
-    }
-
-    final notificationType = data['type'] as String?;
-    debugPrint('Navigating using Navigator key for type: $notificationType');
-    
-    switch (notificationType) {
-      case 'chat':
-        _navigateToChat(context, data);
-        break;
-      case 'technician_assignment':
-        _navigateToTechnicianAssignment(context, data);
-        break;
-      case 'order_update':
-        _navigateToOrderDetails(context, data);
-        break;
-      case 'job_update':
-        _navigateToJobDetails(context, data);
-        break;
-      case 'appointment':
-        _navigateToAppointment(context, data);
-        break;
-      case 'ticket':
-        _navigateToTicketDetails(context, data);
-        break;
-      default:
-        _navigateToHome(context);
-    }
-  }
-
-  // GetX Navigation Methods
-  void _navigateToChatGetX(Map<String, dynamic> data) {
-    final chatId = data['chatId'] as String?;
-    final userId = data['userId'] as String?;
-    final userName = data['userName'] as String?;
-    
-    if (chatId != null) {
-      Get.toNamed('/chat', arguments: {
-        'chatId': chatId,
-        'userId': userId,
-        'userName': userName,
-      });
-    }
-  }
-
-  void _navigateToTechnicianAssignmentGetX(Map<String, dynamic> data) {
-    final assignmentId = data['assignmentId'] as String?;
-    final jobId = data['jobId'] as String?;
-    
-    if (assignmentId != null || jobId != null) {
-      Get.toNamed('/technician-assignment', arguments: {
-        'assignmentId': assignmentId,
-        'jobId': jobId,
-      });
-    }
-  }
-
-  void _navigateToOrderDetailsGetX(Map<String, dynamic> data) {
-    final orderId = data['orderId'] as String?;
-    
-    if (orderId != null) {
-      Get.toNamed('/order-details', arguments: {
-        'orderId': orderId,
-      });
-    }
-  }
-
-  void _navigateToJobDetailsGetX(Map<String, dynamic> data) {
-    final jobId = data['jobId'] as String?;
-    
-    if (jobId != null) {
-      Get.toNamed('/job-details', arguments: {
-        'jobId': jobId,
-      });
-    }
-  }
-
-  void _navigateToAppointmentGetX(Map<String, dynamic> data) {
-    final appointmentId = data['appointmentId'] as String?;
-    
-    if (appointmentId != null) {
-      Get.toNamed('/appointment', arguments: {
-        'appointmentId': appointmentId,
-      });
-    }
-  }
-
-  void _navigateToTicketDetailsGetX(Map<String, dynamic> data) {
-    final ticketId = data['ticketId'] as String?;
-    
-    if (ticketId != null) {
-      Get.toNamed('/ticket-details', arguments: {
-        'ticketId': ticketId,
-      });
-    }
-  }
-
-  // Navigator Key Navigation Methods (Original methods with improvements)
-  void _navigateToChat(BuildContext context, Map<String, dynamic> data) {
-    final chatId = data['chatId'] as String?;
-    final userId = data['userId'] as String?;
-    final userName = data['userName'] as String?;
-    
-    if (chatId != null) {
-      Navigator.of(context).pushNamed(
-        '/chat',
-        arguments: {
-          'chatId': chatId,
-          'userId': userId,
-          'userName': userName,
-        },
-      );
-    }
-  }
-
-  void _navigateToTechnicianAssignment(BuildContext context, Map<String, dynamic> data) {
-    final assignmentId = data['assignmentId'] as String?;
-    final jobId = data['jobId'] as String?;
-    
-    if (assignmentId != null || jobId != null) {
-      Navigator.of(context).pushNamed(
-        '/technician-assignment',
-        arguments: {
-          'assignmentId': assignmentId,
-          'jobId': jobId,
-        },
-      );
-    }
-  }
-
-  void _navigateToOrderDetails(BuildContext context, Map<String, dynamic> data) {
-    final orderId = data['orderId'] as String?;
-    
-    if (orderId != null) {
-      Navigator.of(context).pushNamed(
-        '/order-details',
-        arguments: {
-          'orderId': orderId,
-        },
-      );
-    }
-  }
-
-  void _navigateToJobDetails(BuildContext context, Map<String, dynamic> data) {
-    final jobId = data['jobId'] as String?;
-    
-    if (jobId != null) {
-      Navigator.of(context).pushNamed(
-        '/job-details',
-        arguments: {
-          'jobId': jobId,
-        },
-      );
-    }
-  }
-
-  void _navigateToAppointment(BuildContext context, Map<String, dynamic> data) {
-    final appointmentId = data['appointmentId'] as String?;
-    
-    if (appointmentId != null) {
-      Navigator.of(context).pushNamed(
-        '/appointment',
-        arguments: {
-          'appointmentId': appointmentId,
-        },
-      );
-    }
-  }
-
-  void _navigateToTicketDetails(BuildContext context, Map<String, dynamic> data) {
-    final ticketId = data['ticketId'] as String?;
-    
-    if (ticketId != null) {
-      Navigator.of(context).pushNamed(
-        '/ticket-details',
-        arguments: {
-          'ticketId': ticketId,
-        },
-      );
-    }
-  }
-
-  void _navigateToHome(BuildContext context) {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      '/home',
-      (route) => false,
-    );
-  }
-
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     try {
+      // Store the notification locally first
+      _notificationController.addNotificationFromRemoteMessage(message);
+
+      // Then show the local notification
       final notification = message.notification;
       final data = message.data;
 
-      debugPrint('Received foreground message: ${message.toMap()}');
-
       if (notification == null && data.isEmpty) return;
 
-      // Determine which channel to use
       String channelId = _getChannelId(data['type']);
       String channelName = _getChannelName(data['type']);
 
-      // Handle image notification
-      String? imageUrl;
-      if (notification?.android?.imageUrl != null) {
-        imageUrl = notification!.android!.imageUrl;
-      } else if (data['image'] != null) {
-        imageUrl = data['image'];
-      }
-
-      // Create notification details
-      final NotificationDetails platformDetails = await _createNotificationDetails(
-        channelId: channelId,
-        channelName: channelName,
-        imageUrl: imageUrl,
+      final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        importance: Importance.max,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
       );
 
-      // Show the notification
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+
+      final NotificationDetails platformDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
       await _flutterLocalNotificationsPlugin.show(
         DateTime.now().millisecondsSinceEpoch ~/ 1000,
         notification?.title ?? _getDefaultTitle(data),
@@ -1140,22 +1122,25 @@ class FirebaseNotificationService {
         platformDetails,
         payload: jsonEncode(data),
       );
-      
-      debugPrint('Foreground notification shown successfully');
-    } catch (e, stack) {
+    } catch (e) {
       debugPrint('Error handling foreground message: $e');
-      debugPrint('Stack trace: $stack');
     }
   }
 
   String _getChannelId(String? type) {
     switch (type) {
       case 'technician_assignment':
+      case 'technician_ticket':
       case 'job_update':
+      case 'technician_rectify':
         return _techChannelId;
-      case 'order_update':
+      case 'property':
+      case 'property_update':
+      case 'tenant_property':
+      case 'enquiry':
         return _orderChannelId;
       case 'chat':
+      case 'message':
       default:
         return _chatChannelId;
     }
@@ -1164,92 +1149,56 @@ class FirebaseNotificationService {
   String _getChannelName(String? type) {
     switch (type) {
       case 'technician_assignment':
+      case 'technician_ticket':
         return 'Technician Assignment';
       case 'job_update':
         return 'Job Update';
-      case 'order_update':
-        return 'Order Update';
+      case 'technician_rectify':
+        return 'Technician Rectify';
+      case 'property':
+      case 'property_update':
+        return 'Property Update';
+      case 'tenant_property':
+        return 'Tenant Property';
+      case 'enquiry':
+        return 'Customer Enquiry';
       case 'chat':
+      case 'message':
       default:
         return 'Chat Notifications';
     }
-  }
-
-  Future<NotificationDetails> _createNotificationDetails({
-    required String channelId,
-    required String channelName,
-    String? imageUrl,
-  }) async {
-    // Android specific settings
-    AndroidNotificationDetails androidDetails;
-    
-    if (imageUrl != null) {
-      // Create big picture style for notifications with images
-      final bigPictureStyle = BigPictureStyleInformation(
-        FilePathAndroidBitmap(imageUrl), // For local files
-        // OR use UrlAndroidBitmap for remote images:
-        // UriAndroidBitmap(imageUrl),
-        largeIcon: FilePathAndroidBitmap(imageUrl),
-        contentTitle: channelName,
-        htmlFormatContentTitle: true,
-        summaryText: '',
-        htmlFormatSummaryText: true,
-      );
-
-      androidDetails = AndroidNotificationDetails(
-        channelId,
-        channelName,
-        channelDescription: 'Incoming notifications',
-        importance: Importance.max,
-        priority: Priority.high,
-        styleInformation: bigPictureStyle,
-        largeIcon: FilePathAndroidBitmap(imageUrl),
-        enableVibration: true,
-        playSound: true,
-        autoCancel: true,
-      );
-    } else {
-      androidDetails = AndroidNotificationDetails(
-        channelId,
-        channelName,
-        channelDescription: 'Incoming notifications',
-        importance: Importance.max,
-        priority: Priority.high,
-        enableVibration: true,
-        playSound: true,
-        autoCancel: true,
-      );
-    }
-
-    // iOS specific settings
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      badgeNumber: 1,
-      interruptionLevel: InterruptionLevel.active,
-    );
-
-    return NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
   }
 
   String _getDefaultTitle(Map<String, dynamic> data) {
     switch (data['type']) {
       case 'technician_assignment':
         return 'New Assignment';
-      case 'order_update':
-        return 'Order Update';
+      case 'technician_ticket':
+        return 'New Ticket';
       case 'job_update':
         return 'Job Update';
+      case 'technician_rectify':
+        return 'Rectify Ticket';
       case 'ticket':
+      case 'complaint':
+      case 'tenant_ticket':
         return 'Ticket Update';
-      case 'appointment':
-        return 'Appointment Reminder';
+      case 'property':
+      case 'property_update':
+        return 'Property Update';
+      case 'tenant_property':
+        return 'Property Notification';
+      case 'tenant_documents':
+        return 'Documents Update';
+      case 'tenant_complaint':
+        return 'Complaint Registration';
+      case 'enquiry':
+        return 'Customer Enquiry';
       case 'chat':
+      case 'message':
         return 'New Message';
+      case 'approval_pending':
+        return 'Approval Required';
       default:
         return 'New Notification';
     }
@@ -1259,16 +1208,32 @@ class FirebaseNotificationService {
     switch (data['type']) {
       case 'technician_assignment':
         return 'You have been assigned a new job';
-      case 'order_update':
-        return 'Your order status has been updated';
+      case 'technician_ticket':
+        return 'New ticket assigned to you';
       case 'job_update':
         return 'Job status has been updated';
+      case 'technician_rectify':
+        return 'Ticket requires rectification';
       case 'ticket':
+      case 'complaint':
+      case 'tenant_ticket':
         return 'Ticket has been updated';
-      case 'appointment':
-        return 'You have an upcoming appointment';
+      case 'property':
+      case 'property_update':
+        return 'Property information updated';
+      case 'tenant_property':
+        return 'Property notification for tenant';
+      case 'tenant_documents':
+        return 'Documents have been updated';
+      case 'tenant_complaint':
+        return 'Register a new complaint';
+      case 'enquiry':
+        return 'New customer enquiry received';
       case 'chat':
+      case 'message':
         return data['message'] ?? 'You have a new message';
+      case 'approval_pending':
+        return 'Your request is pending approval';
       default:
         return data['message'] ?? 'You have a new notification';
     }
@@ -1284,12 +1249,19 @@ class FirebaseNotificationService {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
-    debugPrint('Background message received: ${message.data}');
+    await GetStorage.init();
     
-    // Store the notification data for later processing when app opens
-    // You might want to save this to local storage or handle it appropriately
+    // Initialize notification controller if not already done
+    if (!Get.isRegistered<NotificationController>()) {
+      Get.put(NotificationController());
+    }
     
+    // Store the notification
+    final notificationController = Get.find<NotificationController>();
+    notificationController.addNotificationFromRemoteMessage(message);
+    
+    debugPrint('Background message received and stored: ${message.data}');
   } catch (e) {
-    debugPrint('Error in background handler: $e');
+    debugPrint('Error in background handler with storage: $e');
   }
 }

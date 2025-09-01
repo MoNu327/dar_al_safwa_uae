@@ -14,7 +14,7 @@ class AgentChatController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseNotificationService notificationService =
-      FirebaseNotificationService();
+      FirebaseNotificationService(navigatorKey: Get.key);
 
   final TextEditingController messageController = TextEditingController();
   var chatData = RxMap<String, dynamic>();
