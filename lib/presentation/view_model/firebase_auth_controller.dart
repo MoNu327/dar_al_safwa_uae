@@ -1499,7 +1499,7 @@ void handleAuthChanged(User? user) async {
   }
 
   // Phone authentication methods
-  Future<void> signInWithPhone({
+    Future<void> signInWithPhone({
     required String phoneNumber,
     required Function(PhoneAuthCredential) onVerificationCompleted,
     required Function(FirebaseAuthException) onVerificationFailed,
@@ -1526,22 +1526,8 @@ void handleAuthChanged(User? user) async {
         codeSent: onCodeSent,
         codeAutoRetrievalTimeout: (verificationId) {
           isSignInPhone(false);
-          // Get.snackbar(
-          //   'Timeout',
-          //   'SMS not received? Tap "Resend" to try again.',
-          //   duration: const Duration(seconds: 5),
-          //   mainButton: TextButton(
-          //     onPressed: () => signInWithPhone(
-          //       phoneNumber: phoneNumber,
-          //       onVerificationCompleted: onVerificationCompleted,
-          //       onVerificationFailed: onVerificationFailed,
-          //       onCodeSent: onCodeSent,
-          //       onCodeAutoRetrievalTimeout: onCodeAutoRetrievalTimeout,
-          //       resend: true, // Force resend
-          //     ),
-          //     child: const Text('Resend'),
-          //   ),
-          // );
+          // this.verificationId = verificationId;
+          // _resendToken = null; // Reset resend token on timeout
           onCodeAutoRetrievalTimeout(verificationId);
         },
         timeout: const Duration(seconds: 30),
@@ -1634,7 +1620,7 @@ void handleAuthChanged(User? user) async {
         );
 
         await _updateUserInController(userModel);
-        navigateToHome();
+        // navigateToHome();
       } else {
         await _createNewPhoneUser(user);
       }
@@ -1666,7 +1652,7 @@ void handleAuthChanged(User? user) async {
       userRole.value = 'user';
 
       await _updateUserInController(userModel);
-      navigateToHome();
+      // navigateToHome();
     } catch (e) {
       debugPrint('Error creating new phone user: $e');
       rethrow;
@@ -2664,6 +2650,7 @@ Future<void> _handleTechnicianUser(User user) async {
       debugPrint('Error setting agent role: $e');
     }
   }
+  
 
   // bool _isValidAgentEmail(String? email) {
   //   // Add your domain validation logic here

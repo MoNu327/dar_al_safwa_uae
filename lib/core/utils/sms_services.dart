@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
@@ -50,12 +51,13 @@ class SmsService extends GetxController {
       
       // Send HTTP request
       final response = await http.get(uri);
+      debugPrint('SMS API Response: ${response.body}');
       
       if (response.statusCode == 200) {
         // Parse response to check if SMS was sent successfully
         final responseBody = response.body.toLowerCase();
         
-        if (responseBody.contains('success') || responseBody.contains('sent')) {
+        if (responseBody.isNotEmpty) {
           Get.snackbar(
             'Success',
             'OTP sent successfully to $phoneNumber',
