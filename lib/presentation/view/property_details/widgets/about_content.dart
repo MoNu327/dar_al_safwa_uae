@@ -411,7 +411,7 @@ String _formatOverviewValue(dynamic value) {
                         gmail, propertyId, propertyName)
                     : auth.currentUser?.email == null
                         ? controller.showUnitTypeBottomSheetForChat(
-                            gmail, "41", propertyName)
+                            gmail, propertyId, propertyName)
                         : CustomSnackbar.show(
                             title: "Failed",
                             message:

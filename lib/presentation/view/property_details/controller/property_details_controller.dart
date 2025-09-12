@@ -188,7 +188,7 @@ class PropertyDetailsController extends GetxController {
 
   // Save mobile number in Firestore
   await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
-    'mobile': mobile,
+    'phoneNumber': mobile,
     'lastUpdated': FieldValue.serverTimestamp(),
   });
 
@@ -211,7 +211,7 @@ Future<void> handleCallOrChat({
 
   // Fetch mobile from Firestore
   final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-  final mobile = doc.data()?['mobile'] ?? '';
+  final mobile = doc.data()?['phoneNumber'] ?? '';
 
   if (mobile.isEmpty) {
     // Navigate to MobileNumberUpdatePage
@@ -225,7 +225,7 @@ Future<void> handleCallOrChat({
           // ✅ Don't pass unitId here since no unit is selected yet
         ));
 
-    if (result != null && result['mobile'] != null) {
+    if (result != null && result['phoneNumber'] != null) {
       // After saving mobile, continue with unit selection
       if (isCall) {
         showUnitTypeBottomSheetForCall(phone, propertyId);
@@ -264,7 +264,7 @@ Future<void> handleCallOrChat({
 
     if (!doc.exists) return true;
 
-    final mobile = doc.data()?['mobile'] ?? '';
+    final mobile = doc.data()?['phoneNumber'] ?? '';
     return mobile
         .trim()
         .isEmpty;
@@ -758,8 +758,8 @@ void _handleUnitTypeSelectionForChat(String gmail, String propertyId, String pro
       agentEmail: property.value?.agent?.email ?? "",
     ));
 
-    if (result != null && result['mobile'] != null) {
-      final updatedMobile = result['mobile'];
+    if (result != null && result['phoneNumber'] != null) {
+      final updatedMobile = result['phoneNumber'];
 
       await postPropertyInterest(
         propertyId,
@@ -790,7 +790,7 @@ void _handleUnitTypeSelectionForChat(String gmail, String propertyId, String pro
         .collection('users')
         .doc(uid)
         .get();
-    final mobile = doc.data()?['mobile'] ?? "";
+    final mobile = doc.data()?['phoneNumber'] ?? "";
 
     await postPropertyInterest(
       propertyId,
