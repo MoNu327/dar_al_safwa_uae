@@ -302,7 +302,7 @@ class MobileOtpScreen extends StatelessWidget {
     final screenHeight = Get.height;
     final screenWidth = Get.width;
     final horizontalPadding = screenWidth * 0.05;
-    final verticalPadding = screenHeight * 0.05;
+    final verticalPadding = screenHeight * 0.06;
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -316,7 +316,7 @@ class MobileOtpScreen extends StatelessWidget {
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - verticalPadding * 2,
+                  minHeight: constraints.maxHeight - verticalPadding * 3,
                 ),
                 child: IntrinsicHeight(
                   child: Column(

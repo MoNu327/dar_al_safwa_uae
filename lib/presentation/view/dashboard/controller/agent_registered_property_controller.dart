@@ -35,6 +35,21 @@ class AgentRegisteredPropertyController extends GetxController {
     loadAgentProperties();
   }
 
+  Future<void> loadFcmTokenforagent(String uid,String fcmToken) async {
+    try {
+      final response = await _apiService.getFCMtokenforagent(uid,fcmToken);
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // Handle success if needed
+        debugPrint('✅ FCM Token updated successfully');
+      } else {
+        debugPrint('❌ Failed to update FCM Token: ${response.statusMessage}');
+      }
+    } catch (e) {
+      debugPrint('❌ Error updating FCM Token: $e');
+    }
+  }
+
   Future<void> loadAgentProperties() async {
     try {
       isLoading(true);

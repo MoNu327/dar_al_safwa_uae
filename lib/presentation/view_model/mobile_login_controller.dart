@@ -191,7 +191,7 @@ class MobileLoginController extends GetxController {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Observable variables
-  var selectedCountryCode = '+968'.obs;
+  var selectedCountryCode = '+971'.obs;
   var isLoading = false.obs;
   var isVerifying = false.obs;
   var isResending = false.obs;
@@ -219,7 +219,7 @@ class MobileLoginController extends GetxController {
   
   // Method to change the country code
   void changeCountryCode(CountryCode newCode) {
-    selectedCountryCode.value = newCode.dialCode ?? '+968';
+    selectedCountryCode.value = newCode.dialCode ?? '+971';
   }
   
   // Validate phone number

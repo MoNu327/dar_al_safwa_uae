@@ -32,6 +32,23 @@ class ApiService {
     }
   }
 
+   Future<Response> getFCMtokenforagent(String uid,String fcmToken) async {
+    try {
+      final response = await apiClient.request(
+        "updateAgentFcmToken",
+        method: "post",
+        data: {
+          "uid": uid,
+          "fcm_token": fcmToken
+        }
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
 
 //   Future<Response> getFullComplaintDetails(String complaintId) async {
 //   try {

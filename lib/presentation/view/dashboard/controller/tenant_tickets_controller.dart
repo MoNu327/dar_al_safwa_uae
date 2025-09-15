@@ -304,112 +304,165 @@ Future<void> getSummaryForTenant(String userId) async {
     );
 
     debugPrint('[getSummaryForTenant] Status: ${response.statusCode}');
-    debugPrint('[getSummaryForTenant] Raw response: ${jsonEncode(response.data)}');
+    debugPrint('[getSummaryForTenant] Response: ${response.data}');
     
     if (response.statusCode == 200 && response.data['success'] == true) {
-      debugPrint('[getSummaryForTenant] Full response structure:');
-      debugPrint(jsonEncode(response.data));
-      
       try {
-        // Let's examine the actual structure first
-        final responseData = response.data;
-        debugPrint('[getSummaryForTenant] Response data keys: ${responseData.keys}');
+        // Extract the data from the 'data' key in the response
+        final responseData = response.data['data'] as Map<String, dynamic>? ?? {};
         
-        if (responseData.containsKey('data')) {
-          debugPrint('[getSummaryForTenant] Data content: ${jsonEncode(responseData['data'])}');
-        }
+        // Create TenantSummary from the response data
+        final summary = TenantSummary.fromJson(responseData);
         
-        // Try parsing with more detailed error handling
-        final summary = TenantSummary.fromJson(response.data);
-        
-        // Always set the summary, even if empty
-        technicianStats.value = summary;
-        
-        // Enhanced debugging for property stats
-        if (summary.propertyStats.isEmpty) {
-          debugPrint('[getSummaryForTenant] Warning: Received empty property stats');
-          debugPrint('[getSummaryForTenant] Checking if data exists in response...');
-          
-          // Check if there's data but parsing failed
-          if (responseData.containsKey('data') && responseData['data'] != null) {
-            final data = responseData['data'];
-            if (data is Map && data.containsKey('property_stats')) {
-              debugPrint('[getSummaryForTenant] Found property_stats in data: ${data['property_stats']}');
-            } else if (data is List && data.isNotEmpty) {
-              debugPrint('[getSummaryForTenant] Found list data: $data');
-            }
-          }
+        // Check if API returned meaningful data
+        if (summary.propertyStats.isNotEmpty) {
+          technicianStats.value = summary;
+          debugPrint('[getSummaryForTenant] Successfully loaded ${summary.propertyStats.length} properties from API');
         } else {
-          debugPrint('[getSummaryForTenant] Successfully parsed ${summary.propertyStats.length} properties');
-          
-          // Detailed property debug output with null safety
-          for (final stat in summary.propertyStats) {
-            debugPrint('''
-            Property Details:
-            - ID: ${stat.propertyId}
-            - Name: ${stat.propertyName}
-            - Total Complaints: ${stat.totalComplaints} (parsed as: ${int.tryParse(stat.totalComplaints)})
-            - Started: ${stat.startedWorking} (parsed as: ${int.tryParse(stat.startedWorking)})
-            - In Progress: ${stat.inProgress} (parsed as: ${int.tryParse(stat.inProgress)})
-            - Resolved: ${stat.resolved} (parsed as: ${int.tryParse(stat.resolved)})
-            --------------------------
-            ''');
-          }
+          debugPrint('[getSummaryForTenant] API returned empty stats, using fallback calculation');
+          calculateStatsFromComplaints();
         }
-        
-        // Also check if the complaints list has data for comparison
-        debugPrint('[getSummaryForTenant] Current complaints count: ${complaints.length}');
-        debugPrint('[getSummaryForTenant] Complaints data: ${complaints.map((c) => c.complaintNumber).join(', ')}');
         
       } catch (e, stackTrace) {
         debugPrint('[getSummaryForTenant] Parse error: $e');
         debugPrint('[getSummaryForTenant] Stack trace: $stackTrace');
-        
-        // Try to extract raw data for manual inspection
-        if (response.data.containsKey('data')) {
-          debugPrint('[getSummaryForTenant] Raw data for manual inspection:');
-          debugPrint(jsonEncode(response.data['data']));
-        }
-        
-        statsErrorMessage.value = 'Data format error: ${e.toString()}';
-        technicianStats.value = null;
+        debugPrint('[getSummaryForTenant] Using fallback calculation due to parse error');
+        calculateStatsFromComplaints();
       }
     } else {
       final errorMsg = response.data['message'] is Map 
           ? response.data['message']['en'] ?? 'Request failed'
           : response.data['message']?.toString() ?? 'Request failed';
-      statsErrorMessage.value = errorMsg;
-      debugPrint('[getSummaryForTenant] API Error: $errorMsg');
-      debugPrint('[getSummaryForTenant] Full error response: ${jsonEncode(response.data)}');
+      
+      debugPrint('[getSummaryForTenant] API Error: $errorMsg, using fallback');
+      calculateStatsFromComplaints();
     }
-  } on DioException catch (e) {
-    final errorMsg = e.response?.data?['message']?.toString() ?? e.message ?? 'Network error';
-    statsErrorMessage.value = errorMsg;
-    debugPrint('[getSummaryForTenant] DioError: $errorMsg');
-    debugPrint('[getSummaryForTenant] Error response: ${e.response?.data}');
-    debugPrint(e.stackTrace?.toString() ?? 'No stack trace');
   } catch (e, stackTrace) {
-    statsErrorMessage.value = 'Unexpected error: ${e.toString()}';
-    debugPrint('[getSummaryForTenant] Unexpected error: $e');
+    debugPrint('[getSummaryForTenant] Exception: $e, using fallback');
     debugPrint('[getSummaryForTenant] Stack trace: $stackTrace');
+    calculateStatsFromComplaints();
   } finally {
     isStatsLoading.value = false;
-    // Force UI update
     technicianStats.refresh();
-    debugPrint('[getSummaryForTenant] Completed loading. Final value: ${technicianStats.value != null ? "not null with ${technicianStats.value?.propertyStats.length} properties" : "null"}');
-    
-    // Add a fallback calculation using existing complaints data
-    if (technicianStats.value?.propertyStats.isEmpty ?? true) {
-      debugPrint('[getSummaryForTenant] No stats from API, calculating from existing complaints...');
-      _calculateStatsFromComplaints();
-    }
   }
 }
 
+// Helper function to show beautiful error dialog
+void _showCreativeErrorDialog({
+  required String title,
+  required String message,
+  required String errorType,
+  IconData icon = Icons.error_outline,
+}) {
+  // Use Get.dialog for a beautiful modal or show a snackbar
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Column(
+        children: [
+          Icon(icon, size: 50, color: Colors.orange),
+          SizedBox(height: 10),
+          Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 5),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              errorType,
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+          ),
+        ],
+      ),
+      content: Text(message, textAlign: TextAlign.center),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(),
+          child: Text("Got it", style: TextStyle(color: Colors.blue)),
+        ),
+        TextButton(
+          onPressed: () {
+            Get.back();
+            getSummaryForTenant(
+              FirebaseAuth.instance.currentUser?.uid ?? ''
+            ); // Retry the request
+          },
+          child: Text("Try again", style: TextStyle(color: Colors.green)),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+}
+
+// Get creative error message based on error type
+String _getCreativeErrorMessage(String errorMsg) {
+  final lowerError = errorMsg.toLowerCase();
+  
+  if (lowerError.contains('network') || lowerError.contains('connection')) {
+    return '🌐 The digital highway seems to have a traffic jam!\n\nCheck your internet connection and try again. Our servers might be taking a quick coffee break. ☕';
+  } else if (lowerError.contains('timeout')) {
+    return '⏰ Our servers are working slower than a sloth on a Sunday!\n\nPlease try again in a moment. Good things take time, but this is ridiculous!';
+  } else if (lowerError.contains('unauthorized') || lowerError.contains('401')) {
+    return '🔐 Who goes there? It seems your access pass has expired.\n\nPlease log in again to continue your property management journey.';
+  } else if (lowerError.contains('not found') || lowerError.contains('404')) {
+    return '🧭 We\'ve searched high and low but this page seems to be on vacation!\n\nDon\'t worry, our digital detectives are on the case.';
+  } else if (lowerError.contains('server')) {
+    return '🛠️ Our hamsters are tired from running the server wheels!\n\nOur team has been alerted and is working to get things back to normal.';
+  } else if (lowerError.contains('validation')) {
+    return '📝 Oops! It looks like some information went on an adventure without us!\n\nPlease check your inputs and try again.';
+  }
+  
+  return '🤖 Beep boop! Something unexpected happened:\n\n$errorMsg\n\nOur robot team is already working on a solution!';
+}
+
+// Get appropriate title based on error
+String _getErrorTitle(String errorMsg) {
+  final lowerError = errorMsg.toLowerCase();
+  
+  if (lowerError.contains('network') || lowerError.contains('connection')) {
+    return 'Connection Interrupted!';
+  } else if (lowerError.contains('timeout')) {
+    return 'Taking Too Long!';
+  } else if (lowerError.contains('unauthorized')) {
+    return 'Access Expired!';
+  } else if (lowerError.contains('not found')) {
+    return 'Page Not Found!';
+  } else if (lowerError.contains('server')) {
+    return 'Server Tired!';
+  }
+  
+  return 'Oops! Something Went Wrong';
+}
+
+// Get appropriate icon based on error
+IconData _getErrorIcon(String errorMsg) {
+  final lowerError = errorMsg.toLowerCase();
+  
+  if (lowerError.contains('network') || lowerError.contains('connection')) {
+    return Icons.wifi_off;
+  } else if (lowerError.contains('timeout')) {
+    return Icons.timer_off;
+  } else if (lowerError.contains('unauthorized')) {
+    return Icons.lock_outline;
+  } else if (lowerError.contains('not found')) {
+    return Icons.search_off;
+  } else if (lowerError.contains('server')) {
+    return Icons.dns;
+  }
+  
+  return Icons.error_outline;
+}
+
 // Add this helper method to calculate stats from existing complaints
-void _calculateStatsFromComplaints() {
+void calculateStatsFromComplaints() {
   if (complaints.isEmpty) {
-    debugPrint('[calculateStatsFromComplaints] No complaints available for calculation');
+    debugPrint('[calculateStatsFromComplaints] No complaints available');
+    technicianStats.value = TenantSummary(propertyStats: [], location: '', userId: '', totalProperties: '');
     return;
   }
   
@@ -421,54 +474,70 @@ void _calculateStatsFromComplaints() {
   for (final complaint in complaints) {
     final propertyKey = complaint.propertyName.isNotEmpty 
         ? complaint.propertyName 
-        : 'Unknown Property';
+        : 'Default Property';
     
     complaintsByProperty.putIfAbsent(propertyKey, () => []).add(complaint);
   }
-  
-  debugPrint('[calculateStatsFromComplaints] Properties found: ${complaintsByProperty.keys.join(', ')}');
   
   // Create property stats from complaints
   final List<PropertyStats> calculatedStats = [];
   
   complaintsByProperty.forEach((propertyName, propertyComplaints) {
     int totalComplaints = propertyComplaints.length;
-    int pending = propertyComplaints.where((c) => 
-        c.status.toLowerCase() == 'pending' || 
-        c.statusText.en.toLowerCase() == 'pending').length;
-    int inProgress = propertyComplaints.where((c) => 
-        c.status.toLowerCase().contains('progress') || 
-        c.statusText.en.toLowerCase().contains('progress')).length;
-    int resolved = propertyComplaints.where((c) => 
-        c.status.toLowerCase() == 'resolved' || 
-        c.status.toLowerCase() == 'completed' ||
-        c.statusText.en.toLowerCase() == 'resolved' ||
-        c.statusText.en.toLowerCase() == 'completed').length;
+    int pending = 0;
+    int inProgress = 0;
+    int resolved = 0;
+    
+    for (final complaint in propertyComplaints) {
+      final status = complaint.status.toLowerCase();
+      final statusText = complaint.statusText.en.toLowerCase();
+      
+      if (status.contains('resolved') || status.contains('completed') || 
+          statusText.contains('resolved') || statusText.contains('completed')) {
+        resolved++;
+      } else if (status.contains('progress') || statusText.contains('progress')) {
+        inProgress++;
+      } else {
+        pending++; // Default to pending for unknown statuses
+      }
+    }
     
     debugPrint('''
     [calculateStatsFromComplaints] $propertyName:
-    - Total: $totalComplaints
-    - Pending: $pending  
-    - In Progress: $inProgress
-    - Resolved: $resolved
+    - Total: $totalComplaints, Pending: $pending, In Progress: $inProgress, Resolved: $resolved
     ''');
     
-    // You'll need to create PropertyStat objects here
-    // This is a placeholder - adjust according to your PropertyStat model
-    // calculatedStats.add(PropertyStat(
-    //   propertyId: propertyComplaints.first.flatnoId ?? '',
-    //   propertyName: propertyName,
-    //   totalComplaints: totalComplaints.toString(),
-    //   startedWorking: pending.toString(),
-    //   inProgress: inProgress.toString(),
-    //   resolved: resolved.toString(),
-    // ));
+    calculatedStats.add(PropertyStats(
+      propertyId: propertyComplaints.first.flatnoId ?? '',
+      propertyName: propertyName,
+      totalComplaints: totalComplaints.toString(),
+      startedWorking: pending.toString(),
+      inProgress: inProgress.toString(),
+      resolved: resolved.toString(),
+    ));
   });
   
-  // Update the stats (you may need to adjust this based on your TenantSummary model)
-  // technicianStats.value = TenantSummary(propertyStats: calculatedStats);
-  // technicianStats.refresh();
+  // If no properties found, create a default one
+  if (calculatedStats.isEmpty && complaints.isNotEmpty) {
+    int totalComplaints = complaints.length;
+    int resolved = complaints.where((c) => 
+        c.status.toLowerCase().contains('resolved') || 
+        c.statusText.en.toLowerCase().contains('resolved')).length;
+    int pending = totalComplaints - resolved;
+    
+    calculatedStats.add(PropertyStats(
+      propertyId: 'default',
+      propertyName: 'My Properties',
+      totalComplaints: totalComplaints.toString(),
+      startedWorking: pending.toString(),
+      inProgress: '0',
+      resolved: resolved.toString(),
+    ));
+  }
   
-  debugPrint('[calculateStatsFromComplaints] Fallback calculation completed');
+  technicianStats.value = TenantSummary(propertyStats: calculatedStats, location: '', userId: '', totalProperties: '');
+  technicianStats.refresh();
+  
+  debugPrint('[calculateStatsFromComplaints] Fallback calculation completed with ${calculatedStats.length} properties');
 }
 }

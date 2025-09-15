@@ -261,7 +261,7 @@ class MobileLoginScreen extends StatelessWidget {
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - verticalPadding * 2,
+                  minHeight: constraints.maxHeight - verticalPadding * 3,
                 ),
                 child: IntrinsicHeight(
                   child: Column(
@@ -362,7 +362,7 @@ class MobileLoginScreen extends StatelessWidget {
           children: [
             Obx(
               () => Container(
-                width: screenWidth * 0.25,
+                width: screenWidth * 0.27,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.black500),
@@ -370,7 +370,7 @@ class MobileLoginScreen extends StatelessWidget {
                 child: CountryCodePicker(
                   initialSelection:
                       _mobileLoginController.selectedCountryCode.value.isEmpty
-                          ? '+968' // Default to Oman if no selection
+                          ?'' // Default to Oman if no selection
                           : _mobileLoginController.selectedCountryCode.value,
                   onChanged: _mobileLoginController.changeCountryCode,
                   countryFilter: const ['OM', 'AE', 'US'],
@@ -389,7 +389,7 @@ class MobileLoginScreen extends StatelessWidget {
                   ),
                   textStyle: GoogleFonts.poppins(
                     color: AppColors.black,
-                    fontSize: screenHeight * 0.012,
+                    fontSize: screenHeight * 0.01,
                   ),
                   headerAlignment: MainAxisAlignment.spaceBetween,
                   textOverflow: TextOverflow.clip,

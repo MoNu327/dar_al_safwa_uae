@@ -51,7 +51,7 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
     isLoading.value = false;
 
     // Pass result back and close the page
-    Get.back(result: {'mobile': mobile});
+    Get.back(result: {'phoneNumber': mobile});
   }
 
   @override

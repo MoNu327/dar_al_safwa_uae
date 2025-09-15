@@ -594,8 +594,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:majan/data/repositories/api_services.dart';
 import 'package:majan/domain/controller/notification.dart';
 
 class FirebaseNotificationService {
@@ -607,6 +607,7 @@ class FirebaseNotificationService {
   StreamSubscription? _tokenRefreshSubscription;
 
   final GlobalKey<NavigatorState> navigatorKey;
+    final ApiService _apiService = Get.put(ApiService());
 
   // Notification channels for different types
   static const String _chatChannelId = 'chat_channel';
@@ -1010,6 +1011,9 @@ class FirebaseNotificationService {
   Future<void> _saveTokenToFirestore(String? token, User user) async {
     if (token == null) return;
     try {
+            final response = await _apiService.getFCMtokenforagent(token, user.uid);
+            debugPrint('FCM token saved to backend: $response');
+
       final isTechnician = await _isUserTechnician(user.uid);
       final collectionName = isTechnician ? 'technicians' : 'users';
       await FirebaseFirestore.instance.collection(collectionName).doc(user.uid).set({

@@ -1401,7 +1401,6 @@ import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
-
 import '../../data/model/user_model.dart';
 import '../../domain/controller/user_controller.dart';
 
@@ -1446,14 +1445,6 @@ class AuthService extends GetxController {
     ever(firebaseUser, handleAuthChanged);
   }
 
-//  void handleAuthChanged(User? user) async {
-//   if (user == null) {
-//     Get.offAllNamed('/login');
-//   } else {
-//     // Instead of duplicating role logic, reuse existing Google user handler
-//     await _handleExistingGoogleUser(user);
-//   }
-// }
 void handleAuthChanged(User? user) async {
   if (user == null) {
     Get.offAllNamed('/login');
@@ -1499,7 +1490,7 @@ void handleAuthChanged(User? user) async {
   }
 
   // Phone authentication methods
-    Future<void> signInWithPhone({
+  Future<void> signInWithPhone({
     required String phoneNumber,
     required Function(PhoneAuthCredential) onVerificationCompleted,
     required Function(FirebaseAuthException) onVerificationFailed,
@@ -1699,131 +1690,7 @@ void handleAuthChanged(User? user) async {
     }
   }
 
-  // // Google Sign-In for Users/Tenants
-  // Future<UserCredential?> signInWithGoogle() async {
-  //   try {
-  //     isSignInGoogle(true);
-  //     debugPrint('Starting Google sign-in...');
 
-  //     // Trigger Google Sign-In flow
-  //     final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-  //     if (googleUser == null) return null;
-
-  //     final GoogleSignInAuthentication googleAuth =
-  //         await googleUser.authentication;
-
-  //     // Create credentials
-  //     final OAuthCredential credential = GoogleAuthProvider.credential(
-  //       accessToken: googleAuth.accessToken,
-  //       idToken: googleAuth.idToken,
-  //     );
-
-  //     // Sign in to Firebase
-  //     final UserCredential userCredential =
-  //         await auth.signInWithCredential(credential);
-
-  //     // Check if this is a new user
-  //     if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-  //       // New user - set default role as 'user'
-  //       await setUserRole(
-  //         'user',
-  //       );
-
-  //       final userDoc = await _firestore
-  //           .collection('users')
-  //           .doc(userCredential.user!.uid)
-  //           .get();
-
-  //       if (userDoc.exists) {
-  //         final role = userDoc.data()?['role'] ?? 'user';
-  //         userRole.value = role;
-
-  //         // Store user details for app-wide access
-  //         final userData = userDoc.data();
-  //         // Redirect based on role
-
-  //         final userModel = UserModel(
-  //           location: userData?['location'] ?? '',
-  //           phoneNumber: userData?['phoneNumber'] ?? '',
-  //           uid: userData?['uid'],
-  //           email: userData?['email'],
-  //           name: userData?['displayName'] ?? '',
-  //           role: userData?['role'] ?? 'user',
-  //           status: userData?['status'] ?? 'pending',
-  //           // Add other fields as needed
-  //         );
-
-  //         Get.find<UserController>().currentUser = userModel;
-  //         debugPrint('User details stored: ${userModel.toJson()}');
-
-  //         navigateToHome();
-  //       } else {}
-  //       // Redirect to complete profile or role selection
-  //       // Get.offAllNamed(AppRoute.completeProfile);
-  //     } else {
-  //       // Existing user - handle according to their role
-  //       await _handleExistingGoogleUser(userCredential.user!);
-  //     }
-
-  //     return userCredential;
-  //   } catch (e) {
-  //     Get.snackbar('Error', 'Google sign-in failed: ${e.toString()}');
-  //     debugPrint('Google sign-in error: $e');
-  //     if (e is FirebaseAuthException) {
-  //       if (e.code == 'account-exists-with-different-credential') {
-  //         Get.snackbar(
-  //             'Error', 'Account already exists with different credential');
-  //       } else if (e.code == 'operation-not-allowed') {
-  //         Get.snackbar('Error', 'Operation not allowed');
-  //       } else {
-  //         Get.snackbar('Error', 'Google sign-in failed: ${e.message}');
-  //       }
-  //     } else {
-  //       Get.snackbar('Error', 'An unexpected error occurred: ${e.toString()}');
-  //     }
-  //     return null;
-  //   } finally {
-  //     isSignInGoogle(false);
-  //   }
-  // }
-
-  // Future<void> _handleExistingGoogleUser(User user) async {
-  //   // Check user's role in Firestore
-  //   final userDoc = await _firestore.collection('users').doc(user.uid).get();
-
-  //   if (userDoc.exists) {
-  //     final role = userDoc.data()?['role'] ?? 'user';
-  //     userRole.value = role;
-
-  //     // Store user details for app-wide access
-  //     final userData = userDoc.data();
-  //     // Redirect based on role
-
-  //     final userModel = UserModel(
-  //       location: userData?['location'] ?? '',
-  //       phoneNumber: userData?['phoneNumber'] ?? '',
-  //       uid: userData?['uid'] ?? user.uid,
-  //       email: userData?['email'] ?? user.email,
-  //       name: userData?['displayName'] ?? '',
-  //       role: userData?['role'] ?? 'user',
-  //       status: userData?['status'] ?? 'pending',
-  //       // Add other fields as needed
-  //     );
-
-  //     Get.find<UserController>().currentUser = userModel;
-  //     debugPrint('User details stored: ${userModel.toJson()}');
-
-  //     navigateToHome();
-  //   } else {
-  //     // Legacy user - create record with default role
-  //     await setUserRole(
-  //       'user',
-  //     );
-  //     navigateToHome();
-  //   }
-  // }
-
-// Google Sign-In for Users Only
 Future<UserCredential?> signInWithGoogle() async {
   try {
     debugPrint('🔐 Google Sign-In started...');
@@ -2007,12 +1874,7 @@ Future<void> _handleNewGoogleUser(User user) async {
 
       navigateToHome();
 
-      // Navigate to home or complete profile if needed
-      // if (user.displayName?.isEmpty ?? true) {
-      //   Get.offAllNamed(AppRoute.completeProfile);
-      // } else {
-      //   navigateToHome();
-      // }
+     
     } catch (e) {
       debugPrint('Error creating user account: $e');
       Get.snackbar('Error', 'Failed to create account. Please try again.');
@@ -2429,7 +2291,8 @@ if (userModel.role == 'tenant') {
 Future<void> _handleTechnicianUser(User user) async {
   try {
     final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
-    // if (!technicianDoc.exists) {
+    // if (!technicianDoc.exists || technicianDoc.data()?['role'] != 'technician') {
+    //   debugPrint('Technician document not found or role mismatch');
     //   await auth.signOut();
     //   Get.offAllNamed(AppRoute.login);
     //   return;
@@ -2453,111 +2316,6 @@ Future<void> _handleTechnicianUser(User user) async {
     Get.offAllNamed(AppRoute.login);
   }
 }
-
-  // Future<UserCredential?> signInAsTechnician() async {
-  // try {
-  //   isSignInTechnician(true);
-  //   debugPrint('Attempting technician sign in...');
-  //   final String email = emailController.text.trim().toLowerCase();
-  //   final String password = passwordController.text.trim();
-
-    // First, verify the email exists in Firebase Auth
-    // debugPrint('Checking if email exists in Firebase Auth...');
-    // try {
-    //   final methods = await auth.fetchSignInMethodsForEmail(email);
-    //   if (methods.isEmpty) {
-    //     Get.snackbar('Error', 'No account found with this email');
-    //     return null;
-    //   }
-    //   debugPrint('Email exists in Firebase Auth');
-    // } catch (e) {
-    //   debugPrint('Error checking user existence: $e');
-    //   Get.snackbar('Error', 'Error verifying account');
-    //   return null;
-    // }
-
-    // Proceed with sign in
-//     debugPrint('Attempting Firebase authentication...');
-//     final credential = await auth.signInWithEmailAndPassword(
-//       email: email,
-//       password: password,
-//     );
-
-//     if (credential.user == null) {
-//       throw FirebaseAuthException(
-//         code: 'auth-failed',
-//         message: 'Authentication failed unexpectedly',
-//       );
-//     }
-
-//     debugPrint('Firebase authentication successful, verifying Technician role...');
-//     final userDoc = await _firestore.collection('technicians').doc(credential.user?.uid).get();
-
-//     if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
-//       debugPrint('Technician verification successful');
-//       userRole.value = 'technician';
-
-//       final userData = userDoc.data() as Map<String, dynamic>?;
-
-//       final userModel = TechnicianProfile(
-//         uid: userData?['uid'] ?? '',
-//         location: userData?['location'] ?? '',
-//         fullName: userData?['fullName'] ?? '',
-//         email: userData?['email'] ?? credential.user?.email ?? '',
-//         mobile: userData?['mobile'] ?? userData?['phoneNumber'] ?? '',
-//         photoURL: userData?['photoURL'] ?? '',
-//         role: userData?['role'] ?? 'technician',
-//       );
-
-//       // Store user details in TechnicianController
-//       Get.find<TechnicianController>().currentUser = userModel;
-//       debugPrint('Technician details stored: ${userModel.toJson()}');
-
-//       // Navigate to Technician Dashboard
-//       Get.offAllNamed(AppRoute.technicianDashboard);
-//       return credential;
-//     } else {
-//       debugPrint('Account is not registered as a technician');
-//       await auth.signOut();
-//       Get.snackbar('Error', 'This account is not registered as a technician');
-//       return null;
-//     }
-//   } on FirebaseAuthException catch (e) {
-//     debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
-    
-//     String errorMessage = 'Technician login failed';
-//     if (e.code == 'wrong-password') {
-//       errorMessage = 'Incorrect password';
-//     } else if (e.code == 'user-not-found') {
-//       errorMessage = 'Account not found';
-//     } else if (e.code == 'user-disabled') {
-//       errorMessage = 'Account disabled';
-//     }
-    
-//     Get.snackbar('Error', errorMessage);
-//     return null;
-//   } catch (e) {
-//     debugPrint('Unexpected Error: $e');
-//     Get.snackbar('Error', 'An unexpected error occurred');
-//     return null;
-//   } finally {
-//     isSignInTechnician(false);
-//     debugPrint('Sign in process completed');
-//   }
-// }
-// void _handleAuthError(FirebaseAuthException e) {
-//   debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
-  
-//   final message = switch (e.code) {
-//     'invalid-credential' => 'Invalid email or password',
-//     'user-disabled' => 'This account has been disabled',
-//     'user-not-found' => 'No account found with this email',
-//     'wrong-password' => 'Incorrect password',
-//     _ => 'Technician login failed: ${e.message}',
-//   };
-  
-//   Get.snackbar('Error', message);
-// }
 
   Future<void> setUserRole(String role, {String? tenantId}) async {
     final user = auth.currentUser;
@@ -2594,34 +2352,10 @@ Future<void> _handleTechnicianUser(User user) async {
       return;
     }
 
-    // First check if this is an allowed agent email (optional security check)
-    // if (!_isValidAgentEmail(user.email)) {
-    //   Get.snackbar('Error', 'This email is not authorized for agent access');
-    //   await _auth.signOut();
-    //   return;
-    // }
-
     try {
       // Create/update document in both collections for easy querying
       final batch = _firestore.batch();
 
-      // // Main users collection
-      // final userRef = _firestore.collection('agents').doc(user.uid);
-      // batch.set(
-      //     userRef,
-      //     {
-      //       'uid': user.uid,
-      //       'email': user.email,
-      //       'displayName': user.displayName ?? 'Agent',
-      //       'photoURL': user.photoURL,
-      //       'role': 'agent',
-      //       'isApproved': false, // Admin needs to approve
-      //       'createdAt': FieldValue.serverTimestamp(),
-      //       'lastLogin': FieldValue.serverTimestamp(),
-      //     },
-      //     SetOptions(merge: true));
-
-      // Agents-specific collection
       final agentRef = _firestore.collection('agents').doc(user.uid);
       batch.set(
           agentRef,
@@ -2650,13 +2384,21 @@ Future<void> _handleTechnicianUser(User user) async {
       debugPrint('Error setting agent role: $e');
     }
   }
-  
+    Future<UserModel?> loginWithPhone(String phone) async {
+  final snapshot = await FirebaseFirestore.instance
+      .collection("users")
+      .where("mobile", isEqualTo: phone)
+      .limit(1)
+      .get();
 
-  // bool _isValidAgentEmail(String? email) {
-  //   // Add your domain validation logic here
-  //   const allowedDomains = ['@yourcompany.com', '@agent.yourcompany.com'];
-  //   return email != null && allowedDomains.any(email.endsWith);
-  // }
+  if (snapshot.docs.isNotEmpty) {
+    final data = snapshot.docs.first.data();
+    return UserModel.fromJson(data);
+  } else {
+    return null; // user not found
+  }
+}
+
   void navigateGuestToHome() async {
     await _googleSignIn.signOut();
     await auth.signOut();
