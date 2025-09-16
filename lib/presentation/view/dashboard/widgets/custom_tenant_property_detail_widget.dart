@@ -317,6 +317,7 @@ Widget _buildActionButtons(TenantPropertyModel property) {
                 propertyId: property.propertyId,
                 unitAddressId: property.unitAddressId,
                 userId: userId,
+                FlatNO: property.unitNumber,
               ));
             },
           ),

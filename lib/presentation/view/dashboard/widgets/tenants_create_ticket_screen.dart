@@ -23,6 +23,8 @@ class TenantsCreateTicketScreen extends StatefulWidget {
   final int propertyId;
   final int unitAddressId;
   final String userId;
+  final String? FlatNO;
+
 
   const TenantsCreateTicketScreen({
     super.key,
@@ -30,6 +32,7 @@ class TenantsCreateTicketScreen extends StatefulWidget {
     required this.propertyId,
     required this.unitAddressId,
     required this.userId,
+    required this.FlatNO,
   });
 
   @override
@@ -120,7 +123,7 @@ Future<void> _loadsummary(String userId) async {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: CustomTextWidget(
-                  title: "${widget.propertyName} (ID: ${widget.propertyId})",
+                  title: "${widget.propertyName} (FlatNO: ${widget.FlatNO ?? 'N/A'})",
                   fontSize: Get.height * 0.016,
                   color: AppColors.black,
                 ),
