@@ -78,14 +78,10 @@ class AgentProperty {
 
 @JsonSerializable()
 class AgentPropertyPrice {
-  @JsonKey(name: 'raw')
-  final String? raw;
-
   @JsonKey(name: 'formatted')
-  final LocalizedText? formatted;
+  final FormattedPrice? formatted;
 
   AgentPropertyPrice({
-    this.raw,
     this.formatted,
   });
 
@@ -93,6 +89,29 @@ class AgentPropertyPrice {
       _$AgentPropertyPriceFromJson(json);
 
   Map<String, dynamic> toJson() => _$AgentPropertyPriceToJson(this);
+}
+
+@JsonSerializable()
+class FormattedPrice {
+  @JsonKey(name: 'raw')
+  final String? raw;
+
+  @JsonKey(name: 'en')
+  final String? en;
+
+  @JsonKey(name: 'ar')
+  final String? ar;
+
+  FormattedPrice({
+    this.raw,
+    this.en,
+    this.ar,
+  });
+
+  factory FormattedPrice.fromJson(Map<String, dynamic> json) =>
+      _$FormattedPriceFromJson(json);
+
+  Map<String, dynamic> toJson() => _$FormattedPriceToJson(this);
 }
 
 @JsonSerializable()

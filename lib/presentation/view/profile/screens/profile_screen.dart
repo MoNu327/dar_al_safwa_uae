@@ -198,11 +198,11 @@ class ProfileViewScreen extends StatelessWidget {
                                     (authService.userRole.value == 'agent')
                                 ? Column(
                                     children: [
-                                      _buildProfessionalInfo(),
+                                      // _buildProfessionalInfo(),
                                       kHeight(0.02),
                                       _buildStatsRow(),
                                       kHeight(0.02),
-                                      TestimonialSection(),
+                                      // TestimonialSection(),
                                       kHeight(0.01),
                                     ],
                                   )
@@ -272,86 +272,86 @@ class ProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfessionalInfo() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.verified,
-              color: AppColors.blueColor,
-              size: smallIconSize,
-            ),
-            kWidth(0.01),
-            CustomTextWidget(
-              title: 'Verified Real Estate Agent',
-              fontSize: H18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.black,
-            ),
-          ],
-        ),
-        kHeight(0.01),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              width: Get.width * 0.15,
-              decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: AppColors.whiteLight),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.star,
-                    color: Colors.orange,
-                    size: smallIconSize,
-                  ),
-                  kWidth(0.01),
-                  Text(
-                    '4.8',
-                    style: TextStyle(
-                      fontSize: tagTitle,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.black600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            kWidth(0.01),
-            CustomTextWidget(
-              title: '(120 reviews)',
-              fontSize: tagTitle,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkGrey,
-            ),
-          ],
-        ),
-        kHeight(0.01),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.location_on,
-              color: AppColors.black,
-              size: smallIconSize,
-            ),
-            kWidth(0.01),
-            CustomTextWidget(
-              title: profileController.displayLocation,
-              fontSize: tagTitle,
-              fontWeight: FontWeight.bold,
-              color: AppColors.black,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  // Widget _buildProfessionalInfo() {
+  //   return Column(
+  //     children: [
+  //       Row(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           Icon(
+  //             Icons.verified,
+  //             color: AppColors.blueColor,
+  //             size: smallIconSize,
+  //           ),
+  //           kWidth(0.01),
+  //           CustomTextWidget(
+  //             title: 'Verified Real Estate Agent',
+  //             fontSize: H18,
+  //             fontWeight: FontWeight.bold,
+  //             color: AppColors.black,
+  //           ),
+  //         ],
+  //       ),
+  //       kHeight(0.01),
+  //       Row(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           Container(
+  //             padding: EdgeInsets.all(8),
+  //             width: Get.width * 0.15,
+  //             decoration: BoxDecoration(
+  //                 borderRadius: BorderRadius.circular(14),
+  //                 color: AppColors.whiteLight),
+  //             child: Row(
+  //               mainAxisAlignment: MainAxisAlignment.center,
+  //               children: [
+  //                 Icon(
+  //                   Icons.star,
+  //                   color: Colors.orange,
+  //                   size: smallIconSize,
+  //                 ),
+  //                 kWidth(0.01),
+  //                 Text(
+  //                   '4.8',
+  //                   style: TextStyle(
+  //                     fontSize: tagTitle,
+  //                     fontWeight: FontWeight.bold,
+  //                     color: AppColors.black600,
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //           kWidth(0.01),
+  //           CustomTextWidget(
+  //             title: '(120 reviews)',
+  //             fontSize: tagTitle,
+  //             fontWeight: FontWeight.bold,
+  //             color: AppColors.darkGrey,
+  //           ),
+  //         ],
+  //       ),
+  //       kHeight(0.01),
+  //       Row(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           Icon(
+  //             Icons.location_on,
+  //             color: AppColors.black,
+  //             size: smallIconSize,
+  //           ),
+  //           kWidth(0.01),
+  //           CustomTextWidget(
+  //             title: profileController.displayLocation,
+  //             fontSize: tagTitle,
+  //             fontWeight: FontWeight.bold,
+  //             color: AppColors.black,
+  //           ),
+  //         ],
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildStatsRow() {
     return Container(
@@ -373,10 +373,10 @@ class ProfileViewScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildStatItem('24', 'Listings'),
-          _buildStatItem('14', 'Sold Property'),
-          _buildStatItem('5Y', 'Experience'),
-          _buildStatItem('48L', 'Sales'),
+          // _buildStatItem('24', 'Listings'),
+          // _buildStatItem('14', 'Sold Property'),
+          // _buildStatItem('5Y', 'Experience'),
+          // _buildStatItem('48L', 'Sales'),
         ],
       ),
     );

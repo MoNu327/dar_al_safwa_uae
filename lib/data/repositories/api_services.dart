@@ -487,16 +487,24 @@ Future<Response> updateTechnicianComplaint({
     }
   }
 
-  Future<Response> getAgentPropertyList() async {
-    try {
-      final response = await apiClient.request("agent-properties",
-          method: "post", data: {"uid": "jznkHrlfH5eFp2Vsc2Jvi7gSd5m2"});
-
-      return response;
-    } catch (e) {
-      rethrow;
+   Future<Response> getAgentPropertyList() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception("No user logged in");
     }
+
+    final response = await apiClient.request(
+      "agent-properties",
+      method: "post",
+      data: {"uid": user.uid}, // dynamically from Firebase
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
   }
+}
 
   Future<Response> getAgentPropertiesSearch() async {
     // API Refining Needed
@@ -800,10 +808,14 @@ String _getContentType(String fileName) {
   // Submit User Details for Booking result
   Future<Response> fetchingAgentChatReports(String uid) async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
+       if (user == null) {
+      throw Exception("No user logged in");
+       }
       final response = await apiClient.request(
         "chatListByAgent",
         method: "post",
-        data: {"uid": uid},
+        data: {"uid": user.uid},
       );
 
       return response;

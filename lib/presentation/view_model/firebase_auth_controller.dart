@@ -1517,7 +1517,7 @@ class AuthService extends GetxController {
       if (agentDoc.exists && agentDoc.data()?['role'] == 'agent' && agentDoc.data()?['status'] == 'approved') {
         debugPrint('✅ User is approved agent');
         await _handleAgentUser(user);
-        Get.offAllNamed(AppRoute.agentdashboard);
+        Get.offAllNamed(AppRoute.navbar);
         return;
       }
       

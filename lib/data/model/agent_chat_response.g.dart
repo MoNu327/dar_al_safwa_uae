@@ -21,8 +21,8 @@ Map<String, dynamic> _$AgentChatResponseToJson(AgentChatResponse instance) =>
     };
 
 Message _$MessageFromJson(Map<String, dynamic> json) => Message(
-      en: json['en'] as String,
-      ar: json['ar'] as String,
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
     );
 
 Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
@@ -31,44 +31,46 @@ Map<String, dynamic> _$MessageToJson(Message instance) => <String, dynamic>{
     };
 
 ChatData _$ChatDataFromJson(Map<String, dynamic> json) => ChatData(
-      interests: (json['interests'] as List<dynamic>)
-          .map((e) => Interest.fromJson(e as Map<String, dynamic>))
+      interests: (json['interests'] as List<dynamic>?)
+          ?.map((e) => Interest.fromJson(e as Map<String, dynamic>))
           .toList(),
-      propertyCounts: (json['property_counts'] as List<dynamic>)
-          .map((e) => PropertyCount.fromJson(e as Map<String, dynamic>))
+      propertyCounts: (json['property_counts'] as List<dynamic>?)
+          ?.map((e) => PropertyCount.fromJson(e as Map<String, dynamic>))
           .toList(),
-      unrepliedCount: (json['unreplied_count'] as num).toInt(),
-      agentDetails:
-          AgentDetails.fromJson(json['agent_details'] as Map<String, dynamic>),
+      unrepliedCount: (json['unreplied_count'] as num?)?.toInt() ?? 0,
+      agentDetails: json['agent_details'] == null
+          ? null
+          : AgentDetails.fromJson(
+              json['agent_details'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$ChatDataToJson(ChatData instance) => <String, dynamic>{
-      'interests': instance.interests.map((e) => e.toJson()).toList(),
+      'interests': instance.interests?.map((e) => e.toJson()).toList(),
       'property_counts':
-          instance.propertyCounts.map((e) => e.toJson()).toList(),
+          instance.propertyCounts?.map((e) => e.toJson()).toList(),
       'unreplied_count': instance.unrepliedCount,
-      'agent_details': instance.agentDetails.toJson(),
+      'agent_details': instance.agentDetails?.toJson(),
     };
 
 Interest _$InterestFromJson(Map<String, dynamic> json) => Interest(
       id: json['id'] as String,
-      firebaseChatId: json['firebase_chat_id'] as String,
-      agentId: json['agent_id'] as String,
-      userId: json['user_id'] as String,
-      propertyId: json['property_id'] as String,
-      unitId: json['unit_id'] as String,
-      unitTitle: json['unit_title'] as String,
-      propertyTitle: json['property_title'] as String,
-      lastMessage: json['last_message'] as String,
-      lastMessageAt: json['last_message_at'] as String,
-      userName: json['user_name'] as String,
+      firebaseChatId: json['firebase_chat_id'] as String?,
+      agentId: json['agent_id'] as String?,
+      userId: json['user_id'] as String?,
+      propertyId: json['property_id'] as String?,
+      unitId: json['unit_id'] as String?,
+      unitTitle: json['unit_title'] as String?,
+      propertyTitle: json['property_title'] as String?,
+      lastMessage: json['last_message'] as String?,
+      lastMessageAt: json['last_message_at'] as String?,
+      userName: json['user_name'] as String?,
       userPhoto: json['user_photo'] as String?,
-      agentName: json['agent_name'] as String,
+      agentName: json['agent_name'] as String?,
       agentPhoto: json['agent_photo'] as String?,
-      status: json['status'] as String,
-      firebaseCreatedAt: json['firebase_created_at'] as String,
-      createdAt: json['created_at'] as String,
-      updatedAt: json['updated_at'] as String,
+      status: json['status'] as String?,
+      firebaseCreatedAt: json['firebase_created_at'] as String?,
+      createdAt: json['created_at'] as String?,
+      updatedAt: json['updated_at'] as String?,
       propstatus: json['propstatus'] as String?,
       unreplied: json['unreplied'] as bool,
     );
@@ -98,10 +100,10 @@ Map<String, dynamic> _$InterestToJson(Interest instance) => <String, dynamic>{
 
 PropertyCount _$PropertyCountFromJson(Map<String, dynamic> json) =>
     PropertyCount(
-      propertyId: json['property_id'] as String,
-      propertyTitle: json['property_title'] as String,
-      count: json['count'] as String,
-      soldCount: json['sold_count'] as String,
+      propertyId: json['property_id'] as String?,
+      propertyTitle: json['property_title'] as String?,
+      count: json['count'] as String? ?? '0',
+      soldCount: json['sold_count'] as String? ?? '0',
     );
 
 Map<String, dynamic> _$PropertyCountToJson(PropertyCount instance) =>
@@ -113,8 +115,8 @@ Map<String, dynamic> _$PropertyCountToJson(PropertyCount instance) =>
     };
 
 AgentDetails _$AgentDetailsFromJson(Map<String, dynamic> json) => AgentDetails(
-      agentId: json['agent_id'] as String,
-      agentName: json['agent_name'] as String,
+      agentId: json['agent_id'] as String?,
+      agentName: json['agent_name'] as String?,
     );
 
 Map<String, dynamic> _$AgentDetailsToJson(AgentDetails instance) =>
