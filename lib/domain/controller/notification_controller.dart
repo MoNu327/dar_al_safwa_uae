@@ -5,8 +5,6 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'dart:convert';
 
-import 'package:majan/data/model/notification_model.dart';
-
 class NotificationController extends GetxController {
   static const String _storageKey = 'stored_notifications';
   final GetStorage _storage = GetStorage();

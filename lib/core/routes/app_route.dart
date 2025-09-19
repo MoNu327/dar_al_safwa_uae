@@ -1,6 +1,7 @@
 import 'package:majan/data/model/technican_ticket_view_model.dart';
 import 'package:majan/presentation/view/dashboard/screens/dashboard_screen.dart';
 import 'package:majan/presentation/view/dashboard/widgets/add_property_screen.dart';
+import 'package:majan/presentation/view/dashboard/widgets/agent_dashboard.dart';
 import 'package:majan/presentation/view/dashboard/widgets/customer_enquiry_screen.dart';
 import 'package:majan/presentation/view/dashboard/widgets/properties_screen.dart';
 import 'package:majan/presentation/view/dashboard/widgets/technician_dashboard.dart';
@@ -28,6 +29,7 @@ import 'package:majan/presentation/widgets/bottom_navbar_widget.dart';
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:majan/presentation/widgets/notification_screen.dart';
 
 import '../../presentation/view/agent/screens/approval_pending.dart';
 import '../../presentation/view/chat/screen/agent_chat_screen.dart';
@@ -52,6 +54,7 @@ class AppRoute {
   static const String propertyListing = '/propertyListing';
   static const String propertyDetails = '/propertyDetails';
   static const String agent = '/agent';
+   static const String agentdashboard = '/agentdashboard';
   static const String viewGallery = '/viewGallery';
   static const String mobileLoginOtp = '/mobileLoginOtp';
   static const String approvalPendingPage = '/approvalPendingPage';
@@ -71,12 +74,17 @@ class AppRoute {
   static const String technicianTickets = '/technician-tickets';
   static const String technicianRectifyTicket = '/technician-rectify-ticket';
   static const String ticketDetails = '/ticket-details';
+   static const String notification = '/notifications';
 
 
   static final routes = [
     GetPage(
       name: signupWarning,
       page: () => SignupWarningScreen(),
+    ),
+     GetPage(
+      name: notification,
+      page: () => NotificationsScreen(),
     ),
     GetPage(
       name: initial,
@@ -101,6 +109,10 @@ class AppRoute {
     GetPage(
       name: signin,
       page: () => SigninScreen(),
+    ),
+      GetPage(
+      name: agentdashboard,
+      page: () => AgentDashboard(),
     ),
     GetPage(
       name: navbar,

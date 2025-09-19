@@ -1407,7 +1407,12 @@ import '../../domain/controller/user_controller.dart';
 class AuthService extends GetxController {
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+    ],
+  );
 
   final Rxn<User> firebaseUser = Rxn<User>();
   final RxString userRole = RxString('');
@@ -1445,20 +1450,137 @@ class AuthService extends GetxController {
     ever(firebaseUser, handleAuthChanged);
   }
 
-void handleAuthChanged(User? user) async {
-  if (user == null) {
-    Get.offAllNamed('/login');
-  } else {
-    // Check if user is a technician first
-    final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
-    if (technicianDoc.exists && technicianDoc.data()?['role'] == 'technician') {
-      await _handleTechnicianUser(user);
-      Get.offAllNamed(AppRoute.technicianDashboard);
+// void handleAuthChanged(User? user) async {
+//   if (user == null) {
+//     Get.offAllNamed('/login');
+//   } else {
+//     // Check if user is a technician first
+//     final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
+//     if (technicianDoc.exists && technicianDoc.data()?['role'] == 'technician') {
+//       await _handleTechnicianUser(user);
+//       Get.offAllNamed(AppRoute.technicianDashboard);
+//       return;
+//     }
+    
+//     // Check if user is an agent
+//     final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
+//     if (agentDoc.exists && agentDoc.data()?['role'] == 'agent' && agentDoc.data()?['status'] == 'approved') {
+//       await _handleAgentUser(user);
+//       Get.offAllNamed(AppRoute.agentdashboard);
+//       return;
+//     }
+    
+//     // Otherwise handle as regular user
+//     await _handleExistingGoogleUser(user);
+//   }
+// }
+ void handleAuthChanged(User? user) async {
+    debugPrint('🔄 Auth state changed. User: ${user?.email ?? 'null'}');
+    
+    if (user == null) {
+      debugPrint('👤 No user - redirecting to login');
+      Get.offAllNamed('/login');
       return;
     }
+
+    debugPrint('👤 User found: ${user.uid}');
+    debugPrint('📧 Email: ${user.email}');
+    debugPrint('📱 Phone: ${user.phoneNumber}');
+    debugPrint('🆔 Display Name: ${user.displayName}');
+
+    // If this is right after Google sign-in and email is null, 
+    // let the sign-in process handle it instead of this auth state change
+    if (user.email == null && user.providerData.isNotEmpty) {
+      final provider = user.providerData.first.providerId;
+      if (provider == 'google.com') {
+        debugPrint('🔄 Google sign-in in progress, letting sign-in method handle user creation');
+        return;
+      }
+    }
+
+    try {
+      // Check if user is a technician first
+      debugPrint('🔍 Checking technician collection...');
+      final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
+      
+      if (technicianDoc.exists && technicianDoc.data()?['role'] == 'technician') {
+        debugPrint('✅ User is technician');
+        await _handleTechnicianUser(user);
+        Get.offAllNamed(AppRoute.technicianDashboard);
+        return;
+      }
+      
+      // Check if user is an agent
+      debugPrint('🔍 Checking agents collection...');
+      final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
+      
+      if (agentDoc.exists && agentDoc.data()?['role'] == 'agent' && agentDoc.data()?['status'] == 'approved') {
+        debugPrint('✅ User is approved agent');
+        await _handleAgentUser(user);
+        Get.offAllNamed(AppRoute.agentdashboard);
+        return;
+      }
+      
+      // Check regular users collection
+      debugPrint('🔍 Checking users collection...');
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        debugPrint('✅ User document found in users collection');
+        debugPrint('📊 User data: $userData');
+        await _handleExistingGoogleUser(user);
+      } else {
+        debugPrint('❌ No user document found in users collection');
+        debugPrint('🔄 User may have been created through Google sign-in process');
+        // Don't immediately redirect - the Google sign-in process should handle this
+      }
+      
+    } catch (e) {
+      debugPrint('❌ Error in handleAuthChanged: $e');
+      Get.snackbar(
+        'Authentication Error', 
+        'Failed to load user data. Please try signing in again.',
+        backgroundColor: Colors.orange[100],
+        colorText: Colors.orange[800],
+      );
+    }
+  }
+
+
+
+Future<void> _handleAgentUser(User user) async {
+  try {
+    final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
     
-    // Otherwise handle as regular user
-    await _handleExistingGoogleUser(user);
+    if (!agentDoc.exists || agentDoc.data()?['role'] != 'agent') {
+      debugPrint('Agent document not found or role mismatch');
+      await auth.signOut();
+      Get.offAllNamed('/login');
+      return;
+    }
+
+    final userData = agentDoc.data()!;
+    userRole.value = 'agent';
+    
+    final userModel = AgentModel(
+      dob: userData['dob'] ?? '',
+      gender: userData['gender'] ?? '',
+      location: userData['location'] ?? '',
+      uid: user.uid,
+      email: user.email ?? userData['email'] ?? '',
+      name: userData['displayName'] ?? '',
+      role: 'agent',
+      status: userData['status'] ?? 'pending',
+      // Add other fields as needed
+    );
+
+    Get.find<AgentController>().currentUser = userModel;
+    debugPrint('Agent user handled successfully: ${userModel.toJson()}');
+  } catch (e) {
+    debugPrint('Error handling agent user: $e');
+    await auth.signOut();
+    Get.offAllNamed('/login');
   }
 }
 
@@ -1691,83 +1813,211 @@ void handleAuthChanged(User? user) async {
   }
 
 
-Future<UserCredential?> signInWithGoogle() async {
-  try {
-    debugPrint('🔐 Google Sign-In started...');
-    isSignInGoogle(true);
+ Future<UserCredential?> signInWithGoogle() async {
+    try {
+      debugPrint('🔐 Google Sign-In started...');
+      isSignInGoogle(true);
 
-    // Clean previous sessions
-    await _googleSignIn.signOut();
+      // Clean previous sessions
+      await _googleSignIn.signOut();
+      debugPrint('Previous Google sessions cleared');
 
-    // Trigger Google Sign-In
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) {
-      debugPrint('❌ Google sign-in cancelled by user.');
+      // Trigger Google Sign-In
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        debugPrint('❌ Google sign-in cancelled by user');
+        return null;
+      }
+      
+      debugPrint('✅ Google user selected: ${googleUser.email}');
+      debugPrint('Google user ID: ${googleUser.id}');
+      debugPrint('Google user displayName: ${googleUser.displayName}');
+
+      // IMPORTANT: Get email from GoogleSignInAccount, not Firebase User
+      final String? googleEmail = googleUser.email;
+      if (googleEmail == null || googleEmail.isEmpty) {
+        debugPrint('❌ Google account has no email address');
+        Get.snackbar('Error', 'Google account must have a valid email address');
+        await _googleSignIn.signOut();
+        return null;
+      }
+
+      // Get authentication details
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      debugPrint('✅ Google authentication tokens received');
+
+      // Validate tokens
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        debugPrint('❌ Missing Google authentication tokens');
+        throw Exception('Failed to get Google authentication tokens');
+      }
+
+      // Create Firebase credential
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      debugPrint('✅ Firebase credential created');
+
+      // Sign in to Firebase
+      final UserCredential userCredential = await auth.signInWithCredential(credential);
+      final User? firebaseUser = userCredential.user;
+      
+      if (firebaseUser == null) {
+        throw Exception('Firebase sign-in failed - no user returned');
+      }
+      
+      debugPrint('✅ Firebase authentication successful');
+      debugPrint('Firebase User UID: ${firebaseUser.uid}');
+      debugPrint('Firebase User Email: ${firebaseUser.email}');
+      debugPrint('Google User Email: $googleEmail'); // This should have the email
+      debugPrint('Is New User: ${userCredential.additionalUserInfo?.isNewUser ?? false}');
+
+      // Handle user based on whether they're new or existing
+      // Pass the Google email as a parameter since Firebase User email might be null
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        debugPrint('🆕 Handling new user...');
+        await _handleNewGoogleUser(firebaseUser, googleUser); // Pass GoogleSignInAccount
+      } else {
+        debugPrint('👤 Handling existing user...');
+        await _handleExistingGoogleUser(firebaseUser);
+      }
+
+      debugPrint('✅ Google sign-in completed successfully');
+      return userCredential;
+      
+    } catch (e) {
+      debugPrint('❌ Google sign-in error: $e');
+      
+      // Handle specific error types
+      if (e is FirebaseAuthException) {
+        _handleFirebaseAuthException(e);
+      } else if (e is PlatformException) {
+        _handlePlatformException(e);
+      } else {
+        Get.snackbar(
+          'Sign-in Failed', 
+          'An unexpected error occurred: ${e.toString()}',
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+        );
+      }
+      
       return null;
+    } finally {
+      isSignInGoogle(false);
     }
-
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-    // Create Firebase credential
-    final OAuthCredential credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-
-    // Sign in to Firebase
-    final UserCredential userCredential = await auth.signInWithCredential(credential);
-
-    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-      await _handleNewGoogleUser(userCredential.user!);
-    } else {
-      await _handleExistingGoogleUser(userCredential.user!);
-    }
-
-    return userCredential;
-  } catch (e) {
-    debugPrint('❌ Google sign-in error: $e');
-    Get.snackbar('Error', 'Google sign-in failed');
-    return null;
-  } finally {
-    isSignInGoogle(false);
   }
-}
 
 // Handle new Google user - ask for confirmation
-Future<void> _handleNewGoogleUser(User user) async {
-  try {
-    // Create user document in Firestore ONLY
-    final userData = {
-      'uid': user.uid,
-      'email': user.email ?? '',
-      'displayName': user.displayName ?? '',
-      'photoURL': user.photoURL,
-      'role': 'user',
-      'status': 'active',
-      'createdAt': FieldValue.serverTimestamp(),
-    };
+  Future<void> _handleNewGoogleUser(User firebaseUser, GoogleSignInAccount googleUser) async {
+    debugPrint('Handling new Google user: ${firebaseUser.uid}');
+    debugPrint('Firebase User email: ${firebaseUser.email}');
+    debugPrint('Google User email: ${googleUser.email}');
+    debugPrint('User displayName: ${googleUser.displayName ?? firebaseUser.displayName}');
+    
+    try {
+      // Use Google account email as the primary source
+      final String email = googleUser.email;
+      final String displayName = googleUser.displayName ?? firebaseUser.displayName ?? email.split('@')[0];
 
-    await _firestore.collection('users').doc(user.uid).set(userData);
+      // Create user document in Firestore with Google account data
+      final userData = {
+        'uid': firebaseUser.uid,
+        'email': email, // Use Google email
+        'displayName': displayName,
+        'photoURL': googleUser.photoUrl ?? firebaseUser.photoURL ?? '',
+        'phoneNumber': firebaseUser.phoneNumber ?? '',
+        'role': 'user',
+        'status': 'active',
+        'provider': 'google',
+        'location': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'registrationCompleted': true,
+      };
 
-    // Create local user model
-    final userModel = UserModel(
-      uid: user.uid,
-      email: user.email ?? '',
-      name: user.displayName ?? '',
-      role: 'user',
-      status: 'active',
-      // other fields...
-    );
+      debugPrint('Creating Firestore document with data: $userData');
 
-    Get.find<UserController>().currentUser = userModel;
-    navigateToHome();
+      // Create the document
+      await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .set(userData, SetOptions(merge: true));
 
-  } catch (e) {
-    debugPrint('Error creating new user: $e');
-    await auth.signOut();
-    await _googleSignIn.signOut();
+      debugPrint('✅ Firestore document created successfully');
+
+      // Verify the document was actually created
+      final verificationDoc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      if (!verificationDoc.exists) {
+        throw Exception('Failed to create user document in Firestore');
+      }
+
+      final createdData = verificationDoc.data()!;
+      debugPrint('✅ Document verification successful. Email in DB: ${createdData['email']}');
+
+      // Update local state
+      userRole.value = 'user';
+
+      // Create local user model with Google account data
+      final userModel = UserModel(
+        uid: firebaseUser.uid,
+        email: email, // Use Google email
+        name: displayName,
+        role: 'user',
+        status: 'active',
+        location: '',
+        phoneNumber: firebaseUser.phoneNumber ?? '',
+      );
+
+      // Store user in controller
+      Get.find<UserController>().currentUser = userModel;
+      debugPrint('✅ User model created and stored: ${userModel.toJson()}');
+
+      // Show success message
+      Get.snackbar(
+        'Welcome!',
+        'Account created successfully for $email',
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[800],
+        duration: const Duration(seconds: 3),
+      );
+
+      // Navigate to home
+      navigateToHome();
+
+    } catch (e) {
+      debugPrint('❌ Error creating new Google user: $e');
+      
+      String errorMessage;
+      if (e.toString().contains('permission-denied')) {
+        errorMessage = 'Database access denied. Please contact support.';
+      } else if (e.toString().contains('network')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else {
+        errorMessage = 'Failed to create account. Please try again.';
+      }
+      
+      Get.snackbar(
+        'Account Creation Failed', 
+        errorMessage,
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+        duration: const Duration(seconds: 5),
+      );
+      
+      // Clean up authentication state
+      try {
+        await auth.signOut();
+        await _googleSignIn.signOut();
+      } catch (signOutError) {
+        debugPrint('Error during cleanup: $signOutError');
+      }
+      
+      // Navigate back to login
+      Get.offAllNamed('/login');
+    }
   }
-}
 
 // Show confirmation dialog for new user registration
   Future<bool?> _showRegistrationConfirmationDialog(User user) async {

@@ -28,6 +28,7 @@ class DashboardScreen extends StatelessWidget {
         }
       },
       child: Obx(() {
+        debugPrint('NEW User role: ${authService.userRole.value}');
         if (authService.userRole.value == 'agent') {
           return !networkController.isConnected.value
               ? NoInternetWidegt()

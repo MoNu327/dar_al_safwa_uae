@@ -24,6 +24,8 @@ class TenantsCreateTicketScreen extends StatefulWidget {
   final int unitAddressId;
   final String userId;
   final String? FlatNO;
+  final VoidCallback? onTicketCreated;
+
 
 
   const TenantsCreateTicketScreen({
@@ -33,6 +35,7 @@ class TenantsCreateTicketScreen extends StatefulWidget {
     required this.unitAddressId,
     required this.userId,
     required this.FlatNO,
+    this.onTicketCreated,
   });
 
   @override
@@ -72,16 +75,33 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
 
 Future<void> _loadsummary(String userId) async {
   debugPrint('[_loadsummary] Starting load for user: $userId');
+  
   try {
-    await fetchComplaintsControler.getSummaryForTenant(userId);
+    // Use your existing controller
+    final controller = Get.find<TenantsTicketsController>();
+    
+    // Set loading state
+    controller.isStatsLoading.value = true;
+    controller.statsErrorMessage.value = '';
+    
+    await controller.getSummaryForTenant(userId);
+    
+    debugPrint('[_loadsummary] Successfully loaded summary data');
+    
   } on DioException catch (e) {
-    debugPrint("Network error loading complaints: ${e.message}");
-    // Consider setting an error message visible to users
+    debugPrint("Network error loading summary: ${e.message}");
+    final controller = Get.find<TenantsTicketsController>();
+    controller.statsErrorMessage.value = "Network error: ${e.message}";
+    
   } catch (e, stackTrace) {
-    debugPrint("Unexpected error loading complaints: $e");
+    debugPrint("Unexpected error loading summary: $e");
     debugPrint(stackTrace.toString());
-    // Consider setting an error message visible to users
+    final controller = Get.find<TenantsTicketsController>();
+    controller.statsErrorMessage.value = "Failed to load summary data";
+    
   } finally {
+    final controller = Get.find<TenantsTicketsController>();
+    controller.isStatsLoading.value = false;
     debugPrint('[_loadsummary] Completed loading attempt');
   }
 }
@@ -430,7 +450,7 @@ Future<void> _pickFromGallery() async {
     }
   }
 
- Future<void> _submitTicket() async {
+Future<void> _submitTicket() async {
   if (selectedCategory == null ||
       selectedSubcategory == null ||
       _issueController.text.isEmpty) {
@@ -469,15 +489,19 @@ Future<void> _pickFromGallery() async {
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.onlineGreen,
       colorText: AppColors.white,
-      
     );
-   _loadComplaints(); // Refresh complaints list
-   _loadsummary('userId');
+    
+    // FIX: Use the actual user ID instead of string literal
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId != null) {
+      await _loadComplaints(); // Refresh complaints list
+      await _loadsummary(currentUserId); // Pass actual user ID
+    }
+    
+    // Call the callback if provided
+    widget.onTicketCreated?.call();
+    
     Navigator.pop(context); // Close the screen after submission
   }
-
-  // if (!complaintController.isLoadingSubmitCompliant.value) {
-  //   Get.back();
-  // }
 }
 }

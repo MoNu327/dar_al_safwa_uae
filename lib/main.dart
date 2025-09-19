@@ -210,7 +210,7 @@ class AppBindings extends Bindings {
     Get.lazyPut<UserController>(() => UserController(), fenix: true);
     Get.lazyPut<LocalizationController>(() => LocalizationController(), fenix: true);
     Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
-    Get.lazyPut<TenantsTicketsController>(() => TenantsTicketsController(), fenix: true);
+    Get.put(TenantsTicketsController(), permanent: true);
     Get.put(notificationService, permanent: true);
   }
 }
