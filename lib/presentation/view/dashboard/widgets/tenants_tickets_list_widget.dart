@@ -790,7 +790,7 @@ Future<void> _loadData() async {
   Widget _buildComplaintCard(Complaint complaint) {
     return InkWell(
       onTap: () {
-        Get.to(() => TicketDetailsScreen(complaint: complaint,
+        Get.to(() => TicketDetailsScreen(complaintId: complaint.complaintId,
         ));
       },
       child: Container(

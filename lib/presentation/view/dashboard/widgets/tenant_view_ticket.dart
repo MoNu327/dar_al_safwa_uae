@@ -543,8 +543,6 @@ import 'package:get/get.dart';
 import '../../../../../../core/constants/custom_size.dart';
 import '../../../../../../core/theme/app_colors.dart';
 
-
-
 class TenantsTicketsListWidget extends StatefulWidget {
   const TenantsTicketsListWidget({super.key});
 
@@ -552,6 +550,7 @@ class TenantsTicketsListWidget extends StatefulWidget {
   State<TenantsTicketsListWidget> createState() =>
       _TenantsTicketsListWidgetState();
 }
+
 
 class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
   final TextEditingController _searchController = TextEditingController();
@@ -567,6 +566,7 @@ class _TenantsTicketsListWidgetState extends State<TenantsTicketsListWidget> {
     super.initState();
     _loadData();
   }
+  
 
   /// Load both complaints and summary data
   Future<void> _loadData() async {
@@ -598,52 +598,67 @@ Future<void> _loadTenantSummary() async {
     });
 
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    debugPrint("🔍 Loading tenant summary for userId: $userId");
+    
     if (userId.isEmpty) {
-      debugPrint("User ID is empty");
+      debugPrint("❌ User ID is empty");
       setState(() {
         isLoadingSummary = false;
       });
       return;
     }
 
-    debugPrint("Loading tenant summary for userId: $userId");
-    
     // Call the controller method
+    debugPrint("📞 Calling controller.getSummaryForTenant($userId)");
     await controller.getSummaryForTenant(userId);
+    
+    // Debug the controller state
+    debugPrint("📊 Controller state after API call:");
+    debugPrint("  - technicianStats.value: ${controller.technicianStats.value}");
+    debugPrint("  - statsErrorMessage: ${controller.statsErrorMessage.value}");
     
     // Check if we have valid data
     if (controller.technicianStats.value != null) {
       final summary = controller.technicianStats.value!;
+      debugPrint("✅ Summary data received:");
+      debugPrint("  - Property count: ${summary.propertyStats.length}");
+      
+      // Log each property in detail
+      for (int i = 0; i < summary.propertyStats.length; i++) {
+        final property = summary.propertyStats[i];
+        debugPrint("  - Property $i: ${property.propertyName}");
+        debugPrint("    - Total complaints: ${property.totalComplaints}");
+        debugPrint("    - Started working: ${property.startedWorking}");
+        debugPrint("    - In progress: ${property.inProgress}");
+        debugPrint("    - Resolved: ${property.resolved}");
+      }
       
       // Additional validation: check if propertyStats is not empty
       if (summary.propertyStats.isNotEmpty) {
+        debugPrint("✅ Setting tenantSummary with ${summary.propertyStats.length} properties");
         setState(() {
           tenantSummary = summary;
-          final propertyCount = summary.propertyStats.length;
-          debugPrint('Tenant summary loaded successfully: $propertyCount properties');
           isLoadingSummary = false;
         });
       } else {
-        // Handle case where summary exists but has no properties
-        debugPrint("Tenant summary loaded but no properties found");
+        debugPrint("⚠️ Summary exists but propertyStats is empty");
         setState(() {
-          tenantSummary = null; // Set to null so it doesn't display
+          tenantSummary = null;
           isLoadingSummary = false;
         });
       }
     } else {
-      // Handle case where no summary was returned
       String errorMessage = controller.statsErrorMessage.value.isNotEmpty 
           ? controller.statsErrorMessage.value 
           : "No summary data available";
-      debugPrint("Failed to load summary: $errorMessage");
+      debugPrint("❌ No summary data: $errorMessage");
       setState(() {
         tenantSummary = null;
         isLoadingSummary = false;
       });
     }
   } catch (e, stackTrace) {
-    debugPrint("Error loading tenant summary: $e");
+    debugPrint("💥 Error loading tenant summary: $e");
     debugPrint("Stack trace: $stackTrace");
     setState(() {
       tenantSummary = null;
@@ -651,7 +666,6 @@ Future<void> _loadTenantSummary() async {
     });
   }
 }
-
   void _searchTickets(String query) {
     setState(() {
       if (query.isEmpty) {
@@ -748,6 +762,11 @@ Future<void> _loadTenantSummary() async {
                       onPressed: () async {
                         try {
                           await controller.fetchTenantProperties();
+                          debugPrint("🏠 Available properties count: ${controller.properties.length}");
+    for (int i = 0; i < controller.properties.length; i++) {
+      final prop = controller.properties[i];
+      debugPrint("Property $i: ${prop.propertyTitle} (ID: ${prop.propertyId})");
+    }
 
                           if (controller.properties.isNotEmpty) {
                             _showPropertySelectionBottomSheet(controller.properties);
@@ -769,113 +788,7 @@ Future<void> _loadTenantSummary() async {
     );
   }
 
-  // /// Build summary statistics section
-  // Widget _buildSummarySection() {
-  //   if (tenantSummary == null || tenantSummary!.propertyStats.isEmpty) {
-  //     return const SizedBox.shrink();
-  //   }
-
-  //   // Calculate total statistics across all properties
-  //   int totalComplaints = 0;
-  //   int totalStartedWorking = 0;
-  //   int totalInProgress = 0;
-  //   int totalResolved = 0;
-
-  //   for (var property in tenantSummary!.propertyStats) {
-  //     totalComplaints += int.tryParse(property.totalComplaints) ?? 0;
-  //     totalStartedWorking += int.tryParse(property.startedWorking) ?? 0;
-  //     totalInProgress += int.tryParse(property.inProgress) ?? 0;
-  //     totalResolved += int.tryParse(property.resolved) ?? 0;
-  //   }
-
-  //   return Container(
-  //     margin: EdgeInsets.only(bottom: screenHeight1),
-  //     padding: EdgeInsets.all(screenWidth1),
-  //     decoration: BoxDecoration(
-  //       color: AppColors.white,
-  //       borderRadius: BorderRadius.circular(12),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.black.withOpacity(0.05),
-  //           blurRadius: 8,
-  //           offset: const Offset(0, 2),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         CustomTextWidget(
-  //           title: "Ticket Summary",
-  //           fontSize: Get.height * 0.018,
-  //           fontWeight: FontWeight.w600,
-  //           color: AppColors.black,
-  //         ),
-  //         SizedBox(height: screenHeight1),
-          
-  //         // Statistics Cards Row
-  //         Row(
-  //           children: [
-  //             Expanded(
-  //               child: _buildStatCard(
-  //                 "Total",
-  //                 totalComplaints.toString(),
-  //                 AppColors.primaryColor,
-  //                 Icons.confirmation_number_outlined,
-  //               ),
-  //             ),
-  //             SizedBox(width: screenWidth1),
-  //             Expanded(
-  //               child: _buildStatCard(
-  //                 "Started",
-  //                 totalStartedWorking.toString(),
-  //                 Colors.blue,
-  //                 Icons.play_circle_outline,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         SizedBox(height: screenHeight1),
-  //         Row(
-  //           children: [
-  //             Expanded(
-  //               child: _buildStatCard(
-  //                 "In Progress",
-  //                 totalInProgress.toString(),
-  //                 Colors.orange,
-  //                 Icons.pending_outlined,
-  //               ),
-  //             ),
-  //             SizedBox(width: screenWidth1),
-  //             Expanded(
-  //               child: _buildStatCard(
-  //                 "Resolved",
-  //                 totalResolved.toString(),
-  //                 AppColors.onlineGreen,
-  //                 Icons.check_circle_outline,
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-
-  //         // Property breakdown (if multiple properties)
-  //         if (tenantSummary!.propertyStats.length > 1) ...[
-  //           SizedBox(height: screenHeight1),
-  //           CustomTextWidget(
-  //             title: "By Property:",
-  //             fontSize: Get.height * 0.014,
-  //             fontWeight: FontWeight.w500,
-  //             color: AppColors.black500,
-  //           ),
-  //           SizedBox(height: screenHeight05),
-  //           ...tenantSummary!.propertyStats.map((property) => 
-  //             _buildPropertyStatRow(property)
-  //           ).toList(),
-  //         ]
-  //       ],
-  //     ),
-  //   );
-  // }
+  
 
   /// Build individual stat card
   Widget _buildStatCard(String title, String count, Color color, IconData icon) {
@@ -1217,7 +1130,7 @@ Widget _buildStatItem({
   Widget _buildComplaintCard(Complaint complaint) {
     return InkWell(
       onTap: () {
-        Get.to(() => TicketDetailsScreen(complaint: complaint));
+        Get.to(() => TicketDetailsScreen(complaintId: complaint.complaintId,));
       },
       child: Container(
         margin: EdgeInsets.only(bottom: screenHeight1),

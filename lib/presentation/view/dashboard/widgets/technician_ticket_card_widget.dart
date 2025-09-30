@@ -56,7 +56,7 @@ Widget  buildTicketCard({
   return InkWell(
     onTap: () {
       if (complaint != null) {
-        Get.to(() => TicketDetailsScreen(complaint: complaint));
+        Get.to(() => TicketDetailsScreen(complaintId: complaint.complaintId,));
       }
     },
     child: Container(
@@ -619,7 +619,7 @@ Widget _buildActionButtonsSection(
           onPressed: () {
             if (complaint != null) {
               debugPrint("Complaint Details inside navigation ==> $complaint");
-              Get.to(() => TicketDetailsScreen(complaint: complaint));
+              Get.to(() => TicketDetailsScreen(complaintId: complaint.complaintId,));
             } else {
               Get.snackbar(
                 'Error',

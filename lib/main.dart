@@ -156,7 +156,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         devicePixelRatio: 1.0,
       ),
       child: GetMaterialApp(
-        title: 'Dar Al Safwa',
+        title: 'Majan',
         theme: _buildAppTheme(),
         debugShowCheckedModeBanner: false,
         locale: const Locale('en'),

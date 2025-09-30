@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:majan/presentation/view/agent/customer_followup.dart';
 import 'package:majan/presentation/widgets/jwttokengenration.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -54,6 +55,10 @@ class AgentChatController extends GetxController {
 
     checkUserRole();
   }
+
+ void handleCustomerFollowUp() {
+  Get.to(() => CustomerFollowUpScreen());
+}
 
   Future<void> checkUserRole() async {
     try {

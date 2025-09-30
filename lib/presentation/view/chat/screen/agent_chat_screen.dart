@@ -54,6 +54,35 @@ class AgentChatScreen extends StatelessWidget {
               ],
             );
           }),
+          actions: [
+            // Customer Follow-up Button
+            Padding(
+              padding: EdgeInsets.only(right: screenWidth2),
+              child: ElevatedButton(
+                onPressed: () {
+                  // Handle follow-up action
+                  controller.handleCustomerFollowUp();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondaryColor, // Use your app's primary color
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth3 ,
+                    vertical: screenHeight05,
+                  ),
+                ),
+                child: CustomTextWidget(
+                  title: 'Customer Follow-up',
+                  color: AppColors.white,
+                  fontSize: Get.height * 0.013,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ),
         body: Obx(() {
           if (controller.isLoading.value) {
