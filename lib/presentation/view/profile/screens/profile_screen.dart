@@ -95,12 +95,17 @@ class ProfileViewScreen extends StatelessWidget {
                       authService.userRole.value == 'agent'))
               ? TextButton(
                   onPressed: () {
-                    if (authService.userRole.value == 'tenant' ||
-                        authService.userRole.value == 'user') {
-                      Get.to(EditTenantProfileScreen());
-                    } else {
-                      profileController.toggleEdit();
-                    }
+                   if (authService.userRole.value == 'tenant') {
+  Get.to(() => EditTenantProfileScreen());
+} else if (authService.userRole.value == 'user') {
+  Get.to(() => EditProfileScreen(
+      controller: profileController,
+      localizationController: localizationController
+  )); // <-- create this screen for user role
+} else if (authService.userRole.value == 'agent') {
+  profileController.toggleEdit();
+}
+
                   },
                   child: CustomTextWidget(
                     title: localizationController.translate('Edit'),

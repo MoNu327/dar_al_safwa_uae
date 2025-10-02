@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/domain/controller/technician_controller.dart';
+import 'package:majan/presentation/view/profile/widgets/tenant_edit_profile_widget.dart';
 import 'package:majan/presentation/widgets/notification_navigation_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -260,8 +261,8 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                   buttonWidth: Get.width * 0.9,
                   buttonTextColor: Colors.white,
                   onPressed: () {
-                    // TODO: Add edit profile functionality
-                  },
+                   Get.to(() => EditTenantProfileScreen());
+                },
                 ),
                 kHeight(0.02),
                 CustomButtonWidget(

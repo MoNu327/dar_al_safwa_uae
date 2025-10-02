@@ -80,6 +80,7 @@ dependencies:
   device_info_plus: ^11.3.0
   email_validator: ^3.0.0
   http_parser: ^4.1.2
+  firebase_storage: ^12.4.10
 
 dev_dependencies:
   flutter_test:

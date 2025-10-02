@@ -64,7 +64,7 @@ class TechnicianTicketsController extends GetxController {
 
   @override
   void onClose() {
-    debugPrint("🔄 TechnicianTicketsController onClose called");
+    // debugPrint("🔄 TechnicianTicketsController onClose called");
     super.onClose();
   }
 
@@ -171,7 +171,7 @@ class TechnicianTicketsController extends GetxController {
 
       final userUid = FirebaseAuth.instance.currentUser?.uid;
       if (userUid == null) {
-        debugPrint("❌ User UID is null");
+        // debugPrint("❌ User UID is null");
         throw Exception('User not logged in');
       }
 
@@ -182,7 +182,7 @@ class TechnicianTicketsController extends GetxController {
       final ticketToAssign = _findTicketInAllLists(complaintId);
       if (ticketToAssign != null) {
         await _saveAssignedTicketToStorage(complaintId, ticketToAssign);
-        debugPrint("💾 Ticket saved to storage before assignment: $complaintId");
+        // debugPrint("💾 Ticket saved to storage before assignment: $complaintId");
       }
 
       // Make API call
@@ -260,7 +260,7 @@ class TechnicianTicketsController extends GetxController {
 
   Future<void> _clearPreviousAssignmentState(String complaintId) async {
     try {
-      debugPrint("🧹 Clearing previous assignment state for $complaintId");
+      // debugPrint("🧹 Clearing previous assignment state for $complaintId");
       
       // Clear from memory
       assignedTechnicianIds.remove(complaintId);
@@ -329,20 +329,20 @@ class TechnicianTicketsController extends GetxController {
       // First try in main tickets list
       final ticketInMain = tickets.where((t) => t.complaintId == complaintId).firstOrNull;
       if (ticketInMain != null) {
-        debugPrint("🔍 Found ticket in main list: $complaintId");
+        // debugPrint("🔍 Found ticket in main list: $complaintId");
         return ticketInMain;
       }
       
       // Then try in filtered tickets list
       final ticketInFiltered = filteredTickets.where((t) => t.complaintId == complaintId).firstOrNull;
       if (ticketInFiltered != null) {
-        debugPrint("🔍 Found ticket in filtered list: $complaintId");
+        // debugPrint("🔍 Found ticket in filtered list: $complaintId");
         return ticketInFiltered;
       }
       
       // Finally try in local assigned tickets
       if (localAssignedTickets.containsKey(complaintId)) {
-        debugPrint("🔍 Found ticket in local storage: $complaintId");
+        // debugPrint("🔍 Found ticket in local storage: $complaintId");
         return localAssignedTickets[complaintId];
       }
       
@@ -372,11 +372,11 @@ Future<void> fetchTickets(String userId) async {
 
     // STEP 2: Fetch current tickets from API (these are tickets currently assigned TO this technician)
     final List<Complaint> currentApiTickets = await _fetchTicketsFromAPI(userId);
-    debugPrint("📥 Current API tickets: ${currentApiTickets.length}");
+    // debugPrint("📥 Current API tickets: ${currentApiTickets.length}");
 
     // STEP 3: 🚨 PRESERVE ASSIGNED TICKETS - Include tickets that were assigned BY this technician
     final List<Complaint> assignedByThisTechnician = await _getTicketsAssignedByThisTechnician(userId);
-    debugPrint("📤 Tickets assigned BY this technician: ${assignedByThisTechnician.length}");
+    // debugPrint("📤 Tickets assigned BY this technician: ${assignedByThisTechnician.length}");
     
     // STEP 4: 🚨 COMPREHENSIVE MERGE - Combine all tickets
     final mergedComplaints = _comprehensiveMergeAllTickets(
@@ -384,11 +384,11 @@ Future<void> fetchTickets(String userId) async {
       assignedByThisTechnician, 
       userId
     );
-    debugPrint("🔄 After COMPREHENSIVE merge: ${mergedComplaints.length} tickets");
+    // debugPrint("🔄 After COMPREHENSIVE merge: ${mergedComplaints.length} tickets");
     
     // STEP 5: Apply stored assignments to ensure consistency
     final updatedComplaints = _applyStoredAssignmentsToComplaints(mergedComplaints);
-    debugPrint("✅ After applying assignments: ${updatedComplaints.length} tickets");
+    // debugPrint("✅ After applying assignments: ${updatedComplaints.length} tickets");
     
     // STEP 6: Update the observable lists
     tickets.clear();
@@ -399,7 +399,7 @@ Future<void> fetchTickets(String userId) async {
     // STEP 7: Final verification and recovery
     await _verifyAndRecoverAssignedTickets();
     
-    debugPrint("✅ Final ticket count: ${tickets.length}");
+    // debugPrint("✅ Final ticket count: ${tickets.length}");
     debugTicketVisibility();
     
   } catch (e, st) {
@@ -447,7 +447,7 @@ Future<List<Complaint>> _getTicketsAssignedByThisTechnician(String currentUserId
       if (localAssignedTickets.containsKey(complaintId)) {
         final ticket = localAssignedTickets[complaintId]!;
         assignedTickets.add(ticket);
-        debugPrint("📤 Including currently assigned ticket: $complaintId -> $technicianName");
+        // debugPrint("📤 Including currently assigned ticket: $complaintId -> $technicianName");
       }
     }
     
@@ -882,43 +882,60 @@ List<Complaint> _comprehensiveMergeAllTickets(
     }
   }
 
-  // 🆕 ENHANCED: Comprehensive refresh that ensures ALL assigned tickets remain visible
-  Future<void> refreshAllData(String userId) async {
-    try {
-      debugPrint("🔄 Starting COMPREHENSIVE data refresh for user: $userId");
-      
-      // Step 1: Load all stored data first
-      await _loadAssignmentsFromStorage();
-      await _loadAssignedTicketsFromStorage();
-      await _loadAssignmentHistoryFromStorage();
-      
-      debugPrint("📂 Loaded ${assignedTechnicianIds.length} assignments from storage");
-      debugPrint("📂 Loaded ${localAssignedTickets.length} local tickets from storage");
-      
-      // Step 2: Fetch fresh tickets (which will automatically merge with stored assignments)
-      await fetchTickets(userId);
-      await _fetchTicketsFromAPI(userId);
-      
-      // Step 3: Ensure ALL assigned tickets are visible (redundant safety check)
-      await _ensureAssignedTicketsVisible();
-      
-      // Step 4: Refresh summary stats
-      try {
-        await getSummaryForTechnician(userId);
-        debugPrint("✅ Summary refreshed successfully");
-      } catch (summaryError) {
-        debugPrint("❌ Error refreshing summary: $summaryError");
-      }
-      
-      // Step 5: Final verification
-      debugTicketVisibility();
-      
-      debugPrint("✅ COMPREHENSIVE data refresh completed");
-      debugPrint("✅ Final UI ticket count: ${tickets.length}");
-    } catch (e) {
-      debugPrint("❌ Error during comprehensive refresh: $e");
-    }
+
+Future<void> refreshTicketsFromAPI(String userId) async {
+  try {
+    debugPrint("🔄 Refreshing tickets from API for user: $userId");
+    await _fetchTicketsFromAPI(userId);
+    debugPrint("✅ API tickets refresh completed");
+  } catch (e) {
+    debugPrint("❌ Error refreshing tickets from API: $e");
   }
+}
+  // 🆕 ENHANCED: Comprehensive refresh that ensures ALL assigned tickets remain visible
+Future<void> refreshAllData(String userId) async {
+  try {
+    debugPrint("🔄 Starting COMPREHENSIVE data refresh for user: $userId");
+    
+    // Step 1: Load all stored data first
+    await _loadAssignmentsFromStorage();
+    await _loadAssignedTicketsFromStorage();
+    await _loadAssignmentHistoryFromStorage();
+    
+    debugPrint("📂 Loaded ${assignedTechnicianIds.length} assignments from storage");
+    debugPrint("📂 Loaded ${localAssignedTickets.length} local tickets from storage");
+    
+    // Step 2: Fetch fresh tickets (which will automatically merge with stored assignments)
+    await fetchTickets(userId);
+    
+    // Step 3: Ensure ALL assigned tickets are visible (redundant safety check)
+    await _ensureAssignedTicketsVisible();
+    
+    // Step 4: Refresh summary stats
+    try {
+      await getSummaryForTechnician(userId);
+      debugPrint("✅ Summary refreshed successfully");
+    } catch (summaryError) {
+      debugPrint("❌ Error refreshing summary: $summaryError");
+    }
+
+    // Step 5: Refresh API tickets specifically
+    try {
+      await refreshTicketsFromAPI(userId);
+      debugPrint("✅ API tickets refreshed successfully");
+    } catch (ticketsError) {
+      debugPrint("❌ Error refreshing API tickets: $ticketsError");
+    }
+    
+    // Step 6: Final verification
+    debugTicketVisibility();
+    
+    debugPrint("✅ COMPREHENSIVE data refresh completed");
+    debugPrint("✅ Final UI ticket count: ${tickets.length}");
+  } catch (e) {
+    debugPrint("❌ Error during comprehensive refresh: $e");
+  }
+}
 
   // 🆕 ENHANCED: Ensure assigned tickets are visible with better recovery
   Future<void> _ensureAssignedTicketsVisible() async {
@@ -1346,25 +1363,211 @@ List<Complaint> _comprehensiveMergeAllTickets(
   }
 
   Future<void> fetchComplaintDetails(String complaintId) async {
-    try {
-      isLoading.value = true;
+  try {
+    debugPrint("🔄 Fetching complete complaint details for: $complaintId");
+    isLoading.value = true;
 
-      final response = await apiClient.request(
-        "complaint-detailscopy",
-        method: "post",
-        data: {"complaint_id": complaintId},
-      );
+    final response = await apiClient.request(
+      "complaint-detailscopy",
+      method: "post",
+      data: {"complaint_id": complaintId},
+    );
 
-      if (response.data['success'] == true) {
-        selectedTicket.value = TicketModel.fromJson(response.data['data']);
-        debugPrint("✅ Ticket details fetched: ${selectedTicket.value?.complaintNumber}");
+    if (response.data['success'] == true) {
+      final data = response.data['data'];
+      
+      debugPrint("✅ Received timeline-based complaint data");
+      
+      // Transform timeline format to flat format
+      final transformedData = _transformTimelineToFlat(data);
+      
+      debugPrint("✅ Transformed data:");
+      debugPrint("  - Payment: ${transformedData['amount_paid']}");
+      debugPrint("  - Payment Status: ${transformedData['amount_paid_status']}");
+      debugPrint("  - Technician images: ${transformedData['complaint_images']?['technician_uploaded']?.length ?? 0}");
+      
+      // Parse as Complaint
+      final complaint = Complaint.fromJson(transformedData);
+      
+      // Update in lists
+      final index = tickets.indexWhere((t) => t.complaintId == complaintId);
+      if (index != -1) {
+        tickets[index] = complaint;
+      } else {
+        tickets.add(complaint);
       }
-    } catch (e) {
-      debugPrint("❌ Error fetching complaint details: $e");
-    } finally {
-      isLoading.value = false;
+      
+      final filteredIndex = filteredTickets.indexWhere((t) => t.complaintId == complaintId);
+      if (filteredIndex != -1) {
+        filteredTickets[filteredIndex] = complaint;
+      } else {
+        filteredTickets.add(complaint);
+      }
+      
+      // Force UI refresh
+      tickets.refresh();
+      filteredTickets.refresh();
+      
+      debugPrint("✅ Ticket updated in lists");
+    }
+  } catch (e) {
+    debugPrint("❌ Error fetching complaint details: $e");
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+// Transform timeline-based response to flat format
+Map<String, dynamic> _transformTimelineToFlat(Map<String, dynamic> data) {
+  final complaint = data['complaint'] ?? {};
+  final property = data['property'] ?? {};
+  final timeline = (data['timeline'] as List?) ?? [];
+  
+  // Extract payment info from timeline
+  String? amountPaid;
+  String? paymentStatus;
+  String? paymentMethod;
+  
+  final paymentEvents = timeline.where((event) => event['type'] == 'payment').toList();
+  if (paymentEvents.isNotEmpty) {
+    final latestPayment = paymentEvents.last;
+    amountPaid = latestPayment['amount']?.toString();
+    
+    // Convert status text to code
+    final statusText = latestPayment['status']?.toString().toLowerCase();
+    if (statusText == 'unpaid') {
+      paymentStatus = '0';
+    } else if (statusText == 'partially paid') {
+      paymentStatus = '1';
+    } else if (statusText == 'fully paid') {
+      paymentStatus = '2';
+    }
+    
+    // Convert method text to code
+    final methodText = latestPayment['method']?.toString().toLowerCase();
+    if (methodText == 'card') {
+      paymentMethod = '1';
+    } else if (methodText == 'cash') {
+      paymentMethod = '2';
+    } else if (methodText == 'transfer' || methodText == 'others') {
+      paymentMethod = '3';
     }
   }
+  
+  // Extract images from timeline, categorized by uploader
+  List<String> tenantImages = [];
+  List<String> adminImages = [];
+  List<String> technicianImages = [];
+  
+  final imageEvents = timeline.where((event) => event['type'] == 'image_upload').toList();
+  for (var imageEvent in imageEvents) {
+    final imagePath = imageEvent['image_path']?.toString();
+    if (imagePath == null || imagePath.isEmpty) continue;
+    
+    final uploadedBy = imageEvent['by'];
+    if (uploadedBy is Map) {
+      final uploaderType = uploadedBy['type']?.toString().toLowerCase();
+      
+      if (uploaderType == 'technician') {
+        technicianImages.add(imagePath);
+      } else if (uploaderType == 'admin') {
+        adminImages.add(imagePath);
+      } else if (uploaderType == 'user') {
+        tenantImages.add(imagePath);
+      }
+    }
+  }
+  
+  // Extract technician info from timeline
+  List<Map<String, dynamic>> assignedTechnicians = [];
+  final techAssignmentEvents = timeline.where((event) => 
+    event['type'] == 'technician_assigned' || event['type'] == 'escalation'
+  ).toList();
+  
+  for (var event in techAssignmentEvents) {
+    final technician = event['technician'];
+    if (technician is Map && technician['uid'] != null) {
+      assignedTechnicians.add({
+        'technician_id': technician['uid'],
+        'name': technician['name'] ?? '',
+        'email': technician['email'] ?? '',
+        'phone': technician['phone'] ?? '',
+        'photo': technician['photo'],
+        'assigned_at': event['timestamp'] ?? '',
+      });
+    }
+  }
+  
+  // Build flat structure
+  return {
+    'id': complaint['id'],
+    'complaint_id': complaint['id'],
+    'complaint_number': complaint['complaint_number'],
+    'description': complaint['description'],
+    'replybytechnician': _extractLatestReply(timeline, 'technician'),
+    'replybyadmin': _extractLatestReply(timeline, 'admin'),
+    'amount_paid': amountPaid,
+    'amount_paid_status': paymentStatus,
+    'date': complaint['created_at'],
+    'created_at': complaint['created_at'],
+    'status': _statusTextToCode(complaint['status']),
+    'status_text': {
+      'en': complaint['status']
+    },
+    'category': complaint['category'],
+    'subcategory': complaint['subcategory'],
+    'property_name': property['title'],
+    'unit_number': property['unit']?['number'],
+    'unit_type': property['unit']?['type'],
+    'full_address': property['unit']?['address_format'],
+    'flatno_id': property['id'],
+    'created_by': complaint['created_by'],
+    'property': {
+      'id': property['id'],
+      'title': property['title'],
+      'unit_number': property['unit']?['number'],
+      'address_format': property['unit']?['address_format'],
+      'unit_type': property['unit']?['type'],
+      'assigned_technicians': assignedTechnicians,
+    },
+    'assigned_technicians': assignedTechnicians,
+    'complaint_images': {
+      'tenant_uploaded': tenantImages,
+      'admin_uploaded': adminImages,
+      'technician_uploaded': technicianImages,
+      'admin_technician_uploaded': [],
+    },
+    'timeline': timeline,
+  };
+}
+
+String? _extractLatestReply(List<dynamic> timeline, String replyType) {
+  final replies = timeline.where((event) {
+    if (event['type'] != 'reply') return false;
+    final by = event['by'];
+    return by is Map && by['type']?.toString().toLowerCase() == replyType;
+  }).toList();
+  
+  if (replies.isEmpty) return null;
+  return replies.last['message']?.toString();
+}
+
+String _statusTextToCode(String? statusText) {
+  if (statusText == null) return '0';
+  
+  switch (statusText.toLowerCase()) {
+    case 'pending':
+      return '0';
+    case 'in progress':
+      return '1';
+    case 'resolved':
+      return '2';
+    case 'closed':
+      return '3';
+    default:
+      return '0';
+  }
+}
 
   void setAssigning(String complaintId, bool value) {
     if (isAssigningMap[complaintId] == value) return;

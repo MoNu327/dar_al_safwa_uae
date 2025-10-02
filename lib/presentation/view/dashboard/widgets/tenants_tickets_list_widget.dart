@@ -77,56 +77,115 @@ Future<void> _loadData() async {
     }
   }
 
-  /// Apply filters to the complaints list
-  void _applyFilters() {
-    debugPrint("Applying filters - Status: $selectedStatus, Start: $startDate, End: $endDate");
-    
-    setState(() {
-      filteredComplaints = complaints.where((complaint) {
-        // Status filter
-        if (selectedStatus != null && selectedStatus != 'All') {
-          final statusMatch = complaint.statusText.en.toLowerCase() == selectedStatus!.toLowerCase();
-          if (!statusMatch) return false;
-        }
+ /// Apply filters to the complaints list
+void _applyFilters() {
+  debugPrint("Applying filters - Status: $selectedStatus, Start: $startDate, End: $endDate");
+  
+  setState(() {
+    filteredComplaints = complaints.where((complaint) {
+      // Status filter
+      if (selectedStatus != null && selectedStatus != 'All') {
+        final statusMatch = complaint.statusText.en.toLowerCase() == selectedStatus!.toLowerCase();
+        if (!statusMatch) return false;
+      }
 
-        // Category filter
-        // if (selectedCategory != null && selectedCategory != 'All') {
-        //   final categoryMatch = complaint.category.toLowerCase().contains(selectedCategory!.toLowerCase());
-        //   if (!categoryMatch) return false;
-        // }
-
-        // Date range filter
-        if (startDate != null || endDate != null) {
-          try {
-            // Parse the complaint date - adjust format according to your date format
-            DateTime complaintDate = DateFormat('dd/MM/yyyy').parse(complaint.formattedDate);
-            
-            if (startDate != null && complaintDate.isBefore(startDate!)) {
-              return false;
-            }
-            if (endDate != null && complaintDate.isAfter(endDate!.add(const Duration(days: 1)))) {
-              return false;
-            }
-          } catch (e) {
-            debugPrint("Error parsing date: ${complaint.formattedDate}");
-            // If date parsing fails, include the complaint
+      // Date range filter
+      if (startDate != null || endDate != null) {
+        try {
+          // Use the helper method to parse the date
+          final complaintDate = _parseComplaintDate(
+            complaint.date ?? complaint.lastUpdated ?? complaint.formattedDate
+          );
+          
+          if (complaintDate == null) {
+            debugPrint("⚠️ Could not parse date for complaint ${complaint.complaintId}");
+            // Include complaints with unparseable dates to avoid hiding them
+            return true;
           }
-        }
 
-        return true;
-      }).toList();
-    });
-    
-    debugPrint("Filtered complaints count: ${filteredComplaints.length}");
+          // Normalize dates to compare only year/month/day
+          final complaintDateOnly = DateTime(
+            complaintDate.year,
+            complaintDate.month,
+            complaintDate.day
+          );
+          
+          if (startDate != null) {
+            final startDateOnly = DateTime(
+              startDate!.year,
+              startDate!.month,
+              startDate!.day
+            );
+            if (complaintDateOnly.isBefore(startDateOnly)) {
+              return false;
+            }
+          }
+          
+          if (endDate != null) {
+            final endDateOnly = DateTime(
+              endDate!.year,
+              endDate!.month,
+              endDate!.day
+            );
+            // Include the end date by comparing with the next day
+            final endDateInclusive = endDateOnly.add(const Duration(days: 1));
+            if (complaintDateOnly.isAfter(endDateInclusive) || 
+                complaintDateOnly.isAtSameMomentAs(endDateInclusive)) {
+              return false;
+            }
+          }
+        } catch (e) {
+          debugPrint("⚠️ Error parsing date for complaint ${complaint.complaintId}: $e");
+          // Include complaints with parsing errors to avoid hiding them
+          return true;
+        }
+      }
+
+      return true;
+    }).toList();
+  });
+  
+  debugPrint("Filtered complaints count: ${filteredComplaints.length}");
+}
+
+/// Parse complaint date with multiple format support
+DateTime? _parseComplaintDate(String? dateString) {
+  if (dateString == null || dateString.isEmpty) return null;
+
+  // Clean the date string
+  final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}\)?'), '');
+
+  // Try multiple date formats
+  final possibleFormats = [
+    "yyyy-MM-dd HH:mm:ss",
+    "yyyy-MM-ddTHH:mm:ss",
+    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+    "yyyy-MM-dd",
+    "dd/MM/yyyy HH:mm:ss",
+    "dd/MM/yyyy",
+    "MM/dd/yyyy HH:mm:ss",
+    "MM/dd/yyyy",
+    "yyyy/MM/dd HH:mm:ss",
+    "MMM dd, yyyy hh:mm a", // Format like "Dec 25, 2024 10:30 AM"
+    "EEE, dd MMM yyyy HH:mm:ss",
+  ];
+
+  for (final format in possibleFormats) {
+    try {
+      return DateFormat(format).parse(cleanDateString);
+    } catch (e) {
+      continue;
+    }
   }
 
-  /// Get unique categories from complaints for filter dropdown
-  // List<String> _getUniqueCategories() {
-  //   final categories = complaints.map((c) => c.category).where((c) => c.isNotEmpty).toSet().toList();
-  //   categories.sort();
-  //   return ['All', ...categories];
-  // }
-
+  // Last resort: try standard DateTime.parse
+  try {
+    return DateTime.parse(cleanDateString);
+  } catch (e) {
+    debugPrint("❌ Failed to parse date with all formats: '$dateString'");
+    return null;
+  }
+}
   /// Select date for filtering
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
@@ -544,6 +603,7 @@ Future<void> _loadData() async {
                             unitAddressId: property.unitAddressId,
                             userId: userId,
                             FlatNO: property.unitNumber,
+                          
                           ));
                     },
                   );
@@ -790,7 +850,9 @@ Future<void> _loadData() async {
   Widget _buildComplaintCard(Complaint complaint) {
     return InkWell(
       onTap: () {
-        Get.to(() => TicketDetailsScreen(complaintId: complaint.complaintId,
+        Get.to(() => TicketDetailsScreen(
+          complaintId: complaint.complaintId,
+          previewImageUrl: _getFirstAvailableImage(complaint),
         ));
       },
       child: Container(
@@ -855,6 +917,53 @@ Future<void> _loadData() async {
       ),
     );
   }
+
+  // Helper method to get first available image
+String _getFirstAvailableImage(Complaint complaint) {
+  // if (complaint.complaintImages.isNotEmpty) return complaint.images.first;
+
+  if (complaint.complaintImages.tenantUploaded.isNotEmpty) {
+    return complaint.complaintImages.tenantUploaded.first;
+  }
+
+  if (complaint.complaintImages.adminUploaded.isNotEmpty) {
+    return complaint.complaintImages.adminUploaded.first;
+  }
+
+  if (complaint.complaintImages.technicianUploaded.isNotEmpty) {
+    return complaint.complaintImages.technicianUploaded.first;
+  }
+
+  if (complaint.complaintImages.adminTechnicianUploaded.isNotEmpty) {
+    return complaint.complaintImages.adminTechnicianUploaded.first;
+  }
+
+  return '';
+}
+
+// Helper method to check if complaint has images
+bool _hasImages(Complaint? complaint) {
+  if (complaint == null) return false;
+  
+  // return complaint.images.isNotEmpty ||
+     return complaint.complaintImages.tenantUploaded.isNotEmpty ||
+      complaint.complaintImages.adminUploaded.isNotEmpty ||
+      complaint.complaintImages.technicianUploaded.isNotEmpty ||
+      complaint.complaintImages.adminTechnicianUploaded.isNotEmpty;
+}
+
+bool _canAssignOrReassign(String status, Complaint? complaint) {
+  // Allow assignment for pending tickets
+  if (status.toLowerCase() == 'pending') return true;
+  
+  final reassignableStatuses = ['assigned', 'in_progress'];
+  return reassignableStatuses.contains(status.toLowerCase()) && _canReassign(complaint);
+}
+
+bool _canReassign(Complaint? complaint) {
+
+  return true;
+}
 
   /// Builds the status chip
   Widget _buildStatusChipFromComplaint(String statusText) {

@@ -120,12 +120,16 @@ ComplaintImage _$ComplaintImageFromJson(Map<String, dynamic> json) =>
     ComplaintImage(
       imagePath: json['image_path'] as String,
       timestamp: json['timestamp'] as String,
+      type: json['type'] as String?,
+      by: json['by'] as Map<String, dynamic>?,
     );
 
 Map<String, dynamic> _$ComplaintImageToJson(ComplaintImage instance) =>
     <String, dynamic>{
       'image_path': instance.imagePath,
       'timestamp': instance.timestamp,
+      'type': instance.type,
+      'by': instance.by,
     };
 
 TimelineEvent _$TimelineEventFromJson(Map<String, dynamic> json) =>

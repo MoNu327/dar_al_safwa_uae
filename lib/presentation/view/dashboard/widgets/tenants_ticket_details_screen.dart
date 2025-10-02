@@ -8,13 +8,15 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/custom_text_widget.dart';
-
 class TicketDetailsScreen extends StatefulWidget {
   final String complaintId;
+    final String? previewImageUrl; // Add this parameter
+
 
   const TicketDetailsScreen({
     super.key,
     required this.complaintId,
+    this.previewImageUrl, // Initialize it in the constructor
   });
 
   @override
@@ -177,7 +179,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CustomTextWidget(
-                      title: "Ticket #${complaint.complaintNumber}",
+                      title: "Ticket ${complaint.complaintNumber}",
                       fontSize: Get.height * 0.018,
                       fontWeight: FontWeight.w700,
                       color: AppColors.black,
@@ -328,23 +330,56 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     );
   }
 
+// UPDATED: Modified _buildImagesSection to include preview image in Tenant Images
+
 Widget _buildImagesSection() {
-  // Combine all images and remove duplicates based on imagePath
-  final allUniqueImagesMap = <String, ComplaintImage>{};
+  // Get all images from different sources
+  var tenantImages = controller.tenantImages.toList(); // Convert to mutable list
+  final technicianImages = controller.technicianImages;
+  final adminImages = controller.adminImages;
 
-  for (var img in controller.tenantImages) {
-    allUniqueImagesMap[img.imagePath] = img;
-  }
-  for (var img in controller.technicianImages) {
-    allUniqueImagesMap[img.imagePath] = img;
-  }
-  for (var img in controller.adminImages) {
-    allUniqueImagesMap[img.imagePath] = img;
+  // Add preview image to tenant images if it exists and isn't already there
+  if (widget.previewImageUrl != null && 
+      widget.previewImageUrl!.isNotEmpty &&
+      !tenantImages.any((img) => img.imagePath == widget.previewImageUrl)) {
+    
+    // Create a ComplaintImage object for the preview
+    final previewImage = ComplaintImage(
+      imagePath: widget.previewImageUrl!,
+      timestamp: DateTime.now().toIso8601String(), // Use current time as fallback
+      // uploadedBy: 'tenant', // Mark as tenant uploaded
+    );
+    
+    // Add to the beginning of tenant images
+    tenantImages.insert(0, previewImage);
+    
+    print('🖼️ Added preview image to tenant images');
   }
 
-  final uniqueImages = allUniqueImagesMap.values.toList();
+  // DEBUG: Print image counts
+  print('🖼️ Tenant images: ${tenantImages.length}');
+  print('🖼️ Technician images: ${technicianImages.length}');
+  print('🖼️ Admin images: ${adminImages.length}');
 
-  // DEBUG: Print unique image count
+  // Combine all images but keep them in order: tenant first, then technician, then admin
+  final allImages = <ComplaintImage>[];
+  
+  // Add tenant images first (now includes preview if applicable)
+  allImages.addAll(tenantImages);
+  
+  // Add technician images (these come after technician reply)
+  allImages.addAll(technicianImages);
+  
+  // Add admin images last
+  allImages.addAll(adminImages);
+
+  // Remove duplicates based on imagePath to avoid showing same image multiple times
+  final uniqueImagesMap = <String, ComplaintImage>{};
+  for (var img in allImages) {
+    uniqueImagesMap[img.imagePath] = img;
+  }
+  final uniqueImages = uniqueImagesMap.values.toList();
+
   print('🖼️ Total unique images: ${uniqueImages.length}');
 
   if (uniqueImages.isEmpty) {
@@ -385,64 +420,54 @@ Widget _buildImagesSection() {
   return _buildSection(
     title: "Attachments",
     icon: HugeIcons.strokeRoundedImage01,
-    child: SizedBox(
-      height: Get.height * 0.18,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: uniqueImages.length,
-        itemBuilder: (context, index) {
-          final image = uniqueImages[index];
-          final imageUrl = image.imagePath;
-
-          return Container(
-            width: Get.width * 0.35,
-            margin: EdgeInsets.only(right: screenWidth1),
-            child: Column(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.grey.withOpacity(0.2)),
-                      color: AppColors.grey.withOpacity(0.05),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        placeholder: (context, url) => Container(
-                          color: AppColors.grey.withOpacity(0.1),
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.red.withOpacity(0.1),
-                          child: const Center(
-                            child: Icon(Icons.error_outline, color: Colors.red),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: screenHeight05),
-                CustomTextWidget(
-                  title: DateFormatter.formatTo12Hour(image.timestamp),
-                  fontSize: Get.height * 0.011,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.black600,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Show tenant images section if they exist (now includes preview image)
+        if (tenantImages.isNotEmpty)
+          _buildImageCategory("Tenant Images", tenantImages, Colors.blue),
+        
+        if (tenantImages.isNotEmpty && (technicianImages.isNotEmpty || adminImages.isNotEmpty))
+          SizedBox(height: screenHeight2),
+        
+        // Show technician images section if they exist (after reply)
+        if (technicianImages.isNotEmpty)
+          _buildImageCategory("Technician Images", technicianImages, Colors.green),
+        
+        if (technicianImages.isNotEmpty && adminImages.isNotEmpty)
+          SizedBox(height: screenHeight2),
+        
+        // Show admin images section if they exist
+        if (adminImages.isNotEmpty)
+          _buildImageCategory("Admin Images", adminImages, Colors.orange),
+      ],
     ),
   );
+}
+// Helper method to get image category color
+Color _getImageCategoryColor(ComplaintImage image, List<ComplaintImage> tenantImages, 
+    List<ComplaintImage> technicianImages, List<ComplaintImage> adminImages) {
+  if (tenantImages.any((img) => img.imagePath == image.imagePath)) {
+    return Colors.blue;
+  } else if (technicianImages.any((img) => img.imagePath == image.imagePath)) {
+    return Colors.green;
+  } else if (adminImages.any((img) => img.imagePath == image.imagePath)) {
+    return Colors.orange;
+  }
+  return AppColors.grey;
+}
+
+// Helper method to get image category text
+String _getImageCategoryText(ComplaintImage image, List<ComplaintImage> tenantImages, 
+    List<ComplaintImage> technicianImages, List<ComplaintImage> adminImages) {
+  if (tenantImages.any((img) => img.imagePath == image.imagePath)) {
+    return "Tenant";
+  } else if (technicianImages.any((img) => img.imagePath == image.imagePath)) {
+    return "Technician";
+  } else if (adminImages.any((img) => img.imagePath == image.imagePath)) {
+    return "Admin";
+  }
+  return "Unknown";
 }
 Widget _buildTimelineSection() {
   final timelineEvents = controller.timeline;
@@ -856,9 +881,7 @@ String _formatTimelineEventType(String type) {
     );
   }
 
- Widget _buildImageCategory(String title, List<ComplaintImage> images, Color accentColor) {
-  print('🖼️ Building image category: $title with ${images.length} images');
-  
+Widget _buildImageCategory(String title, List<ComplaintImage> images, Color accentColor) {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -891,151 +914,122 @@ String _formatTimelineEventType(String type) {
             final image = images[index];
             final imageUrl = image.imagePath;
             
-            print('🖼️ Loading image $index: $imageUrl');
-            
-            // Check if URL is valid
-            final isValidUrl = imageUrl.startsWith('http') && 
-                              imageUrl.isNotEmpty && 
-                              !imageUrl.contains('example.com');
-            
-            return Container(
-              width: Get.width * 0.35,
-              margin: EdgeInsets.only(right: screenWidth1),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isValidUrl ? accentColor.withOpacity(0.3) : Colors.red.withOpacity(0.5),
-                          width: isValidUrl ? 1 : 2,
+            return GestureDetector(
+              onTap: () {
+                // Show zoomable image dialog
+                _showZoomableImageDialog(context, imageUrl);
+              },
+              child: Container(
+                width: Get.width * 0.35,
+                margin: EdgeInsets.only(right: screenWidth1),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: accentColor.withOpacity(0.3)),
+                          color: accentColor.withOpacity(0.05),
                         ),
-                        color: isValidUrl ? null : Colors.red.withOpacity(0.1),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: isValidUrl 
-                            ? CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                progressIndicatorBuilder: (context, url, downloadProgress) => 
-                                    Container(
-                                      color: accentColor.withOpacity(0.1),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          if (downloadProgress != null)
-                                            CircularProgressIndicator(
-                                              value: downloadProgress.progress,
-                                              color: accentColor,
-                                            )
-                                          else
-                                            CircularProgressIndicator(
-                                              color: accentColor,
-                                            ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            downloadProgress != null && downloadProgress.progress != null
-                                                ? '${(downloadProgress.progress! * 100).toStringAsFixed(0)}%'
-                                                : 'Loading...',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: accentColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                errorWidget: (context, url, error) {
-                                  print('❌ Image load error: $error for URL: $url');
-                                  return Container(
-                                    color: Colors.red.withOpacity(0.1),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.error_outline,
-                                          color: Colors.red,
-                                          size: Get.height * 0.04,
-                                        ),
-                                        SizedBox(height: 8),
-                                        Text(
-                                          'Load Failed',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: Colors.red,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        Text(
-                                          'Tap to retry',
-                                          style: TextStyle(
-                                            fontSize: 8,
-                                            color: Colors.red.withOpacity(0.7),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              )
-                            : Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.link_off,
-                                    color: Colors.red,
-                                    size: Get.height * 0.04,
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Invalid URL',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    imageUrl.isEmpty ? 'Empty' : imageUrl,
-                                    style: TextStyle(
-                                      fontSize: 8,
-                                      color: Colors.red.withOpacity(0.7),
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            placeholder: (context, url) => Container(
+                              color: accentColor.withOpacity(0.1),
+                              child: Center(
+                                child: CircularProgressIndicator(color: accentColor),
                               ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.red.withOpacity(0.1),
+                              child: Center(
+                                child: Icon(Icons.error_outline, color: Colors.red),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: screenHeight05),
-                  CustomTextWidget(
-                    title: DateFormatter.formatTo12Hour(image.timestamp),
-                    fontSize: Get.height * 0.011,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.black600,
-                  ),
-                  if (!isValidUrl) ...[
-                    SizedBox(height: 4),
+                    SizedBox(height: screenHeight05),
                     CustomTextWidget(
-                      title: 'Invalid URL',
-                      fontSize: Get.height * 0.01,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.red,
+                      title: DateFormatter.formatTo12Hour(image.timestamp),
+                      fontSize: Get.height * 0.011,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.black600,
                     ),
                   ],
-                ],
+                ),
               ),
             );
           },
         ),
       ),
     ],
+  );
+}
+
+// Add this method to show zoomable image dialog
+void _showZoomableImageDialog(BuildContext context, String imageUrl) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(20),
+        child: Stack(
+          children: [
+            // Close button
+            Positioned(
+              top: 40,
+              right: 40,
+              child: IconButton(
+                icon: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close, color: Colors.white, size: 24),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ),
+            
+            // Interactive viewer for zooming
+            Center(
+              child: InteractiveViewer(
+                panEnabled: true,
+                boundaryMargin: EdgeInsets.all(20),
+                minScale: 0.1,
+                maxScale: 4.0,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => Container(
+                    color: Colors.black.withOpacity(0.1),
+                    child: Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.black.withOpacity(0.1),
+                    child: Center(
+                      child: Icon(Icons.error_outline, color: Colors.white, size: 50),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
   );
 }
 }

@@ -237,8 +237,8 @@ class EditProfileScreen extends StatelessWidget {
             if (value == null || value.isEmpty) {
               return 'Phone number is required';
             }
-            if (value.length != 10) {
-              return 'Phone number must be 10 digits';
+            if (value.length != 8) {
+              return 'Phone number must be 8 digits';
             }
             return null;
           },
@@ -265,11 +265,11 @@ class EditProfileScreen extends StatelessWidget {
           keyboardType: TextInputType.phone,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(10),
+            LengthLimitingTextInputFormatter(8),
           ],
           validator: (value) {
-            if (value != null && value.isNotEmpty && value.length != 10) {
-              return 'WhatsApp number must be 10 digits';
+            if (value != null && value.isNotEmpty && value.length != 8) {
+              return 'WhatsApp number must be 8 digits';
             }
             return null;
           },

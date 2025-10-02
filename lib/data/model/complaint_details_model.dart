@@ -51,12 +51,24 @@ class ComplaintData {
         images = images ?? [],
         timeline = timeline ?? [];
 
-  factory ComplaintData.fromJson(Map<String, dynamic> json) =>
-      _$ComplaintDataFromJson(json);
+  factory ComplaintData.fromJson(Map<String, dynamic> json) {
+    return ComplaintData(
+      complaint: Complaint.fromJson(json['complaint'] as Map<String, dynamic>),
+      property: Property.fromJson(json['property'] as Map<String, dynamic>),
+      payments: (json['payments'] as List<dynamic>?)
+          ?.map((e) => Payment.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      images: (json['images'] as List<dynamic>?)
+          ?.map((e) => ComplaintImage.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      timeline: (json['timeline'] as List<dynamic>?)
+          ?.map((e) => TimelineEvent.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
 
   Map<String, dynamic> toJson() => _$ComplaintDataToJson(this);
 }
-
 @JsonSerializable()
 class Complaint {
   final String id;
@@ -147,10 +159,14 @@ class ComplaintImage {
   @JsonKey(name: 'image_path')
   final String imagePath;
   final String timestamp;
+  final String? type;  // Add this
+  final Map<String, dynamic>? by;  // Add this
 
   ComplaintImage({
     required this.imagePath,
     required this.timestamp,
+    this.type,
+    this.by,
   });
 
   factory ComplaintImage.fromJson(Map<String, dynamic> json) =>
@@ -158,7 +174,6 @@ class ComplaintImage {
 
   Map<String, dynamic> toJson() => _$ComplaintImageToJson(this);
 }
-
 @JsonSerializable()
 class TimelineEvent {
   final String type;

@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:majan/data/model/agent_model.dart';
 import 'package:majan/data/model/user_model.dart';
 import 'package:majan/domain/controller/agent_controller.dart';
@@ -5,46 +8,47 @@ import 'package:majan/domain/controller/user_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileController extends GetxController {
   Rxn<UserModel> userCredential = Rxn<UserModel>();
   Rxn<AgentModel> agentCredential = Rxn<AgentModel>();
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   var userRole = ''.obs;
   var isLoading = true.obs;
   var isEditing = false.obs;
   var isSaving = false.obs;
 
-  // Reactive variables for profile data
+  // Reactive profile data
   var fullName = ''.obs;
-  var phoneNumber = ''.obs;
-  var whatsappNumber = ''.obs;
+  var phoneNumber = ''.obs;       
+  var whatsappNumber = ''.obs;    
   var email = ''.obs;
   var gender = ''.obs;
   var dateOfBirth = ''.obs;
   var location = ''.obs;
   var profilePicUrl = ''.obs;
 
-  // Agent-specific fields
+  // Agent-specific
   var agencyName = ''.obs;
   var licenseNumber = ''.obs;
   var yearsOfExperience = ''.obs;
   var workingCities = ''.obs;
   var agentStatus = ''.obs;
 
-  // Text editing controllers for form fields
-  final TextEditingController fullNameController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
-  final TextEditingController whatsappController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController locationController = TextEditingController();
-  final TextEditingController agencyNameController = TextEditingController();
-  final TextEditingController licenseController = TextEditingController();
-  final TextEditingController experienceController = TextEditingController();
-  final TextEditingController citiesController = TextEditingController();
+  // Text controllers
+  final fullNameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final whatsappController = TextEditingController();
+  final emailController = TextEditingController();
+  final locationController = TextEditingController();
+  final agencyNameController = TextEditingController();
+  final licenseController = TextEditingController();
+  final experienceController = TextEditingController();
+  final citiesController = TextEditingController();
 
   @override
   void onInit() {
@@ -54,7 +58,6 @@ class ProfileController extends GetxController {
 
   @override
   void onClose() {
-    // Dispose controllers
     fullNameController.dispose();
     phoneController.dispose();
     whatsappController.dispose();
@@ -67,6 +70,7 @@ class ProfileController extends GetxController {
     super.onClose();
   }
 
+  /// Toggle editing mode
   void toggleEdit() {
     isEditing.value = !isEditing.value;
     if (isEditing.value) {
@@ -74,10 +78,11 @@ class ProfileController extends GetxController {
     }
   }
 
+  /// Populate controllers with current values
   void _populateControllers() {
     fullNameController.text = fullName.value;
-    phoneController.text = phoneNumber.value;
-    whatsappController.text = whatsappNumber.value;
+    phoneController.text = phoneNumber.value.replaceAll("+971", "");
+    whatsappController.text = whatsappNumber.value.replaceAll("+971", "");
     emailController.text = email.value;
     locationController.text = location.value;
 
@@ -89,63 +94,92 @@ class ProfileController extends GetxController {
     }
   }
 
-  Future<void> saveProfile() async {
-    try {
-      isSaving(true);
-      final user = auth.currentUser;
-
-      if (user == null) {
-        Get.snackbar('Error', 'No user logged in');
-        return;
-      }
-
-      if (userRole.value == 'agent') {
-        await _updateAgentProfile(user.uid);
-      } else {
-        await _updateUserProfile(user.uid);
-      }
-
-      isEditing.value = false;
-      Get.snackbar('Success', 'Profile updated successfully');
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to update profile: ${e.toString()}');
-      debugPrint('Error updating profile: $e');
-    } finally {
-      isSaving(false);
-    }
+  /// Phone number validation (must be exactly 8 digits)
+  bool validateUAEPhone(String number) {
+    final regex = RegExp(r'^[0-9]{8}$');
+    return regex.hasMatch(number);
   }
+
+  /// Save profile changes
+  Future<void> saveProfile() async {
+  try {
+    isSaving(true);
+    final user = auth.currentUser;
+
+    if (user == null) {
+      Get.snackbar('Error', 'No user logged in');
+      return;
+    }
+
+    // Validate Oman phone numbers
+    if (!validateUAEPhone(phoneController.text.trim())) {
+      Get.snackbar('Error', 'Phone number must be exactly 10 digits.');
+      return;
+    }
+    // if (!validateOmanPhone(whatsappController.text.trim())) {
+    //   Get.snackbar('Error', 'WhatsApp number must be exactly 8 digits.');
+    //   return;
+    // }
+
+    // Always prepend +971
+    phoneNumber.value = "+971${phoneController.text.trim()}";
+    whatsappNumber.value = "+971${whatsappController.text.trim()}";
+
+    if (userRole.value == 'agent') {
+      await _updateAgentProfile(user.uid);
+    } else {
+      await _updateUserProfile(user.uid);
+    }
+
+    // ✅ Clear all text fields after successful save
+    fullNameController.clear();
+    emailController.clear();
+    phoneController.clear();
+    locationController.clear();
+    // If you have WhatsApp controller
+    // whatsappController.clear();
+
+    isEditing.value = false;
+    Get.snackbar('Success', 'Profile updated successfully');
+  } catch (e) {
+    Get.snackbar('Error', 'Failed to update profile: $e');
+    debugPrint('Error updating profile: $e');
+  } finally {
+    isSaving(false);
+  }
+}
 
   Future<void> _updateAgentProfile(String uid) async {
     final agentData = {
       'displayName': fullNameController.text.trim(),
-      'mobile': phoneController.text.trim(),
-      'whatsAppNumber': whatsappController.text.trim(),
+      'mobile': phoneNumber.value,          
+      'whatsAppNumber': whatsappNumber.value, 
       'location': locationController.text.trim(),
       'gender': gender.value,
       'dob': dateOfBirth.value,
-      // 'agencyName': agencyNameController.text.trim(),
-      // 'licenseNumber': licenseController.text.trim(),
-      // 'yearsOfExperience': experienceController.text.trim(),
-      // 'workingCities': citiesController.text.trim(),
+      'profilePic': profilePicUrl.value,
+      'agencyName': agencyNameController.text.trim(),
+      'licenseNumber': licenseController.text.trim(),
+      'yearsOfExperience': experienceController.text.trim(),
+      'workingCities': citiesController.text.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
     await _firestore.collection('agents').doc(uid).update(agentData);
 
-    // Update local reactive variables
-    fullName.value = fullNameController.text.trim();
-    phoneNumber.value = phoneController.text.trim();
-    whatsappNumber.value = whatsappController.text.trim();
-    location.value = locationController.text.trim();
-    // agencyName.value = agencyNameController.text.trim();
-    // licenseNumber.value = licenseController.text.trim();
-    // yearsOfExperience.value = experienceController.text.trim();
-    workingCities.value = citiesController.text.trim();
+    fullName.value = agentData['displayName'] as String? ?? '';
+phoneNumber.value = agentData['mobile'] as String? ?? '';
+whatsappNumber.value = agentData['whatsAppNumber'] as String? ?? '';
+email.value = agentData['email'] as String? ?? '';
+gender.value = agentData['gender'] as String? ?? '';
+dateOfBirth.value = agentData['dob'] as String? ?? '';
+location.value = agentData['location'] as String? ?? '';
+profilePicUrl.value = agentData['profilePic'] as String? ?? '';
 
-    // Update the agent model
+
     if (agentCredential.value != null) {
       agentCredential.value = AgentModel(
-        uid: agentCredential.value!.uid,
+        uid: uid,
         email: email.value,
         name: fullName.value,
         role: agentCredential.value!.role,
@@ -160,104 +194,65 @@ class ProfileController extends GetxController {
   Future<void> _updateUserProfile(String uid) async {
     final userData = {
       'displayName': fullNameController.text.trim(),
-      'mobile': phoneController.text.trim(),
-      'whatsAppNumber': whatsappController.text.trim(),
+      'mobile': phoneNumber.value,           
+      'whatsAppNumber': whatsappNumber.value,
       'location': locationController.text.trim(),
       'gender': gender.value,
       'dob': dateOfBirth.value,
+      'imageUrl': profilePicUrl.value,
       'updatedAt': FieldValue.serverTimestamp(),
     };
 
     await _firestore.collection('users').doc(uid).update(userData);
+fullName.value = userData['displayName'] as String? ?? '';
+phoneNumber.value = userData['mobile'] as String? ?? '';
+whatsappNumber.value = userData['whatsAppNumber'] as String? ?? '';
+email.value = userData['email'] as String? ?? '';
+gender.value = userData['gender'] as String? ?? '';
+dateOfBirth.value = userData['dob'] as String? ?? '';
+location.value = userData['location'] as String? ?? '';
+profilePicUrl.value = userData['imageUrl'] as String? ?? '';
 
-    // Update local reactive variables
-    fullName.value = fullNameController.text.trim();
-    phoneNumber.value = phoneController.text.trim();
-    whatsappNumber.value = whatsappController.text.trim();
-    location.value = locationController.text.trim();
-
-    // Update the user model
     if (userCredential.value != null) {
       userCredential.value = UserModel(
-        uid: userCredential.value!.uid,
+        uid: uid,
         email: userCredential.value!.email,
         name: fullName.value,
         role: userCredential.value!.role,
         location: location.value,
         status: userCredential.value!.status,
+        imageUrl: profilePicUrl.value,
       );
     }
   }
 
+  /// Fetch user/agent credentials
   Future<void> fetchUserCredentials() async {
     try {
       isLoading(true);
       final user = auth.currentUser;
 
-      debugPrint('Current Firebase User: ${user?.uid}');
+      if (user == null) return;
 
-      if (user == null) {
-        return;
-      }
-
-      // Check if user is agent first
-      final agentDoc =
-          await _firestore.collection('agents').doc(user.uid).get();
+      final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
 
       if (agentDoc.exists) {
-        // User is an agent
         userRole.value = 'agent';
         final agentData = agentDoc.data()!;
-
-        agentCredential.value = AgentModel(
-          dob: agentData['dob'] ?? '',
-          gender: agentData['gender'] ?? '',
-          location: agentData['location'] ?? '',
-          uid: agentData['uid'] ?? user.uid,
-          email: agentData['email'] ?? user.email ?? '',
-          name: agentData['displayName'] ?? '',
-          role: agentData['role'] ?? 'agent',
-          status: agentData['status'] ?? 'pending',
-        );
-
-        // Populate reactive variables with agent data
         _populateAgentData(agentData);
         Get.find<AgentController>().currentUser = agentCredential.value;
-
-        debugPrint('User Role: agent');
-        debugPrint('Agent Name: ${agentCredential.value?.name}');
       } else {
-        // User is a regular user
         userRole.value = 'user';
-        final userDoc =
-            await _firestore.collection('users').doc(user.uid).get();
+        final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
         if (userDoc.exists) {
           final userData = userDoc.data()!;
-          userCredential.value = UserModel(
-            uid: userData['uid'] ?? user.uid,
-            email: userData['email'] ?? user.email ?? '',
-            name: userData['displayName'] ?? user.displayName ?? '',
-            role: userData['role'] ?? 'user',
-            location: userData['location'] ?? '',
-            status: userData['status'] ?? 'active',
-            imageUrl: userData['photoUrl'] ?? '',
-          );
-
-          // Populate reactive variables with user data
           _populateUserData(userData);
           Get.find<UserController>().currentUser = userCredential.value;
-
-          debugPrint('User Role: user');
-          debugPrint('User Name: ${userCredential.value?.name}');
-        } else {
-          debugPrint('No user document found in Firestore');
         }
       }
     } catch (e) {
-      Get.snackbar(
-          'Error', 'Failed to fetch user credentials: ${e.toString()}');
-      debugPrint('Error fetching user credentials: $e');
+      Get.snackbar('Error', 'Failed to fetch profile: $e');
     } finally {
       isLoading(false);
     }
@@ -273,12 +268,22 @@ class ProfileController extends GetxController {
     location.value = agentData['location'] ?? '';
     profilePicUrl.value = agentData['profilePic'] ?? '';
 
-    // Agent-specific fields
     agencyName.value = agentData['agencyName'] ?? '';
     licenseNumber.value = agentData['licenseNumber'] ?? '';
     yearsOfExperience.value = agentData['yearsOfExperience'] ?? '';
     workingCities.value = agentData['workingCities'] ?? '';
     agentStatus.value = agentData['status'] ?? 'pending';
+
+    agentCredential.value = AgentModel(
+      uid: agentData['uid'] ?? '',
+      email: agentData['email'] ?? '',
+      name: agentData['displayName'] ?? '',
+      role: agentData['role'] ?? 'agent',
+      status: agentData['status'] ?? 'pending',
+      dob: dateOfBirth.value,
+      gender: gender.value,
+      location: location.value,
+    );
   }
 
   void _populateUserData(Map<String, dynamic> userData) {
@@ -290,15 +295,25 @@ class ProfileController extends GetxController {
     dateOfBirth.value = userData['dob'] ?? '';
     location.value = userData['location'] ?? '';
     profilePicUrl.value = userData['imageUrl'] ?? '';
+
+    userCredential.value = UserModel(
+      uid: userData['uid'] ?? '',
+      email: userData['email'] ?? '',
+      name: userData['displayName'] ?? '',
+      role: userData['role'] ?? 'user',
+      location: userData['location'] ?? '',
+      status: userData['status'] ?? 'active',
+      imageUrl: profilePicUrl.value,
+    );
   }
 
-  // Date picker function
+  /// Date picker
   Future<void> selectDate() async {
     final DateTime? picked = await showDatePicker(
       context: Get.context!,
       initialDate: dateOfBirth.value.isNotEmpty
           ? _parseDate(dateOfBirth.value)
-          : DateTime.now().subtract(Duration(days: 6570)),
+          : DateTime.now().subtract(const Duration(days: 6570)),
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
     );
@@ -314,44 +329,58 @@ class ProfileController extends GetxController {
       final parts = dateString.split('/');
       if (parts.length == 3) {
         return DateTime(
-          int.parse(parts[2]), // year
-          int.parse(parts[1]), // month
-          int.parse(parts[0]), // day
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
         );
       }
-    } catch (e) {
-      debugPrint('Error parsing date: $e');
-    }
-    return DateTime.now().subtract(Duration(days: 6570));
+    } catch (_) {}
+    return DateTime.now().subtract(const Duration(days: 6570));
   }
 
-  // Getters for backward compatibility
-  String? get displayName {
-    if (userRole.value == 'user' || userRole.value == 'tenant') {
-      return userCredential.value?.name ?? fullName.value;
-    } else if (userRole.value == 'agent') {
-      return agentCredential.value?.name ?? fullName.value;
-    } else {
-      return "Guest";
+  /// Pick and upload profile image
+  Future<void> pickProfileImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile =
+          await picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
+
+      if (pickedFile == null) return;
+
+      final file = File(pickedFile.path);
+      final uid = auth.currentUser?.uid;
+
+      if (uid == null) return;
+
+      final ref = _storage.ref().child("profile_pics/$uid.jpg");
+      await ref.putFile(file);
+
+      final downloadUrl = await ref.getDownloadURL();
+      profilePicUrl.value = downloadUrl;
+
+      // update Firestore immediately
+      final collection = userRole.value == 'agent' ? 'agents' : 'users';
+      await _firestore.collection(collection).doc(uid).update({
+        userRole.value == 'agent' ? 'profilePic' : 'imageUrl': downloadUrl,
+      });
+    } catch (e) {
+      Get.snackbar("Error", "Failed to upload image: $e");
     }
+  }
+
+  // Display helpers
+  String? get displayName {
+    if (userRole.value == 'agent') return agentCredential.value?.name ?? '';
+    return userCredential.value?.name ?? '';
   }
 
   String? get displayLocation {
-    if (userRole.value == 'user' || userRole.value == 'tenant') {
-      return userCredential.value?.location ?? location.value;
-    } else if (userRole.value == 'agent') {
-      return agentCredential.value?.location ?? location.value;
-    } else {
-      return "Not Available";
-    }
+    if (userRole.value == 'agent') return agentCredential.value?.location ?? '';
+    return userCredential.value?.location ?? '';
   }
 
   String? get displayEmail {
-    if (userRole.value == 'user' || userRole.value == 'tenant') {
-      return userCredential.value?.email ?? email.value;
-    } else if (userRole.value == 'agent') {
-      return agentCredential.value?.email ?? email.value;
-    }
-    return email.value.isNotEmpty ? email.value : null;
+    if (userRole.value == 'agent') return agentCredential.value?.email ?? '';
+    return userCredential.value?.email ?? '';
   }
 }

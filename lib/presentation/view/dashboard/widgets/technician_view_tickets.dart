@@ -32,11 +32,19 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   // Loading state
   bool isInitializing = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeData();
-  }
+ @override
+void initState() {
+  super.initState();
+  _initializeData();
+  
+  // Listen for changes in controller tickets and update local state
+  ever(controller.tickets, (_) {
+    if (mounted) {
+      _loadTicketsLocally();
+    }
+  });
+}
+
 
   /// Initialize all data with proper error handling
   Future<void> _initializeData() async {
@@ -118,15 +126,20 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
     }
   }
 
-  /// Load tickets locally for filtering
-  void _loadTicketsLocally() {
-    debugPrint('📋 Loading ${controller.filteredTickets.length} tickets locally');
-    setState(() {
-      allTickets = List.from(controller.filteredTickets);
-      filteredTickets = allTickets;
-    });
-    debugPrint('✅ Local tickets loaded: ${allTickets.length}');
+ /// Load tickets locally for filtering
+void _loadTicketsLocally() {
+  if (controller.filteredTickets.isEmpty) {
+    debugPrint('⚠️ No tickets to load locally yet');
+    return;
   }
+  
+  debugPrint('📋 Loading ${controller.filteredTickets.length} tickets locally');
+  setState(() {
+    allTickets = List.from(controller.filteredTickets);
+    filteredTickets = allTickets;
+  });
+  debugPrint('✅ Local tickets loaded: ${allTickets.length}');
+}
 
   /// Show error message to user
   void _showErrorMessage(String message) {
@@ -141,42 +154,105 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   }
 
   /// Apply comprehensive filters similar to tenant version
-  void _applyFilters() {
-    debugPrint("🔍 Applying filters - Status: $selectedStatus, Start: $startDate, End: $endDate");
-    
-    setState(() {
-      filteredTickets = allTickets.where((ticket) {
-        // Status filter
-        if (selectedStatus != null && selectedStatus != 'All') {
-          final statusMatch = ticket.statusText.en.toLowerCase() == selectedStatus!.toLowerCase();
-          if (!statusMatch) return false;
-        }
+ /// Apply comprehensive filters similar to tenant version
+void _applyFilters() {
+  debugPrint("🔍 Applying filters - Status: $selectedStatus, Start: $startDate, End: $endDate");
+  
+  setState(() {
+    filteredTickets = allTickets.where((ticket) {
+      // Status filter
+      if (selectedStatus != null && selectedStatus != 'All') {
+        final statusMatch = ticket.statusText.en.toLowerCase() == selectedStatus!.toLowerCase();
+        if (!statusMatch) return false;
+      }
 
-        // Date range filter
-        if (startDate != null || endDate != null) {
-          try {
-            // Parse the ticket date - adjust format according to your date format
-            DateTime ticketDate = DateFormat('dd/MM/yyyy').parse(ticket.formattedDate ?? '');
-            
-            if (startDate != null && ticketDate.isBefore(startDate!)) {
-              return false;
-            }
-            if (endDate != null && ticketDate.isAfter(endDate!.add(const Duration(days: 1)))) {
-              return false;
-            }
-          } catch (e) {
-            debugPrint("⚠️ Error parsing date: ${ticket.formattedDate}");
-            // If date parsing fails, include the ticket
+      // Date range filter
+      if (startDate != null || endDate != null) {
+        try {
+          // Use the existing _parseTicketDate method from controller
+          // This handles multiple date formats including ISO format
+          final ticketDate = _parseTicketDateForFilter(
+            (ticket.createdBy as String?) ??
+            (ticket.lastUpdated as String?) ??
+            (ticket.formattedDate as String?)
+          );
+          
+          if (ticketDate == null) {
+            debugPrint("⚠️ Could not parse date for ticket ${ticket.complaintId}");
+            // Include tickets with unparseable dates to avoid hiding them
+            return true;
           }
-        }
 
-        return true;
-      }).toList();
-    });
-    
-    debugPrint("✅ Filtered tickets count: ${filteredTickets.length}");
+          // Normalize dates to compare only year/month/day
+          final ticketDateOnly = DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
+          
+          if (startDate != null) {
+            final startDateOnly = DateTime(startDate!.year, startDate!.month, startDate!.day);
+            if (ticketDateOnly.isBefore(startDateOnly)) {
+              return false;
+            }
+          }
+          
+          if (endDate != null) {
+            final endDateOnly = DateTime(endDate!.year, endDate!.month, endDate!.day);
+            // Add one day to include the end date in the range
+            final endDateInclusive = endDateOnly.add(const Duration(days: 1));
+            if (ticketDateOnly.isAfter(endDateInclusive) || ticketDateOnly.isAtSameMomentAs(endDateInclusive)) {
+              return false;
+            }
+          }
+        } catch (e) {
+          debugPrint("⚠️ Error parsing date for ticket ${ticket.complaintId}: $e");
+          // Include tickets with parsing errors to avoid hiding them
+          return true;
+        }
+      }
+
+      return true;
+    }).toList();
+  });
+  
+  debugPrint("✅ Filtered tickets count: ${filteredTickets.length}");
+}
+
+/// Parse ticket date with multiple format support
+DateTime? _parseTicketDateForFilter(String? dateString) {
+  if (dateString == null || dateString.isEmpty) return null;
+
+  // Clean the date string
+  final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}\)?'), '');
+
+  // Try multiple date formats
+  final possibleFormats = [
+    "yyyy-MM-dd HH:mm:ss",
+    "yyyy-MM-ddTHH:mm:ss",
+    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+    "yyyy-MM-dd",
+    "dd/MM/yyyy HH:mm:ss",
+    "dd/MM/yyyy",
+    "MM/dd/yyyy HH:mm:ss",
+    "MM/dd/yyyy",
+    "yyyy/MM/dd HH:mm:ss",
+    "MMM dd, yyyy hh:mm a", // Format like "Dec 25, 2024 10:30 AM"
+    "EEE, dd MMM yyyy HH:mm:ss",
+  ];
+
+  for (final format in possibleFormats) {
+    try {
+      return DateFormat(format).parse(cleanDateString);
+    } catch (e) {
+      continue;
+    }
   }
 
+  // Last resort: try standard DateTime.parse
+  try {
+    return DateTime.parse(cleanDateString);
+  } catch (e) {
+    debugPrint("❌ Failed to parse date with all formats: '$dateString'");
+    return null;
+  }
+}
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -405,50 +481,52 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   }
 
   /// Build tickets list
-  Widget _buildTicketsList() {
-    return Obx(() {
-      if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
-      }
+/// Build tickets list
+Widget _buildTicketsList() {
+  return Obx(() {
+    // Show loading indicator while data is initializing OR while controller is loading
+    if (isInitializing || (controller.isLoading.value && allTickets.isEmpty)) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-      // Use local filteredTickets instead of controller's filteredTickets
-      if (filteredTickets.isEmpty) {
-        return _buildEmptyState(
-          message: allTickets.isEmpty ? 'No Tickets Assigned' : 'No tickets match your filters',
-          showSearchHint: allTickets.isNotEmpty,
-        );
-      }
-
-      return RefreshIndicator(
-        onRefresh: _refreshData,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: filteredTickets.length,
-          itemBuilder: (context, index) {
-            final complaint = filteredTickets[index];
-            final statusColors = getStatusColors(complaint.statusText.en ?? '');
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: buildTicketCard(
-                complaintId: complaint.complaintId ?? '',
-                propertyName: complaint.propertyName ?? '',
-                category: complaint.category ?? '',
-                issue: complaint.subcategory ?? '',
-                status: complaint.statusText.en ?? '',
-                statusColor: statusColors.textColor,
-                description: complaint.description ?? '',
-                date: complaint.formattedDate ?? 'No date',
-                categoryIcon: Icons.build,
-                images: ComplaintImages(),
-                complaint: complaint,
-                time: complaint.lastUpdated ?? '',
-              ),
-            );
-          },
-        ),
+    // Use local filteredTickets instead of controller's filteredTickets
+    if (filteredTickets.isEmpty) {
+      return _buildEmptyState(
+        message: allTickets.isEmpty ? 'No Tickets Assigned' : 'No tickets match your filters',
+        showSearchHint: allTickets.isNotEmpty,
       );
-    });
-  }
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: filteredTickets.length,
+        itemBuilder: (context, index) {
+          final complaint = filteredTickets[index];
+          final statusColors = getStatusColors(complaint.statusText.en ?? '');
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: buildTicketCard(
+              complaintId: complaint.complaintId ?? '',
+              propertyName: complaint.propertyName ?? '',
+              category: complaint.category ?? '',
+              issue: complaint.subcategory ?? '',
+              status: complaint.statusText.en ?? '',
+              statusColor: statusColors.textColor,
+              description: complaint.description ?? '',
+              date: complaint.formattedDate ?? 'No date',
+              categoryIcon: Icons.build,
+              images: ComplaintImages(),
+              complaint: complaint,
+              time: complaint.lastUpdated ?? '',
+            ),
+          );
+        },
+      ),
+    );
+  });
+}
 
   /// Enhanced filters section
   Widget _buildFiltersSection() {

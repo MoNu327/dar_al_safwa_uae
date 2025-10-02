@@ -30,7 +30,7 @@ class ComplaintsResponse {
             : [Complaint.fromJson(parsedJson['data'] ?? {})],
       );
     } catch (e, stack) {
-      debugPrint('Failed to parse ComplaintsResponse: $e\n$stack');
+      // debugPrint('Failed to parse ComplaintsResponse: $e\n$stack');
       throw FormatException('Failed to parse complaints response: $e');
     }
   }
@@ -137,11 +137,11 @@ class Complaint {
 
 factory Complaint.fromJson(Map<String, dynamic> json) {
   try {
-    debugPrint('=== PARSING COMPLAINT JSON ===');
-    debugPrint('Raw JSON keys: ${json.keys.toList()}');
+    // debugPrint('=== PARSING COMPLAINT JSON ===');
+    // debugPrint('Raw JSON keys: ${json.keys.toList()}');
     
     final complaint = json['complaint'] ?? json;
-    debugPrint('Complaint keys: ${complaint.keys.toList()}');
+    // debugPrint('Complaint keys: ${complaint.keys.toList()}');
     
     final property = json['property'] is Map 
         ? (json['property'] as Map).cast<String, dynamic>() 
@@ -149,7 +149,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
             ? (complaint['property'] as Map).cast<String, dynamic>()
             : <String, dynamic>{});
     
-    debugPrint('Property keys: ${property.keys.toList()}');
+    // debugPrint('Property keys: ${property.keys.toList()}');
     
     final unit = property['unit'] is Map 
         ? (property['unit'] as Map).cast<String, dynamic>()
@@ -187,7 +187,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
         complaint['technicians'] as List<dynamic>? ??
         json['technicians'] as List<dynamic>?;
     
-    debugPrint('Found technician data: $technicianData');
+    // debugPrint('Found technician data: $technicianData');
     
     if (technicianData != null && technicianData.isNotEmpty) {
       for (var techData in technicianData) {
@@ -203,10 +203,10 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
               assignedAt = _parseAssignmentDate(technician.assignedAt);
             }
             
-            debugPrint('Successfully parsed technician: ${technician.name}');
+            // debugPrint('Successfully parsed technician: ${technician.name}');
           } catch (e) {
-            debugPrint('Failed to parse technician: $e');
-            debugPrint('Technician data: $techData');
+            // debugPrint('Failed to parse technician: $e');
+            // debugPrint('Technician data: $techData');
           }
         }
       }
@@ -281,7 +281,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
       assignmentStatus: assignmentStatus,
     );
   } catch (e, stack) {
-    debugPrint('Failed to parse Complaint: $e\n$stack');
+    // debugPrint('Failed to parse Complaint: $e\n$stack');
     throw FormatException('Failed to parse complaint: $e');
   }
 }
@@ -291,7 +291,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
     try {
       return DateTime.parse(dateString);
     } catch (e) {
-      debugPrint('Failed to parse assignment date: $dateString');
+      // debugPrint('Failed to parse assignment date: $dateString');
       return null;
     }
   }
@@ -594,9 +594,9 @@ class ComplaintImages {
 // Enhanced ComplaintImages.fromJson method with better technician image detection
 // Simplified and more reliable ComplaintImages.fromJson method
 factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallbackImages}) {
-  debugPrint('=== SIMPLIFIED COMPLAINT IMAGES PARSING ===');
-  debugPrint('Input JSON: $json');
-  debugPrint('Fallback images: $fallbackImages');
+  // debugPrint('=== SIMPLIFIED COMPLAINT IMAGES PARSING ===');
+  // debugPrint('Input JSON: $json');
+  // debugPrint('Fallback images: $fallbackImages');
   
   // Helper function to safely extract image list
   List<String> extractImageList(dynamic value) {
@@ -630,17 +630,17 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
                                        extractImageList(json['admin_tech_uploaded']) +
                                        extractImageList(json['shared_uploaded']);
 
-  debugPrint('Direct extraction results:');
-  debugPrint('- Tenant: ${tenantImages.length} images');
-  debugPrint('- Admin: ${adminImages.length} images');
-  debugPrint('- Technician: ${technicianImages.length} images');
-  debugPrint('- Admin/Tech: ${adminTechnicianImages.length} images');
+  // debugPrint('Direct extraction results:');
+  // debugPrint('- Tenant: ${tenantImages.length} images');
+  // debugPrint('- Admin: ${adminImages.length} images');
+  // debugPrint('- Technician: ${technicianImages.length} images');
+  // debugPrint('- Admin/Tech: ${adminTechnicianImages.length} images');
 
   // If no categorized images found, use fallback logic
   if (tenantImages.isEmpty && adminImages.isEmpty && 
       technicianImages.isEmpty && adminTechnicianImages.isEmpty) {
     
-    debugPrint('No categorized images found, using fallback...');
+    // debugPrint('No categorized images found, using fallback...');
     
     // Try to find images in other common field names
     List<String> allImages = [];
@@ -655,21 +655,21 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
       final fieldImages = extractImageList(json[field]);
       allImages.addAll(fieldImages);
       if (fieldImages.isNotEmpty) {
-        debugPrint('Found ${fieldImages.length} images in field "$field"');
+        // debugPrint('Found ${fieldImages.length} images in field "$field"');
       }
     }
     
     // Add fallback images if provided
     if (fallbackImages != null) {
       allImages.addAll(fallbackImages);
-      debugPrint('Added ${fallbackImages.length} fallback images');
+      // debugPrint('Added ${fallbackImages.length} fallback images');
     }
     
     // Remove duplicates
     allImages = allImages.toSet().toList();
     
     if (allImages.isNotEmpty) {
-      debugPrint('Total images to distribute: ${allImages.length}');
+      // debugPrint('Total images to distribute: ${allImages.length}');
       
       // Simple distribution logic
       if (allImages.length == 1) {
@@ -689,10 +689,10 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
         adminImages = allImages.skip(third * 2).toList();
       }
       
-      debugPrint('Distributed images:');
-      debugPrint('- Tenant: ${tenantImages.length}');
-      debugPrint('- Technician: ${technicianImages.length}');
-      debugPrint('- Admin: ${adminImages.length}');
+      // debugPrint('Distributed images:');
+      // debugPrint('- Tenant: ${tenantImages.length}');
+      // debugPrint('- Technician: ${technicianImages.length}');
+      // debugPrint('- Admin: ${adminImages.length}');
     }
   }
 
@@ -720,9 +720,9 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
     technicianImages = tenantImages.skip(halfPoint).toList();
     tenantImages = tenantImages.take(halfPoint).toList();
     
-    debugPrint('Redistributed due to technician activity:');
-    debugPrint('- Tenant: ${tenantImages.length}');
-    debugPrint('- Technician: ${technicianImages.length}');
+    // debugPrint('Redistributed due to technician activity:');
+    // debugPrint('- Tenant: ${tenantImages.length}');
+    // debugPrint('- Technician: ${technicianImages.length}');
   }
 
   final result = ComplaintImages(
@@ -732,12 +732,12 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
     adminTechnicianUploaded: adminTechnicianImages,
   );
   
-  debugPrint('=== FINAL RESULT ===');
-  debugPrint('- Tenant: ${result.tenantUploaded}');
-  debugPrint('- Admin: ${result.adminUploaded}');
-  debugPrint('- Technician: ${result.technicianUploaded}');
-  debugPrint('- Admin/Tech: ${result.adminTechnicianUploaded}');
-  debugPrint('=== END SIMPLIFIED PARSING ===');
+  // debugPrint('=== FINAL RESULT ===');
+  // debugPrint('- Tenant: ${result.tenantUploaded}');
+  // debugPrint('- Admin: ${result.adminUploaded}');
+  // debugPrint('- Technician: ${result.technicianUploaded}');
+  // debugPrint('- Admin/Tech: ${result.adminTechnicianUploaded}');
+  // debugPrint('=== END SIMPLIFIED PARSING ===');
   
   return result;
 }
@@ -759,7 +759,7 @@ static String _determineImageCategoryEnhanced(String imageUrl, Map<String, dynam
   
   // If we have technician update context, prioritize technician category
   if (hasTechnicianUpdate) {
-    debugPrint('Using technician category due to recent technician update context');
+    // debugPrint('Using technician category due to recent technician update context');
     return 'technician';
   }
   
@@ -801,7 +801,7 @@ static String _determineImageCategoryEnhanced(String imageUrl, Map<String, dynam
         return 'technician';
       }
     } catch (e) {
-      debugPrint('Could not parse last_updated for category determination');
+      // debugPrint('Could not parse last_updated for category determination');
     }
   }
   

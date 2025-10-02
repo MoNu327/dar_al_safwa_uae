@@ -4,6 +4,7 @@ import 'package:majan/domain/controller/technician_controller.dart';
 import 'package:majan/domain/services/firebase_notification.dart';
 import 'package:majan/presentation/controllers/network_controller.dart';
 import 'package:majan/presentation/view/dashboard/controller/tenant_tickets_controller.dart';
+import 'package:majan/presentation/view/profile/controller/profile_controller.dart';
 import 'package:majan/presentation/view_model/firebase_auth_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -87,6 +88,7 @@ void _initializeControllers() {
   Get.put(LocalizationController(), permanent: true);
   Get.put(TechnicianController(), permanent: true);
   Get.put(TenantsTicketsController(), permanent: true);
+  Get.put(ProfileController(), permanent: true);
   
   debugPrint('Controllers initialized successfully');
 }
@@ -212,6 +214,8 @@ class AppBindings extends Bindings {
     Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
     Get.put(TenantsTicketsController(), permanent: true);
     Get.put(notificationService, permanent: true);
+      Get.put(ProfileController(), permanent: true);
+
   }
 }
 class NotificationNavigationObserver extends NavigatorObserver {

@@ -54,11 +54,14 @@ Widget  buildTicketCard({
   
 
   return InkWell(
-    onTap: () {
-      if (complaint != null) {
-        Get.to(() => TicketDetailsScreen(complaintId: complaint.complaintId,));
-      }
-    },
+   onTap: () {
+  if (complaint != null) {
+    Get.to(() => TicketDetailsScreen(
+      complaintId: complaint.complaintId,
+      previewImageUrl: _getFirstAvailableImage(complaint), // Pass the image
+    ));
+  }
+},
     child: Container(
       padding: EdgeInsets.all(Get.width * 0.04),
       decoration: BoxDecoration(
@@ -619,7 +622,10 @@ Widget _buildActionButtonsSection(
           onPressed: () {
             if (complaint != null) {
               debugPrint("Complaint Details inside navigation ==> $complaint");
-              Get.to(() => TicketDetailsScreen(complaintId: complaint.complaintId,));
+              Get.to(() => TicketDetailsScreen(
+                complaintId: complaint.complaintId,
+                previewImageUrl: _getFirstAvailableImage(complaint),
+              ));
             } else {
               Get.snackbar(
                 'Error',
@@ -641,68 +647,57 @@ Widget _buildActionButtonsSection(
           buttonHeight: screenHeight * 0.040,
           buttonTitle: 'Reply',
           onPressed: () async {
-            // Navigate to RectifyTicketsScreen and handle the result
             final result = await Get.to(() => RectifyTicketsScreen(
               complaintId: complaintId,
               category: category,
             ));
 
-            // Handle the result and refresh if needed
             if (result != null && result is Map<String, dynamic>) {
               print("Received result from rectify form: $result");
               
               if (result['updated'] == true) {
-                final technicianUid = result['technicianUid'];
+                final fetchController = Get.find<TechnicianTicketsController>();
+                final technicianUid = FirebaseAuth.instance.currentUser?.uid;
                 
                 if (technicianUid != null) {
                   try {
-                    final fetchController = Get.find<TechnicianTicketsController>();
+                    // Show loading indicator
+                    Get.dialog(
+                      const Center(child: CircularProgressIndicator()),
+                      barrierDismissible: false,
+                    );
                     
-                    // Always force refresh all data to ensure UI is up to date
-                    print("Force refreshing all data after ticket update...");
-                    await fetchController.forceRefreshAllTickets(technicianUid);
+                    // CRITICAL FIX: Refresh BOTH tickets AND statistics
+                    await Future.wait([
+                      fetchController.fetchTickets(technicianUid),
+                      fetchController.getSummaryForTechnician(technicianUid), // ADD THIS LINE
+                    ]);
                     
-                    // Also refresh summary stats
-                    try {
-                      await fetchController.refreshSummaryOnly(technicianUid);
-                      print("Summary refreshed successfully");
-                    } catch (summaryError) {
-                      print("Summary refresh failed: $summaryError");
-                      // Continue even if summary fails
-                    }
+                    // Close loading indicator
+                    Get.back();
                     
-                    // Show success message after successful refresh
+                    // Show success message
                     Get.snackbar(
                       'Success', 
                       result['message'] ?? 'Updated successfully',
                       backgroundColor: Colors.green, 
                       colorText: Colors.white,
                       snackPosition: SnackPosition.BOTTOM,
-                      duration: Duration(seconds: 3),
+                      duration: Duration(seconds: 2),
                     );
                     
                   } catch (e) {
-                    print("Error refreshing data in receiving screen: $e");
-                    // Still show success message even if refresh fails
+                    // Close loading indicator if still showing
+                    if (Get.isDialogOpen == true) Get.back();
+                    
+                    print("Error refreshing data: $e");
                     Get.snackbar(
-                      'Success', 
-                      result['message'] ?? 'Updated successfully',
-                      backgroundColor: Colors.green, 
+                      'Warning', 
+                      'Update successful but failed to refresh list',
+                      backgroundColor: Colors.orange, 
                       colorText: Colors.white,
-                      snackPosition: SnackPosition.BOTTOM,
-                      duration: Duration(seconds: 3),
                     );
                   }
-                } else {
-                  // Show success message even without technician UID
-                  Get.snackbar(
-                    'Success', 
-                    result['message'] ?? 'Updated successfully',
-                    backgroundColor: Colors.green, 
-                    colorText: Colors.white,
-                    snackPosition: SnackPosition.BOTTOM,
-                    duration: Duration(seconds: 3),
-                  );
                 }
               }
             }
