@@ -77,48 +77,44 @@ class ProfileViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.white,
-        surfaceTintColor: AppColors.white,
-        automaticallyImplyLeading: false,
-        title: Obx(() {
-          return CustomTextWidget(
-            title: localizationController.translate('My Profile'),
-            fontSize: appBarTitles,
-            color: AppColors.black,
-            fontWeight: FontWeight.w600,
-          );
-        }),
-        actions: [
-          (profileController.displayName != "Guest" &&
-                  (authService.userRole.value == 'tenant' ||
-                      authService.userRole.value == 'user' ||
-                      authService.userRole.value == 'agent'))
-              ? TextButton(
-                  onPressed: () {
-                   if (authService.userRole.value == 'tenant') {
-  Get.to(() => EditTenantProfileScreen());
-} else if (authService.userRole.value == 'user') {
-  Get.to(() => EditProfileScreen(
-      controller: profileController,
-      localizationController: localizationController
-  )); // <-- create this screen for user role
-} else if (authService.userRole.value == 'agent') {
-  profileController.toggleEdit();
-}
-
-                  },
-                  child: CustomTextWidget(
-                    title: localizationController.translate('Edit'),
-                    color: AppColors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )
-              : SizedBox.shrink()
-
-          // LanguageTextButton(localizationController: localizationController),
-        ],
+  backgroundColor: AppColors.white,
+  surfaceTintColor: AppColors.white,
+  automaticallyImplyLeading: false,
+  title: Obx(() {
+    return CustomTextWidget(
+      title: localizationController.translate('My Profile'),
+      fontSize: appBarTitles,
+      color: AppColors.black,
+      fontWeight: FontWeight.w600,
+    );
+  }),
+  actions: [
+    // Edit Button
+    if (profileController.displayName != "Guest" &&
+        (authService.userRole.value == 'tenant' ||
+         authService.userRole.value == 'user' ||
+         authService.userRole.value == 'agent'))
+      TextButton(
+        onPressed: () {
+          if (authService.userRole.value == 'tenant' ||
+              authService.userRole.value == 'user') {
+            // Navigate to tenant/user edit screen
+            Get.to(() => EditTenantProfileScreen());
+          } else {
+            // Toggle edit mode for agent
+            profileController.toggleEdit();
+          }
+        },
+        child: CustomTextWidget(
+          title: localizationController.translate('Edit'),
+          color: AppColors.black,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
       ),
+  ],
+),
+
       body: Padding(
         padding: EdgeInsets.symmetric(
             horizontal: Get.width * 0.03, vertical: Get.height * 0.02),

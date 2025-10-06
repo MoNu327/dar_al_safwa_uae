@@ -1,4 +1,5 @@
 import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -14,9 +15,32 @@ class AgentChatScreen extends StatelessWidget {
   final NetworkController networkController = Get.find<NetworkController>();
   AgentChatScreen({super.key});
 
+  Future<bool> _onWillPop() async {
+    debugPrint("🔙 AgentChatScreen: Back button pressed");
+    
+    // Cleanup controller before going back
+    controller.cleanup();
+    
+    // Refresh property details when going back
+    if (Get.isRegistered<PropertyDetailsController>()) {
+      debugPrint("🔄 AgentChatScreen: Triggering property refresh");
+      final propertyController = Get.find<PropertyDetailsController>();
+      
+      // Use a slight delay to ensure navigation completes first
+      Future.delayed(const Duration(milliseconds: 100), () {
+        propertyController.refreshPropertyDetails();
+      });
+    } else {
+      debugPrint("⚠️ AgentChatScreen: PropertyDetailsController not found");
+    }
+    
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    return WillPopScope(
+      onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
           title: Obx(() {
@@ -55,36 +79,82 @@ class AgentChatScreen extends StatelessWidget {
             );
           }),
           actions: [
-            // Customer Follow-up Button
-            Padding(
-              padding: EdgeInsets.only(right: screenWidth2),
-              child: ElevatedButton(
-                onPressed: () {
-                  // Handle follow-up action
-                  controller.handleCustomerFollowUp();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.secondaryColor, // Use your app's primary color
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            Obx(() {
+              if (controller.isAgent.value) {
+                return Padding(
+                  padding: EdgeInsets.only(right: screenWidth2),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      controller.handleCustomerFollowUp();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth2,
+                        vertical: screenHeight05,
+                      ),
+                    ),
+                    child: CustomTextWidget(
+                      title: 'Customer Follow-up',
+                      fontSize: Get.height * 0.013,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth3 ,
-                    vertical: screenHeight05,
-                  ),
-                ),
-                child: CustomTextWidget(
-                  title: 'Customer Follow-up',
-                  color: AppColors.white,
-                  fontSize: Get.height * 0.013,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+                );
+              } else {
+                return const SizedBox.shrink();
+              }
+            }),
           ],
         ),
         body: Obx(() {
+          if (controller.hasError.value) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 50, color: Colors.red),
+                  SizedBox(height: 16),
+                  CustomTextWidget(
+                    title: 'Failed to load chat data',
+                    color: AppColors.black,
+                    fontSize: Get.height * 0.018,
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => controller.retryFailedOperations(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                    ),
+                    child: CustomTextWidget(
+                      title: 'Retry',
+                      color: AppColors.white,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      // Trigger refresh when going back
+                      if (Get.isRegistered<PropertyDetailsController>()) {
+                        final propertyController = Get.find<PropertyDetailsController>();
+                        propertyController.refreshPropertyDetails();
+                      }
+                      Get.back();
+                    },
+                    child: CustomTextWidget(
+                      title: 'Go Back',
+                      color: AppColors.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           if (controller.isLoading.value) {
             return Center(
               child: LoadingAnimationWidget.twistingDots(
@@ -146,10 +216,6 @@ class AgentChatScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // IconButton(
-          //   icon: const Icon(Icons.add, color: AppColors.black),
-          //   onPressed: () {},
-          // ),
           Expanded(
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: Get.width * 0.03),
@@ -163,8 +229,7 @@ class AgentChatScreen extends StatelessWidget {
                     child: SingleChildScrollView(
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
-                          maxHeight: screenHeight *
-                              0.25, // Set a reasonable max height
+                          maxHeight: screenHeight * 0.25,
                         ),
                         child: TextField(
                           controller: controller.messageController,
@@ -178,27 +243,26 @@ class AgentChatScreen extends StatelessWidget {
                       ),
                     ),
                   )
-                  // IconButton(
-                  //   onPressed: () {},
-                  //   icon: const Icon(Icons.attach_file,
-                  //       color: AppColors.lightGrey),
-                  // ),
                 ],
               ),
             ),
           ),
           SizedBox(width: Get.width * 0.02),
-          CircleAvatar(
-            backgroundColor: AppColors.splashBackgroundColor,
-            child: IconButton(
-              icon: const Icon(Icons.send),
-              onPressed: () {
-                controller.isSendMessageLoading.value
-                    ? null
-                    : controller.sendMessage();
-              },
-            ),
-          ),
+          Obx(() => CircleAvatar(
+                backgroundColor: AppColors.splashBackgroundColor,
+                child: IconButton(
+                  icon: controller.isSendMessageLoading.value
+                      ? LoadingAnimationWidget.twistingDots(
+                          leftDotColor: AppColors.white,
+                          rightDotColor: AppColors.secondaryColor,
+                          size: 20,
+                        )
+                      : const Icon(Icons.send),
+                  onPressed: controller.isSendMessageLoading.value
+                      ? null
+                      : () => controller.sendMessage(),
+                ),
+              )),
         ],
       ),
     );
@@ -220,8 +284,6 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Handle system message case first
-
     return Padding(
       padding: EdgeInsets.symmetric(vertical: Get.height * 0.01),
       child: Row(
@@ -276,9 +338,9 @@ class ChatBubble extends StatelessWidget {
                     title: message,
                     color: AppColors.black,
                     fontSize: Get.height * 0.015,
-                    maxLines: null, // Allow unlimited lines
-                    softWrap: true, // Enable text wrapping
-                    overflow: TextOverflow.visible, // Show overflow text
+                    maxLines: null,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
                   ),
                   CustomTextWidget(
                     title: time,

@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:majan/data/model/agent_model.dart';
 import 'package:majan/data/model/user_model.dart';
 import 'package:majan/domain/controller/agent_controller.dart';
 import 'package:majan/domain/controller/user_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -24,8 +24,8 @@ class ProfileController extends GetxController {
 
   // Reactive profile data
   var fullName = ''.obs;
-  var phoneNumber = ''.obs;       
-  var whatsappNumber = ''.obs;    
+  var phoneNumber = ''.obs;       // stores +968XXXXXXXX
+  var whatsappNumber = ''.obs;    // stores +968XXXXXXXX
   var email = ''.obs;
   var gender = ''.obs;
   var dateOfBirth = ''.obs;
@@ -81,8 +81,9 @@ class ProfileController extends GetxController {
   /// Populate controllers with current values
   void _populateControllers() {
     fullNameController.text = fullName.value;
-    phoneController.text = phoneNumber.value.replaceAll("+971", "");
-    whatsappController.text = whatsappNumber.value.replaceAll("+971", "");
+    // Remove +968 prefix before showing in textfield
+    phoneController.text = phoneNumber.value.replaceAll("+968", "");
+    whatsappController.text = whatsappNumber.value.replaceAll("+968", "");
     emailController.text = email.value;
     locationController.text = location.value;
 
@@ -95,7 +96,7 @@ class ProfileController extends GetxController {
   }
 
   /// Phone number validation (must be exactly 8 digits)
-  bool validateUAEPhone(String number) {
+  bool validateOmanPhone(String number) {
     final regex = RegExp(r'^[0-9]{8}$');
     return regex.hasMatch(number);
   }
@@ -112,8 +113,8 @@ class ProfileController extends GetxController {
     }
 
     // Validate Oman phone numbers
-    if (!validateUAEPhone(phoneController.text.trim())) {
-      Get.snackbar('Error', 'Phone number must be exactly 10 digits.');
+    if (!validateOmanPhone(phoneController.text.trim())) {
+      Get.snackbar('Error', 'Phone number must be exactly 8 digits.');
       return;
     }
     // if (!validateOmanPhone(whatsappController.text.trim())) {
@@ -121,9 +122,9 @@ class ProfileController extends GetxController {
     //   return;
     // }
 
-    // Always prepend +971
-    phoneNumber.value = "+971${phoneController.text.trim()}";
-    whatsappNumber.value = "+971${whatsappController.text.trim()}";
+    // Always prepend +968
+    phoneNumber.value = "+968${phoneController.text.trim()}";
+    whatsappNumber.value = "+968${whatsappController.text.trim()}";
 
     if (userRole.value == 'agent') {
       await _updateAgentProfile(user.uid);
@@ -152,8 +153,8 @@ class ProfileController extends GetxController {
   Future<void> _updateAgentProfile(String uid) async {
     final agentData = {
       'displayName': fullNameController.text.trim(),
-      'mobile': phoneNumber.value,          
-      'whatsAppNumber': whatsappNumber.value, 
+      'mobile': phoneNumber.value,          // save with +968
+      'whatsAppNumber': whatsappNumber.value, // save with +968
       'location': locationController.text.trim(),
       'gender': gender.value,
       'dob': dateOfBirth.value,
@@ -194,8 +195,8 @@ profilePicUrl.value = agentData['profilePic'] as String? ?? '';
   Future<void> _updateUserProfile(String uid) async {
     final userData = {
       'displayName': fullNameController.text.trim(),
-      'mobile': phoneNumber.value,           
-      'whatsAppNumber': whatsappNumber.value,
+      'mobile': phoneNumber.value,           // save with +968
+      'whatsAppNumber': whatsappNumber.value, // save with +968
       'location': locationController.text.trim(),
       'gender': gender.value,
       'dob': dateOfBirth.value,

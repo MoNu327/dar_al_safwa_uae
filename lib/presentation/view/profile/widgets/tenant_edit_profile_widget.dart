@@ -243,8 +243,8 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return "Please enter phone number";
                             }
-                            if (value.length < 8) {
-                              return "Phone number must be 8 digits";
+                            if (value.length < 9) {
+                              return "Phone number must be 9 digits";
                             }
                             return null;
                           },

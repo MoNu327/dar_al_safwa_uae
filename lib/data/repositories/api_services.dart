@@ -79,6 +79,102 @@ class ApiService {
     rethrow;
   }
 }
+
+Future<Response> gettechnicianbyproperty(int propertyid) async {
+  try {
+    final response = await apiClient.request(
+      "technicians/by-property",
+      method: "post",
+      data: {
+        "property_id": propertyid,
+      }
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+Future<Response> getcustomerfollowup(String chatId) async {
+  try {
+    final response = await apiClient.request(
+      "chat/details",
+      method: "post",
+      data: {
+        "chat_id": chatId,  // Now correctly passes String chatId
+      }
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+
+Future<Response> submitFollowUp({
+  required String customerId,
+  required int propertyId,
+  required String unitType,
+  required String technicianId,
+  required int saleStatus,
+  required String notes,
+}) async {
+  try {
+    final response = await apiClient.request(
+      "customer-followups/add",
+      method: "post",
+      data: {
+        "customer_id": customerId,
+        "property_id": propertyId,
+        "unit_type": unitType,
+        "technician_id": technicianId,
+        "sale_status": saleStatus,
+        "notes": notes,
+      },
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+
+Future<Response> getFollowupHistory(String uid, String propertyId) async {
+  try {
+    final response = await apiClient.request(
+      "agent/followup-history",
+      method: "post",
+      data: {
+        "customer_id": uid, 
+        "property_id": propertyId, // Ensure this is sent as string
+      }
+    );
+
+    print('Follow-up History Response: ${response.data}');
+    return response;
+  } catch (e) {
+    print('Error in getFollowupHistory: $e');
+    print('Request params: customer_id: $uid, property_id: $propertyId');
+    rethrow;
+  }
+}
+
+Future<Response> getTenantDocuments(String uid) async {
+  try {
+    final response = await apiClient.request(
+      "tenant/documents",  
+      method: "post",
+      data: {'uid': uid},
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
  
   Future<Response> getTechnicanHistory(String complaintId) async {
   try {

@@ -152,7 +152,7 @@ class AppRoute {
     ),
     GetPage(
       name: tenantDocumentsList,
-      page: () => TenantsDocumentsWidget(),
+      page: () => TenantDocumentsView(),
     ),
     //  GetPage(
     //   name: tenantTicketDetails,
