@@ -144,118 +144,126 @@ class PropertyDetailsController extends GetxController {
     errorMessage(null);
   }
 
-  Future postPropertyInterest(
-      String propertyId,
-      int unitType,
-      int count,
-      String comments,
-      int enqtype,
-      String mobileNumber, {
-        String? unitId,
-        String? propertyName,
-        String? agentEmail,
-      }) async {
-    try {
-      isLoading(true);
-      errorMessage(null);
-      hasError(false);
+ Future postPropertyInterest(
+    String propertyId,
+    int unitType,
+    int count,
+    String comments,
+    int enqtype,
+    String mobileNumber, {
+      String? unitId,
+      String? propertyName,
+      String? agentEmail,
+    }) async {
+  try {
+    isLoading(true);
+    errorMessage(null);
+    hasError(false);
 
-      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-      final propertyIdParsed = int.tryParse(propertyId) ?? 0;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final propertyIdParsed = int.tryParse(propertyId) ?? 0;
 
-      final isFirstTime = await isFirstTimeUser(uid);
-      if ((mobileNumber.isEmpty || mobileNumber.trim() == "") && isFirstTime) {
-        debugPrint('⚠️ Mobile number missing for first-time user. Redirecting...');
+    // Check if user has existing mobile number
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final existingMobileNumber = doc.data()?['phoneNumber'] ?? '';
+    final existingPhone = doc.data()?['phone'] ?? '';
+    
+    // Use existing number if available, otherwise use the provided one
+    final mobileToUse = existingMobileNumber.trim().isNotEmpty 
+        ? existingMobileNumber 
+        : existingPhone.trim().isNotEmpty 
+            ? existingPhone 
+            : mobileNumber;
 
-        Get.snackbar(
-          "Mobile Number Required",
-          "Please update your mobile number to continue.",
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 3),
-        );
+    final isFirstTime = await isFirstTimeUser(uid);
+    
+    if (mobileToUse.isEmpty && isFirstTime) {
+      debugPrint('⚠️ Mobile number missing for first-time user. Redirecting...');
 
-        final result = await Get.to(() => MobileNumberUpdatePage(
-  phone: mobileNumber,
-  propertyId: propertyId,
-  navigateToChat: true,
-  navigateToCall: false,
-  unitId: unitId,
-  propertyName: propertyName,
-  agentEmail: agentEmail,
-));
-
-if (result != null && result['phoneNumber'] != null) {
-  final updatedMobile = result['phoneNumber'];
-
-  // ✅ Immediately call API after saving number
-  await postPropertyInterest(
-    propertyId,
-    unitType,
-    count,
-    comments,
-    enqtype,
-    updatedMobile,
-  );
-
-  if (result['navigateToChat'] == true) {
-    navigateToAgentChat(
-      result['agentEmail'] ?? "",
-      result['propertyId'],
-      result['propertyName'],
-      result['unitId'],
-    );
-  } else if (result['navigateToCall'] == true) {
-    await callToAgent(result['phone']);
-  }
-}
-
-
-        return;
-      }
-
-      debugPrint('✅ Submitting property interest...');
-      debugPrint('📞 Mobile: $mobileNumber');
-
-      final response = await apiService.postPropertyInterest(
-        uid,
-        propertyIdParsed,
-        unitType,
-        count,
-        comments,
-        enqtype,
-        mobileNumber,
+      Get.snackbar(
+        "Mobile Number Required",
+        "Please update your mobile number to continue.",
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
       );
 
-      debugPrint('🎉 API response status: ${response.statusCode}');
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint("✅ Interest Posted");
-      } else if (response.statusCode == 503) {
-        hasError(true);
-        is503Error(true);
-        errorType('503');
-        throw Exception("Service temporarily unavailable. Please try again later.");
-      } else {
-        throw Exception("Failed to post interest");
-      }
-    } catch (e) {
-      debugPrint('❌ Error in Post Interest Details: $e');
-      
-      if (e.toString().contains('503') || 
-          e.toString().toLowerCase().contains('service unavailable')) {
-        hasError(true);
-        is503Error(true);
-        errorType('503');
-      } else {
-        hasError(true);
-        errorType('general');
-      }
-      
-      errorMessage(e.toString());
-    } finally {
-      isLoading(false);
-    }
-  }
+      final result = await Get.to(() => MobileNumberUpdatePage(
+        phone: mobileNumber,
+        propertyId: propertyId,
+        navigateToChat: true,
+        navigateToCall: false,
+        unitId: unitId,
+        propertyName: propertyName,
+        agentEmail: agentEmail,
+      ));
 
+      if (result != null && result['phoneNumber'] != null) {
+        final updatedMobile = result['phoneNumber'];
+        await postPropertyInterest(
+          propertyId,
+          unitType,
+          count,
+          comments,
+          enqtype,
+          updatedMobile,
+        );
+        
+        if (result['navigateToChat'] == true) {
+          navigateToAgentChat(
+            result['agentEmail'] ?? "",
+            result['propertyId'],
+            result['propertyName'],
+            result['unitId'],
+          );
+        } else if (result['navigateToCall'] == true) {
+          await callToAgent(result['phone']);
+        }
+      }
+      return;
+    }
+
+    debugPrint('✅ Submitting property interest...');
+    debugPrint('📞 Mobile being used: $mobileToUse');
+
+    final response = await apiService.postPropertyInterest(
+      uid,
+      propertyIdParsed,
+      unitType,
+      count,
+      comments,
+      enqtype,
+      mobileToUse, // Use the determined mobile number
+    );
+
+    debugPrint('🎉 API response status: ${response.statusCode}');
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      debugPrint("✅ Interest Posted");
+    } else if (response.statusCode == 503) {
+      hasError(true);
+      is503Error(true);
+      errorType('503');
+      throw Exception("Service temporarily unavailable. Please try again later.");
+    } else {
+      throw Exception("Failed to post interest");
+    }
+  } catch (e) {
+    debugPrint('❌ Error in Post Interest Details: $e');
+    
+    if (e.toString().contains('503') || 
+        e.toString().toLowerCase().contains('service unavailable')) {
+      hasError(true);
+      is503Error(true);
+      errorType('503');
+    } else {
+      hasError(true);
+      errorType('general');
+    }
+    
+    errorMessage(e.toString());
+  } finally {
+    isLoading(false);
+  }
+}
   Future<void> saveMobileNumber({
     required String mobile,
     required String phone,
@@ -275,55 +283,71 @@ if (result != null && result['phoneNumber'] != null) {
   }
 
   Future<void> handleCallOrChat({
-    required bool isCall,
-    required String phone,
-    required String propertyId,
-    String? propertyName,
-    String? agentEmail,
-  }) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      Get.toNamed(AppRoute.signupWarning);
-      return;
-    }
+  required bool isCall,
+  required String phone,
+  required String propertyId,
+  String? propertyName,
+  String? agentEmail,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    Get.toNamed(AppRoute.signupWarning);
+    return;
+  }
 
-    final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-    final mobile = doc.data()?['phoneNumber'] ?? '';
+  // Check if user has phoneNumber in Firestore
+  final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+  final mobileNumber = doc.data()?['phoneNumber'] ?? '';
+  final phoneNumber = doc.data()?['phone'] ?? ''; // Also check for 'phone' field
+  
+  // Check if either phoneNumber or phone field exists and is not empty
+  final hasMobileNumber = mobileNumber.trim().isNotEmpty || phoneNumber.trim().isNotEmpty;
+  
+  debugPrint('📱 Mobile number check:');
+  debugPrint('   - phoneNumber field: $mobileNumber');
+  debugPrint('   - phone field: $phoneNumber');
+  debugPrint('   - Has mobile number: $hasMobileNumber');
 
-    if (mobile.isEmpty) {
-      final result = await Get.to(() => MobileNumberUpdatePage(
-            phone: phone,
-            propertyId: propertyId,
-            navigateToCall: isCall,
-            navigateToChat: !isCall,
-            propertyName: propertyName,
-            agentEmail: agentEmail,
-          ));
+  if (!hasMobileNumber) {
+    debugPrint('📱 No mobile number found, redirecting to MobileNumberUpdatePage');
+    
+    final result = await Get.to(() => MobileNumberUpdatePage(
+          phone: phone,
+          propertyId: propertyId,
+          navigateToCall: isCall,
+          navigateToChat: !isCall,
+          propertyName: propertyName,
+          agentEmail: agentEmail,
+        ));
 
-      if (result != null && result['phoneNumber'] != null) {
-        if (isCall) {
-          showUnitTypeBottomSheetForCall(phone, propertyId);
-        } else {
-         showUnitTypeBottomSheetForChat(
-  property.value?.agent?.email ?? "",   // ✅ always take from property
-  propertyId,
-  propertyName ?? property.value?.title?.en ?? "",
-);
-
-        }
-      }
-    } else {
+    if (result != null && result['phoneNumber'] != null) {
       if (isCall) {
         showUnitTypeBottomSheetForCall(phone, propertyId);
       } else {
-showUnitTypeBottomSheetForChat(
-  property.value?.agent?.email ?? "",   // ✅ always take from property
-  propertyId,
-  propertyName ?? property.value?.title?.en ?? "",
-);
+        showUnitTypeBottomSheetForChat(
+          property.value?.agent?.email ?? "",
+          propertyId,
+          propertyName ?? property.value?.title?.en ?? "",
+        );
       }
     }
+  } else {
+    debugPrint('📱 Mobile number found, proceeding directly');
+    
+    // Use the existing mobile number (prioritize phoneNumber field)
+    final existingMobile = mobileNumber.trim().isNotEmpty ? mobileNumber : phoneNumber;
+    
+    if (isCall) {
+      showUnitTypeBottomSheetForCall(phone, propertyId);
+    } else {
+      showUnitTypeBottomSheetForChat(
+        property.value?.agent?.email ?? "",
+        propertyId,
+        propertyName ?? property.value?.title?.en ?? "",
+      );
+    }
   }
+}
 
   String getPropertyTitle() {
     return property.value?.title?.en ?? property.value?.title?.ar ?? 'No Title';
@@ -336,16 +360,27 @@ showUnitTypeBottomSheetForChat(
   }
 
   Future<bool> isFirstTimeUser(String uid) async {
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
+  final doc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(uid)
+      .get();
 
-    if (!doc.exists) return true;
+  if (!doc.exists) return true;
 
-    final mobile = doc.data()?['phoneNumber'] ?? '';
-    return mobile.trim().isEmpty;
-  }
+  final mobileNumber = doc.data()?['phoneNumber'] ?? '';
+  final phoneNumber = doc.data()?['phone'] ?? '';
+  
+  // Check if either field exists and is not empty
+  final hasMobileNumber = mobileNumber.trim().isNotEmpty || phoneNumber.trim().isNotEmpty;
+  
+  debugPrint('🔍 First time user check:');
+  debugPrint('   - phoneNumber field: $mobileNumber');
+  debugPrint('   - phone field: $phoneNumber');
+  debugPrint('   - Has mobile number: $hasMobileNumber');
+  debugPrint('   - Is first time user: ${!hasMobileNumber}');
+  
+  return !hasMobileNumber;
+}
 
   final RxList<String> imageUrls = [
     "https://i.postimg.cc/5tSKgkpL/CAB-BUILDING.jpg",

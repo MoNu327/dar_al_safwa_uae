@@ -13,7 +13,6 @@ import '../../../../core/utils/validator.dart';
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_formfield_widget.dart';
 import '../../../widgets/custom_text_widget.dart';
-
 class UserDetailsSubmission extends StatefulWidget {
   @override
   _UserDetailsSubmissionState createState() => _UserDetailsSubmissionState();
@@ -482,68 +481,68 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                 kHeight(0.01),
                                 
                                 // Add Document Button (as fallback)
-                                Center(
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      // Validate all fields are filled
-                                      if (_docTitleController.text.isEmpty) {
-                                        Get.snackbar(
-                                          'Error',
-                                          'Please enter a document title',
-                                          backgroundColor: Colors.red,
-                                          colorText: AppColors.white,
-                                        );
-                                        return;
-                                      }
-                                      if (_selectedExpiryDate == null) {
-                                        Get.snackbar(
-                                          'Error',
-                                          'Please select an expiry date',
-                                          backgroundColor: Colors.red,
-                                          colorText: AppColors.white,
-                                        );
-                                        return;
-                                      }
-                                      if (_tempFile == null) {
-                                        Get.snackbar(
-                                          'Error',
-                                          'Please select a file',
-                                          backgroundColor: Colors.red,
-                                          colorText: AppColors.white,
-                                        );
-                                        return;
-                                      }
+                                // Center(
+                                //   child: ElevatedButton(
+                                //     onPressed: () {
+                                //       // Validate all fields are filled
+                                //       if (_docTitleController.text.isEmpty) {
+                                //         Get.snackbar(
+                                //           'Error',
+                                //           'Please enter a document title',
+                                //           backgroundColor: Colors.red,
+                                //           colorText: AppColors.white,
+                                //         );
+                                //         return;
+                                //       }
+                                //       if (_selectedExpiryDate == null) {
+                                //         Get.snackbar(
+                                //           'Error',
+                                //           'Please select an expiry date',
+                                //           backgroundColor: Colors.red,
+                                //           colorText: AppColors.white,
+                                //         );
+                                //         return;
+                                //       }
+                                //       if (_tempFile == null) {
+                                //         Get.snackbar(
+                                //           'Error',
+                                //           'Please select a file',
+                                //           backgroundColor: Colors.red,
+                                //           colorText: AppColors.white,
+                                //         );
+                                //         return;
+                                //       }
                                       
-                                      controller.addAdditionalDocument(
-                                        _docTitleController.text,
-                                        _selectedExpiryDate!,
-                                        _tempFile!,
-                                      );
+                                //       controller.addAdditionalDocument(
+                                //         _docTitleController.text,
+                                //         _selectedExpiryDate!,
+                                //         _tempFile!,
+                                //       );
                                       
-                                      // Reset form
-                                      _docTitleController.clear();
-                                      setState(() {
-                                        _selectedExpiryDate = null;
-                                        _tempFile = null;
-                                      });
+                                //       // Reset form
+                                //       _docTitleController.clear();
+                                //       setState(() {
+                                //         _selectedExpiryDate = null;
+                                //         _tempFile = null;
+                                //       });
                                       
-                                      Get.snackbar(
-                                        'Success',
-                                        'Document added successfully',
-                                        backgroundColor: AppColors.onlineGreen,
-                                        colorText: AppColors.white,
-                                      );
-                                    },
-                                    child: Text(
-                                      'Add Document',
-                                      style: TextStyle(color: AppColors.white),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.secondaryColor,
-                                      foregroundColor: AppColors.white,
-                                    ),
-                                  ),
-                                ),
+                                //       Get.snackbar(
+                                //         'Success',
+                                //         'Document added successfully',
+                                //         backgroundColor: AppColors.onlineGreen,
+                                //         colorText: AppColors.white,
+                                //       );
+                                //     },
+                                //     child: Text(
+                                //       'Add Document',
+                                //       style: TextStyle(color: AppColors.white),
+                                //     ),
+                                //     style: ElevatedButton.styleFrom(
+                                //       backgroundColor: AppColors.secondaryColor,
+                                //       foregroundColor: AppColors.white,
+                                //     ),
+                                //   ),
+                                // ),
                               ],
                             ),
                           ),

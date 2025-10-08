@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -28,6 +29,7 @@ class UserDataSubmissionController extends GetxController {
 
   final ApiService apiService = ApiService();
   final isLoading = false.obs;
+  final isFetchingUserData = false.obs; // New loading state for fetching user data
   final errorMessage = Rx<String?>(null);
 
   // Form controllers
@@ -46,39 +48,168 @@ class UserDataSubmissionController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _initializeFromArguments();
+    _initializeUserData();
   }
 
-  void _initializeFromArguments() {
-    final args = Get.arguments;
+  // Method to extract only the last 8 digits (remove country code)
+  String _extractPhoneNumber(String fullNumber) {
+    if (fullNumber.isEmpty) return '';
     
-    if (args != null && args is Map<String, dynamic>) {
-      debugPrint('📥 Received arguments: $args');
+    // Remove all non-digit characters first
+    String cleanNumber = fullNumber.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // If number is longer than 8 digits, take the last 8 digits
+    if (cleanNumber.length > 10) {
+      return cleanNumber.substring(cleanNumber.length - 10);
+    }
+    
+    // If it's exactly 8 digits or less, return as is
+    return cleanNumber;
+  }
+
+  // Method to format phone number for display (without country code)
+  String _formatPhoneNumberForDisplay(String phoneNumber) {
+    String extracted = _extractPhoneNumber(phoneNumber);
+    
+    if (extracted.isEmpty) return '';
+    
+    // Format as XXXX XXXX if we have 8 digits
+    if (extracted.length == 10) {
+      return '${extracted.substring(0, 4)} ${extracted.substring(4)}';
+    }
+    
+    return extracted;
+  }
+
+  // New method to fetch user data from Firestore
+  Future<Map<String, String>> _fetchUserDataFromFirestore() async {
+    try {
+      isFetchingUserData.value = true;
+      final user = FirebaseAuth.instance.currentUser;
       
-      // Determine citizenship
-      bool citizenship = true;
-      if (args.containsKey('passportNo') && args['passportNo']?.toString().isNotEmpty == true) {
-        citizenship = false;
-        debugPrint('🔍 Found passport data, setting citizenship to Foreign (false)');
+      if (user == null) {
+        debugPrint('❌ No authenticated user found');
+        return {};
       }
 
-      selectedCitizenship.value = citizenship ? 1 : 0;
-      
-      // Create user model using the new UserProfile
-      user.value = UserDataSubmissionModel(
-        uid: FirebaseAuth.instance.currentUser?.uid ?? '',
-        firstName: args['firstName']?.toString() ?? '',
-        lastName: args['lastName']?.toString() ?? '',
-        address: args['address']?.toString() ?? '',
-        email: args['email']?.toString() ?? '',
-        mobile: args['mobileNo']?.toString() ?? '',
-        propertyId: args['propertyId']?.toString() ?? '0',
-        unitId: args['unitId']?.toString() ?? '0',
-        citizenship: citizenship,
-        additionalDocuments: [],
-      );
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
-      _populateControllers();
+      if (doc.exists) {
+        final data = doc.data();
+        debugPrint('📥 Fetched user data from Firestore: $data');
+        
+        // Extract user data with fallbacks
+        final firebaseEmail = user.email ?? '';
+        final firestoreEmail = data?['email']?.toString() ?? '';
+        final phoneNumber = data?['phoneNumber']?.toString() ?? '';
+        final phone = data?['phone']?.toString() ?? '';
+        final firstName = data?['firstName']?.toString() ?? '';
+        final lastName = data?['lastName']?.toString() ?? '';
+        final address = data?['address']?.toString() ?? '';
+        
+        // Determine which email to use (prioritize Firebase auth email)
+        final finalEmail = firebaseEmail.isNotEmpty ? firebaseEmail : firestoreEmail;
+        
+        // Determine which mobile number to use (prioritize phoneNumber field)
+        final finalMobile = phoneNumber.isNotEmpty ? phoneNumber : phone;
+        
+        // Extract only the last 8 digits for display
+        final displayMobile = _extractPhoneNumber(finalMobile);
+        
+        debugPrint('📧 Email - Firebase: $firebaseEmail, Firestore: $firestoreEmail, Final: $finalEmail');
+        debugPrint('📱 Mobile - Raw: $finalMobile, Extracted: $displayMobile');
+        
+        return {
+          'email': finalEmail,
+          'mobile': displayMobile, // Use extracted 8 digits for display
+          'mobileFull': finalMobile, // Keep full number for submission
+          'firstName': firstName,
+          'lastName': lastName,
+          'address': address,
+        };
+      } else {
+        debugPrint('📭 No user document found in Firestore');
+        return {};
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching user data from Firestore: $e');
+      return {};
+    } finally {
+      isFetchingUserData.value = false;
+    }
+  }
+
+  Future<void> _initializeUserData() async {
+    try {
+      // First fetch existing user data from Firestore
+      final userData = await _fetchUserDataFromFirestore();
+      
+      // Then process arguments (arguments can override existing data)
+      final args = Get.arguments;
+      
+      if (args != null && args is Map<String, dynamic>) {
+        debugPrint('📥 Received arguments: $args');
+        
+        // Determine citizenship from arguments
+        bool citizenship = true;
+        if (args.containsKey('passportNo') && args['passportNo']?.toString().isNotEmpty == true) {
+          citizenship = false;
+          debugPrint('🔍 Found passport data, setting citizenship to Foreign (false)');
+        }
+
+        selectedCitizenship.value = citizenship ? 1 : 0;
+        
+        // Extract mobile number from arguments if present
+        final argumentMobile = args['mobileNo']?.toString() ?? '';
+        final displayArgumentMobile = _extractPhoneNumber(argumentMobile);
+        
+        // Create user model using the new UserProfile
+        // Use existing user data as fallback for empty argument values
+        user.value = UserDataSubmissionModel(
+          uid: FirebaseAuth.instance.currentUser?.uid ?? '',
+          firstName: args['firstName']?.toString() ?? userData['firstName'] ?? '',
+          lastName: args['lastName']?.toString() ?? userData['lastName'] ?? '',
+          address: args['address']?.toString() ?? userData['address'] ?? '',
+          email: args['email']?.toString() ?? userData['email'] ?? '',
+          mobile: displayArgumentMobile.isNotEmpty ? displayArgumentMobile : userData['mobile'] ?? '',
+          propertyId: args['propertyId']?.toString() ?? '0',
+          unitId: args['unitId']?.toString() ?? '0',
+          citizenship: citizenship,
+          additionalDocuments: [],
+        );
+
+        _populateControllers();
+        
+        debugPrint('✅ Final populated data:');
+        debugPrint('   First Name: ${user.value.firstName}');
+        debugPrint('   Last Name: ${user.value.lastName}');
+        debugPrint('   Address: ${user.value.address}');
+        debugPrint('   Email: ${user.value.email}');
+        debugPrint('   Mobile (display): ${user.value.mobile}');
+      } else {
+        // No arguments, use only Firestore data
+        debugPrint('📭 No arguments provided, using Firestore data only');
+        
+        user.value = UserDataSubmissionModel(
+          uid: FirebaseAuth.instance.currentUser?.uid ?? '',
+          firstName: userData['firstName'] ?? '',
+          lastName: userData['lastName'] ?? '',
+          address: userData['address'] ?? '',
+          email: userData['email'] ?? '',
+          mobile: userData['mobile'] ?? '', // This is already extracted 8 digits
+          propertyId: '0',
+          unitId: '0',
+          citizenship: true,
+          additionalDocuments: [],
+        );
+        
+        _populateControllers();
+      }
+    } catch (e) {
+      debugPrint('❌ Error initializing user data: $e');
     }
   }
 
@@ -87,10 +218,19 @@ class UserDataSubmissionController extends GetxController {
     lastNameCtrl.text = user.value.lastName;
     addressCtrl.text = user.value.address;
     emailCtrl.text = user.value.email;
-    mobileCtrl.text = user.value.mobile;
+    
+    // Format mobile number for display (XXXX XXXX format)
+    mobileCtrl.text = _formatPhoneNumberForDisplay(user.value.mobile);
+    
+    debugPrint('🎯 Controllers populated:');
+    debugPrint('   First Name Ctrl: ${firstNameCtrl.text}');
+    debugPrint('   Last Name Ctrl: ${lastNameCtrl.text}');
+    debugPrint('   Email Ctrl: ${emailCtrl.text}');
+    debugPrint('   Mobile Ctrl: ${mobileCtrl.text}');
   }
 
   void updateUserFromControllers() {
+    // For mobile, we only store the 8 digits (country code will be added during submission)
     String cleanMobile = mobileCtrl.text.replaceAll(RegExp(r'[^\d]'), '');
     
     user.value = UserDataSubmissionModel(
@@ -135,7 +275,8 @@ class UserDataSubmissionController extends GetxController {
       return false;
     }
 
-    mobileCtrl.text = cleanMobile;
+    // Format the mobile number for display
+    mobileCtrl.text = _formatPhoneNumberForDisplay(cleanMobile);
     errorMessage.value = null;
     return true;
   }
@@ -221,6 +362,7 @@ class UserDataSubmissionController extends GetxController {
     }
   }
 
+
   Future<void> submitUserData() async {
     if (!validateForm()) return;
 
@@ -228,8 +370,11 @@ class UserDataSubmissionController extends GetxController {
       isLoading.value = true;
       errorMessage.value = null;
 
-      // Clean mobile number
+      // Clean mobile number (should be 8 digits without country code)
       String cleanMobile = user.value.mobile.replaceAll(RegExp(r'[^\d]'), '');
+      
+      // The mobile stored in user.value should already be 8 digits without country code
+      debugPrint('📱 Mobile for submission: $cleanMobile (8 digits without country code)');
       
       // Create the final user profile with cleaned data
       final cleanedUserData = UserDataSubmissionModel(
@@ -238,12 +383,26 @@ class UserDataSubmissionController extends GetxController {
         lastName: user.value.lastName,
         address: user.value.address,
         email: user.value.email,
-        mobile: cleanMobile,
+        mobile: cleanMobile, // This should be 8 digits without country code
         propertyId: user.value.propertyId,
         unitId: user.value.unitId,
         citizenship: user.value.citizenship,
         additionalDocuments: user.value.additionalDocuments,
       );
+
+      // Debug the data structure before sending
+      debugPrint('🔍 Final data structure:');
+      debugPrint('   First Name: ${user.value.firstName}');
+      debugPrint('   Last Name: ${user.value.lastName}');
+      debugPrint('   Email: ${user.value.email}');
+      debugPrint('   Mobile: $cleanMobile (8 digits)');
+      debugPrint('   Citizenship: ${user.value.citizenship}');
+      debugPrint('   Additional Documents: ${user.value.additionalDocuments.length}');
+      
+      for (int i = 0; i < user.value.additionalDocuments.length; i++) {
+        var doc = user.value.additionalDocuments[i];
+        debugPrint('   Document $i: ${doc.title} - ${doc.expiryDate}');
+      }
 
       // Use the updated API service method
       final response = await apiService.submitUserDetailsAndDoc(cleanedUserData);
@@ -264,7 +423,18 @@ class UserDataSubmissionController extends GetxController {
           throw Exception(responseData['message'] ?? 'Submission failed');
         }
       } else {
-        throw Exception('HTTP ${response.statusCode}');
+        // Handle API errors with more detail
+        String errorMsg = 'HTTP ${response.statusCode}';
+        if (response.data != null && response.data is Map) {
+          var errorData = response.data as Map;
+          if (errorData.containsKey('message')) {
+            errorMsg += ': ${errorData['message']}';
+          }
+          if (errorData.containsKey('errors')) {
+            errorMsg += '\nErrors: ${errorData['errors']}';
+          }
+        }
+        throw Exception(errorMsg);
       }
     } catch (e) {
       errorMessage.value = e.toString();
@@ -278,8 +448,7 @@ class UserDataSubmissionController extends GetxController {
       isLoading.value = false;
     }
   }
-
-  void _clearFormAfterSubmission() {
+   void _clearFormAfterSubmission() {
     firstNameCtrl.clear();
     lastNameCtrl.clear();
     addressCtrl.clear();
