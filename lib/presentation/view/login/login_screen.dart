@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:majan/core/constants/custom_size.dart';
 import 'package:majan/presentation/view/dashboard/widgets/technician_dashboard.dart';
@@ -12,7 +14,6 @@ import '../../view_model/firebase_auth_controller.dart';
 import '../../view_model/localization_controller.dart';
 import '../../view_model/login_controller.dart';
 import '../../widgets/language_text_button.dart';
-
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
 
@@ -55,12 +56,11 @@ class LoginScreen extends StatelessWidget {
                   fit: BoxFit.cover,
                 );
               }),
-
               Stack(
                 children: [
                   Center(
                     child: Image.asset(
-                      "assets/logo/launcher.jpg",
+                      "assets/logo/launcher.png",
                       width: Get.width * 0.3,
                       height: Get.height * 0.1,
                       fit: BoxFit.cover,
@@ -92,33 +92,106 @@ class LoginScreen extends StatelessWidget {
                 color: AppColors.black600,
                 fontWeight: FontWeight.w700,
               ),
-              Obx(() {
-                debugPrint("🔄 Google Login Loading: ${loginController.isGoogleLoading.value}");
-                return CustomButton(
-                  textSize: H18,
-                  title: authService.isSignInGoogle.value
-                      ? localizationController.translate('loading')
-                      : localizationController.translate('login_with_google'),
-                 onPressed: () {
-  if (!authService.isSignInGoogle.value && !loginController.isGoogleSigningIn.value) {
-    loginController.isGoogleSigningIn.value = true;
-    authService.signInWithGoogle().whenComplete(() {
-      loginController.isGoogleSigningIn.value = false;
-    });
-  }
-},
-                  customIconWidget: loginController.isGoogleLoading.value
-                      ? const SizedBox.shrink()
-                      : Image.asset(
-                          "assets/logo/google.png",
-                          width: Get.height * 0.035,
-                          height: Get.height * 0.035,
-                          fit: BoxFit.cover,
-                        ),
-                );
-              }),
+              if (Platform.isIOS) ...[
+                // iOS: Both Apple and Google logos in same Row
+                Row(
+                  children: [
+                    // Apple Sign In Button (Icon only)
+                    Expanded(
+                      child: Obx(() {
+                        return CustomButton(
+                          color: AppColors.black,
+                          titleColor: AppColors.white,
+                          textSize: tagTitle,
+                          title: 'Apple Sign In', // No text, just icon
+                          onPressed: () {
+                            if (!authService.isSignInApple.value) {
+                              authService.signInWithApple();
+                            }
+                          },
+                          customIconWidget: authService.isSignInApple.value
+                              ? CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
+                                )
+                              : Image.asset(
+                                  "assets/images/apple.png",
+                                  width: Get.height * 0.025,
+                                  height: Get.height * 0.025,
+                                  fit: BoxFit.cover,
+                                ),
+                        );
+                      }),
+                    ),
+
+                    SizedBox(width: 12),
+
+                    // Google Sign In Button (Icon only)
+                    Expanded(
+                      child: Obx(() {
+                        return CustomButton(
+                          textSize: tagTitle,
+                          title: 'Google Sign in', // No text, just icon
+                          onPressed: () {
+                            if (!authService.isSignInGoogle.value &&
+                                !loginController.isGoogleSigningIn.value) {
+                              loginController.isGoogleSigningIn.value = true;
+                              authService.signInWithGoogle().whenComplete(() {
+                                loginController.isGoogleSigningIn.value = false;
+                              });
+                            }
+                          },
+                          customIconWidget:
+                              loginController.isGoogleLoading.value
+                                  ? CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
+                                    )
+                                  : Image.asset(
+                                      "assets/logo/google.png",
+                                      width: Get.height * 0.035,
+                                      height: Get.height * 0.035,
+                                      fit: BoxFit.cover,
+                                    ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                // Android: Google Sign In with full text
+                Obx(() {
+                  debugPrint(
+                      "🔄 Google Login Loading: ${loginController.isGoogleLoading.value}");
+                  return CustomButton(
+                    textSize: H18,
+                    title: authService.isSignInGoogle.value
+                        ? localizationController.translate('loading')
+                        : localizationController.translate('login_with_google'),
+                    onPressed: () {
+                      if (!authService.isSignInGoogle.value &&
+                          !loginController.isGoogleSigningIn.value) {
+                        loginController.isGoogleSigningIn.value = true;
+                        authService.signInWithGoogle().whenComplete(() {
+                          loginController.isGoogleSigningIn.value = false;
+                        });
+                      }
+                    },
+                    customIconWidget: loginController.isGoogleLoading.value
+                        ? const SizedBox.shrink()
+                        : Image.asset(
+                            "assets/logo/google.png",
+                            width: Get.height * 0.035,
+                            height: Get.height * 0.035,
+                            fit: BoxFit.cover,
+                          ),
+                  );
+                }),
+              ],
               Row(
-                mainAxisSize: MainAxisSize.max,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Expanded(
                     child: CustomButton(
@@ -132,7 +205,7 @@ class LoginScreen extends StatelessWidget {
                       customIconWidget: const Icon(Icons.person),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  // const SizedBox(width: 10),
                   Expanded(
                     child: CustomButton(
                       iconSize: 14,
@@ -199,7 +272,7 @@ class CustomButton extends StatelessWidget {
     this.color,
     this.titleColor,
     this.customIconWidget,
-    this.iconSize = 20,
+    this.iconSize = 25,
     this.textSize,
   });
 
