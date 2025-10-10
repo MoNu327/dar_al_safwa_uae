@@ -14,6 +14,7 @@ import '../../view_model/firebase_auth_controller.dart';
 import '../../view_model/localization_controller.dart';
 import '../../view_model/login_controller.dart';
 import '../../widgets/language_text_button.dart';
+
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
 
@@ -60,7 +61,7 @@ class LoginScreen extends StatelessWidget {
                 children: [
                   Center(
                     child: Image.asset(
-                      "assets/logo/launcher.png",
+                      "assets/logo/majan.png",
                       width: Get.width * 0.3,
                       height: Get.height * 0.1,
                       fit: BoxFit.cover,

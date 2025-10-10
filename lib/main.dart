@@ -1,3 +1,5 @@
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/foundation.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/core/routes/app_route.dart';
 import 'package:majan/domain/controller/technician_controller.dart';
@@ -5,6 +7,7 @@ import 'package:majan/domain/services/firebase_notification.dart';
 import 'package:majan/presentation/controllers/network_controller.dart';
 import 'package:majan/presentation/view/dashboard/controller/tenant_tickets_controller.dart';
 import 'package:majan/presentation/view/profile/controller/profile_controller.dart';
+import 'package:majan/presentation/view/search/controllers/search_screen_controller.dart';
 import 'package:majan/presentation/view_model/firebase_auth_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -23,11 +26,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown, 
+    DeviceOrientation.portraitDown,
   ]);
   await _initializeFirebase();
   await _initializeNotifications();
-  
+
   _initializeControllers();
   runApp(
     FutureBuilder<User?>(
@@ -46,15 +49,52 @@ Future<void> _initializeFirebase() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    // 🆕 SMART APP CHECK SETUP - WORKS FOR BOTH TESTING & PRODUCTION
+    await _initializeAppCheck();
     debugPrint('Firebase initialized successfully');
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }
 }
 
+Future<void> _initializeAppCheck() async {
+  try {
+    if (kReleaseMode) {
+      // 🚀 PRODUCTION MODE - Play Store & App Store
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.playIntegrity,
+        appleProvider: AppleProvider.deviceCheck,
+      );
+      debugPrint('App Check: PRODUCTION mode (Play Integrity + DeviceCheck)');
+    } else {
+      // 🧪 DEVELOPMENT/TESTING MODE - Debug providers
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.debug,
+        appleProvider: AppleProvider.debug,
+      );
+      debugPrint('App Check: DEVELOPMENT mode (Debug providers)');
+
+      // Get debug tokens for testing
+      _setupDebugTokenListener();
+    }
+  } catch (e) {
+    debugPrint('App Check initialization error: $e');
+  }
+}
+
+void _setupDebugTokenListener() {
+  // Listen for debug tokens in development
+  FirebaseAppCheck.instance.onTokenChange.listen((token) {
+    debugPrint('🎯 App Check Debug Token: $token');
+    debugPrint(
+        '📝 Add this token to Firebase Console → App Check → Manage debug tokens');
+  });
+}
+
 Future<void> _initializeNotifications() async {
   try {
-    notificationService = FirebaseNotificationService(navigatorKey: navigatorKey);
+    notificationService =
+        FirebaseNotificationService(navigatorKey: navigatorKey);
     await notificationService.initialize();
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'high_importance_channel',
@@ -80,7 +120,6 @@ Future<void> _initializeNotifications() async {
 }
 
 void _initializeControllers() {
-
   Get.put(NetworkController(), permanent: true);
   Get.put(AgentController(), permanent: true);
   Get.put(UserController(), permanent: true);
@@ -88,8 +127,8 @@ void _initializeControllers() {
   Get.put(LocalizationController(), permanent: true);
   Get.put(TechnicianController(), permanent: true);
   Get.put(TenantsTicketsController(), permanent: true);
+  Get.put(SearchScreenController(), permanent: true);
   Get.put(ProfileController(), permanent: true);
-  
   debugPrint('Controllers initialized successfully');
 }
 
@@ -107,7 +146,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupAppLifecycleHandling();
     });
   }
@@ -122,7 +161,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     switch (state) {
       case AppLifecycleState.resumed:
         debugPrint('App resumed - checking for pending notifications');
@@ -147,8 +186,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     debugPrint('App lifecycle handling setup complete');
   }
 
-  void _handleAppResume() {
-  }
+  void _handleAppResume() {}
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +196,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         devicePixelRatio: 1.0,
       ),
       child: GetMaterialApp(
-        title: 'Majan',
+        title: 'Dar Al Safwa',
         theme: _buildAppTheme(),
         debugShowCheckedModeBanner: false,
         locale: const Locale('en'),
@@ -166,13 +204,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         navigatorKey: navigatorKey,
         defaultTransition: Transition.fadeIn,
         transitionDuration: const Duration(milliseconds: 300),
-        initialRoute: widget.isAuthenticated ? AppRoute.navbar : AppRoute.initial,
+        initialRoute:
+            widget.isAuthenticated ? AppRoute.navbar : AppRoute.initial,
         getPages: AppRoute.routes,
         initialBinding: AppBindings(),
-                navigatorObservers: [
+        navigatorObservers: [
           NotificationNavigationObserver(),
         ],
-                unknownRoute: GetPage(
+        unknownRoute: GetPage(
           name: '/unknown',
           page: () => const Scaffold(
             body: Center(
@@ -210,20 +249,25 @@ class AppBindings extends Bindings {
     Get.lazyPut<AuthService>(() => AuthService(), fenix: true);
     Get.lazyPut<AgentController>(() => AgentController(), fenix: true);
     Get.lazyPut<UserController>(() => UserController(), fenix: true);
-    Get.lazyPut<LocalizationController>(() => LocalizationController(), fenix: true);
-    Get.lazyPut<TechnicianController>(() => TechnicianController(), fenix: true);
+    Get.lazyPut<LocalizationController>(() => LocalizationController(),
+        fenix: true);
+    Get.lazyPut<TechnicianController>(() => TechnicianController(),
+        fenix: true);
+    Get.lazyPut<TenantsTicketsController>(() => TenantsTicketsController(),
+        fenix: true);
+    Get.put(notificationService, permanent: true);
     Get.put(TenantsTicketsController(), permanent: true);
     Get.put(notificationService, permanent: true);
-      Get.put(ProfileController(), permanent: true);
-
+    Get.put(ProfileController(), permanent: true);
   }
 }
+
 class NotificationNavigationObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
     debugPrint('Navigation: Pushed ${route.settings.name}');
-        if (route.settings.arguments != null) {
+    if (route.settings.arguments != null) {
       debugPrint('Navigation: Route arguments: ${route.settings.arguments}');
     }
   }
@@ -231,7 +275,8 @@ class NotificationNavigationObserver extends NavigatorObserver {
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
-    debugPrint('Navigation: Replaced ${oldRoute?.settings.name} with ${newRoute?.settings.name}');
+    debugPrint(
+        'Navigation: Replaced ${oldRoute?.settings.name} with ${newRoute?.settings.name}');
   }
 
   @override
