@@ -3,6 +3,7 @@ import 'package:majan/core/constants/custom_size.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/presentation/controllers/network_controller.dart';
 import 'package:majan/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
+import 'package:majan/presentation/view/profile/screens/property_interest_history_view.dart';
 import 'package:majan/presentation/view/profile/widgets/edit_profile_widget.dart';
 import 'package:majan/presentation/view/profile/widgets/testimonial_section.dart';
 import 'package:majan/presentation/view_model/firebase_auth_controller.dart';
@@ -77,44 +78,43 @@ class ProfileViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  backgroundColor: AppColors.white,
-  surfaceTintColor: AppColors.white,
-  automaticallyImplyLeading: false,
-  title: Obx(() {
-    return CustomTextWidget(
-      title: localizationController.translate('My Profile'),
-      fontSize: appBarTitles,
-      color: AppColors.black,
-      fontWeight: FontWeight.w600,
-    );
-  }),
-  actions: [
-    // Edit Button
-    if (profileController.displayName != "Guest" &&
-        (authService.userRole.value == 'tenant' ||
-         authService.userRole.value == 'user' ||
-         authService.userRole.value == 'agent'))
-      TextButton(
-        onPressed: () {
-          if (authService.userRole.value == 'tenant' ||
-              authService.userRole.value == 'user') {
-            // Navigate to tenant/user edit screen
-            Get.to(() => EditTenantProfileScreen());
-          } else {
-            // Toggle edit mode for agent
-            profileController.toggleEdit();
-          }
-        },
-        child: CustomTextWidget(
-          title: localizationController.translate('Edit'),
-          color: AppColors.black,
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
+        backgroundColor: AppColors.white,
+        surfaceTintColor: AppColors.white,
+        automaticallyImplyLeading: false,
+        title: Obx(() {
+          return CustomTextWidget(
+            title: localizationController.translate('My Profile'),
+            fontSize: appBarTitles,
+            color: AppColors.black,
+            fontWeight: FontWeight.w600,
+          );
+        }),
+        actions: [
+          // Edit Button
+          if (profileController.displayName != "Guest" &&
+              (authService.userRole.value == 'tenant' ||
+                  authService.userRole.value == 'user' ||
+                  authService.userRole.value == 'agent'))
+            TextButton(
+              onPressed: () {
+                if (authService.userRole.value == 'tenant' ||
+                    authService.userRole.value == 'user') {
+                  // Navigate to tenant/user edit screen
+                  Get.to(() => EditTenantProfileScreen());
+                } else {
+                  // Toggle edit mode for agent
+                  profileController.toggleEdit();
+                }
+              },
+              child: CustomTextWidget(
+                title: localizationController.translate('Edit'),
+                color: AppColors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+        ],
       ),
-  ],
-),
-
       body: Padding(
         padding: EdgeInsets.symmetric(
             horizontal: Get.width * 0.03, vertical: Get.height * 0.02),
@@ -252,22 +252,37 @@ class ProfileViewScreen extends StatelessWidget {
   Widget _buildBottomTabs() {
     return Column(
       children: [
-        buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
-          title: localizationController.translate('terms_and_condition'),
-          onTap: () {},
-        ),
-        kHeight(0.01),
+        // buildMenuTile(
+        //   leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
+        //   title: localizationController.translate('terms_and_condition'),
+        //   onTap: () {},
+        // ),
+        // kHeight(0.01),
         buildMenuTile(
           leading: Icon(HugeIcons.strokeRoundedSecurityCheck),
           title: localizationController.translate('privacy_policy'),
-          onTap: () {},
+          onTap: () {
+            profileController.openWebsite(
+                "https://demoweb.waytracksystems.com/daralsafwa/uae/web/privacypolicy");
+          },
         ),
         kHeight(0.01),
         buildMenuTile(
           leading: Icon(HugeIcons.strokeRoundedAlert01),
-          title: localizationController.translate('disclaimers'),
-          onTap: () {},
+          title: localizationController.translate('delete_account'),
+          onTap: () {
+            profileController.openWebsite(
+                "https://demoweb.waytracksystems.com/daralsafwa/uae/account/delete");
+          },
+        ),
+        kHeight(0.01),
+        buildMenuTile(
+          leading: Icon(HugeIcons.strokeRoundedAlert01),
+          title: localizationController.translate('property_interest'),
+          onTap: () {
+             profileController.fetchPropertyInterests();
+             Get.to(() => PropertyInterestHistoryScreen());
+          },
         ),
       ],
     );

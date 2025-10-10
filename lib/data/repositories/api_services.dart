@@ -567,7 +567,21 @@ Future<Response> updateTechnicianComplaint({
     }
   }
 
+Future<Response> getpropertyinteresthistory(String uid) async {
+  try {
+    final response = await apiClient.request(
+      "property-interests/by-uid",
+      method: "post",
+      data: {
+        "uid": uid, 
+      }
+    );
 
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+} 
 
 
   Future<Response> getPropertyDetails(int propertyId) async {

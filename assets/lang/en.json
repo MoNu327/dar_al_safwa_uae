@@ -35,6 +35,8 @@
     "Commercial Buy",
     "Commercial Rent"
   ],
+  "property_interest": "My Property Interest",
+  "delete_account": "Delete Account",
   "property": "Property Type",
   "property_types": ["Apartment", "Villa"],
   "location": "Location",

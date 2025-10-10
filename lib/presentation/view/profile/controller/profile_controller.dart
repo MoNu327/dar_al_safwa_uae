@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:majan/data/model/agent_model.dart';
+import 'package:majan/data/model/property_interest_history_model.dart';
 import 'package:majan/data/model/user_model.dart';
+import 'package:majan/data/repositories/api_services.dart';
 import 'package:majan/domain/controller/agent_controller.dart';
 import 'package:majan/domain/controller/user_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,6 +11,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileController extends GetxController {
   Rxn<UserModel> userCredential = Rxn<UserModel>();
@@ -16,16 +19,22 @@ class ProfileController extends GetxController {
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final ApiService apiService = ApiService();
 
   var userRole = ''.obs;
   var isLoading = true.obs;
   var isEditing = false.obs;
   var isSaving = false.obs;
 
+  // Property interests
+  var propertyInterests = <PropertyInterestUser>[].obs;
+  var isLoadingInterests = false.obs;
+  var interestsError = ''.obs;
+
   // Reactive profile data
   var fullName = ''.obs;
-  var phoneNumber = ''.obs;       // stores +968XXXXXXXX
-  var whatsappNumber = ''.obs;    // stores +968XXXXXXXX
+  var phoneNumber = ''.obs;
+  var whatsappNumber = ''.obs;
   var email = ''.obs;
   var gender = ''.obs;
   var dateOfBirth = ''.obs;
@@ -70,6 +79,50 @@ class ProfileController extends GetxController {
     super.onClose();
   }
 
+  /// Fetch property interests history
+  Future<void> fetchPropertyInterests() async {
+    try {
+      isLoadingInterests(true);
+      interestsError('');
+      
+      final user = auth.currentUser;
+      if (user == null) {
+        interestsError('No user logged in');
+        return;
+      }
+
+      final response = await apiService.getpropertyinteresthistory(user.uid);
+      
+      if (response.statusCode == 200 && response.data != null) {
+        final propertyInterestsResponse = PropertyInterestsResponse.fromJson(response.data);
+        
+        if (propertyInterestsResponse.status) {
+          propertyInterests.value = propertyInterestsResponse.data;
+        } else {
+          interestsError(propertyInterestsResponse.message.en ?? 'Failed to fetch property interests');
+        }
+      } else {
+        interestsError('Failed to fetch property interests');
+      }
+    } catch (e) {
+      interestsError('Error fetching property interests: $e');
+      debugPrint('Error fetching property interests: $e');
+    } finally {
+      isLoadingInterests(false);
+    }
+  }
+
+  /// Refresh property interests
+  Future<void> refreshPropertyInterests() async {
+    await fetchPropertyInterests();
+  }
+
+  /// Get property interest count
+  int get propertyInterestCount => propertyInterests.length;
+
+  /// Check if user has property interests
+  bool get hasPropertyInterests => propertyInterests.isNotEmpty;
+
   /// Toggle editing mode
   void toggleEdit() {
     isEditing.value = !isEditing.value;
@@ -78,10 +131,24 @@ class ProfileController extends GetxController {
     }
   }
 
+  Future<void> openWebsite(String url) async {
+    if (url.isEmpty) return;
+
+    final Uri uri = Uri.parse(url);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      throw 'Could not launch $url';
+    }
+  }
+
   /// Populate controllers with current values
   void _populateControllers() {
     fullNameController.text = fullName.value;
-    // Remove +968 prefix before showing in textfield
     phoneController.text = phoneNumber.value.replaceAll("+968", "");
     whatsappController.text = whatsappNumber.value.replaceAll("+968", "");
     emailController.text = email.value;
@@ -103,58 +170,49 @@ class ProfileController extends GetxController {
 
   /// Save profile changes
   Future<void> saveProfile() async {
-  try {
-    isSaving(true);
-    final user = auth.currentUser;
+    try {
+      isSaving(true);
+      final user = auth.currentUser;
 
-    if (user == null) {
-      Get.snackbar('Error', 'No user logged in');
-      return;
+      if (user == null) {
+        Get.snackbar('Error', 'No user logged in');
+        return;
+      }
+
+      if (!validateOmanPhone(phoneController.text.trim())) {
+        Get.snackbar('Error', 'Phone number must be exactly 8 digits.');
+        return;
+      }
+
+      phoneNumber.value = "+968${phoneController.text.trim()}";
+      whatsappNumber.value = "+968${whatsappController.text.trim()}";
+
+      if (userRole.value == 'agent') {
+        await _updateAgentProfile(user.uid);
+      } else {
+        await _updateUserProfile(user.uid);
+      }
+
+      fullNameController.clear();
+      emailController.clear();
+      phoneController.clear();
+      locationController.clear();
+
+      isEditing.value = false;
+      Get.snackbar('Success', 'Profile updated successfully');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update profile: $e');
+      debugPrint('Error updating profile: $e');
+    } finally {
+      isSaving(false);
     }
-
-    // Validate Oman phone numbers
-    if (!validateOmanPhone(phoneController.text.trim())) {
-      Get.snackbar('Error', 'Phone number must be exactly 8 digits.');
-      return;
-    }
-    // if (!validateOmanPhone(whatsappController.text.trim())) {
-    //   Get.snackbar('Error', 'WhatsApp number must be exactly 8 digits.');
-    //   return;
-    // }
-
-    // Always prepend +968
-    phoneNumber.value = "+968${phoneController.text.trim()}";
-    whatsappNumber.value = "+968${whatsappController.text.trim()}";
-
-    if (userRole.value == 'agent') {
-      await _updateAgentProfile(user.uid);
-    } else {
-      await _updateUserProfile(user.uid);
-    }
-
-    // ✅ Clear all text fields after successful save
-    fullNameController.clear();
-    emailController.clear();
-    phoneController.clear();
-    locationController.clear();
-    // If you have WhatsApp controller
-    // whatsappController.clear();
-
-    isEditing.value = false;
-    Get.snackbar('Success', 'Profile updated successfully');
-  } catch (e) {
-    Get.snackbar('Error', 'Failed to update profile: $e');
-    debugPrint('Error updating profile: $e');
-  } finally {
-    isSaving(false);
   }
-}
 
   Future<void> _updateAgentProfile(String uid) async {
     final agentData = {
       'displayName': fullNameController.text.trim(),
-      'mobile': phoneNumber.value,          // save with +968
-      'whatsAppNumber': whatsappNumber.value, // save with +968
+      'mobile': phoneNumber.value,
+      'whatsAppNumber': whatsappNumber.value,
       'location': locationController.text.trim(),
       'gender': gender.value,
       'dob': dateOfBirth.value,
@@ -169,14 +227,13 @@ class ProfileController extends GetxController {
     await _firestore.collection('agents').doc(uid).update(agentData);
 
     fullName.value = agentData['displayName'] as String? ?? '';
-phoneNumber.value = agentData['mobile'] as String? ?? '';
-whatsappNumber.value = agentData['whatsAppNumber'] as String? ?? '';
-email.value = agentData['email'] as String? ?? '';
-gender.value = agentData['gender'] as String? ?? '';
-dateOfBirth.value = agentData['dob'] as String? ?? '';
-location.value = agentData['location'] as String? ?? '';
-profilePicUrl.value = agentData['profilePic'] as String? ?? '';
-
+    phoneNumber.value = agentData['mobile'] as String? ?? '';
+    whatsappNumber.value = agentData['whatsAppNumber'] as String? ?? '';
+    email.value = agentData['email'] as String? ?? '';
+    gender.value = agentData['gender'] as String? ?? '';
+    dateOfBirth.value = agentData['dob'] as String? ?? '';
+    location.value = agentData['location'] as String? ?? '';
+    profilePicUrl.value = agentData['profilePic'] as String? ?? '';
 
     if (agentCredential.value != null) {
       agentCredential.value = AgentModel(
@@ -195,8 +252,8 @@ profilePicUrl.value = agentData['profilePic'] as String? ?? '';
   Future<void> _updateUserProfile(String uid) async {
     final userData = {
       'displayName': fullNameController.text.trim(),
-      'mobile': phoneNumber.value,           // save with +968
-      'whatsAppNumber': whatsappNumber.value, // save with +968
+      'mobile': phoneNumber.value,
+      'whatsAppNumber': whatsappNumber.value,
       'location': locationController.text.trim(),
       'gender': gender.value,
       'dob': dateOfBirth.value,
@@ -205,14 +262,14 @@ profilePicUrl.value = agentData['profilePic'] as String? ?? '';
     };
 
     await _firestore.collection('users').doc(uid).update(userData);
-fullName.value = userData['displayName'] as String? ?? '';
-phoneNumber.value = userData['mobile'] as String? ?? '';
-whatsappNumber.value = userData['whatsAppNumber'] as String? ?? '';
-email.value = userData['email'] as String? ?? '';
-gender.value = userData['gender'] as String? ?? '';
-dateOfBirth.value = userData['dob'] as String? ?? '';
-location.value = userData['location'] as String? ?? '';
-profilePicUrl.value = userData['imageUrl'] as String? ?? '';
+    fullName.value = userData['displayName'] as String? ?? '';
+    phoneNumber.value = userData['mobile'] as String? ?? '';
+    whatsappNumber.value = userData['whatsAppNumber'] as String? ?? '';
+    email.value = userData['email'] as String? ?? '';
+    gender.value = userData['gender'] as String? ?? '';
+    dateOfBirth.value = userData['dob'] as String? ?? '';
+    location.value = userData['location'] as String? ?? '';
+    profilePicUrl.value = userData['imageUrl'] as String? ?? '';
 
     if (userCredential.value != null) {
       userCredential.value = UserModel(
@@ -252,6 +309,9 @@ profilePicUrl.value = userData['imageUrl'] as String? ?? '';
           Get.find<UserController>().currentUser = userCredential.value;
         }
       }
+
+      // Fetch property interests after loading user data
+      await fetchPropertyInterests();
     } catch (e) {
       Get.snackbar('Error', 'Failed to fetch profile: $e');
     } finally {
@@ -359,7 +419,6 @@ profilePicUrl.value = userData['imageUrl'] as String? ?? '';
       final downloadUrl = await ref.getDownloadURL();
       profilePicUrl.value = downloadUrl;
 
-      // update Firestore immediately
       final collection = userRole.value == 'agent' ? 'agents' : 'users';
       await _firestore.collection(collection).doc(uid).update({
         userRole.value == 'agent' ? 'profilePic' : 'imageUrl': downloadUrl,
