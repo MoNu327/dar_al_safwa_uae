@@ -82,6 +82,7 @@ dependencies:
   http_parser: ^4.1.2
   firebase_storage: ^12.4.10
   open_file: ^3.5.10
+  sign_in_with_apple: ^7.0.1
 
 dev_dependencies:
   flutter_test:
