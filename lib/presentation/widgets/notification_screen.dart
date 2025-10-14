@@ -492,42 +492,10 @@ class NotificationsScreen extends StatelessWidget {
         date1.day == date2.day;
   }
 
-  void _handleNotificationTap(NotificationModel notification) {
-    final data = notification.data ?? {};
-    
-    switch (notification.type) {
-      case 'chat':
-      case 'message':
-        if (notification.chatId != null) {
-          Get.toNamed('/agent', arguments: data);
-        }
-        break;
-      case 'property':
-      case 'property_update':
-        if (notification.propertyId != null) {
-          Get.toNamed('/propertyDetails', arguments: {
-            'propertyId': notification.propertyId,
-            ...data
-          });
-        }
-        break;
-      case 'technician_assignment':
-      case 'technician_ticket':
-        if (notification.ticketId != null) {
-          Get.toNamed('/technician-tickets', arguments: data);
-        }
-        break;
-      case 'ticket':
-      case 'complaint':
-      case 'tenant_ticket':
-        Get.toNamed('/navbar');
-        break;
-      default:
-        // Default action - could navigate to a specific screen or show details
-        break;
-    }
-  }
-
+ void _handleNotificationTap(NotificationModel notification) {
+  // Use the new controller method that handles both PDFs and regular navigation
+  notificationController.handleNotificationTap(notification);
+}
   void _showDeleteDialog(NotificationModel notification) {
     Get.dialog(
       AlertDialog(

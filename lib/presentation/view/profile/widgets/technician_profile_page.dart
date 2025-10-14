@@ -35,18 +35,28 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        surfaceTintColor: Colors.white,
-        title: CustomTextWidget(
-          title: 'Profile Details',
-          fontSize: 20,
-          color: Colors.black,
-          fontWeight: FontWeight.w600,
-        ),
-        actions: [notificationNavigation()],
-      ),
+     appBar: AppBar(
+  backgroundColor: Colors.white,
+  automaticallyImplyLeading: true, // Changed from false to true
+  surfaceTintColor: Colors.white,
+  leading: IconButton(
+    icon: Icon(
+      Icons.arrow_back_ios,
+      color: Colors.black,
+      size: 20,
+    ),
+    onPressed: () {
+      Get.back();
+    },
+  ),
+  title: CustomTextWidget(
+    title: 'Profile Details',
+    fontSize: 20,
+    color: Colors.black,
+    fontWeight: FontWeight.w600,
+  ),
+  actions: [notificationNavigation()],
+),
       body: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());

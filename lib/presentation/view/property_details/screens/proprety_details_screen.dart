@@ -298,7 +298,8 @@ class PropertyDetailsScreen extends StatelessWidget {
                       localizationController.translate('gallery'),
                       localizationController.translate('360view'),
                       localizationController.translate('review'),
-                    ])
+                    ]
+                    )
                   ],
                 ),
               ),

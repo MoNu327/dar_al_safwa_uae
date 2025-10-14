@@ -1,13 +1,26 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- Network and notifications -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- Storage permissions -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"/>
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    
+    <!-- Camera and AR -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
     <uses-feature android:name="android.hardware.camera.ar" android:required="true" />
+    
+    <!-- Location -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     
     <application
@@ -16,7 +29,9 @@
         android:icon="@mipmap/launcher_icon"
         android:resizeableActivity="false"
         android:supportsPictureInPicture="false"
-        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+        android:requestLegacyExternalStorage="true"
+        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+        android:usesCleartextTraffic="true">
         
         <activity
             android:name=".MainActivity"
@@ -25,11 +40,10 @@
             android:screenOrientation="fullSensor"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
-            android:usesCleartextTraffic="true"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|fontScale"
-            android:enableOnBackInvokedCallback="true"> <!-- Added portrait lock    android:screenOrientation="portrait"    android:configChanges="orientation|screenSize"-->  
+            android:enableOnBackInvokedCallback="true">
             
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
@@ -45,14 +59,10 @@
                <category android:name="android.intent.category.DEFAULT" />
                <category android:name="android.intent.category.BROWSABLE" />
                <data android:scheme="https" android:host="arvr.google.com" />
-
-</intent-filter>
+            </intent-filter>
         </activity>
-       
 
-       
-
-       <!-- Firebase Messaging Service -->
+        <!-- Firebase Messaging Service -->
         <service
             android:name=".MyFirebaseMessagingService"
             android:exported="false">
@@ -75,18 +85,30 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version"/>
         <meta-data
-        android:name="io.flutter.embedding.android.EnableImpeller"
-        android:value="false" />
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+            
+        <!-- File provider for sharing files -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
     
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
-        </intent> 
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/pdf" />
+        </intent>
         <package android:name="com.google.android.gms" />
     </queries>
-   
-       
-  
 </manifest>

@@ -228,11 +228,24 @@ class SigninScreen extends StatelessWidget {
   }
 
   // Header with back button and language button
+ Widget _buildBackButton() {
+  return IconButton(
+    onPressed: () {
+      Get.back();
+    },
+    icon: Icon(
+      Icons.arrow_back_ios,
+      color: AppColors.black,
+      size: Get.height * 0.025,
+    ),
+  );
+}
+  // Header with back button and language button
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildDummyText(),
+        _buildBackButton(),
         LanguageTextButton(localizationController: localizationController),
       ],
     );

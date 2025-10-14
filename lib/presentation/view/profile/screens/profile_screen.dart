@@ -249,44 +249,48 @@ class ProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomTabs() {
-    return Column(
-      children: [
-        // buildMenuTile(
-        //   leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
-        //   title: localizationController.translate('terms_and_condition'),
-        //   onTap: () {},
-        // ),
-        // kHeight(0.01),
+ Widget _buildBottomTabs() {
+  return Column(
+    children: [
+      // buildMenuTile(
+      //   leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
+      //   title: localizationController.translate('terms_and_condition'),
+      //   onTap: () {},
+      // ),
+      // kHeight(0.01),
+      buildMenuTile(
+        leading: Icon(HugeIcons.strokeRoundedSecurityCheck),
+        title: localizationController.translate('privacy_policy'),
+        onTap: () {
+          profileController.openWebsite(
+              "https://demoweb.waytracksystems.com/daralsafwa/uae/web/privacypolicy");
+        },
+      ),
+      kHeight(0.01),
+      buildMenuTile(
+        leading: Icon(HugeIcons.strokeRoundedAlert01),
+        title: localizationController.translate('delete_account'),
+        onTap: () {
+          profileController.openWebsite(
+              "https://demoweb.waytracksystems.com/daralsafwa/uae/account/delete");
+        },
+      ),
+      kHeight(0.01),
+      
+      // Only show Property Interest for 'user' role
+      if (authService.userRole.value == 'user' ||
+          authService.userRole.value == 'tenant')
         buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedSecurityCheck),
-          title: localizationController.translate('privacy_policy'),
-          onTap: () {
-            profileController.openWebsite(
-                "https://demoweb.waytracksystems.com/daralsafwa/uae/web/privacypolicy");
-          },
-        ),
-        kHeight(0.01),
-        buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedAlert01),
-          title: localizationController.translate('delete_account'),
-          onTap: () {
-            profileController.openWebsite(
-                "https://demoweb.waytracksystems.com/daralsafwa/uae/account/delete");
-          },
-        ),
-        kHeight(0.01),
-        buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedAlert01),
+          leading: Icon(HugeIcons.strokeRoundedAddToList),
           title: localizationController.translate('property_interest'),
           onTap: () {
-             profileController.fetchPropertyInterests();
-             Get.to(() => PropertyInterestHistoryScreen());
+            profileController.fetchPropertyInterests();
+            Get.to(() => PropertyInterestHistoryScreen());
           },
         ),
-      ],
-    );
-  }
+    ],
+  );
+}
 
   // Widget _buildProfessionalInfo() {
   //   return Column(

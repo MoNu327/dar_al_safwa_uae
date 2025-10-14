@@ -59,6 +59,7 @@ Widget  buildTicketCard({
     Get.to(() => TicketDetailsScreen(
       complaintId: complaint.complaintId,
       previewImageUrl: _getFirstAvailableImage(complaint), // Pass the image
+      previewImageTimestamp: complaint.formattedDate, // Pass the timestamp
     ));
   }
 },
@@ -625,6 +626,7 @@ Widget _buildActionButtonsSection(
               Get.to(() => TicketDetailsScreen(
                 complaintId: complaint.complaintId,
                 previewImageUrl: _getFirstAvailableImage(complaint),
+                previewImageTimestamp: complaint.formattedDate,
               ));
             } else {
               Get.snackbar(

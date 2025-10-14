@@ -853,6 +853,7 @@ DateTime? _parseComplaintDate(String? dateString) {
         Get.to(() => TicketDetailsScreen(
           complaintId: complaint.complaintId,
           previewImageUrl: _getFirstAvailableImage(complaint),
+          previewImageTimestamp: complaint.formattedDate,
         ));
       },
       child: Container(

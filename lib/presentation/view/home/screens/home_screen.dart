@@ -230,6 +230,7 @@ class HomeScreen extends StatelessWidget {
                           propertyTypes: searchData.propertyTypes,
                           propertyLocations: searchData.propertyLocations,
                           propertyBedsBaths: searchData.propertyBedsBaths,
+                          propertyPrices: searchData.propertyPrices,
                         );
                       }),
 

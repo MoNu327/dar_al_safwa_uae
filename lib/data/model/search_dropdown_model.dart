@@ -5,13 +5,13 @@ part 'search_dropdown_model.g.dart';
 @JsonSerializable()
 class SearchDropdownResponse {
   final bool success;
-  final SearchDropdownMessage message;
-  final SearchDropdownData data;
+  final SearchDropdownMessage? message;
+  final SearchDropdownData? data;
 
   SearchDropdownResponse({
     required this.success,
-    required this.message,
-    required this.data,
+    this.message,
+    this.data,
   });
 
   factory SearchDropdownResponse.fromJson(Map<String, dynamic> json) =>
@@ -22,12 +22,12 @@ class SearchDropdownResponse {
 
 @JsonSerializable()
 class SearchDropdownMessage {
-  final String en;
-  final String ar;
+  final String? en;
+  final String? ar;
 
   SearchDropdownMessage({
-    required this.en,
-    required this.ar,
+    this.en,
+    this.ar,
   });
 
   factory SearchDropdownMessage.fromJson(Map<String, dynamic> json) =>
@@ -38,23 +38,27 @@ class SearchDropdownMessage {
 
 @JsonSerializable()
 class SearchDropdownData {
-  @JsonKey(name: 'property_option')
+  @JsonKey(name: 'property_option', defaultValue: [])
   final List<PropertyOption> propertyOptions;
 
-  @JsonKey(name: 'property_types')
+  @JsonKey(name: 'property_types', defaultValue: [])
   final List<PropertyType> propertyTypes;
 
-  @JsonKey(name: 'property_locations')
+  @JsonKey(name: 'property_locations', defaultValue: [])
   final List<PropertyLocation> propertyLocations;
 
-  @JsonKey(name: 'property_beds_bath')
+  @JsonKey(name: 'property_beds_bath', defaultValue: [])
   final List<PropertyBedsBath> propertyBedsBaths;
+
+  @JsonKey(name: 'price_range', defaultValue: [])
+  final List<PropertyRangePrice> propertyPrices;
 
   SearchDropdownData({
     required this.propertyOptions,
     required this.propertyTypes,
     required this.propertyLocations,
     required this.propertyBedsBaths,
+    required this.propertyPrices,
   });
 
   factory SearchDropdownData.fromJson(Map<String, dynamic> json) =>
@@ -96,6 +100,22 @@ class PropertyType {
 }
 
 @JsonSerializable()
+class PropertyRangePrice {
+  final int id;
+  final LocalizedText name;
+
+  PropertyRangePrice({
+    required this.id,
+    required this.name,
+  });
+
+  factory PropertyRangePrice.fromJson(Map<String, dynamic> json) =>
+      _$PropertyRangePriceFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PropertyRangePriceToJson(this);
+}
+
+@JsonSerializable()
 class PropertyLocation {
   final int id;
   final LocalizedText name;
@@ -127,7 +147,6 @@ class PropertyBedsBath {
   Map<String, dynamic> toJson() => _$PropertyBedsBathToJson(this);
 }
 
-// Reusing your existing LocalizedText model
 @JsonSerializable()
 class LocalizedText {
   final String en;

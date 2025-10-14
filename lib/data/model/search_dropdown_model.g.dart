@@ -10,9 +10,13 @@ SearchDropdownResponse _$SearchDropdownResponseFromJson(
         Map<String, dynamic> json) =>
     SearchDropdownResponse(
       success: json['success'] as bool,
-      message: SearchDropdownMessage.fromJson(
-          json['message'] as Map<String, dynamic>),
-      data: SearchDropdownData.fromJson(json['data'] as Map<String, dynamic>),
+      message: json['message'] == null
+          ? null
+          : SearchDropdownMessage.fromJson(
+              json['message'] as Map<String, dynamic>),
+      data: json['data'] == null
+          ? null
+          : SearchDropdownData.fromJson(json['data'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$SearchDropdownResponseToJson(
@@ -26,8 +30,8 @@ Map<String, dynamic> _$SearchDropdownResponseToJson(
 SearchDropdownMessage _$SearchDropdownMessageFromJson(
         Map<String, dynamic> json) =>
     SearchDropdownMessage(
-      en: json['en'] as String,
-      ar: json['ar'] as String,
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
     );
 
 Map<String, dynamic> _$SearchDropdownMessageToJson(
@@ -39,18 +43,27 @@ Map<String, dynamic> _$SearchDropdownMessageToJson(
 
 SearchDropdownData _$SearchDropdownDataFromJson(Map<String, dynamic> json) =>
     SearchDropdownData(
-      propertyOptions: (json['property_option'] as List<dynamic>)
-          .map((e) => PropertyOption.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      propertyTypes: (json['property_types'] as List<dynamic>)
-          .map((e) => PropertyType.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      propertyLocations: (json['property_locations'] as List<dynamic>)
-          .map((e) => PropertyLocation.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      propertyBedsBaths: (json['property_beds_bath'] as List<dynamic>)
-          .map((e) => PropertyBedsBath.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      propertyOptions: (json['property_option'] as List<dynamic>?)
+              ?.map((e) => PropertyOption.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      propertyTypes: (json['property_types'] as List<dynamic>?)
+              ?.map((e) => PropertyType.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      propertyLocations: (json['property_locations'] as List<dynamic>?)
+              ?.map((e) => PropertyLocation.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      propertyBedsBaths: (json['property_beds_bath'] as List<dynamic>?)
+              ?.map((e) => PropertyBedsBath.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      propertyPrices: (json['price_range'] as List<dynamic>?)
+              ?.map(
+                  (e) => PropertyRangePrice.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
 
 Map<String, dynamic> _$SearchDropdownDataToJson(SearchDropdownData instance) =>
@@ -59,6 +72,7 @@ Map<String, dynamic> _$SearchDropdownDataToJson(SearchDropdownData instance) =>
       'property_types': instance.propertyTypes,
       'property_locations': instance.propertyLocations,
       'property_beds_bath': instance.propertyBedsBaths,
+      'price_range': instance.propertyPrices,
     };
 
 PropertyOption _$PropertyOptionFromJson(Map<String, dynamic> json) =>
@@ -79,6 +93,18 @@ PropertyType _$PropertyTypeFromJson(Map<String, dynamic> json) => PropertyType(
     );
 
 Map<String, dynamic> _$PropertyTypeToJson(PropertyType instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+    };
+
+PropertyRangePrice _$PropertyRangePriceFromJson(Map<String, dynamic> json) =>
+    PropertyRangePrice(
+      id: (json['id'] as num).toInt(),
+      name: LocalizedText.fromJson(json['name'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$PropertyRangePriceToJson(PropertyRangePrice instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,

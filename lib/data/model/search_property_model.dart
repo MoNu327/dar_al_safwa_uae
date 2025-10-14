@@ -16,11 +16,15 @@ class PropertySearchResultRequest {
   @JsonKey(name: 'property_beds_bath')
   final int propertyBedsBath;
 
+  @JsonKey(name: 'property_price_range')
+  final int  propertyPriceForSearch;
+
   PropertySearchResultRequest({
     required this.propertyOptions,
     required this.propertyTypes,
     required this.propertyLocations,
     required this.propertyBedsBath,
+    required this.propertyPriceForSearch,
   });
 
   factory PropertySearchResultRequest.fromJson(Map<String, dynamic> json) =>
