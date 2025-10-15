@@ -36,8 +36,7 @@ class FirebaseNotificationService {
 
   // Constructor that accepts the navigator key
   FirebaseNotificationService({required this.navigatorKey});
-    final ApiService _apiService = Get.put(ApiService());
-
+  final ApiService _apiService = Get.put(ApiService());
 
   // Get the notification controller
   NotificationController get _notificationController {
@@ -57,6 +56,10 @@ class FirebaseNotificationService {
       await _initLocalNotifications();
       await _createNotificationChannels();
 
+      // CHANGED: Get and save FCM token immediately on initialization
+      // This ensures token is available even when app is closed
+      await _initializeFCMToken();
+
       // Set up message handlers with storage
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -74,38 +77,28 @@ class FirebaseNotificationService {
         _handleNotificationNavigation(message.data);
       });
 
-      // // Handle notification when app is terminated and opened via notification
-      // FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
-      //   if (message != null) {
-      //     debugPrint('App opened from terminated state via notification: ${message.data}');
-      //     _notificationController.addNotificationFromRemoteMessage(message);
-      //     _notificationController.markAsRead(message.messageId ?? '');
-      //     // Delay navigation to ensure app is fully loaded
-      //     Future.delayed(const Duration(milliseconds: 1500), () {
-      //       _handleNotificationNavigation(message.data);
-      //     });
-      //   }
-      // });
-
       // Handle notification when app is terminated and opened via notification
-FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
-  if (message != null) {
-    debugPrint('=== APP OPENED FROM TERMINATED STATE ===');
-    debugPrint('Message ID: ${message.messageId}');
-    debugPrint('Notification data: ${message.data}');
-    debugPrint('Notification title: ${message.notification?.title}');
-    debugPrint('Notification body: ${message.notification?.body}');
-    
-    _notificationController.addNotificationFromRemoteMessage(message);
-    _notificationController.markAsRead(message.messageId ?? '');
-    
-    // Wait for GetX to be fully ready
-    _waitForGetXAndNavigate(message.data);
-  }
-});
+      FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
+        if (message != null) {
+          debugPrint('=== APP OPENED FROM TERMINATED STATE ===');
+          debugPrint('Message ID: ${message.messageId}');
+          debugPrint('Notification data: ${message.data}');
+          debugPrint('Notification title: ${message.notification?.title}');
+          debugPrint('Notification body: ${message.notification?.body}');
+          
+          _notificationController.addNotificationFromRemoteMessage(message);
+          _notificationController.markAsRead(message.messageId ?? '');
+          
+          // Wait for GetX to be fully ready
+          _waitForGetXAndNavigate(message.data);
+        }
+      });
 
-      // Start listening for auth state changes
+      // Start listening for auth state changes (for token updates)
       _setupAuthStateListener();
+      
+      // CHANGED: Listen for token refresh independently of auth state
+      _setupTokenRefreshListener();
       
       debugPrint('Firebase notification service initialized successfully');
     } catch (e) {
@@ -113,238 +106,278 @@ FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
     }
   }
 
-
-void _waitForGetXAndNavigate(Map<String, dynamic> data, {int attempts = 0}) {
-  if (attempts > 10) {
-    debugPrint('Max navigation attempts reached, giving up');
-    return;
+  // NEW: Initialize FCM token on app start
+  Future<void> _initializeFCMToken() async {
+    try {
+      final token = await _firebaseMessaging.getToken();
+      if (token != null) {
+        debugPrint('FCM Token obtained: $token');
+        
+        // Store token locally for use when offline
+        final storage = GetStorage();
+        storage.write('fcm_token', token);
+        
+        // Try to save to backend and Firestore if user is logged in
+        final currentUser = FirebaseAuth.instance.currentUser;
+        if (currentUser != null) {
+          await _saveTokenToFirestore(token, currentUser);
+        } else {
+          // Save token locally to be synced when user logs in
+          debugPrint('No user logged in, token saved locally for later sync');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error initializing FCM token: $e');
+    }
   }
-  
-  // Check if GetX context is ready
-  if (Get.context != null && Get.key.currentState?.mounted == true) {
-    debugPrint('GetX ready, navigating now (attempt ${attempts + 1})');
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _handleNotificationNavigation(data);
-    });
-  } else {
-    debugPrint('GetX not ready yet, waiting... (attempt ${attempts + 1})');
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _waitForGetXAndNavigate(data, attempts: attempts + 1);
+
+  // NEW: Setup token refresh listener (independent of auth)
+  Future<void> _setupTokenRefreshListener() async {
+    _firebaseMessaging.onTokenRefresh.listen((newToken) async {
+      debugPrint('FCM Token refreshed: $newToken');
+      
+      // Store token locally
+      final storage = GetStorage();
+      storage.write('fcm_token', newToken);
+      
+      // Try to save to backend and Firestore if user is logged in
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        await _saveTokenToFirestore(newToken, currentUser);
+      }
     });
   }
-}
 
-  // NEW: Handle link and PDF downloads
- Future<void> _handleLinkOrPdfAction(Map<String, dynamic> data) async {
-  debugPrint('=== HANDLING LINK/PDF ACTION ===');
-  
-  // Check for both snake_case and camelCase variations
-  final link = data['link'] as String?;
-  final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
-  final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
-  final fileName = (data['fileName'] ?? data['file_name']) as String?;
-  final fileType = (data['fileType'] ?? data['file_type']) as String?;
-  
-  debugPrint('Link: $link');
-  debugPrint('PdfUrl: $pdfUrl');
-  debugPrint('FileUrl: $fileUrl');
-  
-  // Priority: check for link, pdfUrl, or fileUrl
-  final urlToHandle = link ?? pdfUrl ?? fileUrl;
-  
-  if (urlToHandle != null && urlToHandle.isNotEmpty) {
-    debugPrint('URL to handle: $urlToHandle');
+  void _waitForGetXAndNavigate(Map<String, dynamic> data, {int attempts = 0}) {
+    if (attempts > 10) {
+      debugPrint('Max navigation attempts reached, giving up');
+      return;
+    }
     
-    // Check if it's a PDF
-    final isPdf = urlToHandle.toLowerCase().endsWith('.pdf') || 
-        fileType?.toLowerCase() == 'pdf' ||
-        urlToHandle.toLowerCase().contains('.pdf');
-    
-    debugPrint('Is PDF: $isPdf');
-    
-    if (isPdf) {
-      await _downloadAndOpenPdf(
-        urlToHandle, 
-        fileName ?? 'letter_${DateTime.now().millisecondsSinceEpoch}.pdf'
-      );
+    // Check if GetX context is ready
+    if (Get.context != null && Get.key.currentState?.mounted == true) {
+      debugPrint('GetX ready, navigating now (attempt ${attempts + 1})');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handleNotificationNavigation(data);
+      });
     } else {
-      // Open as regular link
-      await _openUrl(urlToHandle);
+      debugPrint('GetX not ready yet, waiting... (attempt ${attempts + 1})');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _waitForGetXAndNavigate(data, attempts: attempts + 1);
+      });
     }
-  } else {
-    debugPrint('No valid URL found in notification data');
-    Get.snackbar(
-      'Error',
-      'No link or file found in this notification',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
-    );
   }
-}
 
-  // NEW: Download and open PDF
-Future<void> _downloadAndOpenPdf(String url, String fileName) async {
-  try {
-    debugPrint('Starting PDF download for: $url');
+  // Handle link and PDF downloads
+  Future<void> _handleLinkOrPdfAction(Map<String, dynamic> data) async {
+    debugPrint('=== HANDLING LINK/PDF ACTION ===');
     
-    // Request permissions based on Android version
-    if (Platform.isAndroid) {
-      final androidInfo = await DeviceInfoPlugin().androidInfo;
-      final sdkInt = androidInfo.version.sdkInt;
+    // Check for both snake_case and camelCase variations
+    final link = data['link'] as String?;
+    final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
+    final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
+    final fileName = (data['fileName'] ?? data['file_name']) as String?;
+    final fileType = (data['fileType'] ?? data['file_type']) as String?;
+    
+    debugPrint('Link: $link');
+    debugPrint('PdfUrl: $pdfUrl');
+    debugPrint('FileUrl: $fileUrl');
+    
+    // Priority: check for link, pdfUrl, or fileUrl
+    final urlToHandle = link ?? pdfUrl ?? fileUrl;
+    
+    if (urlToHandle != null && urlToHandle.isNotEmpty) {
+      debugPrint('URL to handle: $urlToHandle');
       
-      debugPrint('Android SDK: $sdkInt');
+      // Check if it's a PDF
+      final isPdf = urlToHandle.toLowerCase().endsWith('.pdf') || 
+          fileType?.toLowerCase() == 'pdf' ||
+          urlToHandle.toLowerCase().contains('.pdf');
       
-      PermissionStatus status;
+      debugPrint('Is PDF: $isPdf');
       
-      if (sdkInt >= 33) {
-        status = PermissionStatus.granted;
-      } else if (sdkInt >= 30) {
-        status = await Permission.storage.request();
-        if (!status.isGranted) {
-          status = await Permission.manageExternalStorage.request();
-        }
-      } else {
-        status = await Permission.storage.request();
-      }
-      
-      debugPrint('Permission status: $status');
-      
-      if (!status.isGranted && sdkInt < 33) {
-        Get.snackbar(
-          'Permission Required',
-          'Storage permission is needed to download files',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
+      if (isPdf) {
+        await _downloadAndOpenPdf(
+          urlToHandle, 
+          fileName ?? 'letter_${DateTime.now().millisecondsSinceEpoch}.pdf'
         );
-        return;
+      } else {
+        // Open as regular link
+        await _openUrl(urlToHandle);
       }
+    } else {
+      debugPrint('No valid URL found in notification data');
+      Get.snackbar(
+        'Error',
+        'No link or file found in this notification',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
     }
+  }
 
-    Get.snackbar(
-      'Downloading',
-      'Downloading PDF file...',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 2),
-    );
-
-    debugPrint('Fetching URL: $url');
-    final response = await http.get(Uri.parse(url));
-    
-    debugPrint('Response status: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      String finalFileName = fileName;
-      if (!finalFileName.endsWith('.pdf')) {
-        finalFileName = '$finalFileName.pdf';
-      }
+  // Download and open PDF
+  Future<void> _downloadAndOpenPdf(String url, String fileName) async {
+    try {
+      debugPrint('Starting PDF download for: $url');
       
-      String? filePath;
-      
+      // Request permissions based on Android version
       if (Platform.isAndroid) {
-        final downloadsDir = Directory('/storage/emulated/0/Download');
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        final sdkInt = androidInfo.version.sdkInt;
         
-        if (!await downloadsDir.exists()) {
-          await downloadsDir.create(recursive: true);
+        debugPrint('Android SDK: $sdkInt');
+        
+        PermissionStatus status;
+        
+        if (sdkInt >= 33) {
+          status = PermissionStatus.granted;
+        } else if (sdkInt >= 30) {
+          status = await Permission.storage.request();
+          if (!status.isGranted) {
+            status = await Permission.manageExternalStorage.request();
+          }
+        } else {
+          status = await Permission.storage.request();
         }
         
-        filePath = '${downloadsDir.path}/$finalFileName';
-        debugPrint('Using Downloads directory: $filePath');
-      } else {
-        final directory = await getApplicationDocumentsDirectory();
-        filePath = '${directory.path}/$finalFileName';
-      }
-
-      if (filePath == null) {
-        throw Exception('Could not determine save location');
-      }
-
-      final file = File(filePath);
-      debugPrint('Saving file to: $filePath');
-      await file.writeAsBytes(response.bodyBytes);
-      debugPrint('PDF saved successfully to: $filePath');
-
-      // Notify Android MediaStore about the new file
-      if (Platform.isAndroid) {
-        await _notifyMediaScanner(filePath);
+        debugPrint('Permission status: $status');
+        
+        if (!status.isGranted && sdkInt < 33) {
+          Get.snackbar(
+            'Permission Required',
+            'Storage permission is needed to download files',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+          return;
+        }
       }
 
       Get.snackbar(
-        'Download Complete',
-        'File saved to Downloads folder\n$finalFileName',
+        'Downloading',
+        'Downloading PDF file...',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
+        backgroundColor: Colors.blue,
         colorText: Colors.white,
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 2),
       );
 
-      // Wait a moment for media scanner, then open
-      await Future.delayed(const Duration(milliseconds: 500));
+      debugPrint('Fetching URL: $url');
+      final response = await http.get(Uri.parse(url));
       
-      try {
-        await _openPdfFile(filePath);
-      } catch (e) {
-        debugPrint('Error opening PDF: $e');
+      debugPrint('Response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        String finalFileName = fileName;
+        if (!finalFileName.endsWith('.pdf')) {
+          finalFileName = '$finalFileName.pdf';
+        }
+        
+        String? filePath;
+        
+        if (Platform.isAndroid) {
+          final downloadsDir = Directory('/storage/emulated/0/Download');
+          
+          if (!await downloadsDir.exists()) {
+            await downloadsDir.create(recursive: true);
+          }
+          
+          filePath = '${downloadsDir.path}/$finalFileName';
+          debugPrint('Using Downloads directory: $filePath');
+        } else {
+          final directory = await getApplicationDocumentsDirectory();
+          filePath = '${directory.path}/$finalFileName';
+        }
+
+        if (filePath == null) {
+          throw Exception('Could not determine save location');
+        }
+
+        final file = File(filePath);
+        debugPrint('Saving file to: $filePath');
+        await file.writeAsBytes(response.bodyBytes);
+        debugPrint('PDF saved successfully to: $filePath');
+
+        // Notify Android MediaStore about the new file
+        if (Platform.isAndroid) {
+          await _notifyMediaScanner(filePath);
+        }
+
         Get.snackbar(
-          'File Saved',
-          'PDF saved to Downloads. Open it from your file manager.',
+          'Download Complete',
+          'File saved to Downloads folder\n$finalFileName',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
+          backgroundColor: Colors.green,
           colorText: Colors.white,
-          duration: const Duration(seconds: 5),
+          duration: const Duration(seconds: 4),
         );
-      }
-    } else {
-      throw Exception('Failed to download file: ${response.statusCode}');
-    }
-  } catch (e) {
-    debugPrint('Error downloading PDF: $e');
-    Get.snackbar(
-      'Download Failed',
-      'Could not download the file. Please try again.',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
-  }
-}
 
-// Add this new method
-Future<void> _notifyMediaScanner(String filePath) async {
-  try {
-    if (Platform.isAndroid) {
-      const platform = MethodChannel('com.majan.app/file_opener');
-      await platform.invokeMethod('scanFile', {'path': filePath});
-      debugPrint('Media scanner notified for: $filePath');
-    }
-  } catch (e) {
-    debugPrint('Error notifying media scanner: $e');
-  }
-}// Helper method to open PDF file
-Future<void> _openPdfFile(String filePath) async {
-  try {
-    if (Platform.isAndroid) {
-      // Use Android-specific method to open file
-      const platform = MethodChannel('com.majan.app/file_opener');
-      await platform.invokeMethod('openFile', {'path': filePath});
-      debugPrint('File opened using native method');
-    } else {
-      // For iOS, try url_launcher
-      final uri = Uri.file(filePath);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        // Wait a moment for media scanner, then open
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        try {
+          await _openPdfFile(filePath);
+        } catch (e) {
+          debugPrint('Error opening PDF: $e');
+          Get.snackbar(
+            'File Saved',
+            'PDF saved to Downloads. Open it from your file manager.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5),
+          );
+        }
+      } else {
+        throw Exception('Failed to download file: ${response.statusCode}');
       }
+    } catch (e) {
+      debugPrint('Error downloading PDF: $e');
+      Get.snackbar(
+        'Download Failed',
+        'Could not download the file. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
-  } catch (e) {
-    debugPrint('Error in _openPdfFile: $e');
-    throw e;
   }
-}
 
-  // NEW: Open URL in browser or external app
+  Future<void> _notifyMediaScanner(String filePath) async {
+    try {
+      if (Platform.isAndroid) {
+        const platform = MethodChannel('com.daralsafwa.app/file_opener');
+        await platform.invokeMethod('scanFile', {'path': filePath});
+        debugPrint('Media scanner notified for: $filePath');
+      }
+    } catch (e) {
+      debugPrint('Error notifying media scanner: $e');
+    }
+  }
+
+  // Helper method to open PDF file
+  Future<void> _openPdfFile(String filePath) async {
+    try {
+      if (Platform.isAndroid) {
+        const platform = MethodChannel('com.daralsafwa.app/file_opener');
+        await platform.invokeMethod('openFile', {'path': filePath});
+        debugPrint('File opened using native method');
+      } else {
+        final uri = Uri.file(filePath);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in _openPdfFile: $e');
+      throw e;
+    }
+  }
+
+  // Open URL in browser or external app
   Future<void> _openUrl(String url) async {
     try {
       final uri = Uri.parse(url);
@@ -366,52 +399,52 @@ Future<void> _openPdfFile(String filePath) async {
     }
   }
 
-void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 0}) {
-  debugPrint('=== NOTIFICATION TAP DETECTED ===');
-  debugPrint('Attempting navigation with data: $data');
-  
-  // Check for both snake_case and camelCase variations
-  final link = data['link'] as String?;
-  final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
-  final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
-  final notificationType = data['type'] as String?;
-  
-  final hasLink = link != null || pdfUrl != null || fileUrl != null;
-  final isDocumentType = notificationType == 'letter' || 
-                        notificationType == 'document' || 
-                        notificationType == 'lease_renewal';
-  
-  debugPrint('Has link: $hasLink');
-  debugPrint('Link: $link, PdfUrl: $pdfUrl, FileUrl: $fileUrl');
-  debugPrint('Notification type: $notificationType');
-  
-  // PRIORITY: Handle PDF/document downloads first
-  if (hasLink || isDocumentType) {
-    debugPrint('Link/PDF detected, handling download/open');
-    // Ensure we handle this on the main thread
-    Future.delayed(Duration.zero, () {
-      _handleLinkOrPdfAction(data);
-    });
-    return; // Don't navigate to other screens if it's a link/PDF notification
+  void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 0}) {
+    debugPrint('=== NOTIFICATION TAP DETECTED ===');
+    debugPrint('Attempting navigation with data: $data');
+    
+    // Check for both snake_case and camelCase variations
+    final link = data['link'] as String?;
+    final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
+    final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
+    final notificationType = data['type'] as String?;
+    
+    final hasLink = link != null || pdfUrl != null || fileUrl != null;
+    final isDocumentType = notificationType == 'letter' || 
+                          notificationType == 'document' || 
+                          notificationType == 'lease_renewal';
+    
+    debugPrint('Has link: $hasLink');
+    debugPrint('Link: $link, PdfUrl: $pdfUrl, FileUrl: $fileUrl');
+    debugPrint('Notification type: $notificationType');
+    
+    // PRIORITY: Handle PDF/document downloads first
+    if (hasLink || isDocumentType) {
+      debugPrint('Link/PDF detected, handling download/open');
+      Future.delayed(Duration.zero, () {
+        _handleLinkOrPdfAction(data);
+      });
+      return;
+    }
+    
+    // Add retry limit for other navigation types
+    if (retryCount > 3) {
+      debugPrint('Max retries reached, giving up navigation');
+      return;
+    }
+    
+    if (Get.context != null) {
+      _navigateUsingGetX(data);
+    } else if (navigatorKey.currentContext != null) {
+      _navigateUsingNavigatorKey(data);
+    } else {
+      debugPrint('No navigation context available, retrying in 2 seconds... (attempt $retryCount)');
+      Future.delayed(const Duration(seconds: 2), () {
+        _handleNotificationNavigation(data, retryCount: retryCount + 1);
+      });
+    }
   }
-  
-  // Add retry limit for other navigation types
-  if (retryCount > 3) {
-    debugPrint('Max retries reached, giving up navigation');
-    return;
-  }
-  
-  if (Get.context != null) {
-    _navigateUsingGetX(data);
-  } else if (navigatorKey.currentContext != null) {
-    _navigateUsingNavigatorKey(data);
-  } else {
-    debugPrint('No navigation context available, retrying in 2 seconds... (attempt $retryCount)');
-    Future.delayed(const Duration(seconds: 2), () {
-      _handleNotificationNavigation(data, retryCount: retryCount + 1);
-    });
-  }
-}
+
   void _navigateUsingGetX(Map<String, dynamic> data) {
     final notificationType = data['type'] as String?;
     debugPrint('Navigating using GetX for type: $notificationType');
@@ -424,7 +457,6 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
           final userId = data['userId'] as String?;
           final userName = data['userName'] as String?;
           
-          // Navigate to agent chat screen (based on your routes)
           Get.toNamed('/agent', arguments: {
             'chatId': chatId,
             'userId': userId,
@@ -440,14 +472,12 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
           final jobId = data['jobId'] as String?;
           
           if (ticketId != null || assignmentId != null || jobId != null) {
-            // Navigate to technician tickets view
             Get.toNamed('/technician-tickets', arguments: {
               'ticketId': ticketId,
               'assignmentId': assignmentId,
               'jobId': jobId,
             });
           } else {
-            // Fallback to technician dashboard
             Get.toNamed('/technicianDashboard');
           }
           break;
@@ -459,13 +489,6 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
           final complaintId = data['complaintId'] as String?;
           
           if (ticketId != null || complaintId != null) {
-            // For now, navigate to dashboard since tenantTicketDetails route is commented out
-            // When you uncomment the route, use this:
-            // Get.toNamed('/tenantTicketDetails', arguments: {
-            //   'ticketId': ticketId ?? complaintId,
-            // });
-            
-            // For now, navigate to dashboard
             Get.toNamed('/navbar');
           }
           break;
@@ -479,18 +502,15 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
               'propertyId': propertyId,
             });
           } else {
-            // Navigate to properties list
             Get.toNamed('/properties');
           }
           break;
 
         case 'tenant_property':
-          // Navigate to tenant properties list
           Get.toNamed('/tenantPropertyList');
           break;
 
         case 'tenant_documents':
-          // Navigate to tenant documents
           Get.toNamed('/tenantDocumentsList');
           break;
 
@@ -518,7 +538,6 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
 
         case 'profile':
         case 'technician_profile':
-          // Check if user is technician and navigate accordingly
           Get.toNamed('/technician-profile');
           break;
 
@@ -547,27 +566,22 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
           Get.toNamed('/approvalPendingPage');
           break;
 
-        // NEW: Handle lease renewal and other document notifications
         case 'lease_renewal':
         case 'document':
         case 'letter':
-          // Check if there's a link or PDF to handle
           _handleLinkOrPdfAction(data);
           break;
 
         default:
-          // Navigate to dashboard as fallback
           debugPrint('Unknown notification type: $notificationType, navigating to dashboard');
           Get.offAllNamed('/navbar');
           break;
       }
     } catch (e) {
       debugPrint('Error navigating with GetX: $e');
-      // Fallback to navigator key
       if (navigatorKey.currentContext != null) {
         _navigateUsingNavigatorKey(data);
       } else {
-        // Ultimate fallback to dashboard
         Get.offAllNamed('/navbar');
       }
     }
@@ -653,7 +667,6 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
           Navigator.of(context).pushNamed('/approvalPendingPage', arguments: data);
           break;
 
-        // NEW: Handle lease renewal and other document notifications
         case 'lease_renewal':
         case 'document':
         case 'letter':
@@ -666,7 +679,6 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
       }
     } catch (e) {
       debugPrint('Error navigating with Navigator key: $e');
-      // Fallback to dashboard
       Navigator.of(context).pushNamedAndRemoveUntil('/navbar', (route) => false);
     }
   }
@@ -712,14 +724,38 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
       if (user != null) {
         _handleAuthStateChange(user);
       } else {
-        _cleanupToken();
+        // CHANGED: Don't delete token when user logs out
+        // Keep it for receiving notifications when app is closed
+        debugPrint('User logged out, but keeping FCM token for notifications');
       }
     });
   }
 
   Future<void> _handleAuthStateChange(User user) async {
-    await _cleanupToken();
-    await _setupTokenManagement(user);
+    // CHANGED: Don't clean up token, just sync it
+    await _syncTokenForUser(user);
+  }
+
+  // NEW: Sync token for logged-in user
+  Future<void> _syncTokenForUser(User user) async {
+    try {
+      final storage = GetStorage();
+      final storedToken = storage.read('fcm_token') as String?;
+      
+      if (storedToken != null) {
+        // Sync stored token with Firestore
+        await _saveTokenToFirestore(storedToken, user);
+      } else {
+        // Get fresh token
+        final token = await _firebaseMessaging.getToken();
+        if (token != null) {
+          storage.write('fcm_token', token);
+          await _saveTokenToFirestore(token, user);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error syncing token for user: $e');
+    }
   }
 
   Future<void> _setupTokenManagement(User user) async {
@@ -740,20 +776,18 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
     }
   }
 
+  // CHANGED: Removed token cleanup to keep receiving notifications
   Future<void> _cleanupToken() async {
-    _tokenRefreshSubscription?.cancel();
-    try {
-      await _firebaseMessaging.deleteToken();
-    } catch (e) {
-      debugPrint('Error deleting FCM token: $e');
-    }
+    // Don't delete token anymore - keep it for notifications
+    debugPrint('Token cleanup skipped to maintain notification capability');
   }
 
   Future<void> _saveTokenToFirestore(String? token, User user) async {
     if (token == null) return;
     try {
-        final response = await _apiService.getFCMtokenforagent(token, user.uid);
-            debugPrint('FCM token saved to backend: $response');
+      final response = await _apiService.getFCMtokenforagent(token, user.uid);
+      debugPrint('FCM token saved to backend: $response');
+      
       final isTechnician = await _isUserTechnician(user.uid);
       final collectionName = isTechnician ? 'technicians' : 'users';
       await FirebaseFirestore.instance.collection(collectionName).doc(user.uid).set({
@@ -814,50 +848,51 @@ void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 
   }
 
   void _handleNotificationTap(String? payload) {
-  debugPrint('=== LOCAL NOTIFICATION TAPPED ===');
-  debugPrint('Payload: $payload');
-  
-  if (payload == null) {
-    debugPrint('Payload is null, cannot handle tap');
-    return;
-  }
-  
-  try {
-    final data = jsonDecode(payload) as Map<String, dynamic>;
-    debugPrint('Decoded data: $data');
+    debugPrint('=== LOCAL NOTIFICATION TAPPED ===');
+    debugPrint('Payload: $payload');
     
-    // Check if this is a PDF/document notification
-    final link = data['link'] as String?;
-    final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
-    final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
-    final notificationType = data['type'] as String?;
-    
-    final hasLink = link != null || pdfUrl != null || fileUrl != null;
-    final isDocumentType = notificationType == 'letter' || 
-                          notificationType == 'document' || 
-                          notificationType == 'lease_renewal';
-    
-    debugPrint('Has link: $hasLink, Is document type: $isDocumentType');
-    
-    // If it's a document notification with a link/PDF, download it immediately
-    if (hasLink || isDocumentType) {
-      debugPrint('Document notification detected, triggering download');
-      _handleLinkOrPdfAction(data);
-    } else {
-      // Handle normal navigation
-      _handleNotificationNavigation(data);
+    if (payload == null) {
+      debugPrint('Payload is null, cannot handle tap');
+      return;
     }
-  } catch (e) {
-    debugPrint('Error handling notification tap: $e');
-    Get.snackbar(
-      'Error',
-      'Could not open notification',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
+    
+    try {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      debugPrint('Decoded data: $data');
+      
+      // Check if this is a PDF/document notification
+      final link = data['link'] as String?;
+      final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
+      final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
+      final notificationType = data['type'] as String?;
+      
+      final hasLink = link != null || pdfUrl != null || fileUrl != null;
+      final isDocumentType = notificationType == 'letter' || 
+                            notificationType == 'document' || 
+                            notificationType == 'lease_renewal';
+      
+      debugPrint('Has link: $hasLink, Is document type: $isDocumentType');
+      
+      // If it's a document notification with a link/PDF, download it immediately
+      if (hasLink || isDocumentType) {
+        debugPrint('Document notification detected, triggering download');
+        _handleLinkOrPdfAction(data);
+      } else {
+        // Handle normal navigation
+        _handleNotificationNavigation(data);
+      }
+    } catch (e) {
+      debugPrint('Error handling notification tap: $e');
+      Get.snackbar(
+        'Error',
+        'Could not open notification',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
-}
+
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     try {
       // Store the notification locally first
