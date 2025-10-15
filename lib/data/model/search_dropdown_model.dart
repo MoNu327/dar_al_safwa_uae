@@ -35,7 +35,6 @@ class SearchDropdownMessage {
 
   Map<String, dynamic> toJson() => _$SearchDropdownMessageToJson(this);
 }
-
 @JsonSerializable()
 class SearchDropdownData {
   @JsonKey(name: 'property_option', defaultValue: [])
@@ -50,7 +49,12 @@ class SearchDropdownData {
   @JsonKey(name: 'property_beds_bath', defaultValue: [])
   final List<PropertyBedsBath> propertyBedsBaths;
 
-  @JsonKey(name: 'price_range', defaultValue: [])
+  // Try one of these - check your actual dropdown API response
+  @JsonKey(name: 'price_range', defaultValue: []) // Option 1
+  // OR
+  // @JsonKey(name: 'property_price_range', defaultValue: []) // Option 2
+  // OR
+  // @JsonKey(name: 'price_ranges', defaultValue: []) // Option 3
   final List<PropertyRangePrice> propertyPrices;
 
   SearchDropdownData({

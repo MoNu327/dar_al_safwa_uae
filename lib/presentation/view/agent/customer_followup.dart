@@ -37,6 +37,7 @@ class _CustomerFollowUpScreenState extends State<CustomerFollowUpScreen> {
   final TextEditingController _notesController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   int _currentTabIndex = 0; // 0: New Follow-up, 1: History
+  final List<String> _noteHistory = [];
 
   @override
   void initState() {
@@ -112,16 +113,19 @@ void _loadHistoryData() {
   }
 
   // Enhanced method to generate site visit notes
-  void _generateSiteVisitNotes(String technicianId) {
-    final followUpData = controller.followUpData.value;
-    final selectedTechnician = controller.supervisorsList
-        .firstWhereOrNull((tech) => tech.uid == technicianId);
+ void _generateSiteVisitNotes(String technicianId) {
+  final followUpData = controller.followUpData.value;
+  final selectedTechnician = controller.supervisorsList
+      .firstWhereOrNull((tech) => tech.uid == technicianId);
+  
+  if (followUpData != null && selectedTechnician != null) {
+    final now = DateTime.now();
+    final formattedDate = '${_getMonthName(now.month)} ${now.day}, ${now.year}';
+    final formattedTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     
-    if (followUpData != null && selectedTechnician != null) {
-      final now = DateTime.now();
-      final formattedDate = '${_getMonthName(now.month)} ${now.day}, ${now.year}';
-      
-      final noteContent = '''Dear ${followUpData.userInfo.fullName},
+    final noteContent = '''[Created on: $formattedDate at $formattedTime]
+
+Dear ${followUpData.userInfo.fullName},
 
 Your site visit is scheduled for $formattedDate for:
 - Property: ${followUpData.propertyInfo.title}
@@ -132,9 +136,9 @@ Please ensure you are available at the scheduled time. The technician will conta
 Best regards,
 ${followUpData.agentInfo.displayName}''';
 
-      _notesController.text = noteContent;
-    }
+    _notesController.text = noteContent;
   }
+}
 
   // Helper method to get month name
   String _getMonthName(int month) {
@@ -855,38 +859,107 @@ void _showFollowUpDetails(FollowUpHistoryItem historyItem) {
     );
   }
 
-  Widget _buildNotesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Follow-up Notes'),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: _notesController.text.trim().isEmpty ? Colors.red.shade300 : Colors.grey),
-            borderRadius: BorderRadius.circular(8),
+ Widget _buildNotesSection() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _buildSectionHeader('Follow-up Notes'),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _insertTimestamp,
+                icon: Icon(Icons.access_time, size: 16, color: AppColors.secondaryColor),
+                label: CustomTextWidget(
+                  title: 'Add Time',
+                  fontSize: 12,
+                  color: AppColors.secondaryColor,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _addNoteEntry,
+                icon: Icon(Icons.add_comment, size: 16, color: AppColors.secondaryColor),
+                label: CustomTextWidget(
+                  title: 'New Entry',
+                  fontSize: 12,
+                  color: AppColors.secondaryColor,
+                ),
+              ),
+            ],
           ),
-          child: TextFormField(
-            controller: _notesController,
-            maxLines: 8,
-            decoration: const InputDecoration(
-              hintText: 'Enter detailed feedback about the interaction, next steps, or any special instructions...',
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.all(12),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter follow-up notes';
-              }
-              if (value.trim().length < 10) {
-                return 'Notes should be at least 10 characters long';
-              }
-              return null;
-            },
+        ],
+      ),
+      Container(
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _notesController.text.trim().isEmpty 
+                ? Colors.red.shade300 
+                : Colors.grey
           ),
+          borderRadius: BorderRadius.circular(8),
         ),
-      ],
+        child: TextFormField(
+          controller: _notesController,
+          maxLines: 10,
+          decoration: const InputDecoration(
+            hintText: 'Enter detailed feedback about the interaction, next steps, or any special instructions...\n\nClick "New Entry" to add timestamped notes.',
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.all(12),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter follow-up notes';
+            }
+            if (value.trim().length < 10) {
+              return 'Notes should be at least 10 characters long';
+            }
+            return null;
+          },
+        ),
+      ),
+    ],
+  );
+}
+
+// Add new timestamped entry
+void _addNoteEntry() {
+  final now = DateTime.now();
+  final timestamp = '\n\n━━━━━━━━━━━━━━━━━━━━\n[${_getMonthName(now.month)} ${now.day}, ${now.year} at ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}]\n';
+  
+  final currentText = _notesController.text;
+  _notesController.text = currentText + timestamp;
+  _notesController.selection = TextSelection.fromPosition(
+    TextPosition(offset: _notesController.text.length),
+  );
+}
+
+// Add this method to insert timestamp
+void _insertTimestamp() {
+  final now = DateTime.now();
+  final timestamp = '[${now.day}/${now.month}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}] ';
+  
+  final currentText = _notesController.text;
+  final cursorPosition = _notesController.selection.start;
+  
+  if (cursorPosition == -1) {
+    // No cursor position, add at the end
+    _notesController.text = currentText + timestamp;
+    _notesController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _notesController.text.length),
+    );
+  } else {
+    // Insert at cursor position
+    final newText = currentText.substring(0, cursorPosition) +
+        timestamp +
+        currentText.substring(cursorPosition);
+    _notesController.text = newText;
+    _notesController.selection = TextSelection.fromPosition(
+      TextPosition(offset: cursorPosition + timestamp.length),
     );
   }
+}
 
   Widget _buildSubmitButton() {
     return Obx(() {
@@ -986,6 +1059,7 @@ void _showFollowUpDetails(FollowUpHistoryItem historyItem) {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    
 
     // Use controller's validation method
     final validationError = controller.validateFormData(
@@ -1034,6 +1108,10 @@ void _showFollowUpDetails(FollowUpHistoryItem historyItem) {
     final String notes = _notesController.text.trim();
 
     print('Submitting follow-up with customer UID: $customerId');
+
+    final now = DateTime.now();
+  final timestamp = '[${now.day}/${now.month}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}]\n';
+  final notesWithTimestamp = timestamp + _notesController.text.trim();
 
     // Submit the follow-up
     final success = await controller.submitFollowUp(

@@ -271,12 +271,12 @@ class PropertySearchCard extends StatelessWidget {
                         ? searchController.selectedBedsBath.value!.name.ar
                         : searchController.selectedBedsBath.value!.name.en,
                   
-                  if (searchController.selectedPriceRange.value != null)
-                    'property_price_range': searchController.selectedPriceRange.value!.id,
-                  if (searchController.selectedPriceRange.value != null)
-                    'property_price_range_name': isArabic
-                        ? searchController.selectedPriceRange.value!.name.ar
-                        : searchController.selectedPriceRange.value!.name.en,
+                 if (searchController.selectedPriceRange.value != null)
+                     'property_price_range_id': searchController.selectedPriceRange.value!.id,  // ✅ CHANGED
+                if (searchController.selectedPriceRange.value != null)
+                      'property_price_range_name': isArabic
+                       ? searchController.selectedPriceRange.value!.name.ar
+                       : searchController.selectedPriceRange.value!.name.en,
                 };
                 
                 debugPrint('🔍 Search Parameters - Commercial: $isCommercial, Params: $params');

@@ -13,7 +13,7 @@ PropertySearchResultRequest _$PropertySearchResultRequestFromJson(
       propertyTypes: (json['property_types'] as num).toInt(),
       propertyLocations: (json['property_locations'] as num).toInt(),
       propertyBedsBath: (json['property_beds_bath'] as num).toInt(),
-      propertyPriceForSearch: (json['property_price_range'] as num).toInt(),
+      propertyPriceForSearch: (json['property_price_range_id'] as num).toInt(),
     );
 
 Map<String, dynamic> _$PropertySearchResultRequestToJson(
@@ -23,7 +23,7 @@ Map<String, dynamic> _$PropertySearchResultRequestToJson(
       'property_types': instance.propertyTypes,
       'property_locations': instance.propertyLocations,
       'property_beds_bath': instance.propertyBedsBath,
-      'property_price_range': instance.propertyPriceForSearch,
+      'property_price_range_id': instance.propertyPriceForSearch,
     };
 
 SearchPropertyResponse _$SearchPropertyResponseFromJson(

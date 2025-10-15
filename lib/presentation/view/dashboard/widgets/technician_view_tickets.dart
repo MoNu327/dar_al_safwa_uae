@@ -502,27 +502,32 @@ Widget _buildTicketsList() {
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: filteredTickets.length,
-        itemBuilder: (context, index) {
-          final complaint = filteredTickets[index];
-          final statusColors = getStatusColors(complaint.statusText.en ?? '');
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: buildTicketCard(
-              complaintId: complaint.complaintId ?? '',
-              propertyName: complaint.propertyName ?? '',
-              category: complaint.category ?? '',
-              issue: complaint.subcategory ?? '',
-              status: complaint.statusText.en ?? '',
-              statusColor: statusColors.textColor,
-              description: complaint.description ?? '',
-              date: complaint.formattedDate ?? 'No date',
-              categoryIcon: Icons.build,
-              images: ComplaintImages(),
-              complaint: complaint,
-              time: complaint.lastUpdated ?? '',
-            ),
-          );
-        },
+         itemBuilder: (context, index) {
+  final complaint = filteredTickets[index];
+  final statusColors = getStatusColors(complaint.statusText.en ?? '');
+  
+  // ✅ Show unit info since tenant name is not available from API
+  String locationInfo = '${complaint.unitNumber}';
+  
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: buildTicketCard(
+      complaintId: complaint.complaintId ?? '',
+      propertyName: complaint.propertyName ?? '',
+      category: complaint.category ?? '',
+      issue: complaint.subcategory ?? '',
+      status: complaint.statusText.en ?? '',
+      statusColor: statusColors.textColor,
+      description: complaint.description ?? '',
+      date: complaint.formattedDate ?? 'No date',
+      categoryIcon: Icons.build,
+      images: ComplaintImages(),
+      complaint: complaint,
+      time: complaint.lastUpdated ?? '',
+      created_by: locationInfo, // Shows "Unit Flat 21", "Unit Test1", etc.
+    ),
+  );
+},
       ),
     );
   });

@@ -16,7 +16,7 @@ class PropertySearchResultRequest {
   @JsonKey(name: 'property_beds_bath')
   final int propertyBedsBath;
 
-  @JsonKey(name: 'property_price_range')
+  @JsonKey(name: 'property_price_range_id')
   final int  propertyPriceForSearch;
 
   PropertySearchResultRequest({

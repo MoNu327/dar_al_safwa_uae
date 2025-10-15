@@ -198,34 +198,41 @@ class FollowUpHistoryDetailScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildNotesContent(String notes) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CustomTextWidget(
-          title: 'Notes:',
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
+Widget _buildNotesContent(String notes) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      CustomTextWidget(
+        title: 'Notes:',
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+      ),
+      SizedBox(height: screenHeight1),
+      Container(
+        width: double.infinity,
+        constraints: BoxConstraints(
+          minHeight: 100,
+          maxHeight: Get.height * 0.3, // Maximum 30% of screen height
         ),
-        SizedBox(height: screenHeight1),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(screenWidth2),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey[300] ?? Colors.grey),
-          ),
-          child: CustomTextWidget(
-            title: notes.isNotEmpty ? notes : 'No notes provided',
-            fontSize: 14,
-            color: Colors.grey[700],
+        padding: EdgeInsets.all(screenWidth2),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey[300] ?? Colors.grey),
+        ),
+        child: SingleChildScrollView(
+          child: SelectableText( // Allows copying text
+            notes.isNotEmpty ? notes : 'No notes provided',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[700],
+            ),
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   String _formatDate(String dateString) {
     try {

@@ -66,6 +66,9 @@ class SearchScreenController extends GetxController {
       debugPrint(
           '✅ [fetchSearchDropdown] API call completed. Status: ${response.statusCode}');
       debugPrint('📦 [fetchSearchDropdown] Response data: ${response.data}');
+      if (response.data != null && response.data['data'] != null) {
+  debugPrint('🔑 Available keys in data: ${response.data['data'].keys.toList()}');
+}
 
       if (response.statusCode == 200) {
         if (response.data == null) {

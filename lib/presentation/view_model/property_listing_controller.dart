@@ -20,6 +20,7 @@ class PropertyListingController extends GetxController {
   bool? isCommercialSearch;
   bool? shouldFilterCommercial;
   String? locationSearchQuery;
+  String? propertyPriceRangeName;
 
   // Filter names
   String? propertyOptionName;
@@ -39,6 +40,7 @@ class PropertyListingController extends GetxController {
   void onInit() {
     super.onInit();
     final params = Get.arguments as Map<String, dynamic>?;
+    propertyPriceRangeName = params?['property_price_range_name']?.toString();
     
     debugPrint('🔍 Received parameters: $params');
     
@@ -57,7 +59,7 @@ class PropertyListingController extends GetxController {
     propertyType = _safeIntCast(params['property_type']);
     propertyLocation = _safeIntCast(params['property_locations']);
     propertyBedsBath = _safeIntCast(params['beds_bath']);
-    propertyPriceForSearch = _safeIntCast(params['property_price_range']); // ADDED: Get price range
+    propertyPriceForSearch = _safeIntCast(params['property_price_range_id']); // ADDED: Get price range
 
     // Get commercial filtering parameters
     isCommercialSearch = params['is_commercial'] as bool?;
@@ -106,7 +108,7 @@ class PropertyListingController extends GetxController {
     return null;
   }
 
-  List<Property> _filterPropertiesByType(List<Property> properties, {String? searchQuery}) {
+ List<Property> _filterPropertiesByType(List<Property> properties, {String? searchQuery}) {
     if (shouldFilterCommercial != true) {
       debugPrint('🚫 Commercial filtering disabled, returning all properties');
       return properties;
@@ -222,7 +224,23 @@ class PropertyListingController extends GetxController {
         debugPrint('   Passes Beds/Baths Filter: $passesBedsBathsFilter');
       }
       
-      final bool finalResult = passesLocationFilter && passesTypeFilter && passesBedsBathsFilter;
+      // === PRICE RANGE FILTERING === ✅ ADD THIS SECTION
+      bool passesPriceFilter = true;
+      
+      bool shouldApplyPriceFilter = propertyPriceForSearch != null && 
+                                   propertyPriceForSearch != 0;
+      
+      if (shouldApplyPriceFilter) {
+        final propertyPrice = property.price?.raw ?? 0;
+        passesPriceFilter = _matchesPriceRangeCriteria(propertyPrice, propertyPriceForSearch!);
+        
+        debugPrint('💰 Price Filter:');
+        debugPrint('   Property Price: $propertyPrice');
+        debugPrint('   Selected Price Range ID: $propertyPriceForSearch');
+        debugPrint('   Passes Price Filter: $passesPriceFilter');
+      }
+      
+      final bool finalResult = passesLocationFilter && passesTypeFilter && passesBedsBathsFilter && passesPriceFilter;
       
       debugPrint('🏠 Property: ${property.title?.en}');
       debugPrint('   Final Result: $finalResult');
@@ -238,6 +256,27 @@ class PropertyListingController extends GetxController {
 
     return filtered;
   }
+
+ bool _matchesPriceRangeCriteria(int propertyPrice, int priceRangeId) {
+  // Get the price range name like "130-200"
+  final priceRangeName = propertyPriceRangeName;
+  
+  if (priceRangeName == null || priceRangeName == '--select--') {
+    return true;
+  }
+  
+  // Parse the range from the name (e.g., "130-200")
+  final parts = priceRangeName.split('-');
+  if (parts.length == 2) {
+    final minPrice = int.tryParse(parts[0].trim()) ?? 0;
+    final maxPrice = int.tryParse(parts[1].trim()) ?? double.infinity.toInt();
+    
+    debugPrint('   Price Range: $minPrice - $maxPrice');
+    return propertyPrice >= minPrice && propertyPrice <= maxPrice;
+  }
+  
+  return true;
+}
 
   bool _matchesBedsBathsCriteria(int propertyBeds, int propertyBaths, int selectedBedsBathId) {
     switch (selectedBedsBathId) {
