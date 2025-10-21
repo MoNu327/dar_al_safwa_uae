@@ -81,8 +81,10 @@ dependencies:
   email_validator: ^3.0.0
   http_parser: ^4.1.2
   firebase_storage: ^12.4.10
-  open_file: ^3.5.10
+  # open_file: ^3.5.10
   sign_in_with_apple: ^7.0.1
+  open_filex: ^4.4.0
+
 
 
 dev_dependencies:

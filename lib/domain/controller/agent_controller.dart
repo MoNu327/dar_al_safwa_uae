@@ -8,6 +8,6 @@ class AgentController extends GetxController {
 
   set currentUser(AgentModel? user) {
     _currentUser = user;
-    update(); // Notify listeners
+    update(); 
   }
 }

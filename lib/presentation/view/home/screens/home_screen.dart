@@ -334,6 +334,7 @@ GridView.builder(
               
               try {
                 Get.toNamed('/propertyDetails', arguments: {
+                  'propertyType': property.propertyType,
                   'propertyId': property.id,
                   'unitId': property.id ?? 0,
                   'unitType': isCommercial ? 1 : 0,
@@ -439,7 +440,7 @@ Obx(() {
               'image': property.image,
               'price': property.price,
               'deal': property.dealType,
-              'type': property.type,  // Note: Using type here
+              'type': property.type,
               'location': property.location,
               'bedrooms': property.bedrooms,
               'bathrooms': property.bathrooms,
@@ -455,9 +456,8 @@ Obx(() {
             child: CustomListWidget(
               imageUrl: property.image ?? '',
               title: localizationController.translate('title_price'),
-              price: isArabic
-                  ? property.price?.formatted?.ar ?? ''
-                  : property.price?.formatted?.en ?? '',
+              // ✅ FIXED: Use the helper method instead
+              price: getFormattedPrice(property.price, isArabic),
               propertyDeal: isArabic
                   ? property.dealType?.ar ?? ''
                   : property.dealType?.en ?? '',
@@ -465,7 +465,7 @@ Obx(() {
                   ? property.title?.ar ?? ''
                   : property.title?.en ?? '',
               type: isArabic
-                  ? property.type?.ar ?? ''  // Using type here
+                  ? property.type?.ar ?? ''
                   : property.type?.en ?? '',
               location: isArabic
                   ? property.location?.ar ?? ''
@@ -481,7 +481,7 @@ Obx(() {
       );
     },
   );
-}),
+})
                     ],
                   ),
                 ),
@@ -544,5 +544,33 @@ bool _isPropertyCommercial(dynamic property) {
   
   // Default to residential
   return false;
+}
+String getFormattedPrice(dynamic priceData, bool isArabic) {
+  if (priceData == null) return '';
+  
+  // Try to get the formatted price first
+  String? formattedPrice = isArabic 
+      ? priceData.formatted?.ar 
+      : priceData.formatted?.en;
+  
+  // If formatted price exists and is not empty, return it
+  if (formattedPrice != null && formattedPrice.isNotEmpty) {
+    return formattedPrice;
+  }
+  
+  // Fallback to raw price with manual formatting
+  if (priceData.raw != null) {
+    final rawPrice = priceData.raw;
+    // Format the number with commas for thousands
+    final formatted = rawPrice.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},'
+    );
+    
+    // Add currency symbol based on language
+    return isArabic ? '$formatted ر.ع' : 'AED $formatted';
+  }
+  
+  return '';
 }
 }

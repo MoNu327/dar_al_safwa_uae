@@ -664,56 +664,102 @@ class AboutContent extends StatelessWidget {
 
   Widget _buildAgentActions(PropertyDetailsController controller) {
     final property = controller.property.value;
-    if (property == null || property.agent == null) return SizedBox.shrink();
 
-    final gmail = property.agent!.email ?? "";
-    final phone = property.agent!.phone ?? "";
-    final propertyId = property.id.toString();
-    final propertyName = property.title?.en ?? "";
+    // ✅ CRITICAL: Use agent's ACTUAL email from property data
+    final agentEmail = property?.agent?.email ?? "test@gmail.com";
+    final phone = property?.agent?.phone ?? "9544418765";
+    final propertyId = property?.id.toString() ?? "";
+    final propertyName = property?.title?.en ?? "Unknown Property";
+
+    debugPrint('🔍 Agent Actions - Agent Details:');
+    debugPrint('   - Agent Email: $agentEmail');
+    debugPrint('   - Agent Phone: $phone');
+    debugPrint('   - Property ID: $propertyId');
+    debugPrint('   - Current User: ${auth.currentUser?.email}');
+    debugPrint('   - Display Name: ${auth.currentUser?.displayName}');
 
     return Row(
       spacing: Get.width * 0.02,
       children: [
+        // ========== CHAT BUTTON ==========
         InkWell(
           onTap: () {
-            auth.currentUser == null
-              ? Get.toNamed(AppRoute.signupWarning)
-              : controller.showUnitTypeBottomSheetForChat(
-                  gmail, propertyId, propertyName);
+            debugPrint('💬 Chat button tapped');
+            debugPrint('   - User logged in: ${auth.currentUser != null}');
+            debugPrint('   - User email: ${auth.currentUser?.email}');
+            debugPrint(
+                '   - User display name: ${auth.currentUser?.displayName}');
+
+            // ✅ Check if user is logged in
+            if (auth.currentUser == null) {
+              debugPrint(
+                  '❌ User not logged in - redirecting to signup warning');
+              Get.toNamed(AppRoute.signupWarning);
+              return;
+            }
+
+            // ✅ Validate agent email exists
+            if (agentEmail.isEmpty || agentEmail == "test@gmail.com") {
+              debugPrint('❌ Invalid agent email');
+              CustomSnackbar.show(
+                  title: "Error",
+                  message: "Agent contact information is not available");
+              return;
+            }
+
+            // ✅ User is logged in - proceed to chat
+            debugPrint('✅ User authenticated - proceeding to chat');
+            debugPrint(
+                '   - Opening unit type sheet with agent email: $agentEmail');
+
+            controller.showUnitTypeBottomSheetForChat(
+                agentEmail, // ✅ Use actual agent email from property
+                propertyId,
+                propertyName);
           },
-          child: Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.message,
-              color: AppColors.secondaryColor,
-              size: 20,
-            ),
+          child: CircleAvatar(
+            backgroundColor: AppColors.whiteLight,
+            radius: Get.height * 0.026,
+            child: Icon(Icons.message, color: AppColors.secondaryColor),
           ),
         ),
+
+        // ========== CALL BUTTON ==========
         InkWell(
           onTap: () {
+            debugPrint('📞 Call button tapped');
+
+            // ✅ Check if user is logged in
+            if (auth.currentUser == null) {
+              debugPrint(
+                  '❌ User not logged in - redirecting to signup warning');
+              Get.toNamed(AppRoute.signupWarning);
+              return;
+            }
+
+            // ✅ Validate phone number exists
+            if (phone.isEmpty || phone == "9544418765") {
+              debugPrint('❌ Invalid agent phone number');
+              CustomSnackbar.show(
+                  title: "Error",
+                  message: "Agent phone number is not available");
+              return;
+            }
+
+            // ✅ User is logged in - proceed to call
+            debugPrint('✅ User authenticated - proceeding to call');
             controller.showUnitTypeBottomSheetForCall(phone, propertyId);
           },
-          child: Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.call,
-              color: AppColors.secondaryColor,
-              size: 20,
-            ),
+          child: CircleAvatar(
+            backgroundColor: AppColors.whiteLight,
+            radius: Get.height * 0.026,
+            child: Icon(Icons.call, color: AppColors.secondaryColor),
           ),
         ),
       ],
     );
   }
+
 
   Widget _buildFeatures(PropertyFeatures features) {
     if (features.items == null || features.items!.isEmpty) {

@@ -8,10 +8,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
-import 'package:open_file/open_file.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'dart:io';
-
 class TenantDocumentsView extends StatelessWidget {
   TenantDocumentsView({Key? key}) : super(key: key);
 
@@ -520,18 +520,217 @@ class TenantDocumentsView extends StatelessWidget {
     );
   }
 
-  /// View Document Dialog with Zoom and Gallery Options
+  /// Show options to view document (In-App or External)
   void _viewDocument(DocumentItem documentItem) {
     // Check if imageUrl already contains full URL
-    String imageUrl = documentItem.document.imageUrl;
+    String documentUrl = documentItem.document.imageUrl;
     
-    // Only prepend baseUrl if imageUrl doesn't start with http/https
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-      imageUrl = documentItem.baseUrl + imageUrl;
+    // Only prepend baseUrl if documentUrl doesn't start with http/https
+    if (!documentUrl.startsWith('http://') && !documentUrl.startsWith('https://')) {
+      documentUrl = documentItem.baseUrl + documentUrl;
     }
     
-    print('Image URL: $imageUrl'); // Debug print
+    print('Document URL: $documentUrl'); // Debug print
 
+    // Check if it's a PDF
+    final isPdf = documentUrl.toLowerCase().endsWith('.pdf') || 
+                  documentItem.document.documentType.toLowerCase().contains('pdf');
+
+    // Show options dialog
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(screenWidth3),
+        ),
+        child: Container(
+          padding: EdgeInsets.all(screenWidth5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Icon(
+                    isPdf ? Icons.picture_as_pdf : Icons.image,
+                    color: AppColors.blueColor,
+                    size: 30,
+                  ),
+                  kWidth(0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CustomTextWidget(
+                          title: documentItem.document.title,
+                          fontSize: H18,
+                          fontWeight: FontWeight.w600,
+                          maxLines: 2,
+                        ),
+                        kHeight(0.005),
+                        CustomTextWidget(
+                          title: isPdf ? 'PDF Document' : 'Image Document',
+                          fontSize: expandedContentTitle,
+                          color: AppColors.darkGrey,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              kHeight(0.03),
+              
+              // Divider
+              Divider(color: AppColors.darkGrey.withValues(alpha: 0.3)),
+              kHeight(0.02),
+              
+              // View in App Option
+              InkWell(
+                onTap: () {
+                  Get.back(); // Close options dialog
+                  _viewDocumentInApp(documentItem, documentUrl, isPdf);
+                },
+                borderRadius: BorderRadius.circular(screenWidth2),
+                child: Container(
+                  padding: EdgeInsets.all(screenWidth4),
+                  decoration: BoxDecoration(
+                    color: AppColors.blueColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(screenWidth2),
+                    border: Border.all(
+                      color: AppColors.blueColor.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(screenWidth2),
+                        decoration: BoxDecoration(
+                          color: AppColors.blueColor,
+                          borderRadius: BorderRadius.circular(screenWidth1),
+                        ),
+                        child: Icon(
+                          Icons.visibility,
+                          color: AppColors.white,
+                          size: 20,
+                        ),
+                      ),
+                      kWidth(0.03),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CustomTextWidget(
+                              title: 'View in App',
+                              fontSize: tagTitle,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.black,
+                            ),
+                            CustomTextWidget(
+                              title: isPdf 
+                                  ? 'Read PDF with page navigation'
+                                  : 'View with zoom & pan',
+                              fontSize: expandedContentTitle,
+                              color: AppColors.darkGrey,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: AppColors.blueColor,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              kHeight(0.015),
+              
+              // Open Externally Option
+              InkWell(
+                onTap: () {
+                  Get.back(); // Close options dialog
+                  if (isPdf) {
+                    _downloadPdf(documentUrl, documentItem.document.title);
+                  } else {
+                    _openInGallery(documentUrl, documentItem.document.title);
+                  }
+                },
+                borderRadius: BorderRadius.circular(screenWidth2),
+                child: Container(
+                  padding: EdgeInsets.all(screenWidth4),
+                  decoration: BoxDecoration(
+                    color: AppColors.onlineGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(screenWidth2),
+                    border: Border.all(
+                      color: AppColors.onlineGreen.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(screenWidth2),
+                        decoration: BoxDecoration(
+                          color: AppColors.onlineGreen,
+                          borderRadius: BorderRadius.circular(screenWidth1),
+                        ),
+                        child: Icon(
+                          isPdf ? Icons.download : Icons.open_in_new,
+                          color: AppColors.white,
+                          size: 20,
+                        ),
+                      ),
+                      kWidth(0.03),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CustomTextWidget(
+                              title: isPdf ? 'Download PDF' : 'Open in Gallery',
+                              fontSize: tagTitle,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.black,
+                            ),
+                            CustomTextWidget(
+                              title: isPdf 
+                                  ? 'Save to device & open externally'
+                                  : 'Open with gallery app',
+                              fontSize: expandedContentTitle,
+                              color: AppColors.darkGrey,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        size: 16,
+                        color: AppColors.onlineGreen,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              kHeight(0.02),
+              
+              // Cancel Button
+              TextButton(
+                onPressed: () => Get.back(),
+                child: CustomTextWidget(
+                  title: 'Cancel',
+                  color: AppColors.darkGrey,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// View Document In-App (Original Dialog Viewer)
+  void _viewDocumentInApp(DocumentItem documentItem, String documentUrl, bool isPdf) {
     Get.dialog(
       Dialog(
         backgroundColor: AppColors.white,
@@ -546,7 +745,7 @@ class TenantDocumentsView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with Gallery Button
+              // Header
               Container(
                 padding: EdgeInsets.all(screenWidth4),
                 decoration: BoxDecoration(
@@ -560,20 +759,41 @@ class TenantDocumentsView extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
-                      child: CustomTextWidget(
-                        title: documentItem.document.title,
-                        fontSize: H18,
-                        fontWeight: FontWeight.w600,
-                        maxLines: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CustomTextWidget(
+                            title: documentItem.document.title,
+                            fontSize: H18,
+                            fontWeight: FontWeight.w600,
+                            maxLines: 2,
+                          ),
+                          kHeight(0.005),
+                          CustomTextWidget(
+                            title: isPdf ? 'PDF Document' : 'Image',
+                            fontSize: expandedContentTitle,
+                            color: AppColors.darkGrey,
+                          ),
+                        ],
                       ),
                     ),
                     Row(
                       children: [
-                        // Open in Gallery Button
+                        // Share/Download Button
                         IconButton(
-                          onPressed: () => _openInGallery(imageUrl, documentItem.document.title),
-                          icon: Icon(Icons.open_in_new, color: AppColors.blueColor),
-                          tooltip: 'Open in Gallery',
+                          onPressed: () {
+                            Get.back(); // Close viewer
+                            if (isPdf) {
+                              _downloadPdf(documentUrl, documentItem.document.title);
+                            } else {
+                              _openInGallery(documentUrl, documentItem.document.title);
+                            }
+                          },
+                          icon: Icon(
+                            isPdf ? Icons.download : Icons.share, 
+                            color: AppColors.blueColor,
+                          ),
+                          tooltip: isPdf ? 'Download PDF' : 'Share',
                         ),
                         IconButton(
                           onPressed: () => Get.back(),
@@ -585,11 +805,13 @@ class TenantDocumentsView extends StatelessWidget {
                 ),
               ),
 
-              // Zoomable Image
+              // Document Viewer (Image or PDF)
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.all(screenWidth4),
-                  child: ZoomableImageWidget(imageUrl: imageUrl),
+                  child: isPdf 
+                      ? PdfViewerWidget(pdfUrl: documentUrl)
+                      : ZoomableImageWidget(imageUrl: documentUrl),
                 ),
               ),
 
@@ -632,7 +854,105 @@ class TenantDocumentsView extends StatelessWidget {
     );
   }
 
-  /// Download and Open Image in Gallery
+  /// Download PDF and Open with External App using open_filex
+  Future<void> _downloadPdf(String pdfUrl, String documentTitle) async {
+    try {
+      // Show loading indicator
+      Get.dialog(
+        Center(
+          child: Container(
+            padding: EdgeInsets.all(screenWidth8),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(screenWidth3),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppColors.blueColor),
+                kHeight(0.02),
+                CustomTextWidget(
+                  title: 'Downloading PDF...',
+                  color: AppColors.black,
+                ),
+              ],
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      // Get downloads directory for Android, documents directory for iOS
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      final fileName = '${documentTitle.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final filePath = '${directory!.path}/$fileName';
+
+      // Download PDF
+      final dio = Dio();
+      await dio.download(
+        pdfUrl, 
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            print('Download progress: ${(received / total * 100).toStringAsFixed(0)}%');
+          }
+        },
+      );
+
+      // Close loading dialog
+      Get.back();
+
+      // Show success message
+      Get.snackbar(
+        'Success',
+        'PDF downloaded to ${Platform.isAndroid ? "Downloads" : "Documents"}',
+        backgroundColor: AppColors.onlineGreen,
+        colorText: AppColors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 3),
+      );
+
+      // Try to open the PDF using open_filex
+      final result = await OpenFilex.open(filePath);
+
+      // Handle different result types from open_filex
+      if (result.type != ResultType.done) {
+        print('Could not open PDF: ${result.message}');
+        Get.snackbar(
+          'Info',
+          result.message,
+          backgroundColor: AppColors.darkGrey,
+          colorText: AppColors.white,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      
+      Get.snackbar(
+        'Error',
+        'Failed to download PDF: ${e.toString()}',
+        backgroundColor: AppColors.redColor,
+        colorText: AppColors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
+  /// Download and Open Image in Gallery using open_filex
   Future<void> _openInGallery(String imageUrl, String documentTitle) async {
     try {
       // Show loading indicator
@@ -672,13 +992,14 @@ class TenantDocumentsView extends StatelessWidget {
       // Close loading dialog
       Get.back();
 
-      // Open file with default gallery app
-      final result = await OpenFile.open(filePath);
+      // Open file with default gallery app using open_filex
+      final result = await OpenFilex.open(filePath);
 
+      // Handle different result types from open_filex
       if (result.type != ResultType.done) {
         Get.snackbar(
           'Error',
-          'Could not open image in gallery',
+          'Could not open image: ${result.message}',
           backgroundColor: AppColors.redColor,
           colorText: AppColors.white,
           snackPosition: SnackPosition.BOTTOM,
@@ -822,5 +1143,200 @@ class _ZoomableImageWidgetState extends State<ZoomableImageWidget> {
         ),
       ),
     );
+  }
+}
+
+/// PDF Viewer Widget
+class PdfViewerWidget extends StatefulWidget {
+  final String pdfUrl;
+
+  const PdfViewerWidget({
+    Key? key,
+    required this.pdfUrl,
+  }) : super(key: key);
+
+  @override
+  State<PdfViewerWidget> createState() => _PdfViewerWidgetState();
+}
+
+class _PdfViewerWidgetState extends State<PdfViewerWidget> {
+  String? localPath;
+  bool isLoading = true;
+  String? errorMessage;
+  int totalPages = 0;
+  int currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _downloadAndLoadPdf();
+  }
+
+  Future<void> _downloadAndLoadPdf() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      // Get temporary directory
+      final tempDir = await getTemporaryDirectory();
+      final fileName = 'temp_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final filePath = '${tempDir.path}/$fileName';
+
+      // Download PDF
+      final dio = Dio();
+      await dio.download(widget.pdfUrl, filePath);
+
+      setState(() {
+        localPath = filePath;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Failed to load PDF: ${e.toString()}';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.blueColor),
+            kHeight(0.02),
+            CustomTextWidget(
+              title: 'Loading PDF...',
+              color: AppColors.darkGrey,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 50,
+              color: AppColors.redColor,
+            ),
+            kHeight(0.02),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: screenWidth4),
+              child: CustomTextWidget(
+                title: errorMessage!,
+                color: AppColors.darkGrey,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+              ),
+            ),
+            kHeight(0.02),
+            ElevatedButton(
+              onPressed: _downloadAndLoadPdf,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.blueColor,
+              ),
+              child: CustomTextWidget(
+                title: 'Retry',
+                color: AppColors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (localPath == null) {
+      return Center(
+        child: CustomTextWidget(
+          title: 'No PDF to display',
+          color: AppColors.darkGrey,
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        PDFView(
+          filePath: localPath!,
+          enableSwipe: true,
+          swipeHorizontal: false,
+          autoSpacing: true,
+          pageFling: true,
+          pageSnap: true,
+          defaultPage: currentPage,
+          fitPolicy: FitPolicy.BOTH,
+          preventLinkNavigation: false,
+          onRender: (pages) {
+            setState(() {
+              totalPages = pages ?? 0;
+            });
+          },
+          onError: (error) {
+            setState(() {
+              errorMessage = error.toString();
+            });
+          },
+          onPageError: (page, error) {
+            print('Error on page $page: $error');
+          },
+          onViewCreated: (PDFViewController pdfViewController) {
+            // You can save this controller if you want to control the PDF programmatically
+          },
+          onPageChanged: (int? page, int? total) {
+            setState(() {
+              currentPage = page ?? 0;
+              totalPages = total ?? 0;
+            });
+          },
+        ),
+        
+        // Page indicator
+        if (totalPages > 0)
+          Positioned(
+            bottom: 10,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth4,
+                  vertical: screenHeight05,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.black.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(screenWidth5),
+                ),
+                child: CustomTextWidget(
+                  title: 'Page ${currentPage + 1} of $totalPages',
+                  color: AppColors.white,
+                  fontSize: expandedContentTitle,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    // Clean up temporary file
+    if (localPath != null) {
+      try {
+        File(localPath!).delete();
+      } catch (e) {
+        print('Error deleting temp PDF: $e');
+      }
+    }
+    super.dispose();
   }
 }

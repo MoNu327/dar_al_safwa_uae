@@ -25,7 +25,7 @@ class PropertyDetailsController extends GetxController {
   final isLoading = false.obs;
   final property = Rx<Property?>(null);
   final errorMessage = Rx<String?>(null);
-  
+
   // New error handling variables
   final hasError = false.obs;
   final is503Error = false.obs;
@@ -43,7 +43,7 @@ class PropertyDetailsController extends GetxController {
     loadFeaturesAndAmenities();
     loadRegulatoryInfo();
     loadNearbyLocations();
-    
+
     final arguments = Get.arguments;
     if (arguments != null && arguments['propertyId'] != null) {
       debugPrint("Id from Params ${arguments['propertyId'].toString()}");
@@ -69,7 +69,8 @@ class PropertyDetailsController extends GetxController {
   // Add this method to refresh data when returning from other screens
   void refreshPropertyDetails() {
     if (idParams.value > 0) {
-      debugPrint("🔄 Manual refresh: Fetching property details for ID: ${idParams.value}");
+      debugPrint(
+          "🔄 Manual refresh: Fetching property details for ID: ${idParams.value}");
       fetchPropertyDetails(idParams.value);
     } else {
       debugPrint("⚠️ Cannot refresh: Invalid property ID");
@@ -99,25 +100,31 @@ class PropertyDetailsController extends GetxController {
         hasError(true);
         is503Error(true);
         errorType('503');
-        errorMessage("Service temporarily unavailable. Please try again later.");
+        errorMessage(
+            "Service temporarily unavailable. Please try again later.");
       } else {
         debugPrint(
             '😔 Failed to load property details: ${response.statusMessage}');
         hasError(true);
         errorType('general');
-        errorMessage("Failed to load property details: ${response.statusMessage ?? 'Unknown error'}");
+        errorMessage(
+            "Failed to load property details: ${response.statusMessage ?? 'Unknown error'}");
         throw Exception("Failed to load property details");
       }
     } catch (e) {
       debugPrint('😔 Error in fetchPropertyDetails: $e');
-      
-      if (e.toString().contains('503') || 
+
+      if (e.toString().contains('503') ||
           e.toString().toLowerCase().contains('service unavailable') ||
-          e.toString().toLowerCase().contains('server temporarily unavailable')) {
+          e
+              .toString()
+              .toLowerCase()
+              .contains('server temporarily unavailable')) {
         hasError(true);
         is503Error(true);
         errorType('503');
-        errorMessage("Service temporarily unavailable. Please try again later.");
+        errorMessage(
+            "Service temporarily unavailable. Please try again later.");
       } else {
         hasError(true);
         errorType('general');
@@ -144,126 +151,130 @@ class PropertyDetailsController extends GetxController {
     errorMessage(null);
   }
 
- Future postPropertyInterest(
+  Future postPropertyInterest(
     String propertyId,
     int unitType,
     int count,
     String comments,
     int enqtype,
     String mobileNumber, {
-      String? unitId,
-      String? propertyName,
-      String? agentEmail,
-    }) async {
-  try {
-    isLoading(true);
-    errorMessage(null);
-    hasError(false);
+    String? unitId,
+    String? propertyName,
+    String? agentEmail,
+  }) async {
+    try {
+      isLoading(true);
+      errorMessage(null);
+      hasError(false);
 
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final propertyIdParsed = int.tryParse(propertyId) ?? 0;
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      final propertyIdParsed = int.tryParse(propertyId) ?? 0;
 
-    // Check if user has existing mobile number
-    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    final existingMobileNumber = doc.data()?['phoneNumber'] ?? '';
-    final existingPhone = doc.data()?['phone'] ?? '';
-    
-    // Use existing number if available, otherwise use the provided one
-    final mobileToUse = existingMobileNumber.trim().isNotEmpty 
-        ? existingMobileNumber 
-        : existingPhone.trim().isNotEmpty 
-            ? existingPhone 
-            : mobileNumber;
+      // Check if user has existing mobile number
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final existingMobileNumber = doc.data()?['phoneNumber'] ?? '';
+      final existingPhone = doc.data()?['phone'] ?? '';
 
-    final isFirstTime = await isFirstTimeUser(uid);
-    
-    if (mobileToUse.isEmpty && isFirstTime) {
-      debugPrint('⚠️ Mobile number missing for first-time user. Redirecting...');
+      // Use existing number if available, otherwise use the provided one
+      final mobileToUse = existingMobileNumber.trim().isNotEmpty
+          ? existingMobileNumber
+          : existingPhone.trim().isNotEmpty
+              ? existingPhone
+              : mobileNumber;
 
-      Get.snackbar(
-        "Mobile Number Required",
-        "Please update your mobile number to continue.",
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 3),
+      final isFirstTime = await isFirstTimeUser(uid);
+
+      if (mobileToUse.isEmpty && isFirstTime) {
+        debugPrint(
+            '⚠️ Mobile number missing for first-time user. Redirecting...');
+
+        Get.snackbar(
+          "Mobile Number Required",
+          "Please update your mobile number to continue.",
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 3),
+        );
+
+        final result = await Get.to(() => MobileNumberUpdatePage(
+              phone: mobileNumber,
+              propertyId: propertyId,
+              navigateToChat: true,
+              navigateToCall: false,
+              unitId: unitId,
+              propertyName: propertyName,
+              agentEmail: agentEmail,
+            ));
+
+        if (result != null && result['phoneNumber'] != null) {
+          final updatedMobile = result['phoneNumber'];
+          await postPropertyInterest(
+            propertyId,
+            unitType,
+            count,
+            comments,
+            enqtype,
+            updatedMobile,
+          );
+
+          if (result['navigateToChat'] == true) {
+            navigateToAgentChat(
+              result['agentEmail'] ?? "",
+              result['propertyId'],
+              result['propertyName'],
+              result['unitId'],
+            );
+          } else if (result['navigateToCall'] == true) {
+            await callToAgent(result['phone']);
+          }
+        }
+        return;
+      }
+
+      debugPrint('✅ Submitting property interest...');
+      debugPrint('📞 Mobile being used: $mobileToUse');
+
+      final response = await apiService.postPropertyInterest(
+        uid,
+        propertyIdParsed,
+        unitType,
+        count,
+        comments,
+        enqtype,
+        mobileToUse, // Use the determined mobile number
       );
 
-      final result = await Get.to(() => MobileNumberUpdatePage(
-        phone: mobileNumber,
-        propertyId: propertyId,
-        navigateToChat: true,
-        navigateToCall: false,
-        unitId: unitId,
-        propertyName: propertyName,
-        agentEmail: agentEmail,
-      ));
-
-      if (result != null && result['phoneNumber'] != null) {
-        final updatedMobile = result['phoneNumber'];
-        await postPropertyInterest(
-          propertyId,
-          unitType,
-          count,
-          comments,
-          enqtype,
-          updatedMobile,
-        );
-        
-        if (result['navigateToChat'] == true) {
-          navigateToAgentChat(
-            result['agentEmail'] ?? "",
-            result['propertyId'],
-            result['propertyName'],
-            result['unitId'],
-          );
-        } else if (result['navigateToCall'] == true) {
-          await callToAgent(result['phone']);
-        }
+      debugPrint('🎉 API response status: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint("✅ Interest Posted");
+      } else if (response.statusCode == 503) {
+        hasError(true);
+        is503Error(true);
+        errorType('503');
+        throw Exception(
+            "Service temporarily unavailable. Please try again later.");
+      } else {
+        throw Exception("Failed to post interest");
       }
-      return;
-    }
+    } catch (e) {
+      debugPrint('❌ Error in Post Interest Details: $e');
 
-    debugPrint('✅ Submitting property interest...');
-    debugPrint('📞 Mobile being used: $mobileToUse');
+      if (e.toString().contains('503') ||
+          e.toString().toLowerCase().contains('service unavailable')) {
+        hasError(true);
+        is503Error(true);
+        errorType('503');
+      } else {
+        hasError(true);
+        errorType('general');
+      }
 
-    final response = await apiService.postPropertyInterest(
-      uid,
-      propertyIdParsed,
-      unitType,
-      count,
-      comments,
-      enqtype,
-      mobileToUse, // Use the determined mobile number
-    );
-
-    debugPrint('🎉 API response status: ${response.statusCode}');
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      debugPrint("✅ Interest Posted");
-    } else if (response.statusCode == 503) {
-      hasError(true);
-      is503Error(true);
-      errorType('503');
-      throw Exception("Service temporarily unavailable. Please try again later.");
-    } else {
-      throw Exception("Failed to post interest");
+      errorMessage(e.toString());
+    } finally {
+      isLoading(false);
     }
-  } catch (e) {
-    debugPrint('❌ Error in Post Interest Details: $e');
-    
-    if (e.toString().contains('503') || 
-        e.toString().toLowerCase().contains('service unavailable')) {
-      hasError(true);
-      is503Error(true);
-      errorType('503');
-    } else {
-      hasError(true);
-      errorType('general');
-    }
-    
-    errorMessage(e.toString());
-  } finally {
-    isLoading(false);
   }
-}
+
   Future<void> saveMobileNumber({
     required String mobile,
     required String phone,
@@ -295,14 +306,38 @@ class PropertyDetailsController extends GetxController {
     return;
   }
 
+  // ✅ CRITICAL: Get agent email from property if not provided or if empty
+  final actualAgentEmail = (agentEmail != null && agentEmail.isNotEmpty) 
+      ? agentEmail 
+      : property.value?.agent?.email;
+
+  if (actualAgentEmail == null || actualAgentEmail.isEmpty) {
+    debugPrint('❌ Agent email is missing');
+    Get.snackbar(
+      "Error",
+      "Agent contact information is not available",
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red[100],
+      colorText: Colors.red[800],
+    );
+    return;
+  }
+
+  debugPrint('📧 Agent email being used: $actualAgentEmail');
+  debugPrint('👤 User email: ${user.email}');
+  debugPrint('🔑 User provider: ${user.providerData.map((p) => p.providerId).join(", ")}');
+
   // Check if user has phoneNumber in Firestore
-  final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+  final doc = await FirebaseFirestore.instance
+      .collection('users')
+      .doc(user.uid)
+      .get();
   final mobileNumber = doc.data()?['phoneNumber'] ?? '';
-  final phoneNumber = doc.data()?['phone'] ?? ''; // Also check for 'phone' field
-  
-  // Check if either phoneNumber or phone field exists and is not empty
-  final hasMobileNumber = mobileNumber.trim().isNotEmpty || phoneNumber.trim().isNotEmpty;
-  
+  final phoneNumber = doc.data()?['phone'] ?? '';
+
+  final hasMobileNumber =
+      mobileNumber.trim().isNotEmpty || phoneNumber.trim().isNotEmpty;
+
   debugPrint('📱 Mobile number check:');
   debugPrint('   - phoneNumber field: $mobileNumber');
   debugPrint('   - phone field: $phoneNumber');
@@ -310,14 +345,14 @@ class PropertyDetailsController extends GetxController {
 
   if (!hasMobileNumber) {
     debugPrint('📱 No mobile number found, redirecting to MobileNumberUpdatePage');
-    
+
     final result = await Get.to(() => MobileNumberUpdatePage(
           phone: phone,
           propertyId: propertyId,
           navigateToCall: isCall,
           navigateToChat: !isCall,
           propertyName: propertyName,
-          agentEmail: agentEmail,
+          agentEmail: actualAgentEmail, // ✅ Pass actual agent email
         ));
 
     if (result != null && result['phoneNumber'] != null) {
@@ -325,7 +360,7 @@ class PropertyDetailsController extends GetxController {
         showUnitTypeBottomSheetForCall(phone, propertyId);
       } else {
         showUnitTypeBottomSheetForChat(
-          property.value?.agent?.email ?? "",
+          actualAgentEmail, // ✅ Use actual agent email
           propertyId,
           propertyName ?? property.value?.title?.en ?? "",
         );
@@ -333,15 +368,12 @@ class PropertyDetailsController extends GetxController {
     }
   } else {
     debugPrint('📱 Mobile number found, proceeding directly');
-    
-    // Use the existing mobile number (prioritize phoneNumber field)
-    final existingMobile = mobileNumber.trim().isNotEmpty ? mobileNumber : phoneNumber;
-    
+
     if (isCall) {
       showUnitTypeBottomSheetForCall(phone, propertyId);
     } else {
       showUnitTypeBottomSheetForChat(
-        property.value?.agent?.email ?? "",
+        actualAgentEmail, // ✅ Use actual agent email
         propertyId,
         propertyName ?? property.value?.title?.en ?? "",
       );
@@ -360,27 +392,26 @@ class PropertyDetailsController extends GetxController {
   }
 
   Future<bool> isFirstTimeUser(String uid) async {
-  final doc = await FirebaseFirestore.instance
-      .collection('users')
-      .doc(uid)
-      .get();
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
 
-  if (!doc.exists) return true;
+    if (!doc.exists) return true;
 
-  final mobileNumber = doc.data()?['phoneNumber'] ?? '';
-  final phoneNumber = doc.data()?['phone'] ?? '';
-  
-  // Check if either field exists and is not empty
-  final hasMobileNumber = mobileNumber.trim().isNotEmpty || phoneNumber.trim().isNotEmpty;
-  
-  debugPrint('🔍 First time user check:');
-  debugPrint('   - phoneNumber field: $mobileNumber');
-  debugPrint('   - phone field: $phoneNumber');
-  debugPrint('   - Has mobile number: $hasMobileNumber');
-  debugPrint('   - Is first time user: ${!hasMobileNumber}');
-  
-  return !hasMobileNumber;
-}
+    final mobileNumber = doc.data()?['phoneNumber'] ?? '';
+    final phoneNumber = doc.data()?['phone'] ?? '';
+
+    // Check if either field exists and is not empty
+    final hasMobileNumber =
+        mobileNumber.trim().isNotEmpty || phoneNumber.trim().isNotEmpty;
+
+    debugPrint('🔍 First time user check:');
+    debugPrint('   - phoneNumber field: $mobileNumber');
+    debugPrint('   - phone field: $phoneNumber');
+    debugPrint('   - Has mobile number: $hasMobileNumber');
+    debugPrint('   - Is first time user: ${!hasMobileNumber}');
+
+    return !hasMobileNumber;
+  }
 
   final RxList<String> imageUrls = [
     "https://i.postimg.cc/5tSKgkpL/CAB-BUILDING.jpg",
@@ -493,52 +524,82 @@ class PropertyDetailsController extends GetxController {
     Get.to(BottomNavbarWidget());
   }
 
-  void navigateToAgentChat(String agentEmail, String? propertyId, String? propertyName, String? unitId) {
-    debugPrint("🚀 Navigating to Agent Chat:");
-    debugPrint("📧 Agent Email: $agentEmail");
-    debugPrint("🏠 Property ID: $propertyId");
-    debugPrint("🏷️ Property Name: $propertyName");
-    debugPrint("🏗️ Unit ID: $unitId");
-    debugPrint("🔢 Unit ID Type: ${unitId.runtimeType}");
-    
-    Get.toNamed(
-      AppRoute.agent,
-      arguments: {
-        'email': agentEmail,
-        'propertyId': propertyId ?? "0",
-        'propertyName': propertyName ?? "",
-        'unitId': unitId ?? "0",
-      },
+ void navigateToAgentChat(String agentEmail, String? propertyId,
+    String? propertyName, String? unitId) {
+  
+  // ✅ Validate agent email
+  if (agentEmail.isEmpty || agentEmail == "test@gmail.com") {
+    debugPrint('❌ Invalid agent email: $agentEmail');
+    Get.snackbar(
+      "Error",
+      "Agent contact information is not available",
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red[100],
+      colorText: Colors.red[800],
     );
-    
-    debugPrint("✅ Navigation arguments sent: ${Get.arguments}");
+    return;
   }
 
-  void showUnitTypeBottomSheetForChat(String gmail, String propertyId, String propertyName) {
-    final unitTypes = property.value?.unitTypes?.data ?? [];
+  debugPrint("🚀 Navigating to Agent Chat:");
+  debugPrint("📧 Agent Email: $agentEmail");
+  debugPrint("🏠 Property ID: $propertyId");
+  debugPrint("🏷️ Property Name: $propertyName");
+  debugPrint("🏗️ Unit ID: $unitId");
+  debugPrint("🔢 Unit ID Type: ${unitId.runtimeType}");
+  debugPrint("👤 Current User: ${FirebaseAuth.instance.currentUser?.email}");
+  debugPrint("🔑 User Provider: ${FirebaseAuth.instance.currentUser?.providerData.map((p) => p.providerId).join(", ")}");
 
-    if (unitTypes.isEmpty) {
-      Get.snackbar(
-        "No Unit Types",
-        "No unit types available for this property.",
-        snackPosition: SnackPosition.BOTTOM,
+  Get.toNamed(
+    AppRoute.agent,
+    arguments: {
+      'email': agentEmail,
+      'propertyId': propertyId ?? "0",
+      'propertyName': propertyName ?? "",
+      'unitId': unitId ?? "0",
+    },
+  );
+
+  debugPrint("✅ Navigation arguments sent: ${Get.arguments}");
+}
+ void showUnitTypeBottomSheetForChat(
+    String gmail, String propertyId, String propertyName) {
+  
+  // ✅ Get actual agent email from property
+  final actualAgentEmail = property.value?.agent?.email;
+  
+  debugPrint('🔍 showUnitTypeBottomSheetForChat called:');
+  debugPrint('   - Parameter gmail: $gmail');
+  debugPrint('   - Actual agent email from property: $actualAgentEmail');
+  debugPrint('   - Property ID: $propertyId');
+  debugPrint('   - Property Name: $propertyName');
+  
+  final unitTypes = property.value?.unitTypes?.data ?? [];
+
+  if (unitTypes.isEmpty) {
+    Get.snackbar(
+      "No Unit Types",
+      "No unit types available for this property.",
+      snackPosition: SnackPosition.BOTTOM,
+    );
+    return;
+  }
+
+  isBottomSheetForCall.value = false;
+  selectedUnitTypeIndex.value = -1;
+  selectedCount.value = 1;
+
+  Get.bottomSheet(
+    _buildUnitTypeBottomSheet(unitTypes, () {
+      _handleUnitTypeSelectionForChat(
+        actualAgentEmail ?? gmail, // ✅ Prefer actual agent email
+        propertyId, 
+        propertyName
       );
-      return;
-    }
-
-    isBottomSheetForCall.value = false;
-    selectedUnitTypeIndex.value = -1;
-    selectedCount.value = 1;
-
-    Get.bottomSheet(
-      _buildUnitTypeBottomSheet(unitTypes, () {
-        _handleUnitTypeSelectionForChat(gmail, propertyId, propertyName);
-      }),
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-    );
-  }
-
+    }),
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+  );
+}
   void showUnitTypeBottomSheetForCall(String phone, String propertyId) {
     final unitTypes = property.value?.unitTypes?.data ?? [];
 
@@ -564,7 +625,8 @@ class PropertyDetailsController extends GetxController {
     );
   }
 
-  Widget _buildUnitTypeBottomSheet(List<dynamic> unitTypes, VoidCallback onContinue) {
+  Widget _buildUnitTypeBottomSheet(
+      List<dynamic> unitTypes, VoidCallback onContinue) {
     return Container(
       height: Get.height * 0.7,
       decoration: const BoxDecoration(
@@ -640,7 +702,9 @@ class PropertyDetailsController extends GetxController {
                                   color: selectedUnitTypeIndex.value == index
                                       ? Colors.blue
                                       : Colors.grey[300]!,
-                                  width: selectedUnitTypeIndex.value == index ? 2 : 1,
+                                  width: selectedUnitTypeIndex.value == index
+                                      ? 2
+                                      : 1,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                                 color: selectedUnitTypeIndex.value == index
@@ -663,12 +727,14 @@ class PropertyDetailsController extends GetxController {
                                       title,
                                       style: TextStyle(
                                         fontSize: 16,
-                                        fontWeight: selectedUnitTypeIndex.value == index
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                        color: selectedUnitTypeIndex.value == index
-                                            ? Colors.blue
-                                            : Colors.black87,
+                                        fontWeight:
+                                            selectedUnitTypeIndex.value == index
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                        color:
+                                            selectedUnitTypeIndex.value == index
+                                                ? Colors.blue
+                                                : Colors.black87,
                                       ),
                                     ),
                                   ),
@@ -711,7 +777,8 @@ class PropertyDetailsController extends GetxController {
                                                 ? Colors.blue
                                                 : Colors.grey[300]!,
                                           ),
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
                                           color: selectedCount.value == count
                                               ? Colors.blue
                                               : Colors.white,
@@ -722,9 +789,10 @@ class PropertyDetailsController extends GetxController {
                                             color: selectedCount.value == count
                                                 ? Colors.white
                                                 : Colors.black87,
-                                            fontWeight: selectedCount.value == count
-                                                ? FontWeight.w600
-                                                : FontWeight.normal,
+                                            fontWeight:
+                                                selectedCount.value == count
+                                                    ? FontWeight.w600
+                                                    : FontWeight.normal,
                                           ),
                                         ),
                                       ),
@@ -756,8 +824,10 @@ class PropertyDetailsController extends GetxController {
                         ),
                       ),
                       child: Obx(() {
-                        final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
-                        final unitTypeName = selectedUnitType.unitType?.name?.en ?? 'Selection';
+                        final selectedUnitType =
+                            unitTypes[selectedUnitTypeIndex.value];
+                        final unitTypeName =
+                            selectedUnitType.unitType?.name?.en ?? 'Selection';
                         return Text(
                           isBottomSheetForCall.value
                               ? "Call Agent for $unitTypeName (${selectedCount.value})"
@@ -778,34 +848,60 @@ class PropertyDetailsController extends GetxController {
     );
   }
 
-  void _handleUnitTypeSelectionForChat(String gmail, String propertyId, String propertyName) async {
+  void _handleUnitTypeSelectionForChat(
+    String gmail, String propertyId, String propertyName) async {
   try {
     final unitTypes = property.value?.unitTypes?.data ?? [];
     final selectedUnitType = unitTypes[selectedUnitTypeIndex.value];
     final unitTypeId = selectedUnitType.unitType?.id ?? 0;
     final unitTypeName = selectedUnitType.unitType?.name?.en ?? "";
 
-    // ✅ Ensure we use agent email from property if available
-    final agentEmail = property.value?.agent?.email ?? gmail;
+    // ✅ CRITICAL FIX: Always use agent email from property data, NOT the parameter
+    final agentEmail = property.value?.agent?.email;
+    
+    if (agentEmail == null || agentEmail.isEmpty) {
+      debugPrint('❌ Agent email is missing from property data');
+      Get.snackbar(
+        "Error",
+        "Agent contact information is not available for this property",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+      );
+      return;
+    }
+
+    debugPrint('✅ Using agent email from property: $agentEmail');
+    debugPrint('   - User current email: ${FirebaseAuth.instance.currentUser?.email}');
+    debugPrint('   - Property ID: $propertyId');
+    debugPrint('   - Unit Type: $unitTypeName');
 
     await postPropertyInterest(
       propertyId,
       unitTypeId,
       selectedCount.value,
       "Interested in $unitTypeName",
-      1,
+      1, // enqtype = 1 for chat
       "",
       unitId: unitTypeId.toString(),
       propertyName: propertyName,
-      agentEmail: agentEmail,
+      agentEmail: agentEmail, // ✅ Use actual agent email
     );
 
-    navigateToAgentChat(agentEmail, propertyId, propertyName, unitTypeId.toString());
+    navigateToAgentChat(
+      agentEmail, // ✅ Use actual agent email
+      propertyId, 
+      propertyName, 
+      unitTypeId.toString()
+    );
   } catch (e) {
+    debugPrint('❌ Error in _handleUnitTypeSelectionForChat: $e');
     Get.snackbar(
       "Error",
       "Failed to submit interest: ${e.toString()}",
       snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red[100],
+      colorText: Colors.red[800],
     );
   }
 }
@@ -857,7 +953,8 @@ class PropertyDetailsController extends GetxController {
     }
 
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
       final mobile = doc.data()?['phoneNumber'] ?? "";
 
       await postPropertyInterest(
