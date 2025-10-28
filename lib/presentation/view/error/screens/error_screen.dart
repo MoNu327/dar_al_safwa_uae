@@ -1,5 +1,5 @@
-import 'package:dar_al_safwa/presentation/widgets/common_errors_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/common_errors_widget.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:flutter/material.dart';
 
 class ErrorScreen extends StatelessWidget {

@@ -28,27 +28,27 @@ class PropertyStats {
 }
 
 class TenantSummary {
+  final String totalProperties; // Add this field
   final List<PropertyStats> propertyStats;
   final String location;
   final String userId;
 
   TenantSummary({
+    required this.totalProperties, // Add this parameter
     required this.propertyStats,
     required this.location,
     required this.userId,
   });
 
   factory TenantSummary.fromJson(Map<String, dynamic> json) {
-    // Access the 'data' object first
-    final data = json['data'] as Map<String, dynamic>? ?? {};
-    
     return TenantSummary(
-      propertyStats: (data['propertyStats'] as List?)
+      totalProperties: json['total_properties']?.toString() ?? '0', // Extract from json
+      propertyStats: (json['propertyStats'] as List?)
               ?.map((item) => PropertyStats.fromJson(item))
               .toList() ??
           [],
-      location: data['location']?.toString() ?? '0', // Convert to string
-      userId: data['user_id']?.toString() ?? '',
+      location: json['location']?.toString() ?? '0',
+      userId: json['user_id']?.toString() ?? '',
     );
   }
 }

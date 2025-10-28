@@ -1,4 +1,4 @@
-package com.example.dar_al_safwa  // Make sure this matches your package name
+package com.majan.app  // Make sure this matches your package name
 
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService

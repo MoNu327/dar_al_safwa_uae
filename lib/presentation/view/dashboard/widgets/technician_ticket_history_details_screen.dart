@@ -1,8 +1,8 @@
 // import 'package:flutter/material.dart';
-// import 'package:dar_al_safwa/data/model/history_ticket_model.dart';
-// import 'package:dar_al_safwa/core/theme/app_colors.dart';
-// import 'package:dar_al_safwa/core/constants/custom_size.dart';
-// import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+// import 'package:majan/data/model/history_ticket_model.dart';
+// import 'package:majan/core/theme/app_colors.dart';
+// import 'package:majan/core/constants/custom_size.dart';
+// import 'package:majan/presentation/widgets/custom_text_widget.dart';
 
 // class TechnicianTicketDetailsScreen extends StatelessWidget {
 //   final TicketHistoryModel ticket;

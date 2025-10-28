@@ -1,5 +1,5 @@
-import 'package:dar_al_safwa/data/datasources/api_client.dart';
-import 'package:dar_al_safwa/data/model/technician_model.dart';
+import 'package:majan/data/datasources/api_client.dart';
+import 'package:majan/data/model/technician_model.dart';
 import 'package:dio/src/response.dart';
 import 'package:get/get.dart' hide Response;
 import 'package:flutter/foundation.dart'; // for debugPrint

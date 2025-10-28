@@ -1,50 +1,77 @@
-import 'package:dar_al_safwa/presentation/view/property_details/controller/user_data_submission_controller.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/document_upload_screen.dart';
+import 'dart:io';
+
+import 'package:majan/presentation/view/property_details/controller/user_data_submission_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validator.dart';
-import '../../../../data/model/document_submission_model.dart';
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_formfield_widget.dart';
 import '../../../widgets/custom_text_widget.dart';
 
-class UserDetailsSubmission extends StatelessWidget {
+class UserDetailsSubmission extends StatefulWidget {
+  @override
+  _UserDetailsSubmissionState createState() => _UserDetailsSubmissionState();
+}
+
+class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
   final UserDataSubmissionController controller =
       Get.put(UserDataSubmissionController());
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  // Controllers for additional document form
+  final TextEditingController _docTitleController = TextEditingController();
+  DateTime? _selectedExpiryDate;
+  File? _tempFile; // Temporary storage for file before adding document
+
+  bool get _allFieldsFilled =>
+      _docTitleController.text.isNotEmpty &&
+      _selectedExpiryDate != null &&
+      _tempFile != null;
+
+  // Country code - Only Oman
+  final String _omanCountryCode = '+971';
+
+  @override
+  void initState() {
+    super.initState();
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    print('UserDetailsSubmission - Received arguments: $args');
+  }
+
+  // Method to automatically add document when all fields are filled
+  void _tryAutoAddDocument() {
+  if (_docTitleController.text.isNotEmpty &&
+      _selectedExpiryDate != null &&
+      _tempFile != null) {
+    // All required fields are filled, add the document automatically
+    controller.addAdditionalDocument(
+      _docTitleController.text,
+      _selectedExpiryDate!,
+      _tempFile!,
+    );
+
+    // Reset form
+    _docTitleController.clear();
+    setState(() {
+      _selectedExpiryDate = null;
+      _tempFile = null;
+    });
+
+    // Snackbar removed - document is added silently
+  }
+}
+
   @override
   Widget build(BuildContext context) {
-     final args = Get.arguments as Map<String, dynamic>? ?? {};
-  
-  final propertyId = args['propertyId'] ?? '';
-  final unitId = args['unitId'] ?? '';
-  final unitTypeId = args['unitTypeId'] ?? 0;
-  final selectedCount = args['selectedCount'] ?? 1;
-  final propertyName = args['propertyName'] ?? 'Unknown Property'; // Get property name
-  final propertyType = args['propertyType'] ?? 'residential'; // Get property type
-
-  print('UserDetailsSubmission - Received arguments:');
-  print('propertyId: $propertyId');
-  print('unitId: $unitId');
-  print('unitTypeId: $unitTypeId');
-  print('selectedCount: $selectedCount');
-  print('propertyName: $propertyName'); // Add this line
-  print('propertyType: $propertyType'); // Add this line
-  
-    
-    
-    // Check commercial property status when the screen loads
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (unitId > 0) {
-        controller.checkCommercialPropertyStatus(unitId);
-      }
-    });
+    final args = Get.arguments as Map<String, dynamic>? ?? {};
+    final propertyName = args['propertyName'] ?? 'Unknown Property';
 
     return Scaffold(
       backgroundColor: AppColors.white,
@@ -55,7 +82,6 @@ class UserDetailsSubmission extends StatelessWidget {
           fontWeight: FontWeight.w600,
           color: AppColors.black,
         ),
-        
         backgroundColor: AppColors.white,
         elevation: 0,
         leading: InkWell(
@@ -67,26 +93,11 @@ class UserDetailsSubmission extends StatelessWidget {
           TextButton(
             onPressed: () {
               if (_formKey.currentState!.validate()) {
-                controller.updateUserFromControllers();
-                if (controller.validateForm()) {
-                  Get.snackbar(
-                    "Success",
-                    "Form validation successful",
-                    backgroundColor: Colors.green.shade100,
-                    colorText: Colors.black,
-                  );
-                }
-              } else {
-                Get.snackbar(
-                  "Warning!",
-                  "Please fill all required fields",
-                  backgroundColor: Colors.red.shade100,
-                  colorText: Colors.black,
-                );
+                controller.submitUserData();
               }
             },
             child: Text(
-              "Submit",
+              "save",
               style: TextStyle(
                 color: AppColors.black,
                 fontWeight: FontWeight.bold,
@@ -97,26 +108,6 @@ class UserDetailsSubmission extends StatelessWidget {
         ],
       ),
       body: Obx(() {
-        // Show loading indicator while checking commercial status
-        if (controller.isCheckingCommercialStatus.value) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(color: AppColors.secondaryColor),
-                SizedBox(height: 16),
-                Text(
-                  "Checking property type...",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.black,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
         return Padding(
           padding: EdgeInsets.all(screenWidth5),
           child: SingleChildScrollView(
@@ -126,46 +117,8 @@ class UserDetailsSubmission extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   kHeight(0.01),
-                  
-                  // Property Type Selection (now disabled and shows API result)
-                  CustomTextWidget(
-                    title: "Property Type",
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.black,
-                  ),
-                  kHeight(0.01),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.secondaryColor.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          controller.isCommercialProperty 
-                            ? Icons.business 
-                            : Icons.home,
-                          color: AppColors.secondaryColor,
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          controller.isCommercialProperty 
-                            ? "Commercial Property" 
-                            : "Residential Property",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.secondaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  kHeight(0.02),
 
-                  // Citizenship Type Selection
+                  /// Citizenship Type Selection
                   CustomTextWidget(
                     title: "Citizenship Type",
                     fontWeight: FontWeight.w600,
@@ -179,9 +132,10 @@ class UserDetailsSubmission extends StatelessWidget {
                           title: Text("Native"),
                           value: 1,
                           groupValue: controller.selectedCitizenship.value,
-                          onChanged: controller.isEditMode.value 
-                            ? (value) => controller.changeCitizenshipType(value!) 
-                            : null,
+                          onChanged: controller.isEditMode.value
+                              ? (value) =>
+                                  controller.changeCitizenshipType(value!)
+                              : null,
                           activeColor: AppColors.secondaryColor,
                         ),
                       ),
@@ -190,9 +144,10 @@ class UserDetailsSubmission extends StatelessWidget {
                           title: Text("Foreign"),
                           value: 0,
                           groupValue: controller.selectedCitizenship.value,
-                          onChanged: controller.isEditMode.value 
-                            ? (value) => controller.changeCitizenshipType(value!) 
-                            : null,
+                          onChanged: controller.isEditMode.value
+                              ? (value) =>
+                                  controller.changeCitizenshipType(value!)
+                              : null,
                           activeColor: AppColors.secondaryColor,
                         ),
                       ),
@@ -200,7 +155,15 @@ class UserDetailsSubmission extends StatelessWidget {
                   ),
                   kHeight(0.02),
 
-                  // Basic Information
+                  /// Basic Information Section
+                  CustomTextWidget(
+                    title: "Basic Information",
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                    color: AppColors.secondaryColor,
+                  ),
+                  kHeight(0.01),
+
                   CustomRichTextWidget(
                     title: "First Name ",
                     subTitle: "*",
@@ -212,8 +175,8 @@ class UserDetailsSubmission extends StatelessWidget {
                     controller: controller.firstNameCtrl,
                     readOnly: !controller.isEditMode.value,
                     keyboardType: TextInputType.name,
-                    // validator: (value) => Validator.validateName(value,
-                    //     fieldName: "First Name"),
+                    validator: (value) =>
+                        Validator.validateName(value, fieldName: "First Name"),
                   ),
 
                   CustomRichTextWidget(
@@ -227,8 +190,8 @@ class UserDetailsSubmission extends StatelessWidget {
                     controller: controller.lastNameCtrl,
                     readOnly: !controller.isEditMode.value,
                     keyboardType: TextInputType.name,
-                    // validator: (value) => Validator.validateLastname(value,
-                    //     fieldName: "Last Name"),
+                    validator: (value) => Validator.validateLastname(value,
+                        fieldName: "Last Name"),
                   ),
 
                   CustomRichTextWidget(
@@ -242,7 +205,7 @@ class UserDetailsSubmission extends StatelessWidget {
                     controller: controller.addressCtrl,
                     readOnly: !controller.isEditMode.value,
                     keyboardType: TextInputType.text,
-                    // validator: Validator.validateAddress,
+                    validator: Validator.validateAddress,
                   ),
 
                   CustomRichTextWidget(
@@ -256,8 +219,7 @@ class UserDetailsSubmission extends StatelessWidget {
                       controller: controller.emailCtrl,
                       readOnly: !controller.isEditMode.value,
                       keyboardType: TextInputType.emailAddress,
-                      // validator: Validator.validateEmail
-                      ),
+                      validator: Validator.validateEmail),
 
                   CustomRichTextWidget(
                     title: "Mobile ",
@@ -265,301 +227,405 @@ class UserDetailsSubmission extends StatelessWidget {
                     color: AppColors.black,
                     subTextColor: Colors.red,
                   ),
-                  CustomTextFieldWidget(
-                    hintText: 'Enter Mobile Number',
-                    controller: controller.mobileCtrl,
-                    readOnly: !controller.isEditMode.value,
-                    keyboardType: TextInputType.phone,
-                    // validator: Validator.validateMobile,
+
+                  // Country Code (Fixed to Oman) and Mobile Number Row
+                  Row(
+                    children: [
+                      // Fixed Oman Country Code Display
+                      Container(
+                        width: 100,
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '🇴🇲',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              _omanCountryCode,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 10),
+
+                      // Mobile Number Field
+                      Expanded(
+                        child: CustomTextFieldWidget(
+                          hintText: 'Enter Mobile Number',
+                          controller: controller.mobileCtrl,
+                          readOnly: !controller.isEditMode.value,
+                          keyboardType: TextInputType.phone,
+                          validator: (value) =>
+                              Validator.validateMobileWithCountryCode(value,
+                                  countryCode: _omanCountryCode),
+                        ),
+                      ),
+                    ],
                   ),
 
-                  kHeight(0.02),
+                  // Helper text showing the full number format
+                  Padding(
+                    padding: EdgeInsets.only(top: 4, left: 110),
+                    child: Text(
+                      'Format: $_omanCountryCode XXXX XXXX',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
 
-                  // Citizenship-specific fields
-                  if (controller.isNativeCitizen) ...[
-                    // Native Citizen Fields
-                    CustomTextWidget(
-                      title: "Native Citizen Details",
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      color: AppColors.secondaryColor,
-                    ),
-                    kHeight(0.01),
-                    
-                    CustomRichTextWidget(
-                      title: "Civil ID ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Civil ID',
-                      controller: controller.civilIdCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isNativeCitizen && (value?.isEmpty ?? true) 
-                      //   ? 'Civil ID is required for native citizens' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Civil ID Expiry Date ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Civil ID Expiry (YYYY-MM-DD)',
-                      controller: controller.civilIdExpiryCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.datetime,
-                      // validator: (value) => controller.isNativeCitizen && (value?.isEmpty ?? true) 
-                      //   ? 'Civil ID expiry date is required for native citizens' 
-                      //   : null,
-                    ),
-                  ] else ...[
-                    // Foreign Citizen Fields
-                    CustomTextWidget(
-                      title: "Foreign Citizen Details",
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      color: AppColors.secondaryColor,
-                    ),
-                    kHeight(0.01),
-
-                    CustomRichTextWidget(
-                      title: "Passport No ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Passport No',
-                      controller: controller.passportCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isForeignCitizen && (value?.isEmpty ?? true) 
-                      //   ? 'Passport number is required for foreign citizens' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Visa No ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Visa No',
-                      controller: controller.visaCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isForeignCitizen && (value?.isEmpty ?? true) 
-                      //   ? 'Visa number is required for foreign citizens' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Visa Expiry Date ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Visa Expiry (YYYY-MM-DD)',
-                      controller: controller.visaExpiryCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.datetime,
-                      // validator: (value) => controller.isForeignCitizen && (value?.isEmpty ?? true) 
-                      //   ? 'Visa expiry date is required for foreign citizens' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Expat Civil ID ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Expat Civil ID',
-                      controller: controller.expatCivilIdCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isForeignCitizen && (value?.isEmpty ?? true) 
-                      //   ? 'Expat Civil ID is required for foreign citizens' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Expat Civil ID Expiry ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Expat Civil ID Expiry (YYYY-MM-DD)',
-                      controller: controller.expatCivilIdExpiryCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.datetime,
-                      // validator: (value) => controller.isForeignCitizen && (value?.isEmpty ?? true) 
-                      //   ? 'Expat Civil ID expiry date is required for foreign citizens' 
-                      //   : null,
-                    ),
-                  ],
-
-                  // Commercial Property Fields
-                  if (controller.isCommercialProperty) ...[
-                    kHeight(0.02),
-                    CustomTextWidget(
-                      title: "Commercial Property Details",
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      color: AppColors.secondaryColor,
-                    ),
-                    kHeight(0.01),
-
-                    CustomRichTextWidget(
-                      title: "CR Number ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Commercial Registration Number',
-                      controller: controller.crNumberCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isCommercialProperty && (value?.isEmpty ?? true) 
-                      //   ? 'CR Number is required for commercial properties' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "CR Expiry Date ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter CR Expiry (YYYY-MM-DD)',
-                      controller: controller.crExpiryCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.datetime,
-                      // validator: (value) => controller.isCommercialProperty && (value?.isEmpty ?? true) 
-                      //   ? 'CR Expiry date is required for commercial properties' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Municipality License No ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Municipality License Number',
-                      controller: controller.municipalityLicenseNumberCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isCommercialProperty && (value?.isEmpty ?? true) 
-                      //   ? 'Municipality License is required for commercial properties' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Municipality License Date ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Municipality License Date (YYYY-MM-DD)',
-                      controller: controller.municipalityLicenseDateCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.datetime,
-                      // validator: (value) => controller.isCommercialProperty && (value?.isEmpty ?? true) 
-                      //   ? 'Municipality License date is required for commercial properties' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "Company Address ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter Company Address',
-                      controller: controller.companyAddressCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isCommercialProperty && (value?.isEmpty ?? true) 
-                      //   ? 'Company address is required for commercial properties' 
-                      //   : null,
-                    ),
-
-                    CustomRichTextWidget(
-                      title: "PO Box ",
-                      subTitle: "*",
-                      color: AppColors.black,
-                      subTextColor: Colors.red,
-                    ),
-                    CustomTextFieldWidget(
-                      hintText: 'Enter PO Box Number',
-                      controller: controller.poBoxCtrl,
-                      readOnly: !controller.isEditMode.value,
-                      keyboardType: TextInputType.text,
-                      // validator: (value) => controller.isCommercialProperty && (value?.isEmpty ?? true) 
-                      //   ? 'PO Box is required for commercial properties' 
-                      //   : null,
-                    ),
-                  ],
-
-                  kHeight(0.03),
-
-                  // Required Documents Information
+                  /// Additional Documents Section with Yellowish Background
                   Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.secondaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.secondaryColor.withOpacity(0.3)),
+                      color: Color(0xFFFFF8E1), // Light yellowish background
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            Color(0xFFFFECB3), // Slightly darker yellow border
+                        width: 1,
+                      ),
                     ),
+                    padding: EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CustomTextWidget(
-                          title: "Required Documents for ${controller.citizenshipLabel} ${controller.propertyTypeLabel} Property:",
-                          fontWeight: FontWeight.w600,
+                          title: "Additional Documents",
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
                           color: AppColors.secondaryColor,
                         ),
                         kHeight(0.01),
-                        ...controller.requiredDocumentLabels.map((doc) => 
-                          Padding(
-                            padding: EdgeInsets.symmetric(vertical: 2),
-                            child: Row(
+
+                        // Add Document Form
+                        Card(
+                          margin: EdgeInsets.only(bottom: 16),
+                          color: Color(0xFFFFFDE7),
+                          child: Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.check_circle, color: AppColors.secondaryColor, size: 16),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    doc,
-                                    style: TextStyle(fontSize: 14, color: AppColors.black),
+                                CustomTextWidget(
+                                  title: "Add Document",
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.black,
+                                ),
+                                kHeight(0.01),
+
+                                // Document Title
+                                CustomTextFieldWidget(
+                                  hintText:
+                                      'Document Title (e.g., Passport, Visa)',
+                                  controller: _docTitleController,
+                                  keyboardType: TextInputType.text,
+                                  onChanged: (value) {
+                                    _tryAutoAddDocument();
+                                  },
+                                ),
+                                kHeight(0.01),
+
+                                // Expiry Date
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: Color(0xFFFFF9C4),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _selectedExpiryDate == null
+                                              ? 'Select Expiry Date *'
+                                              : 'Expiry: ${_selectedExpiryDate!.toLocal().toString().split(' ')[0]}',
+                                          style: TextStyle(
+                                            color: _selectedExpiryDate == null
+                                                ? Colors.red
+                                                : AppColors.black,
+                                            fontWeight:
+                                                _selectedExpiryDate == null
+                                                    ? FontWeight.w500
+                                                    : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          final DateTime? picked =
+                                              await showDatePicker(
+                                            context: context,
+                                            initialDate: DateTime.now(),
+                                            firstDate: DateTime.now(),
+                                            lastDate: DateTime(2100),
+                                          );
+                                          if (picked != null) {
+                                            setState(() {
+                                              _selectedExpiryDate = picked;
+                                              _tryAutoAddDocument();
+                                            });
+                                          }
+                                        },
+                                        child: Text(
+                                          'Select Date',
+                                          style: TextStyle(
+                                            color: AppColors.secondaryColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
+                                kHeight(0.01),
+
+                                // File Upload with required indicator
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          "File Upload ",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        Text(
+                                          "*",
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 4),
+                                    ElevatedButton.icon(
+                                      onPressed: () async {
+                                        final result =
+                                            await FilePicker.platform.pickFiles(
+                                          type: FileType.custom,
+                                          allowedExtensions: [
+                                            'jpg',
+                                            'png',
+                                            'pdf',
+                                            'jpeg'
+                                          ],
+                                        );
+                                        if (result != null &&
+                                            result.files.single.path != null) {
+                                          final file =
+                                              File(result.files.single.path!);
+                                          setState(() {
+                                            _tempFile = file;
+                                            _tryAutoAddDocument();
+                                          });
+                                        }
+                                      },
+                                      icon: Icon(Icons.upload_file,
+                                          color: AppColors.white),
+                                      label: Text(
+                                        _tempFile == null
+                                            ? "Choose File *"
+                                            : "Change File (${_tempFile!.path.split('/').last})",
+                                        style:
+                                            TextStyle(color: AppColors.white),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: _tempFile == null
+                                            ? AppColors.secondaryColor
+                                            : AppColors.onlineGreen,
+                                        foregroundColor: AppColors.white,
+                                      ),
+                                    ),
+                                    if (_tempFile == null)
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          "Please select a file (required)",
+                                          style: TextStyle(
+                                            color: Colors.red,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                kHeight(0.01),
                               ],
                             ),
                           ),
-                        ).toList(),
+                        ),
+
+                        // List of Added Documents
+                        Obx(() {
+                          if (controller
+                              .user.value.additionalDocuments.isEmpty) {
+                            return Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryColor.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "No additional documents added yet",
+                                  style: TextStyle(
+                                    color: AppColors.secondaryColor,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: controller
+                                .user.value.additionalDocuments.length,
+                            itemBuilder: (context, index) {
+                              final doc = controller
+                                  .user.value.additionalDocuments[index];
+                              return Card(
+                                margin: EdgeInsets.symmetric(vertical: 5),
+                                color: Color(0xFFFFFDE7),
+                                child: ListTile(
+                                  leading: Icon(
+                                    _getDocumentIcon(doc.file),
+                                    color: Color(0xFFFFA000),
+                                  ),
+                                  title: Text(
+                                    doc.title,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'Expires: ${doc.expiryDate.toLocal().toString().split(' ')[0]}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                  trailing: IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => controller
+                                        .removeAdditionalDocument(index),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }),
                       ],
                     ),
                   ),
 
                   kHeight(0.03),
 
-                  // Error Message Display
+                  /// Information Box
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Color(0xFFFFF9C4)),
+                    ),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline,
+                                  color: AppColors.secondaryColor),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: CustomTextWidget(
+                                  title: "Application Information:",
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.secondaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          kHeight(0.01),
+                          _buildInfoRow("Property", propertyName),
+                          _buildInfoRow(
+                              "First Name",
+                              controller.firstNameCtrl.text.isNotEmpty
+                                  ? controller.firstNameCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Last Name",
+                              controller.lastNameCtrl.text.isNotEmpty
+                                  ? controller.lastNameCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Address",
+                              controller.addressCtrl.text.isNotEmpty
+                                  ? controller.addressCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Email",
+                              controller.emailCtrl.text.isNotEmpty
+                                  ? controller.emailCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Mobile",
+                              controller.mobileCtrl.text.isNotEmpty
+                                  ? "$_omanCountryCode ${controller.mobileCtrl.text}"
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Citizenship",
+                              controller.selectedCitizenship.value == 1
+                                  ? "Native"
+                                  : "Foreign"),
+                          _buildInfoRow("Documents Added",
+                              "${controller.user.value.additionalDocuments.length} document(s)"),
+
+                          // Display the list of added documents if any
+                          if (controller
+                              .user.value.additionalDocuments.isNotEmpty) ...[
+                            SizedBox(height: 8),
+                            CustomTextWidget(
+                              title: "Document Details:",
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondaryColor,
+                              fontSize: 14,
+                            ),
+                            SizedBox(height: 4),
+                          ],
+                          for (var i = 0;
+                              i <
+                                  controller
+                                      .user.value.additionalDocuments.length;
+                              i++)
+                            _buildInfoRow(
+                              "  • ${controller.user.value.additionalDocuments[i].title}",
+                              "Expires: ${controller.user.value.additionalDocuments[i].expiryDate.toLocal().toString().split(' ')[0]}",
+                            ),
+                        ]),
+                  ),
+
+                  kHeight(0.03),
+
+                  /// Error Message Display
                   if (controller.errorMessage.value != null)
                     Container(
                       width: double.infinity,
@@ -584,110 +650,35 @@ class UserDetailsSubmission extends StatelessWidget {
                       ),
                     ),
 
-                  // Proceed Button
+                  /// Submit Button
                   CustomButtonWidget(
-                    buttonTitle: controller.isLoading.value ? "Processing..." : "Proceed to Document Upload",
-                    onPressed: controller.isLoading.value ? null : () async {
-                      if (_formKey.currentState!.validate()) {
-                        controller.updateUserFromControllers();
-                        
-                        if (controller.validateForm()) {
-                          // Prepare document fields based on citizenship and property type
-                          List<DocumentField> documentFields = [];
-                          
-                          // Citizenship documents
-                          if (controller.isNativeCitizen) {
-                            documentFields.addAll([
-                              DocumentField(
-                                title: "Civil ID Front",
-                                allowedTypes: FileTypeEnum.image,
-                                maxFiles: 1,
-                              ),
-                              DocumentField(
-                                title: "Civil ID Back",
-                                allowedTypes: FileTypeEnum.image,
-                                maxFiles: 1,
-                              ),
-                            ]);
-                          } else {
-                            documentFields.addAll([
-                              DocumentField(
-                                title: "Passport First Page",
-                                allowedTypes: FileTypeEnum.any,
-                                maxFiles: 1,
-                              ),
-                              DocumentField(
-                                title: "Passport Last Page",
-                                allowedTypes: FileTypeEnum.any,
-                                maxFiles: 1,
-                              ),
-                              DocumentField(
-                                title: "Expat Civil ID Front",
-                                allowedTypes: FileTypeEnum.image,
-                                maxFiles: 1,
-                              ),
-                              DocumentField(
-                                title: "Expat Civil ID Back",
-                                allowedTypes: FileTypeEnum.image,
-                                maxFiles: 1,
-                              ),
-                              DocumentField(
-                                title: "Resident Visa",
-                                allowedTypes: FileTypeEnum.any,
-                                maxFiles: 1,
-                              ),
-                            ]);
-                          }
-                          
-                          // Commercial property documents
-                          if (controller.isCommercialProperty) {
-                            documentFields.addAll([
-                              DocumentField(
-                                title: "Commercial Registration Copy",
-                                allowedTypes: FileTypeEnum.any,
-                                maxFiles: 1,
-                              ),
-                              DocumentField(
-                                title: "Municipality License",
-                                allowedTypes: FileTypeEnum.any,
-                                maxFiles: 1,
-                              ),
-                              DocumentField(
-                                title: "Company Authorization Letter",
-                                allowedTypes: FileTypeEnum.any,
-                                maxFiles: 1,
-                              ),
-                            ]);
-                          }
+                    buttonTitle: controller.isLoading.value
+                        ? "Processing..."
+                        : "Submit Application",
+                    onPressed: controller.isLoading.value
+                        ? null
+                        : () async {
+                            if (_formKey.currentState!.validate()) {
+                              // Format mobile number with country code before submission
+                              final formattedMobile = _omanCountryCode +
+                                  controller.mobileCtrl.text;
+                              controller.mobileCtrl.text = formattedMobile;
 
-                          // Navigate to document upload screen
-                          Get.to(
-                            () => DocumentUploadScreen(
-                              screenTitle: "Upload ${controller.citizenshipLabel} ${controller.propertyTypeLabel} Property Documents",
-                              documentFields: documentFields,
-                              isCommercialProperty: controller.isCommercialProperty,
-                            ),
-                          );
-                        } else {
-                          Get.snackbar(
-                            "Warning!",
-                            "Please fill all required fields correctly",
-                            backgroundColor: Colors.red.shade100,
-                            colorText: Colors.black,
-                          );
-                        }
-                      } else {
-                        Get.snackbar(
-                          "Warning!",
-                          "Form validation failed. Please check all fields.",
-                          backgroundColor: Colors.red.shade100,
-                          colorText: Colors.black,
-                        );
-                      }
-                    },
+                              await controller.submitUserData();
+                            } else {
+                              Get.snackbar(
+                                "Form Error",
+                                "Please fix the form errors and try again.",
+                                backgroundColor: Colors.red.shade100,
+                                colorText: Colors.black,
+                                snackPosition: SnackPosition.BOTTOM,
+                              );
+                            }
+                          },
                     buttonColor: AppColors.secondaryColor,
                     buttonTextColor: AppColors.white,
                   ),
+
                   kHeight(0.02),
                 ],
               ),
@@ -696,5 +687,52 @@ class UserDetailsSubmission extends StatelessWidget {
         );
       }),
     );
+  }
+
+  IconData _getDocumentIcon(dynamic file) {
+    if (file is File) {
+      final path = file.path.toLowerCase();
+      if (path.endsWith('.pdf')) return Icons.picture_as_pdf;
+      if (path.endsWith('.jpg') ||
+          path.endsWith('.jpeg') ||
+          path.endsWith('.png')) {
+        return Icons.image;
+      }
+    }
+    return Icons.description;
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "$label: ",
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.black,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _docTitleController.dispose();
+    super.dispose();
   }
 }

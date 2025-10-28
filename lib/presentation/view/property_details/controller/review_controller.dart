@@ -1,6 +1,6 @@
-import 'package:dar_al_safwa/data/model/property_details_model.dart';
-import 'package:dar_al_safwa/data/model/property_user_review_model.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:majan/data/model/property_details_model.dart';
+import 'package:majan/data/model/property_user_review_model.dart';
+import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -42,11 +42,10 @@ class ReviewController extends GetxController {
     }
   }
 
-  void loadReviews() {
-    List<RecentReview> dummyReviews = propertiesController
-            .property?.value?.reviews?.recentReviews as List<RecentReview> ??
-        [];
+ void loadReviews() {
+  List<RecentReview> dummyReviews =
+      propertiesController.property?.value?.reviews?.recentReviews ?? [];
 
-    reviews.value = dummyReviews;
-  }
+  reviews.value = dummyReviews;
+}
 }

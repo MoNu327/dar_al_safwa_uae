@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:dar_al_safwa/core/utils/date_formater.dart';
+import 'package:majan/core/utils/date_formater.dart';
 import 'package:flutter/material.dart';
 
 class ComplaintsResponse {
@@ -30,7 +30,7 @@ class ComplaintsResponse {
             : [Complaint.fromJson(parsedJson['data'] ?? {})],
       );
     } catch (e, stack) {
-      debugPrint('Failed to parse ComplaintsResponse: $e\n$stack');
+      // debugPrint('Failed to parse ComplaintsResponse: $e\n$stack');
       throw FormatException('Failed to parse complaints response: $e');
     }
   }
@@ -77,7 +77,7 @@ class Complaint {
   final String unitType;  
   final String fullAddress;
   final String flatnoId;
-  final List<String> images;
+  // final List<String> images;
   final List<Technician> assignedTechnicians;
   final ComplaintImages complaintImages;
   
@@ -110,7 +110,7 @@ class Complaint {
     this.unitType = '',
     required this.fullAddress,
     required this.flatnoId,
-    required this.images,
+    // required this.images,
     this.assignedTechnicians = const [],
     required this.complaintImages,
     this.createdBy,
@@ -137,11 +137,27 @@ class Complaint {
 
 factory Complaint.fromJson(Map<String, dynamic> json) {
   try {
-    debugPrint('=== PARSING COMPLAINT JSON ===');
-    debugPrint('Raw JSON keys: ${json.keys.toList()}');
+    // debugPrint('=== PARSING COMPLAINT JSON ===');
+    // debugPrint('Raw JSON keys: ${json.keys.toList()}');
     
     final complaint = json['complaint'] ?? json;
-    debugPrint('Complaint keys: ${complaint.keys.toList()}');
+//     debugPrint('Complaint keys: ${complaint.keys.toList()}');
+//     debugPrint('=== TIMELINE PARSING DEBUG ===');
+// debugPrint('Raw JSON timeline field: ${json['timeline']}');
+// debugPrint('Complaint timeline field: ${complaint['timeline']}');
+if (json['timeline'] is List) {
+  final timelineList = json['timeline'] as List;
+  // debugPrint('Timeline has ${timelineList.length} events');
+  for (int i = 0; i < timelineList.length; i++) {
+    final event = timelineList[i];
+    if (event is Map && event['type'] == 'payment') {
+      // debugPrint('FOUND PAYMENT EVENT: $event');
+    }
+  }
+} else {
+  // debugPrint('Timeline is empty or not a list');
+}
+// debugPrint('=== END TIMELINE PARSING DEBUG ===');
     
     final property = json['property'] is Map 
         ? (json['property'] as Map).cast<String, dynamic>() 
@@ -149,7 +165,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
             ? (complaint['property'] as Map).cast<String, dynamic>()
             : <String, dynamic>{});
     
-    debugPrint('Property keys: ${property.keys.toList()}');
+    // debugPrint('Property keys: ${property.keys.toList()}');
     
     final unit = property['unit'] is Map 
         ? (property['unit'] as Map).cast<String, dynamic>()
@@ -187,7 +203,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
         complaint['technicians'] as List<dynamic>? ??
         json['technicians'] as List<dynamic>?;
     
-    debugPrint('Found technician data: $technicianData');
+    // debugPrint('Found technician data: $technicianData');
     
     if (technicianData != null && technicianData.isNotEmpty) {
       for (var techData in technicianData) {
@@ -203,10 +219,10 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
               assignedAt = _parseAssignmentDate(technician.assignedAt);
             }
             
-            debugPrint('Successfully parsed technician: ${technician.name}');
+            // debugPrint('Successfully parsed technician: ${technician.name}');
           } catch (e) {
-            debugPrint('Failed to parse technician: $e');
-            debugPrint('Technician data: $techData');
+            // debugPrint('Failed to parse technician: $e');
+            // debugPrint('Technician data: $techData');
           }
         }
       }
@@ -266,7 +282,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
       unitType: unit['type']?.toString() ?? property['unit_type']?.toString() ?? '',
       fullAddress: unit['address_format']?.toString() ?? property['address_format']?.toString() ?? complaint['full_address']?.toString() ?? '',
       flatnoId: property['id']?.toString() ?? complaint['flatno_id']?.toString() ?? '',
-      images: directImages, // Use the direct images list
+      // images: directImages, // Use the direct images list
       assignedTechnicians: parsedTechnicians,
       // Use the improved parser with fallback images
       complaintImages: ComplaintImages.fromJson(complaintImagesData, fallbackImages: directImages),
@@ -281,7 +297,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
       assignmentStatus: assignmentStatus,
     );
   } catch (e, stack) {
-    debugPrint('Failed to parse Complaint: $e\n$stack');
+    // debugPrint('Failed to parse Complaint: $e\n$stack');
     throw FormatException('Failed to parse complaint: $e');
   }
 }
@@ -291,7 +307,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
     try {
       return DateTime.parse(dateString);
     } catch (e) {
-      debugPrint('Failed to parse assignment date: $dateString');
+      // debugPrint('Failed to parse assignment date: $dateString');
       return null;
     }
   }
@@ -349,7 +365,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
       unitType: unitType ?? this.unitType,
       fullAddress: fullAddress ?? this.fullAddress,
       flatnoId: flatnoId ?? this.flatnoId,
-      images: images ?? this.images,
+      // images: images ?? this.images,
       assignedTechnicians: assignedTechnicians ?? this.assignedTechnicians,
       complaintImages: complaintImages ?? this.complaintImages,
       createdBy: createdBy ?? this.createdBy,
@@ -382,7 +398,7 @@ factory Complaint.fromJson(Map<String, dynamic> json) {
     'unit_type': unitType,
     'full_address': fullAddress,
     'flatno_id': flatnoId,
-    'images': images,
+    // 'images': images,
     'created_by': createdBy?.toJson(),
     'timeline': timeline.map((e) => e.toJson()).toList(),
     'assigned_technician_id': assignedTechnicianId,
@@ -525,6 +541,7 @@ class Technician {
   };
 }
 
+
 class TimelineEvent {
   final String type;
   final String timestamp;
@@ -535,6 +552,11 @@ class TimelineEvent {
   final String? reason;
   final User? by;
   final User? technician;
+  
+  // Payment-specific fields
+  final String? amount;
+  final String? paymentStatus;
+  final String? paymentMethod;
 
   TimelineEvent({
     required this.type,
@@ -546,39 +568,70 @@ class TimelineEvent {
     this.reason,
     this.by,
     this.technician,
+    // Payment fields
+    this.amount,
+    this.paymentStatus,
+    this.paymentMethod,
   });
 
   String get formattedTimestamp => DateFormatter.formatTo12Hour(timestamp);
 
-  factory TimelineEvent.fromJson(Map<String, dynamic> json) => TimelineEvent(
-    type: json['type']?.toString() ?? '',
-    timestamp: json['timestamp']?.toString() ?? '',
-    message: json['message']?.toString(),
-    oldStatus: json['old_status']?.toString(),
-    newStatus: json['new_status']?.toString(),
-    imagePath: json['image_path']?.toString(),
-    reason: json['reason']?.toString(),
-    by: json['by'] != null 
-        ? User.fromJson((json['by'] as Map).cast<String, dynamic>())
-        : null,
-    technician: json['technician'] != null 
-        ? User.fromJson((json['technician'] as Map).cast<String, dynamic>())
-        : null,
-  );
+  factory TimelineEvent.fromJson(Map<String, dynamic> json) {
+    // debugPrint('=== PARSING TIMELINE EVENT ===');
+    // debugPrint('Event type: ${json['type']}');
+    // debugPrint('Event JSON: $json');
+    
+    return TimelineEvent(
+      type: json['type']?.toString() ?? '',
+      timestamp: json['timestamp']?.toString() ?? '',
+      message: json['message']?.toString(),
+      oldStatus: json['old_status']?.toString(),
+      newStatus: json['new_status']?.toString(),
+      imagePath: json['image_path']?.toString(),
+      reason: json['reason']?.toString(),
+      by: json['by'] != null 
+          ? User.fromJson((json['by'] as Map).cast<String, dynamic>())
+          : null,
+      technician: json['technician'] != null 
+          ? User.fromJson((json['technician'] as Map).cast<String, dynamic>())
+          : null,
+      // Parse payment-specific fields
+      amount: json['amount']?.toString(),
+      paymentStatus: json['status']?.toString(),
+      paymentMethod: json['method']?.toString(),
+    );
+  }
 
-  Map<String, dynamic> toJson() => {
-    'type': type,
-    'timestamp': timestamp,
-    'message': message,
-    'old_status': oldStatus,
-    'new_status': newStatus,
-    'image_path': imagePath,
-    'reason': reason,
-    'by': by?.toJson(),
-    'technician': technician?.toJson(),
-  };
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> json = {
+      'type': type,
+      'timestamp': timestamp,
+      'message': message,
+      'old_status': oldStatus,
+      'new_status': newStatus,
+      'image_path': imagePath,
+      'reason': reason,
+      'by': by?.toJson(),
+      'technician': technician?.toJson(),
+    };
+    
+    // Add payment fields if they exist
+    if (amount != null) json['amount'] = amount;
+    if (paymentStatus != null) json['status'] = paymentStatus;
+    if (paymentMethod != null) json['method'] = paymentMethod;
+    
+    return json;
+  }
+  
+  // Helper method to check if this is a payment event
+  bool get isPaymentEvent => type.toLowerCase() == 'payment';
+  
+  // Helper method to get payment amount as double
+  double get paymentAmount {
+    if (amount == null) return 0.0;
+    return double.tryParse(amount!) ?? 0.0;
+  }
 }
-
 class ComplaintImages {
   final List<String> tenantUploaded;
   final List<String> adminUploaded;
@@ -593,10 +646,10 @@ class ComplaintImages {
   });
 // Enhanced ComplaintImages.fromJson method with better technician image detection
 factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallbackImages}) {
-  debugPrint('=== PARSING COMPLAINT IMAGES ===');
-  debugPrint('Raw JSON: $json');
-  debugPrint('JSON keys: ${json.keys.toList()}');
-  debugPrint('Fallback images count: ${fallbackImages?.length ?? 0}');
+  // debugPrint('=== PARSING COMPLAINT IMAGES ===');
+  // debugPrint('Raw JSON: $json');
+  // debugPrint('JSON keys: ${json.keys.toList()}');
+  // debugPrint('Fallback images count: ${fallbackImages?.length ?? 0}');
   
   // Enhanced key matching with more variations
   List<String> getImages(String key) {
@@ -615,16 +668,16 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
     
     for (String keyVar in keyVariations) {
       final dynamic value = json[keyVar];
-      debugPrint('Checking key "$keyVar": $value (type: ${value.runtimeType})');
+      // debugPrint('Checking key "$keyVar": $value (type: ${value.runtimeType})');
       
       if (value is List) {
         final List<String> images = value.map((e) => e.toString()).where((img) => img.isNotEmpty).toList();
-        debugPrint('Found ${images.length} images for key "$keyVar": $images');
+        // debugPrint('Found ${images.length} images for key "$keyVar": $images');
         return images;
       }
     }
     
-    debugPrint('No images found for key variations of "$key"');
+    // debugPrint('No images found for key variations of "$key"');
     return [];
   }
 
@@ -655,7 +708,7 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
         hasTechnicianUpdate = true;
       }
     } catch (e) {
-      debugPrint('Could not parse last_updated: ${json['last_updated']}');
+      // debugPrint('Could not parse last_updated: ${json['last_updated']}');
     }
   }
   
@@ -677,7 +730,7 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
       allImagesData.forEach((key, value) {
         if (value is List) {
           final categoryImages = (value as List).map((e) => e.toString()).where((img) => img.isNotEmpty).toList();
-          debugPrint('Found images in category "$key": ${categoryImages.length}');
+          // debugPrint('Found images in category "$key": ${categoryImages.length}');
           
           // Categorize based on key name
           switch (key.toString().toLowerCase()) {
@@ -734,13 +787,13 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
   List<String> finalAdminTechnicianImages = [...adminTechnicianImages];
   
   if (imagesToCategorize.isNotEmpty) {
-    debugPrint('=== CATEGORIZING ${imagesToCategorize.length} ADDITIONAL IMAGES ===');
-    debugPrint('Has technician update: $hasTechnicianUpdate');
-    debugPrint('Recently added images count: ${recentlyAddedImages.length}');
+    // debugPrint('=== CATEGORIZING ${imagesToCategorize.length} ADDITIONAL IMAGES ===');
+    // debugPrint('Has technician update: $hasTechnicianUpdate');
+    // debugPrint('Recently added images count: ${recentlyAddedImages.length}');
     
     for (String imageUrl in imagesToCategorize) {
       String category = _determineImageCategoryEnhanced(imageUrl, json, hasTechnicianUpdate);
-      debugPrint('Image: $imageUrl -> Category: $category');
+      // debugPrint('Image: $imageUrl -> Category: $category');
       
       switch (category) {
         case 'tenant':
@@ -771,12 +824,12 @@ factory ComplaintImages.fromJson(Map<String, dynamic> json, {List<String>? fallb
     }
   }
   
-  debugPrint('=== FINAL IMAGE COUNTS ===');
-  debugPrint('Tenant: ${finalTenantImages.length}');
-  debugPrint('Admin: ${finalAdminImages.length}');
-  debugPrint('Technician: ${finalTechnicianImages.length}');
-  debugPrint('Admin/Technician: ${finalAdminTechnicianImages.length}');
-  debugPrint('=== END COMPLAINT IMAGES PARSING ===');
+  // debugPrint('=== FINAL IMAGE COUNTS ===');
+  // debugPrint('Tenant: ${finalTenantImages.length}');
+  // debugPrint('Admin: ${finalAdminImages.length}');
+  // debugPrint('Technician: ${finalTechnicianImages.length}');
+  // debugPrint('Admin/Technician: ${finalAdminTechnicianImages.length}');
+  // debugPrint('=== END COMPLAINT IMAGES PARSING ===');
 
   return ComplaintImages(
     tenantUploaded: finalTenantImages,
@@ -803,7 +856,7 @@ static String _determineImageCategoryEnhanced(String imageUrl, Map<String, dynam
   
   // If we have technician update context, prioritize technician category
   if (hasTechnicianUpdate) {
-    debugPrint('Using technician category due to recent technician update context');
+    // debugPrint('Using technician category due to recent technician update context');
     return 'technician';
   }
   
@@ -845,7 +898,7 @@ static String _determineImageCategoryEnhanced(String imageUrl, Map<String, dynam
         return 'technician';
       }
     } catch (e) {
-      debugPrint('Could not parse last_updated for category determination');
+      // debugPrint('Could not parse last_updated for category determination');
     }
   }
   

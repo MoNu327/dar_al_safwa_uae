@@ -1,4 +1,4 @@
-name: dar_al_safwa
+name: majan
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.5.4
@@ -80,6 +80,12 @@ dependencies:
   device_info_plus: ^11.3.0
   email_validator: ^3.0.0
   http_parser: ^4.1.2
+  firebase_storage: ^12.4.10
+  # open_file: ^3.5.10
+  sign_in_with_apple: ^7.0.1
+  open_filex: ^4.4.0
+
+
 
 dev_dependencies:
   flutter_test:
@@ -101,10 +107,10 @@ flutter_icons:
   android: "launcher_icon"
   ios: true
   remove_alpha_ios: true
-  image_path: "assets/logo/launcher.png"
+  image_path: "assets/logo/launcher.jpg"
   min_sdk_android: 24
   adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: "assets/logo/launcher.png"
+  adaptive_icon_foreground: "assets/logo/launcher.jpg"
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -120,7 +126,7 @@ flutter:
     - assets/lang/
     - assets/images/
     - assets/logo/
-    - assets/videos/
+    # - assets/videos/
     - assets/lottie/
     - assets/pdf/Agreement.pdf
   #   - images/a_dot_ham.jpeg

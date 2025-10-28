@@ -1,11 +1,11 @@
-// import 'package:dar_al_safwa/core/constants/custom_size.dart';
-// import 'package:dar_al_safwa/core/theme/app_colors.dart';
-// import 'package:dar_al_safwa/presentation/view/inbox/controller/inbox_controller.dart';
-// import 'package:dar_al_safwa/presentation/view/inbox/widgets/inbox_chats_view_screen_widget.dart';
-// import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-// import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
-// import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-// import 'package:dar_al_safwa/presentation/widgets/language_text_button.dart';
+// import 'package:majan/core/constants/custom_size.dart';
+// import 'package:majan/core/theme/app_colors.dart';
+// import 'package:majan/presentation/view/inbox/controller/inbox_controller.dart';
+// import 'package:majan/presentation/view/inbox/widgets/inbox_chats_view_screen_widget.dart';
+// import 'package:majan/presentation/view_model/localization_controller.dart';
+// import 'package:majan/presentation/view_model/login_controller.dart';
+// import 'package:majan/presentation/widgets/custom_text_widget.dart';
+// import 'package:majan/presentation/widgets/language_text_button.dart';
 // import 'package:flutter/material.dart';
 // import 'package:get/get.dart';
 // import 'package:get/get_core/src/get_main.dart';
@@ -192,14 +192,14 @@
 //     );
 //   }
 // }
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/domain/controller/agent_controller.dart';
-import 'package:dar_al_safwa/presentation/view/inbox/controller/inbox_controller.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/no_internet_widegt.dart';
-import 'package:dar_al_safwa/presentation/widgets/periodic_text_swapper_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/domain/controller/agent_controller.dart';
+import 'package:majan/presentation/view/inbox/controller/inbox_controller.dart';
+import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/no_internet_widegt.dart';
+import 'package:majan/presentation/widgets/periodic_text_swapper_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -213,6 +213,7 @@ class InboxScreen extends StatelessWidget {
 
   final NetworkController networkController = Get.find<NetworkController>();
   InboxScreen({super.key});
+  
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -295,10 +296,14 @@ class InboxScreen extends StatelessWidget {
           itemCount: controller.conversations.length,
           itemBuilder: (context, index) {
             final chat = controller.conversations[index];
-            final id = int.tryParse(chat["propertyId"]);
-            // propertyDetailsController.fetchPropertyDetails(id ?? 0);
-
-            final otherUser = chat['otherUser'] as Map<String, dynamic>;
+            final id = int.tryParse(chat["propertyId"]?.toString() ?? "0");
+            
+            // Safe access to otherUser data
+            final otherUser = chat['otherUser'] as Map<String, dynamic>? ?? {};
+            final displayName = otherUser['displayName']?.toString() ?? '';
+            final photoURL = otherUser['photoURL']?.toString() ?? '';
+            final email = otherUser['email']?.toString() ?? '';
+            
             final unreadCount = (chat['unreadCount']
                     as Map?)?[controller.auth.currentUser?.uid] ??
                 0;
@@ -318,35 +323,24 @@ class InboxScreen extends StatelessWidget {
                   child: ListTile(
                     leading: CircleAvatar(
                       radius: 35,
-                      backgroundImage: otherUser['photoURL'] != null &&
-                              otherUser['photoURL'].isNotEmpty
-                          ? NetworkImage(otherUser['photoURL'])
+                      backgroundImage: photoURL.isNotEmpty
+                          ? NetworkImage(photoURL)
                           : null,
-                      child: otherUser['photoURL'] == null ||
-                              otherUser['photoURL'].isEmpty
-                          ? Text(
-                              otherUser['displayName']?.substring(0, 1) ?? '?')
+                      child: photoURL.isEmpty
+                          ? Text(_getInitials(displayName))
                           : null,
                     ),
 
                     title: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // PeriodicTextSwapperWidget(
-                        //   text1: otherUser['displayName'] ?? 'Unknown',
-                        //   text2: propertyDetailsController
-                        //           .property.value?.title?.en ??
-                        //       'Unknown Property',
-                        //   key: ValueKey(chat['id'].toString() ?? index),
-                        //   interval: const Duration(seconds: 30),
-                        //   enableFade: true,
-                        // ),
-
-                        CustomTextWidget(
-                          title: otherUser['displayName'] ?? 'Unknown',
-                          color: AppColors.black,
-                          fontSize: screenHeight * 0.018,
-                          fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: CustomTextWidget(
+                            title: displayName.isNotEmpty ? displayName : 'Unknown User',
+                            color: AppColors.black,
+                            fontSize: screenHeight * 0.018,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -368,7 +362,7 @@ class InboxScreen extends StatelessWidget {
                                 child: Text(
                                   unreadCount.toString(),
                                   style: const TextStyle(
-                                    color: Colors.blue,
+                                    color: Colors.white,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -379,23 +373,27 @@ class InboxScreen extends StatelessWidget {
                     ),
 
                     subtitle: CustomTextWidget(
-                      title: chat['lastMessage'] ?? 'No messages',
+                      title: chat['lastMessage']?.toString() ?? 'No messages',
                       color: AppColors.black600,
                       fontWeight: FontWeight.w500,
                       fontSize: tagTitle,
                       maxLines: 2,
                     ),
-                    // trailing:
-                    // ... other properties ...
                     onTap: () {
-                      final agentEmail = otherUser['email'] ??
-                          ''; // Get email from otherUser data
-                      final propertyName = chat['propertyId'] ??
-                          'Unknown Property'; // Get property name
-                      final chatId = chat['id'] ?? '';
+                      final propertyName = chat['propertyId']?.toString() ?? 'Unknown Property';
+                      final chatId = chat['id']?.toString() ?? '';
                       debugPrint('Chat ID: $chatId');
-                      controller.navigateToAgentChat(agentEmail,
-                          propertyId: propertyName, chatId: chatId);
+                      
+                      if (email.isNotEmpty) {
+                        controller.navigateToAgentChat(
+                          email,
+                          propertyId: propertyName,
+                          chatId: chatId,
+                        );
+                      } else {
+                        debugPrint('Error: Email is empty for chat navigation');
+                        // You might want to show a snackbar or error message here
+                      }
                     },
                   ),
                 ),
@@ -411,6 +409,28 @@ class InboxScreen extends StatelessWidget {
         ),
       );
     });
+  }
+
+  // Helper method to safely get initials from display name
+  String _getInitials(String? displayName) {
+    if (displayName == null || displayName.trim().isEmpty) {
+      return '?';
+    }
+    
+    String trimmed = displayName.trim();
+    
+    // Split by spaces and get first letter of each word (max 2)
+    List<String> nameParts = trimmed.split(' ');
+    String initials = '';
+    
+    for (int i = 0; i < nameParts.length && i < 2; i++) {
+      if (nameParts[i].isNotEmpty) {
+        initials += nameParts[i][0].toUpperCase();
+      }
+    }
+    
+    // If no valid initials found, return first character or '?'
+    return initials.isEmpty ? (trimmed.isNotEmpty ? trimmed[0].toUpperCase() : '?') : initials;
   }
 
   String _formatTime(DateTime? time) {

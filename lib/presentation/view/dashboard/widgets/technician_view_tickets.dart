@@ -1,9 +1,9 @@
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/data/model/technician_complaints_response.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_ticket_card_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/data/model/technician_complaints_response.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
+import 'package:majan/domain/controller/technician_tickets_controller.dart';
+import 'package:majan/presentation/view/dashboard/widgets/technician_ticket_card_widget.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -32,11 +32,19 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   // Loading state
   bool isInitializing = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeData();
-  }
+ @override
+void initState() {
+  super.initState();
+  _initializeData();
+  
+  // Listen for changes in controller tickets and update local state
+  ever(controller.tickets, (_) {
+    if (mounted) {
+      _loadTicketsLocally();
+    }
+  });
+}
+
 
   /// Initialize all data with proper error handling
   Future<void> _initializeData() async {
@@ -118,15 +126,20 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
     }
   }
 
-  /// Load tickets locally for filtering
-  void _loadTicketsLocally() {
-    debugPrint('📋 Loading ${controller.filteredTickets.length} tickets locally');
-    setState(() {
-      allTickets = List.from(controller.filteredTickets);
-      filteredTickets = allTickets;
-    });
-    debugPrint('✅ Local tickets loaded: ${allTickets.length}');
+ /// Load tickets locally for filtering
+void _loadTicketsLocally() {
+  if (controller.filteredTickets.isEmpty) {
+    debugPrint('⚠️ No tickets to load locally yet');
+    return;
   }
+  
+  debugPrint('📋 Loading ${controller.filteredTickets.length} tickets locally');
+  setState(() {
+    allTickets = List.from(controller.filteredTickets);
+    filteredTickets = allTickets;
+  });
+  debugPrint('✅ Local tickets loaded: ${allTickets.length}');
+}
 
   /// Show error message to user
   void _showErrorMessage(String message) {
@@ -142,40 +155,103 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
 
   /// Apply comprehensive filters similar to tenant version
   void _applyFilters() {
-    debugPrint("🔍 Applying filters - Status: $selectedStatus, Start: $startDate, End: $endDate");
-    
-    setState(() {
-      filteredTickets = allTickets.where((ticket) {
-        // Status filter
-        if (selectedStatus != null && selectedStatus != 'All') {
-          final statusMatch = ticket.statusText.en.toLowerCase() == selectedStatus!.toLowerCase();
-          if (!statusMatch) return false;
-        }
+  debugPrint("🔍 Applying filters - Status: $selectedStatus, Start: $startDate, End: $endDate");
+  
+  setState(() {
+    filteredTickets = allTickets.where((ticket) {
+      // Status filter
+      if (selectedStatus != null && selectedStatus != 'All') {
+        final statusMatch = ticket.statusText.en.toLowerCase() == selectedStatus!.toLowerCase();
+        if (!statusMatch) return false;
+      }
 
-        // Date range filter
-        if (startDate != null || endDate != null) {
-          try {
-            // Parse the ticket date - adjust format according to your date format
-            DateTime ticketDate = DateFormat('dd/MM/yyyy').parse(ticket.formattedDate ?? '');
-            
-            if (startDate != null && ticketDate.isBefore(startDate!)) {
-              return false;
-            }
-            if (endDate != null && ticketDate.isAfter(endDate!.add(const Duration(days: 1)))) {
-              return false;
-            }
-          } catch (e) {
-            debugPrint("⚠️ Error parsing date: ${ticket.formattedDate}");
-            // If date parsing fails, include the ticket
+      // Date range filter
+      if (startDate != null || endDate != null) {
+        try {
+          // Use the existing _parseTicketDate method from controller
+          // This handles multiple date formats including ISO format
+          final ticketDate = _parseTicketDateForFilter(
+            (ticket.createdBy as String?) ??
+            (ticket.lastUpdated as String?) ??
+            (ticket.formattedDate as String?)
+          );
+          
+          if (ticketDate == null) {
+            debugPrint("⚠️ Could not parse date for ticket ${ticket.complaintId}");
+            // Include tickets with unparseable dates to avoid hiding them
+            return true;
           }
-        }
 
-        return true;
-      }).toList();
-    });
-    
-    debugPrint("✅ Filtered tickets count: ${filteredTickets.length}");
+          // Normalize dates to compare only year/month/day
+          final ticketDateOnly = DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
+          
+          if (startDate != null) {
+            final startDateOnly = DateTime(startDate!.year, startDate!.month, startDate!.day);
+            if (ticketDateOnly.isBefore(startDateOnly)) {
+              return false;
+            }
+          }
+          
+          if (endDate != null) {
+            final endDateOnly = DateTime(endDate!.year, endDate!.month, endDate!.day);
+            // Add one day to include the end date in the range
+            final endDateInclusive = endDateOnly.add(const Duration(days: 1));
+            if (ticketDateOnly.isAfter(endDateInclusive) || ticketDateOnly.isAtSameMomentAs(endDateInclusive)) {
+              return false;
+            }
+          }
+        } catch (e) {
+          debugPrint("⚠️ Error parsing date for ticket ${ticket.complaintId}: $e");
+          // Include tickets with parsing errors to avoid hiding them
+          return true;
+        }
+      }
+
+      return true;
+    }).toList();
+  });
+  
+  debugPrint("✅ Filtered tickets count: ${filteredTickets.length}");
+}
+
+/// Parse ticket date with multiple format support
+DateTime? _parseTicketDateForFilter(String? dateString) {
+  if (dateString == null || dateString.isEmpty) return null;
+
+  // Clean the date string
+  final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}\)?'), '');
+
+  // Try multiple date formats
+  final possibleFormats = [
+    "yyyy-MM-dd HH:mm:ss",
+    "yyyy-MM-ddTHH:mm:ss",
+    "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+    "yyyy-MM-dd",
+    "dd/MM/yyyy HH:mm:ss",
+    "dd/MM/yyyy",
+    "MM/dd/yyyy HH:mm:ss",
+    "MM/dd/yyyy",
+    "yyyy/MM/dd HH:mm:ss",
+    "MMM dd, yyyy hh:mm a", // Format like "Dec 25, 2024 10:30 AM"
+    "EEE, dd MMM yyyy HH:mm:ss",
+  ];
+
+  for (final format in possibleFormats) {
+    try {
+      return DateFormat(format).parse(cleanDateString);
+    } catch (e) {
+      continue;
+    }
   }
+
+  // Last resort: try standard DateTime.parse
+  try {
+    return DateTime.parse(cleanDateString);
+  } catch (e) {
+    debugPrint("❌ Failed to parse date with all formats: '$dateString'");
+    return null;
+  }
+}
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
@@ -261,124 +337,124 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   }
 
   /// Build statistics section
-  Widget _buildStatisticsSection() {
-    return Obx(() {
-      if (controller.isStatsLoading.value) {
-        return const Padding(
-          padding: EdgeInsets.all(8.0),
-          child: LinearProgressIndicator(),
-        );
-      }
-      
-      if (controller.statsErrorMessage.value.isNotEmpty) {
-        return Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.redColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.redColor.withOpacity(0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.error_outline, color: AppColors.redColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Stats Error: ${controller.statsErrorMessage.value}',
-                    style: TextStyle(color: AppColors.redColor, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      final stats = controller.technicianStats.value;
-      if (stats?.data == null) {
-        return Padding(
+  /// Build statistics section
+Widget _buildStatisticsSection() {
+  return Obx(() {
+    if (controller.isStatsLoading.value) {
+      return const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: LinearProgressIndicator(),
+      );
+    }
+    
+    if (controller.statsErrorMessage.value.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Container(
           padding: const EdgeInsets.all(12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, color: AppColors.warning),
-                SizedBox(width: 8),
-                Text(
-                  'No statistics available',
-                  style: TextStyle(color: AppColors.warning),
-                ),
-              ],
-            ),
+          decoration: BoxDecoration(
+            color: AppColors.redColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.redColor.withOpacity(0.3)),
           ),
-        );
-      }
-
-      return Container(
-        margin: const EdgeInsets.all(12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.primaryColor.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primaryColor.withOpacity(0.2)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const CustomTextWidget(
-              title: 'Your Performance Summary',
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.secondaryColor,
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 2.5,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              children: [
-                _buildStatItem(
-                  icon: Icons.apartment,
-                  value: (stats!.data?.propertyStats.length ?? 0).toString(),
-                  label: 'Properties',
-                  color: AppColors.warning,
+          child: Row(
+            children: [
+              Icon(Icons.error_outline, color: AppColors.redColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Stats Error: ${controller.statsErrorMessage.value}',
+                  style: TextStyle(color: AppColors.redColor, fontSize: 12),
                 ),
-                _buildStatItem(
-                  icon: Icons.list_alt,
-                  value: _calculateTotalTickets(stats.data?.propertyStats ?? []).toString(),
-                  label: 'Total Tickets',
-                  color: AppColors.warning,
-                ),
-                _buildStatItem(
-                  icon: Icons.pending_actions,
-                  value: _calculateActiveTickets(stats!.data?.propertyStats ?? []).toString(),
-                  label: 'Active Tickets',
-                  color: AppColors.warning,
-                ),
-                _buildStatItem(
-                  icon: Icons.check_circle,
-                  value: _calculateResolvedTickets(stats.data?.propertyStats ?? []).toString(),
-                  label: 'Resolved',
-                  color: AppColors.onlineGreen,
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       );
-    });
-  }
+    }
 
+    final stats = controller.technicianStats.value;
+    if (stats?.data == null) {
+      return Padding(
+        padding: const EdgeInsets.all(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.warning.withOpacity(0.3)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.warning),
+              SizedBox(width: 8),
+              Text(
+                'No statistics available',
+                style: TextStyle(color: AppColors.warning),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primaryColor.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const CustomTextWidget(
+            title: 'Your Performance Summary',
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: AppColors.secondaryColor,
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            childAspectRatio: 2.5,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            children: [
+             _buildStatItem(
+                    icon: Icons.apartment,
+                    value: (stats!.data?.totalAssignedProperties ?? 0).toString(), // ✅ FIXED HERE
+                    label: 'Properties',
+                    color: AppColors.warning,
+             ),
+              _buildStatItem(
+                icon: Icons.list_alt,
+                value: _calculateTotalTickets(stats.data?.propertyStats ?? []).toString(),
+                label: 'Total Tickets',
+                color: AppColors.warning,
+              ),
+              _buildStatItem(
+                icon: Icons.pending_actions,
+                value: _calculateActiveTickets(stats.data?.propertyStats ?? []).toString(),
+                label: 'Active Tickets',
+                color: AppColors.warning,
+              ),
+              _buildStatItem(
+                icon: Icons.check_circle,
+                value: _calculateResolvedTickets(stats.data?.propertyStats ?? []).toString(),
+                label: 'Resolved',
+                color: AppColors.onlineGreen,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  });
+}
   /// Calculate total tickets from stats
   int _calculateTotalTickets(List<dynamic> propertyStats) {
     return propertyStats.fold<int>(0, (sum, stat) {
@@ -405,50 +481,57 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
   }
 
   /// Build tickets list
-  Widget _buildTicketsList() {
-    return Obx(() {
-      if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
-      }
+/// Build tickets list
+Widget _buildTicketsList() {
+  return Obx(() {
+    // Show loading indicator while data is initializing OR while controller is loading
+    if (isInitializing || (controller.isLoading.value && allTickets.isEmpty)) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-      // Use local filteredTickets instead of controller's filteredTickets
-      if (filteredTickets.isEmpty) {
-        return _buildEmptyState(
-          message: allTickets.isEmpty ? 'No Tickets Assigned' : 'No tickets match your filters',
-          showSearchHint: allTickets.isNotEmpty,
-        );
-      }
-
-      return RefreshIndicator(
-        onRefresh: _refreshData,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: filteredTickets.length,
-          itemBuilder: (context, index) {
-            final complaint = filteredTickets[index];
-            final statusColors = getStatusColors(complaint.statusText.en ?? '');
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: buildTicketCard(
-                complaintId: complaint.complaintId ?? '',
-                propertyName: complaint.propertyName ?? '',
-                category: complaint.category ?? '',
-                issue: complaint.subcategory ?? '',
-                status: complaint.statusText.en ?? '',
-                statusColor: statusColors.textColor,
-                description: complaint.description ?? '',
-                date: complaint.formattedDate ?? 'No date',
-                categoryIcon: Icons.build,
-                images: ComplaintImages(),
-                complaint: complaint,
-                time: complaint.lastUpdated ?? '',
-              ),
-            );
-          },
-        ),
+    // Use local filteredTickets instead of controller's filteredTickets
+    if (filteredTickets.isEmpty) {
+      return _buildEmptyState(
+        message: allTickets.isEmpty ? 'No Tickets Assigned' : 'No tickets match your filters',
+        showSearchHint: allTickets.isNotEmpty,
       );
-    });
-  }
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshData,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: filteredTickets.length,
+         itemBuilder: (context, index) {
+  final complaint = filteredTickets[index];
+  final statusColors = getStatusColors(complaint.statusText.en ?? '');
+  
+  // ✅ Show unit info since tenant name is not available from API
+  String locationInfo = '${complaint.unitNumber}';
+  
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 16),
+    child: buildTicketCard(
+      complaintId: complaint.complaintId ?? '',
+      propertyName: complaint.propertyName ?? '',
+      category: complaint.category ?? '',
+      issue: complaint.subcategory ?? '',
+      status: complaint.statusText.en ?? '',
+      statusColor: statusColors.textColor,
+      description: complaint.description ?? '',
+      date: complaint.formattedDate ?? 'No date',
+      categoryIcon: Icons.build,
+      images: ComplaintImages(),
+      complaint: complaint,
+      time: complaint.lastUpdated ?? '',
+      created_by: locationInfo, // Shows "Unit Flat 21", "Unit Test1", etc.
+    ),
+  );
+},
+      ),
+    );
+  });
+}
 
   /// Enhanced filters section
   Widget _buildFiltersSection() {
@@ -674,64 +757,69 @@ class _TechnicianViewTicketsState extends State<TechnicianViewTickets> {
     );
   }
 
-  Widget _buildStatItem({
-    required IconData icon,
-    required String value,
-    required String label,
-    Color color = AppColors.primaryColor,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+ Widget _buildStatItem({
+  required IconData icon,
+  required String value,
+  required String label,
+  Color color = AppColors.primaryColor,
+}) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.1),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
           ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // ✅ ADDED - Prevents overflow
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 16, // ✅ REDUCED from 18 to 16
+                  fontWeight: FontWeight.bold,
+                  color: color,
                 ),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+                maxLines: 1, // ✅ ADDED - Limit to 1 line
+                overflow: TextOverflow.ellipsis, // ✅ ADDED - Handle overflow
+              ),
+              const SizedBox(height: 2), // ✅ ADDED - Small spacing
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11, // ✅ REDUCED from 12 to 11
+                  color: Colors.black,
                 ),
-              ],
-            ),
+                maxLines: 1, // ✅ ADDED - Limit to 1 line
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 }
 
 class StatusColors {

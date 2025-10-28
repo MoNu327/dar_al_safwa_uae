@@ -1,25 +1,24 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/about_content.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/gallery.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/reviews.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_details_submission.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/view_360.dart';
-import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/controller/property_details_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/login_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/video_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/presentation/widgets/loader_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/presentation/view/property_details/widgets/about_content.dart';
+import 'package:majan/presentation/view/property_details/widgets/gallery.dart';
+import 'package:majan/presentation/view/property_details/widgets/reviews.dart';
+import 'package:majan/presentation/view/property_details/widgets/user_details_submission.dart';
+import 'package:majan/presentation/view/property_details/widgets/view_360.dart';
+import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
+import 'package:majan/presentation/view_model/login_controller.dart';
+import 'package:majan/presentation/view_model/video_controller.dart';
+import 'package:majan/presentation/widgets/custom_elevated_button.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/core/theme/app_colors.dart'; 
+import 'package:majan/presentation/widgets/loader_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../view_model/firebase_auth_controller.dart';
-import '../widgets/property_unit_selector_widget.dart';
 
 class PropertyDetailsScreen extends StatelessWidget {
   PropertyDetailsScreen({super.key});
@@ -32,24 +31,70 @@ class PropertyDetailsScreen extends StatelessWidget {
   final VideoController videoController = Get.put(VideoController());
   final isArabic = Get.locale?.languageCode == 'ar';
 
-  @override
-  Widget build(BuildContext context) {
-    // Get the arguments passed from the previous screen
-    final args = Get.arguments as Map<String, dynamic>? ?? {};
-    final propertyId = int.tryParse(args['propertyId']?.toString() ?? '0') ?? 0;
-    final unitId = int.tryParse(args['unitId']?.toString() ?? '0') ?? 0;
-    final unitType = args['unitType'] as int? ?? 0;
-    final propertyType = args['propertyType'] as String? ?? 'residential';
-    final propertyTitle = args['propertyTitle'] as String? ?? 'Unknown Property';
-    
-    // Debug print to verify arguments
-    print('PropertyDetailsScreen - Received arguments:');
-    print('propertyId: $propertyId');
-    print('unitId: $unitId');
-    print('unitType: $unitType');
-    print('propertyType: $propertyType');
-    print('propertyTitle: $propertyTitle'); 
-    
+ @override
+Widget build(BuildContext context) {
+  // Get the arguments passed from the previous screen
+  final args = Get.arguments as Map<String, dynamic>? ?? {};
+  final propertyId = int.tryParse(args['propertyId']?.toString() ?? '0') ?? 0;
+  final unitId = int.tryParse(args['unitId']?.toString() ?? '0') ?? 0;
+  final unitType = args['unitType'] as int? ?? 0;
+  
+  // Fix: Handle LocalizedText properly
+  String propertyType = 'residential'; // default value
+  final propertyTypeArg = args['propertyType'];
+  if (propertyTypeArg is String) {
+    propertyType = propertyTypeArg;
+  } else if (propertyTypeArg != null && propertyTypeArg.toString().contains('LocalizedText')) {
+    // If it's a LocalizedText object, try to extract the English text
+    try {
+      // Assuming LocalizedText has 'en' and 'ar' properties
+      final dynamic localizedText = propertyTypeArg;
+      if (localizedText.en != null) {
+        propertyType = localizedText.en.toString();
+      } else if (localizedText.ar != null) {
+        propertyType = localizedText.ar.toString();
+      }
+    } catch (e) {
+      print('Error extracting text from LocalizedText: $e');
+      propertyType = 'residential'; // fallback
+    }
+  }
+  
+  // Fix: Handle LocalizedText for property title as well
+  String propertyTitle = 'Unknown Property'; // default value
+  final propertyTitleArg = args['propertyTitle'];
+  if (propertyTitleArg is String) {
+    propertyTitle = propertyTitleArg;
+  } else if (propertyTitleArg != null && propertyTitleArg.toString().contains('LocalizedText')) {
+    try {
+      final dynamic localizedText = propertyTitleArg;
+      if (isArabic && localizedText.ar != null) {
+        propertyTitle = localizedText.ar.toString();
+      } else if (localizedText.en != null) {
+        propertyTitle = localizedText.en.toString();
+      } else if (localizedText.ar != null) {
+        propertyTitle = localizedText.ar.toString();
+      }
+    } catch (e) {
+      print('Error extracting title from LocalizedText: $e');
+      propertyTitle = 'Unknown Property'; // fallback
+    }
+  }
+  
+  // Debug print to verify arguments
+  print('PropertyDetailsScreen - Received arguments:');
+  print('propertyId: $propertyId');
+  print('unitId: $unitId');
+  print('unitType: $unitType');
+  print('propertyType: $propertyType');
+  print('propertyTitle: $propertyTitle'); 
+  
+  // Initialize the property details controller with the correct ID
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (propertyId > 0) {
+      propertyDetailsController.fetchPropertyDetails(propertyId);
+    }
+  });
   
     return SafeArea(
       child: Scaffold(

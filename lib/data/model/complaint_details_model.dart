@@ -5,12 +5,12 @@ part 'complaint_details_model.g.dart';
 @JsonSerializable(explicitToJson: true)
 class ComplaintDetailsModel {
   final bool success;
-  final Message message;
+  final Message? message;
   final ComplaintData data;
 
   ComplaintDetailsModel({
     required this.success,
-    required this.message,
+    this.message,
     required this.data,
   });
 
@@ -35,111 +35,78 @@ class Message {
 
 @JsonSerializable(explicitToJson: true)
 class ComplaintData {
-  @JsonKey(name: 'complaint_id')
-  final String complaintId;
+  final Complaint complaint;
+  final Property property;
+  final List<Payment> payments;
+  final List<ComplaintImage> images;
+  final List<TimelineEvent> timeline;
 
+  ComplaintData({
+    required this.complaint,
+    required this.property,
+    List<Payment>? payments,
+    List<ComplaintImage>? images,
+    List<TimelineEvent>? timeline,
+  })  : payments = payments ?? [],
+        images = images ?? [],
+        timeline = timeline ?? [];
+
+  factory ComplaintData.fromJson(Map<String, dynamic> json) {
+    return ComplaintData(
+      complaint: Complaint.fromJson(json['complaint'] as Map<String, dynamic>),
+      property: Property.fromJson(json['property'] as Map<String, dynamic>),
+      payments: (json['payments'] as List<dynamic>?)
+          ?.map((e) => Payment.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      images: (json['images'] as List<dynamic>?)
+          ?.map((e) => ComplaintImage.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      timeline: (json['timeline'] as List<dynamic>?)
+          ?.map((e) => TimelineEvent.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => _$ComplaintDataToJson(this);
+}
+@JsonSerializable()
+class Complaint {
+  final String id;
   @JsonKey(name: 'complaint_number')
   final String complaintNumber;
-
   final String category;
   final String subcategory;
   final String description;
-  final String reply;
+  final String status;
+  @JsonKey(name: 'created_at')
+  final String createdAt;
 
-  @JsonKey(name: 'amount_paid')
-  final String amountPaid;
-
-  @JsonKey(name: 'amount_paid_status')
-  final String amountPaidStatus;
-
-  final Status status;
-
-  @JsonKey(name: 'last_updated')
-  final String lastUpdated;
-
-  final Property property;
-  final ComplaintImages images;
-
-  /// These will be filled from API if present, or from Firebase if missing
-  final String? mobile;
-  final String? name;
-
-  ComplaintData({
-    required this.complaintId,
+  Complaint({
+    required this.id,
     required this.complaintNumber,
     required this.category,
     required this.subcategory,
     required this.description,
-    required this.reply,
-    required this.amountPaid,
-    required this.amountPaidStatus,
     required this.status,
-    required this.lastUpdated,
-    required this.property,
-    required this.images,
-    this.mobile,
-    this.name,
+    required this.createdAt,
   });
 
-  factory ComplaintData.fromJson(Map<String, dynamic> json) =>
-      _$ComplaintDataFromJson(json);
+  factory Complaint.fromJson(Map<String, dynamic> json) =>
+      _$ComplaintFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ComplaintDataToJson(this);
-
-  /// Helper function to create a copy with Firebase data
-  ComplaintData copyWithFirebase({
-    String? mobile,
-    String? name,
-  }) {
-    return ComplaintData(
-      complaintId: complaintId,
-      complaintNumber: complaintNumber,
-      category: category,
-      subcategory: subcategory,
-      description: description,
-      reply: reply,
-      amountPaid: amountPaid,
-      amountPaidStatus: amountPaidStatus,
-      status: status,
-      lastUpdated: lastUpdated,
-      property: property,
-      images: images,
-      mobile: mobile ?? this.mobile,
-      name: name ?? this.name,
-    );
-  }
-}
-
-@JsonSerializable()
-class Status {
-  final String en;
-
-  Status({required this.en});
-
-  factory Status.fromJson(Map<String, dynamic> json) =>
-      _$StatusFromJson(json);
-
-  Map<String, dynamic> toJson() => _$StatusToJson(this);
+  Map<String, dynamic> toJson() => _$ComplaintToJson(this);
 }
 
 @JsonSerializable()
 class Property {
+  final String id;
   final String title;
-
-  @JsonKey(name: 'unit_number')
-  final String unitNumber;
-
-  @JsonKey(name: 'address_format')
-  final String addressFormat;
-
-  @JsonKey(name: 'unit_type')
-  final String unitType;
+  final Unit unit;
 
   Property({
+    required this.id,
     required this.title,
-    required this.unitNumber,
-    required this.addressFormat,
-    required this.unitType,
+    required this.unit,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) =>
@@ -149,20 +116,86 @@ class Property {
 }
 
 @JsonSerializable()
-class ComplaintImages {
-  @JsonKey(name: 'tenant_images')
-  final List<String> tenantImages;
+class Unit {
+  final String number;
+  @JsonKey(name: 'address_format')
+  final String addressFormat;
+  final String type;
 
-  @JsonKey(name: 'technician_images')
-  final List<String> technicianImages;
-
-  ComplaintImages({
-    required this.tenantImages,
-    required this.technicianImages,
+  Unit({
+    required this.number,
+    required this.addressFormat,
+    required this.type,
   });
 
-  factory ComplaintImages.fromJson(Map<String, dynamic> json) =>
-      _$ComplaintImagesFromJson(json);
+  factory Unit.fromJson(Map<String, dynamic> json) =>
+      _$UnitFromJson(json);
 
-  Map<String, dynamic> toJson() => _$ComplaintImagesToJson(this);
+  Map<String, dynamic> toJson() => _$UnitToJson(this);
+}
+
+@JsonSerializable()
+class Payment {
+  final String timestamp;
+  final String amount;
+  final String status;
+  final String method;
+
+  Payment({
+    required this.timestamp,
+    required this.amount,
+    required this.status,
+    required this.method,
+  });
+
+  factory Payment.fromJson(Map<String, dynamic> json) =>
+      _$PaymentFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PaymentToJson(this);
+}
+
+@JsonSerializable()
+class ComplaintImage {
+  @JsonKey(name: 'image_path')
+  final String imagePath;
+  final String timestamp;
+  final String? type;  // Add this
+  final Map<String, dynamic>? by;  // Add this
+
+  ComplaintImage({
+    required this.imagePath,
+    required this.timestamp,
+    this.type,
+    this.by,
+  });
+
+  factory ComplaintImage.fromJson(Map<String, dynamic> json) =>
+      _$ComplaintImageFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ComplaintImageToJson(this);
+}
+@JsonSerializable()
+class TimelineEvent {
+  final String type;
+  final String timestamp;
+  final String? message;
+  final String? oldStatus;
+  final String? newStatus;
+  final Map<String, dynamic>? by;
+  final Map<String, dynamic>? technician;
+
+  TimelineEvent({
+    required this.type,
+    required this.timestamp,
+    this.message,
+    this.oldStatus,
+    this.newStatus,
+    this.by,
+    this.technician,
+  });
+
+  factory TimelineEvent.fromJson(Map<String, dynamic> json) =>
+      _$TimelineEventFromJson(json);
+
+  Map<String, dynamic> toJson() => _$TimelineEventToJson(this);
 }

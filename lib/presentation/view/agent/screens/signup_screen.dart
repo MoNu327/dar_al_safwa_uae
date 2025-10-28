@@ -1,11 +1,11 @@
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/presentation/view/login/login_screen.dart';
-import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/signup_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/language_text_button.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/presentation/view/login/login_screen.dart';
+import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/view_model/signup_controller.dart';
+import 'package:majan/presentation/widgets/custom_elevated_button.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/language_text_button.dart';
+import 'package:majan/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -55,7 +55,7 @@ class SignUpScreen extends StatelessWidget {
                             kHeight(0.005),
                             Center(
                               child: Image.asset(
-                                "assets/logo/launcher.png",
+                                "assets/logo/launcher.jpg",
                                 width: Get.width * 0.3,
                                 height: Get.height * 0.1,
                                 fit: BoxFit.cover,
@@ -153,7 +153,7 @@ class SignUpScreen extends StatelessWidget {
                                     return 'Mobile number should not start with a space';
                                   }
                                   if (value.length != 10) {
-                                    return 'Mobile number must be 8 digits';
+                                    return 'Mobile number must be 10 digits';
                                   }
                                   return null;
                                 },

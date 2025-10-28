@@ -1,14 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/presentation/controllers/network_controller.dart';
-import 'package:dar_al_safwa/presentation/view/home/controllers/home_screen_controller.dart';
-import 'package:dar_al_safwa/presentation/view/home/widgets/custom_list_widget.dart';
-import 'package:dar_al_safwa/presentation/view/home/widgets/custom_location_dropdwon.dart';
-import 'package:dar_al_safwa/presentation/view/home/widgets/property_slider_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/language_text_button.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/presentation/widgets/no_internet_widegt.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/presentation/controllers/network_controller.dart';
+import 'package:majan/presentation/view/home/controllers/home_screen_controller.dart';
+import 'package:majan/presentation/view/home/widgets/custom_list_widget.dart';
+import 'package:majan/presentation/view/home/widgets/custom_location_dropdwon.dart';
+import 'package:majan/presentation/view/home/widgets/property_slider_widget.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/language_text_button.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/presentation/widgets/no_internet_widegt.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -230,6 +230,7 @@ class HomeScreen extends StatelessWidget {
                           propertyTypes: searchData.propertyTypes,
                           propertyLocations: searchData.propertyLocations,
                           propertyBedsBaths: searchData.propertyBedsBaths,
+                          propertyPrices: searchData.propertyPrices,
                         );
                       }),
 
@@ -333,6 +334,7 @@ GridView.builder(
               
               try {
                 Get.toNamed('/propertyDetails', arguments: {
+                  'propertyType': property.propertyType,
                   'propertyId': property.id,
                   'unitId': property.id ?? 0,
                   'unitType': isCommercial ? 1 : 0,
@@ -438,7 +440,7 @@ Obx(() {
               'image': property.image,
               'price': property.price,
               'deal': property.dealType,
-              'type': property.type,  // Note: Using type here
+              'type': property.type,
               'location': property.location,
               'bedrooms': property.bedrooms,
               'bathrooms': property.bathrooms,
@@ -454,9 +456,8 @@ Obx(() {
             child: CustomListWidget(
               imageUrl: property.image ?? '',
               title: localizationController.translate('title_price'),
-              price: isArabic
-                  ? property.price?.formatted?.ar ?? ''
-                  : property.price?.formatted?.en ?? '',
+              // ✅ FIXED: Use the helper method instead
+              price: getFormattedPrice(property.price, isArabic),
               propertyDeal: isArabic
                   ? property.dealType?.ar ?? ''
                   : property.dealType?.en ?? '',
@@ -464,7 +465,7 @@ Obx(() {
                   ? property.title?.ar ?? ''
                   : property.title?.en ?? '',
               type: isArabic
-                  ? property.type?.ar ?? ''  // Using type here
+                  ? property.type?.ar ?? ''
                   : property.type?.en ?? '',
               location: isArabic
                   ? property.location?.ar ?? ''
@@ -480,7 +481,7 @@ Obx(() {
       );
     },
   );
-}),
+})
                     ],
                   ),
                 ),
@@ -543,5 +544,33 @@ bool _isPropertyCommercial(dynamic property) {
   
   // Default to residential
   return false;
+}
+String getFormattedPrice(dynamic priceData, bool isArabic) {
+  if (priceData == null) return '';
+  
+  // Try to get the formatted price first
+  String? formattedPrice = isArabic 
+      ? priceData.formatted?.ar 
+      : priceData.formatted?.en;
+  
+  // If formatted price exists and is not empty, return it
+  if (formattedPrice != null && formattedPrice.isNotEmpty) {
+    return formattedPrice;
+  }
+  
+  // Fallback to raw price with manual formatting
+  if (priceData.raw != null) {
+    final rawPrice = priceData.raw;
+    // Format the number with commas for thousands
+    final formatted = rawPrice.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},'
+    );
+    
+    // Add currency symbol based on language
+    return isArabic ? '$formatted ر.ع' : 'AED $formatted';
+  }
+  
+  return '';
 }
 }

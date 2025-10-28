@@ -22,12 +22,12 @@ class AgentChatResponse {
 
 @JsonSerializable()
 class Message {
-  final String en;
-  final String ar;
+  final String? en; // ✅ made nullable
+  final String? ar; // ✅ made nullable
 
   Message({
-    required this.en,
-    required this.ar,
+    this.en,
+    this.ar,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) =>
@@ -38,19 +38,19 @@ class Message {
 
 @JsonSerializable(explicitToJson: true)
 class ChatData {
-  final List<Interest> interests;
+  final List<Interest>? interests; // ✅ nullable list
   @JsonKey(name: 'property_counts')
-  final List<PropertyCount> propertyCounts;
-  @JsonKey(name: 'unreplied_count')
+  final List<PropertyCount>? propertyCounts; // ✅ nullable list
+  @JsonKey(name: 'unreplied_count', defaultValue: 0)
   final int unrepliedCount;
   @JsonKey(name: 'agent_details')
-  final AgentDetails agentDetails;
+  final AgentDetails? agentDetails; // ✅ nullable
 
   ChatData({
-    required this.interests,
-    required this.propertyCounts,
+    this.interests,
+    this.propertyCounts,
     required this.unrepliedCount,
-    required this.agentDetails,
+    this.agentDetails,
   });
 
   factory ChatData.fromJson(Map<String, dynamic> json) =>
@@ -63,61 +63,61 @@ class ChatData {
 class Interest {
   final String id;
   @JsonKey(name: 'firebase_chat_id')
-  final String firebaseChatId;
+  final String? firebaseChatId;
   @JsonKey(name: 'agent_id')
-  final String agentId;
+  final String? agentId;
   @JsonKey(name: 'user_id')
-  final String userId;
+  final String? userId;
   @JsonKey(name: 'property_id')
-  final String propertyId;
+  final String? propertyId;
   @JsonKey(name: 'unit_id')
-  final String unitId;
+  final String? unitId;
   @JsonKey(name: 'unit_title')
-  final String unitTitle;
+  final String? unitTitle;
   @JsonKey(name: 'property_title')
-  final String propertyTitle;
+  final String? propertyTitle;
   @JsonKey(name: 'last_message')
-  final String lastMessage;
+  final String? lastMessage;
   @JsonKey(name: 'last_message_at')
-  final String lastMessageAt;
+  final String? lastMessageAt;
   @JsonKey(name: 'user_name')
-  final String userName;
+  final String? userName;
   @JsonKey(name: 'user_photo')
   final String? userPhoto;
   @JsonKey(name: 'agent_name')
-  final String agentName;
+  final String? agentName;
   @JsonKey(name: 'agent_photo')
   final String? agentPhoto;
-  final String status;
+  final String? status;
   @JsonKey(name: 'firebase_created_at')
-  final String firebaseCreatedAt;
+  final String? firebaseCreatedAt;
   @JsonKey(name: 'created_at')
-  final String createdAt;
+  final String? createdAt;
   @JsonKey(name: 'updated_at')
-  final String updatedAt;
+  final String? updatedAt;
   final String? propstatus;
   final bool unreplied;
 
   Interest({
     required this.id,
-    required this.firebaseChatId,
-    required this.agentId,
-    required this.userId,
-    required this.propertyId,
-    required this.unitId,
-    required this.unitTitle,
-    required this.propertyTitle,
-    required this.lastMessage,
-    required this.lastMessageAt,
-    required this.userName,
-    required this.userPhoto,
-    required this.agentName,
-    required this.agentPhoto,
-    required this.status,
-    required this.firebaseCreatedAt,
-    required this.createdAt,
-    required this.updatedAt,
-    required this.propstatus,
+    this.firebaseChatId,
+    this.agentId,
+    this.userId,
+    this.propertyId,
+    this.unitId,
+    this.unitTitle,
+    this.propertyTitle,
+    this.lastMessage,
+    this.lastMessageAt,
+    this.userName,
+    this.userPhoto,
+    this.agentName,
+    this.agentPhoto,
+    this.status,
+    this.firebaseCreatedAt,
+    this.createdAt,
+    this.updatedAt,
+    this.propstatus,
     required this.unreplied,
   });
 
@@ -130,16 +130,19 @@ class Interest {
 @JsonSerializable()
 class PropertyCount {
   @JsonKey(name: 'property_id')
-  final String propertyId;
+  final String? propertyId;
   @JsonKey(name: 'property_title')
-  final String propertyTitle;
+  final String? propertyTitle;
+
+  @JsonKey(defaultValue: "0")
   final String count;
-  @JsonKey(name: 'sold_count')
+
+  @JsonKey(name: 'sold_count', defaultValue: "0")
   final String soldCount;
 
   PropertyCount({
-    required this.propertyId,
-    required this.propertyTitle,
+    this.propertyId,
+    this.propertyTitle,
     required this.count,
     required this.soldCount,
   });
@@ -153,13 +156,13 @@ class PropertyCount {
 @JsonSerializable()
 class AgentDetails {
   @JsonKey(name: 'agent_id')
-  final String agentId;
+  final String? agentId;
   @JsonKey(name: 'agent_name')
-  final String agentName;
+  final String? agentName;
 
   AgentDetails({
-    required this.agentId,
-    required this.agentName,
+    this.agentId,
+    this.agentName,
   });
 
   factory AgentDetails.fromJson(Map<String, dynamic> json) =>

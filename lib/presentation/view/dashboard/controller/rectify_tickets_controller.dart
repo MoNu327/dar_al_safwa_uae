@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
-import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart' show TechnicianTicketsController;
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
+import 'package:majan/data/repositories/api_services.dart';
+import 'package:majan/domain/controller/technician_tickets_controller.dart' show TechnicianTicketsController;
+import 'package:majan/presentation/view/dashboard/widgets/technician_dashboard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -280,7 +280,7 @@ Future submitUpdates(String complaintId) async {
     print("Uploaded images count: ${uploadedImages.length}");
     print("Technician UID: $technicianUid");
     
-    // Enhanced API call with metadata to help with image categorization
+    // Make API call
     final dynamic apiResponse = await _apiService.updateComplaint(
       uid: technicianUid,
       complaintId: complaintId,
@@ -315,124 +315,35 @@ Future submitUpdates(String complaintId) async {
       isSuccess = status == 'success' || status == 200 || status == '200';
     }
     
-    if (isSuccess) {
-      print("Success condition met, processing...");
-      print("Response data keys: ${response['data']?.keys?.toList()}");
+   if (isSuccess) {
+  print("✅ Update successful, now fetching complete ticket details...");
+  
+  // Fetch complete ticket details
+  await fetchController.fetchComplaintDetails(complaintId);
+  
+  // Also refresh the tickets list
+  await fetchController.fetchTickets(technicianUid);
+  
+  // ADD THIS: Get the refreshed complaint
+  final refreshedComplaint = fetchController.tickets.firstWhereOrNull(
+    (t) => t.complaintId == complaintId,
+  );
+  
+  print("✅ Found refreshed complaint: ${refreshedComplaint != null}");
+  if (refreshedComplaint != null) {
+    print("  - Payment: ${refreshedComplaint.amountPaid}");
+    print("  - Images: ${refreshedComplaint.complaintImages.technicianUploaded.length}");
+  }
+  
+  // CHANGE THIS: Include the refreshed complaint in result
+  Get.back(result: {
+    'updated': true,
+    'complaintId': complaintId,
+    'updatedComplaint': refreshedComplaint, // ADD THIS LINE
+    'message': response['message']?.toString() ?? 'Updated successfully',
+  });
       
-      final successMessage = response['message']?.toString() ?? 'Updated successfully';
-      
-      // Don't refresh data here - let the receiving screen handle it
-      print("Ticket update successful, will refresh in receiving screen...");
-      
-      // If we have response data, try to update the complaint object directly
-      if (response.containsKey('data') && response['data'] is Map) {
-        try {
-          final updatedComplaintData = response['data'] as Map<String, dynamic>;
-          
-          // Enhance the response data with technician context
-          if (!updatedComplaintData.containsKey('replybytechnician') || 
-              updatedComplaintData['replybytechnician'] == null) {
-            updatedComplaintData['replybytechnician'] = description;
-          }
-          
-          // Add technician update metadata
-          updatedComplaintData['last_updated'] = DateTime.now().toIso8601String();
-          updatedComplaintData['last_updated_by'] = 'technician';
-          updatedComplaintData['last_updated_by_uid'] = technicianUid;
-          
-          // If we uploaded images, make sure they're properly categorized
-          if (uploadedImages.isNotEmpty) {
-            // Add technician images to the response
-            if (updatedComplaintData['complaint_images'] is Map) {
-              final complaintImages = updatedComplaintData['complaint_images'] as Map<String, dynamic>;
-              
-              // Ensure technician_uploaded field exists and contains our images
-              if (!complaintImages.containsKey('technician_uploaded')) {
-                complaintImages['technician_uploaded'] = [];
-              }
-              
-              final List<String> existingTechImages = 
-                  (complaintImages['technician_uploaded'] as List?)?.cast<String>() ?? [];
-              
-              // Add new images if they're not already there
-              final Set<String> existingSet = existingTechImages.toSet();
-              final List<String> newImages = uploadedImages
-                  .map((img) => img.path)
-                  .where((path) => !existingSet.contains(path))
-                  .toList();
-              
-              if (newImages.isNotEmpty) {
-                complaintImages['technician_uploaded'] = [...existingTechImages, ...newImages];
-                print("Added ${newImages.length} new technician images");
-              }
-            } else {
-              // Create complaint_images structure if it doesn't exist
-              updatedComplaintData['complaint_images'] = {
-                'tenant_uploaded': [],
-                'admin_uploaded': [],
-                'technician_uploaded': uploadedImages,
-                'admin_technician_uploaded': [],
-              };
-            }
-            
-            // Also update the direct images field for backward compatibility
-            if (updatedComplaintData.containsKey('images')) {
-              final List<String> existingImages = 
-                  (updatedComplaintData['images'] as List?)?.cast<String>() ?? [];
-              final Set<String> existingSet = existingImages.toSet();
-              final List<String> newImages = uploadedImages
-                  .map((img) => img.path)
-                  .where((path) => !existingSet.contains(path))
-                  .toList();
-              
-              if (newImages.isNotEmpty) {
-                updatedComplaintData['images'] = [...existingImages, ...newImages];
-              }
-            } else {
-              updatedComplaintData['images'] = uploadedImages;
-            }
-          }
-          
-          print("Enhanced complaint data with technician context");
-          
-          // Navigate back with the enhanced data
-          Get.back(result: {
-            'updated': true,
-            'complaintId': complaintId,
-            'needsRefresh': true,
-            'needsSummaryRefresh': true,
-            'technicianUid': technicianUid,
-            'message': successMessage,
-            'updatedComplaintData': updatedComplaintData,
-            'technicianImagesAdded': uploadedImages.length,
-            'dataRefreshed': false, // Let receiving screen handle refresh
-          });
-          
-        } catch (e) {
-          print("Error processing complaint data: $e");
-          // Fall back to simple refresh
-          Get.back(result: {
-            'updated': true,
-            'complaintId': complaintId,
-            'needsRefresh': true,
-            'needsSummaryRefresh': true,
-            'technicianUid': technicianUid,
-            'message': successMessage,
-            'dataRefreshed': false, // Let receiving screen handle refresh
-          });
-        }
-      } else {
-        // No data in response, just trigger refresh
-        Get.back(result: {
-          'updated': true,
-          'complaintId': complaintId,
-          'needsRefresh': true,
-          'needsSummaryRefresh': true,
-          'technicianUid': technicianUid,
-          'message': successMessage,
-          'dataRefreshed': false, // Let receiving screen handle refresh
-        });
-      }
+      print("✅ Navigation with refreshed data complete");
       
     } else {
       print("API call was not successful");

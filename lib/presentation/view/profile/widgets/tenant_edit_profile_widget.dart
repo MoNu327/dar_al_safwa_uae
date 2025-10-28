@@ -32,8 +32,8 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
   bool _isCurrentPasswordVisible = false;
   bool _isNewPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
-  String _selectedCountryCode = '+91';
-  String _selectedCountryFlag = '🇮🇳';
+  String _selectedCountryCode = '+971';
+  String _selectedCountryFlag = 'AED';
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
@@ -213,24 +213,23 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
                           color: AppColors.whiteLight,
                         ),
                         child: CountryCodePicker(
-                          onChanged: (CountryCode countryCode) {
-                            setState(() {
-                              _selectedCountryCode = countryCode.dialCode!;
-                              _selectedCountryFlag =
-                                  countryCode.flagUri ?? '🇮🇳';
-                            });
-                          },
-                          initialSelection: 'IN',
-                          favorite: const ['+91', 'IN', '+1', 'US'],
-                          showCountryOnly: false,
-                          showOnlyCountryWhenClosed: false,
-                          alignLeft: false,
-                          textStyle: GoogleFonts.poppins(
-                            fontSize: detailContentTitle,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.black,
-                          ),
-                        ),
+  onChanged: (CountryCode countryCode) {
+    setState(() {
+      _selectedCountryCode = countryCode.dialCode!; // +968 for Oman
+      _selectedCountryFlag = countryCode.code!; // OM
+    });
+  },
+  initialSelection: 'AED', // ISO code for Oman
+  favorite: const ['+971', 'AED', '+971', 'AE'],
+  showCountryOnly: false,
+  showOnlyCountryWhenClosed: false,
+  alignLeft: false,
+  textStyle: GoogleFonts.poppins(
+    fontSize: detailContentTitle,
+    fontWeight: FontWeight.w600,
+    color: AppColors.black,
+  ),
+),
                       ),
                       SizedBox(width: screenWidth5),
                       Expanded(
@@ -244,8 +243,8 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return "Please enter phone number";
                             }
-                            if (value.length < 10) {
-                              return "Phone number must be 10 digits";
+                            if (value.length < 9) {
+                              return "Phone number must be 9 digits";
                             }
                             return null;
                           },
@@ -274,85 +273,85 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
 
                   SizedBox(height: screenHeight2),
 
-                  // Security Section
-                  CustomTextWidget(
-                    title: "Security",
-                    fontSize: Get.height * 0.02,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.black,
-                  ),
+                  // // Security Section
+                  // CustomTextWidget(
+                  //   title: "Security",
+                  //   fontSize: Get.height * 0.02,
+                  //   fontWeight: FontWeight.w600,
+                  //   color: AppColors.black,
+                  // ),
 
-                  SizedBox(height: screenHeight1),
+                  // SizedBox(height: screenHeight1),
 
-                  // Current Password Field
-                  CustomTextFieldWidget(
-                    hintText: "Enter current password",
-                    labelText: "Current Password",
-                    isBoldTextNeeded: true,
-                    keyboardType: TextInputType.visiblePassword,
-                    controller: _currentPasswordController,
-                    obscureText: !_isCurrentPasswordVisible,
-                    suffixIcon: true,
-                    suffixIconOnTap: () {
-                      setState(() {
-                        _isCurrentPasswordVisible = !_isCurrentPasswordVisible;
-                      });
-                    },
-                  ),
+                  // // Current Password Field
+                  // CustomTextFieldWidget(
+                  //   hintText: "Enter current password",
+                  //   labelText: "Current Password",
+                  //   isBoldTextNeeded: true,
+                  //   keyboardType: TextInputType.visiblePassword,
+                  //   controller: _currentPasswordController,
+                  //   obscureText: !_isCurrentPasswordVisible,
+                  //   suffixIcon: true,
+                  //   suffixIconOnTap: () {
+                  //     setState(() {
+                  //       _isCurrentPasswordVisible = !_isCurrentPasswordVisible;
+                  //     });
+                  //   },
+                  // ),
 
-                  // New Password Field
-                  CustomTextFieldWidget(
-                    isBoldTextNeeded: true,
-                    hintText: "Enter new password",
-                    labelText: "New Password",
-                    keyboardType: TextInputType.visiblePassword,
-                    controller: _newPasswordController,
-                    obscureText: !_isNewPasswordVisible,
-                    suffixIcon: true,
-                    suffixIconOnTap: () {
-                      setState(() {
-                        _isNewPasswordVisible = !_isNewPasswordVisible;
-                      });
-                    },
-                    validator: (value) {
-                      if (_currentPasswordController.text.isNotEmpty &&
-                          (value == null || value.isEmpty)) {
-                        return "Please enter new password";
-                      }
-                      if (value != null &&
-                          value.isNotEmpty &&
-                          value.length < 6) {
-                        return "Password must be at least 6 characters";
-                      }
-                      return null;
-                    },
-                  ),
+                  // // New Password Field
+                  // CustomTextFieldWidget(
+                  //   isBoldTextNeeded: true,
+                  //   hintText: "Enter new password",
+                  //   labelText: "New Password",
+                  //   keyboardType: TextInputType.visiblePassword,
+                  //   controller: _newPasswordController,
+                  //   obscureText: !_isNewPasswordVisible,
+                  //   suffixIcon: true,
+                  //   suffixIconOnTap: () {
+                  //     setState(() {
+                  //       _isNewPasswordVisible = !_isNewPasswordVisible;
+                  //     });
+                  //   },
+                  //   validator: (value) {
+                  //     if (_currentPasswordController.text.isNotEmpty &&
+                  //         (value == null || value.isEmpty)) {
+                  //       return "Please enter new password";
+                  //     }
+                  //     if (value != null &&
+                  //         value.isNotEmpty &&
+                  //         value.length < 6) {
+                  //       return "Password must be at least 6 characters";
+                  //     }
+                  //     return null;
+                  //   },
+                  // ),
 
-                  // Confirm Password Field
-                  CustomTextFieldWidget(
-                    isBoldTextNeeded: true,
-                    hintText: "Confirm new password",
-                    labelText: "Confirm Password",
-                    keyboardType: TextInputType.visiblePassword,
-                    controller: _confirmPasswordController,
-                    obscureText: !_isConfirmPasswordVisible,
-                    suffixIcon: true,
-                    suffixIconOnTap: () {
-                      setState(() {
-                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                      });
-                    },
-                    validator: (value) {
-                      if (_newPasswordController.text.isNotEmpty &&
-                          (value == null || value.isEmpty)) {
-                        return "Please confirm your password";
-                      }
-                      if (value != _newPasswordController.text) {
-                        return "Passwords do not match";
-                      }
-                      return null;
-                    },
-                  ),
+                  // // Confirm Password Field
+                  // CustomTextFieldWidget(
+                  //   isBoldTextNeeded: true,
+                  //   hintText: "Confirm new password",
+                  //   labelText: "Confirm Password",
+                  //   keyboardType: TextInputType.visiblePassword,
+                  //   controller: _confirmPasswordController,
+                  //   obscureText: !_isConfirmPasswordVisible,
+                  //   suffixIcon: true,
+                  //   suffixIconOnTap: () {
+                  //     setState(() {
+                  //       _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                  //     });
+                  //   },
+                  //   validator: (value) {
+                  //     if (_newPasswordController.text.isNotEmpty &&
+                  //         (value == null || value.isEmpty)) {
+                  //       return "Please confirm your password";
+                  //     }
+                  //     if (value != _newPasswordController.text) {
+                  //       return "Passwords do not match";
+                  //     }
+                  //     return null;
+                  //   },
+                  // ),
 
                   SizedBox(height: screenHeight3),
 

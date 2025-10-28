@@ -1,28 +1,32 @@
 import 'dart:io';
-import 'package:dar_al_safwa/data/model/compliant_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_complain_from_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_compliant_model.dart';
-import 'package:dar_al_safwa/data/model/tenant_compliant_subtitle.dart';
-import 'package:dar_al_safwa/data/repositories/api_services.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/tenant_tickets_controller.dart' show TenantsTicketsController;
+import 'package:majan/data/model/compliant_model.dart';
+import 'package:majan/data/model/tenant_complain_from_model.dart';
+import 'package:majan/data/model/tenant_compliant_model.dart';
+import 'package:majan/data/model/tenant_compliant_subtitle.dart';
+import 'package:majan/data/repositories/api_services.dart';
+import 'package:majan/presentation/view/dashboard/controller/tenant_complaint_register_controller.dart';
+import 'package:majan/presentation/view/dashboard/controller/tenant_tickets_controller.dart' show TenantsTicketsController;
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/presentation/widgets/custom_elevated_button.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/custom_text_formfield_widget.dart';
 
 class TenantsCreateTicketScreen extends StatefulWidget {
   final String propertyName;
   final int propertyId;
   final int unitAddressId;
   final String userId;
+  final String? FlatNO;
+  final VoidCallback? onTicketCreated;
+
+
 
   const TenantsCreateTicketScreen({
     super.key,
@@ -30,6 +34,8 @@ class TenantsCreateTicketScreen extends StatefulWidget {
     required this.propertyId,
     required this.unitAddressId,
     required this.userId,
+    required this.FlatNO,
+    this.onTicketCreated,
   });
 
   @override
@@ -69,16 +75,33 @@ class _TenantsCreateTicketScreenState extends State<TenantsCreateTicketScreen> {
 
 Future<void> _loadsummary(String userId) async {
   debugPrint('[_loadsummary] Starting load for user: $userId');
+  
   try {
-    await fetchComplaintsControler.getSummaryForTenant(userId);
+    // Use your existing controller
+    final controller = Get.find<TenantsTicketsController>();
+    
+    // Set loading state
+    controller.isStatsLoading.value = true;
+    controller.statsErrorMessage.value = '';
+    
+    await controller.getSummaryForTenant(userId);
+    
+    debugPrint('[_loadsummary] Successfully loaded summary data');
+    
   } on DioException catch (e) {
-    debugPrint("Network error loading complaints: ${e.message}");
-    // Consider setting an error message visible to users
+    debugPrint("Network error loading summary: ${e.message}");
+    final controller = Get.find<TenantsTicketsController>();
+    controller.statsErrorMessage.value = "Network error: ${e.message}";
+    
   } catch (e, stackTrace) {
-    debugPrint("Unexpected error loading complaints: $e");
+    debugPrint("Unexpected error loading summary: $e");
     debugPrint(stackTrace.toString());
-    // Consider setting an error message visible to users
+    final controller = Get.find<TenantsTicketsController>();
+    controller.statsErrorMessage.value = "Failed to load summary data";
+    
   } finally {
+    final controller = Get.find<TenantsTicketsController>();
+    controller.isStatsLoading.value = false;
     debugPrint('[_loadsummary] Completed loading attempt');
   }
 }
@@ -120,7 +143,7 @@ Future<void> _loadsummary(String userId) async {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: CustomTextWidget(
-                  title: "${widget.propertyName} (ID: ${widget.propertyId})",
+                  title: "${widget.propertyName} (FlatNO: ${widget.FlatNO ?? 'N/A'})",
                   fontSize: Get.height * 0.016,
                   color: AppColors.black,
                 ),
@@ -427,7 +450,7 @@ Future<void> _pickFromGallery() async {
     }
   }
 
- Future<void> _submitTicket() async {
+Future<void> _submitTicket() async {
   if (selectedCategory == null ||
       selectedSubcategory == null ||
       _issueController.text.isEmpty) {
@@ -466,15 +489,19 @@ Future<void> _pickFromGallery() async {
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: AppColors.onlineGreen,
       colorText: AppColors.white,
-      
     );
-   _loadComplaints(); // Refresh complaints list
-   _loadsummary('userId');
+    
+    // FIX: Use the actual user ID instead of string literal
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId != null) {
+      await _loadComplaints(); // Refresh complaints list
+      await _loadsummary(currentUserId); // Pass actual user ID
+    }
+    
+    // Call the callback if provided
+    widget.onTicketCreated?.call();
+    
     Navigator.pop(context); // Close the screen after submission
   }
-
-  // if (!complaintController.isLoadingSubmitCompliant.value) {
-  //   Get.back();
-  // }
 }
 }

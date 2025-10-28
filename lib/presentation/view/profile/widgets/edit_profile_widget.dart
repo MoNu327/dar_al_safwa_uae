@@ -1,9 +1,9 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/presentation/view/profile/controller/profile_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/presentation/view/profile/controller/profile_controller.dart';
+import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -237,8 +237,8 @@ class EditProfileScreen extends StatelessWidget {
             if (value == null || value.isEmpty) {
               return 'Phone number is required';
             }
-            if (value.length != 10) {
-              return 'Phone number must be 10 digits';
+            if (value.length != 8) {
+              return 'Phone number must be 8 digits';
             }
             return null;
           },
@@ -265,11 +265,11 @@ class EditProfileScreen extends StatelessWidget {
           keyboardType: TextInputType.phone,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(10),
+            LengthLimitingTextInputFormatter(8),
           ],
           validator: (value) {
-            if (value != null && value.isNotEmpty && value.length != 10) {
-              return 'WhatsApp number must be 10 digits';
+            if (value != null && value.isNotEmpty && value.length != 8) {
+              return 'WhatsApp number must be 8 digits';
             }
             return null;
           },

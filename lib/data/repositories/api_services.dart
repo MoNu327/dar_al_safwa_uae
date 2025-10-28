@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dar_al_safwa/data/model/user_data_submission_model.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
+import 'package:majan/data/model/user_data_submission_model.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,23 @@ class ApiService {
       final response = await apiClient.request(
         "user/complaint",  // ✅ Dynamic UID
         method: "get",
+      );
+
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+   Future<Response> getFCMtokenforagent(String uid,String fcmToken) async {
+    try {
+      final response = await apiClient.request(
+        "updateAgentFcmToken",
+        method: "post",
+        data: {
+          "uid": uid,
+          "fcm_token": fcmToken
+        }
       );
 
       return response;
@@ -54,6 +72,102 @@ class ApiService {
       "complaint-detailscopy",  // Your endpoint
       method: "post",
       data: {'complaint_id': complaintId},
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+Future<Response> gettechnicianbyproperty(int propertyid) async {
+  try {
+    final response = await apiClient.request(
+      "technicians/by-property",
+      method: "post",
+      data: {
+        "property_id": propertyid,
+      }
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+Future<Response> getcustomerfollowup(String chatId) async {
+  try {
+    final response = await apiClient.request(
+      "chat/details",
+      method: "post",
+      data: {
+        "chat_id": chatId,  // Now correctly passes String chatId
+      }
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+
+Future<Response> submitFollowUp({
+  required String customerId,
+  required int propertyId,
+  required String unitType,
+  required String technicianId,
+  required int saleStatus,
+  required String notes,
+}) async {
+  try {
+    final response = await apiClient.request(
+      "customer-followups/add",
+      method: "post",
+      data: {
+        "customer_id": customerId,
+        "property_id": propertyId,
+        "unit_type": unitType,
+        "technician_id": technicianId,
+        "sale_status": saleStatus,
+        "notes": notes,
+      },
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+
+Future<Response> getFollowupHistory(String uid, String propertyId) async {
+  try {
+    final response = await apiClient.request(
+      "agent/followup-history",
+      method: "post",
+      data: {
+        "customer_id": uid, 
+        "property_id": propertyId, // Ensure this is sent as string
+      }
+    );
+
+    print('Follow-up History Response: ${response.data}');
+    return response;
+  } catch (e) {
+    print('Error in getFollowupHistory: $e');
+    print('Request params: customer_id: $uid, property_id: $propertyId');
+    rethrow;
+  }
+}
+
+Future<Response> getTenantDocuments(String uid) async {
+  try {
+    final response = await apiClient.request(
+      "tenant/documents",  
+      method: "post",
+      data: {'uid': uid},
     );
 
     return response;
@@ -453,7 +567,21 @@ Future<Response> updateTechnicianComplaint({
     }
   }
 
+Future<Response> getpropertyinteresthistory(String uid) async {
+  try {
+    final response = await apiClient.request(
+      "property-interests/by-uid",
+      method: "post",
+      data: {
+        "uid": uid, 
+      }
+    );
 
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+} 
 
 
   Future<Response> getPropertyDetails(int propertyId) async {
@@ -469,16 +597,24 @@ Future<Response> updateTechnicianComplaint({
     }
   }
 
-  Future<Response> getAgentPropertyList() async {
-    try {
-      final response = await apiClient.request("agent-properties",
-          method: "post", data: {"uid": "jznkHrlfH5eFp2Vsc2Jvi7gSd5m2"});
-
-      return response;
-    } catch (e) {
-      rethrow;
+   Future<Response> getAgentPropertyList() async {
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception("No user logged in");
     }
+
+    final response = await apiClient.request(
+      "agent-properties",
+      method: "post",
+      data: {"uid": user.uid}, // dynamically from Firebase
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
   }
+}
 
   Future<Response> getAgentPropertiesSearch() async {
     // API Refining Needed
@@ -562,208 +698,200 @@ Future<Response> updateTechnicianComplaint({
 
 
 
-Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userDataSubmission) async {
+Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userData) async {
   try {
-    debugPrint('🚀 API Service: Starting submission for ${userDataSubmission.isNative ? "Native" : "Foreign"} citizen');
+    debugPrint('🚀 API Service: Starting submission');
     
     // Create FormData for multipart upload
     FormData formData = FormData();
+
+    // Add basic required fields
+    _addBasicUserFields(formData, userData);
+
+    // Add additional document titles and expiry dates
+    _addAdditionalDocumentFields(formData, userData);
     
-    // Add basic required fields for all users
-    formData.fields.addAll([
-      MapEntry('uid', userDataSubmission.uid),
-      MapEntry('first_name', userDataSubmission.firstName),
-      MapEntry('last_name', userDataSubmission.lastName),
-      MapEntry('propertyid', userDataSubmission.propertyId.toString()),
-      MapEntry('unitid', userDataSubmission.unitId.toString()),
-      MapEntry('address', userDataSubmission.address),
-      MapEntry('citizenship', userDataSubmission.citizenship.toString()),
-      MapEntry('email', userDataSubmission.email),
-      MapEntry('mobile', userDataSubmission.mobile),
-      MapEntry('property_type', userDataSubmission.propertyType ?? 'residential'),
-    ]);
-
-    // Add citizenship-specific fields
-    if (userDataSubmission.isNative) {
-      // Native citizen fields
-      debugPrint('📋 Adding Native citizen fields');
-      if (userDataSubmission.civilId != null && userDataSubmission.civilId!.isNotEmpty) {
-        formData.fields.add(MapEntry('civil_id', userDataSubmission.civilId!));
-      }
-      if (userDataSubmission.civilIdExpiry != null && userDataSubmission.civilIdExpiry!.isNotEmpty) {
-        formData.fields.add(MapEntry('civil_id_expiry', userDataSubmission.civilIdExpiry!));
-      }
-    } else {
-      // Foreign citizen fields - THIS WAS MISSING!
-      debugPrint('🛂 Adding Foreign citizen fields');
-      
-      if (userDataSubmission.passportNo != null && userDataSubmission.passportNo!.isNotEmpty) {
-        formData.fields.add(MapEntry('passport_no', userDataSubmission.passportNo!));
-        debugPrint('   ✅ Added passport_no: ${userDataSubmission.passportNo}');
-      }
-      
-      if (userDataSubmission.visaNo != null && userDataSubmission.visaNo!.isNotEmpty) {
-        formData.fields.add(MapEntry('visa_no', userDataSubmission.visaNo!));
-        debugPrint('   ✅ Added visa_no: ${userDataSubmission.visaNo}');
-      }
-      
-      if (userDataSubmission.visaExpiryDate != null && userDataSubmission.visaExpiryDate!.isNotEmpty) {
-        formData.fields.add(MapEntry('visa_expiry_date', userDataSubmission.visaExpiryDate!));
-        debugPrint('   ✅ Added visa_expiry_date: ${userDataSubmission.visaExpiryDate}');
-      }
-      
-      if (userDataSubmission.expatCivilId != null && userDataSubmission.expatCivilId!.isNotEmpty) {
-        formData.fields.add(MapEntry('expat_civil_id', userDataSubmission.expatCivilId!));
-        debugPrint('   ✅ Added expat_civil_id: ${userDataSubmission.expatCivilId}');
-      }
-      
-      if (userDataSubmission.expatCivilIdExpiry != null && userDataSubmission.expatCivilIdExpiry!.isNotEmpty) {
-        formData.fields.add(MapEntry('expat_civil_id_expiry', userDataSubmission.expatCivilIdExpiry!));
-        debugPrint('   ✅ Added expat_civil_id_expiry: ${userDataSubmission.expatCivilIdExpiry}');
-      }
-    }
-
-    // Add commercial property fields if applicable
-    if (userDataSubmission.propertyType == 'commercial') {
-      debugPrint('🏢 Adding Commercial property fields');
-      
-      if (userDataSubmission.crNumber != null && userDataSubmission.crNumber!.isNotEmpty) {
-        formData.fields.add(MapEntry('cr_number', userDataSubmission.crNumber!));
-      }
-      if (userDataSubmission.crExpiryDate != null && userDataSubmission.crExpiryDate!.isNotEmpty) {
-        formData.fields.add(MapEntry('cr_expiry_date', userDataSubmission.crExpiryDate!));
-      }
-      if (userDataSubmission.municipalityLicenseNumber != null && userDataSubmission.municipalityLicenseNumber!.isNotEmpty) {
-        formData.fields.add(MapEntry('municipality_license_number', userDataSubmission.municipalityLicenseNumber!));
-      }
-      if (userDataSubmission.municipalityLicenseDate != null && userDataSubmission.municipalityLicenseDate!.isNotEmpty) {
-        formData.fields.add(MapEntry('municipality_license_date', userDataSubmission.municipalityLicenseDate!));
-      }
-      if (userDataSubmission.companyAddress != null && userDataSubmission.companyAddress!.isNotEmpty) {
-        formData.fields.add(MapEntry('company_address', userDataSubmission.companyAddress!));
-      }
-      if (userDataSubmission.poBox != null && userDataSubmission.poBox!.isNotEmpty) {
-        formData.fields.add(MapEntry('po_box', userDataSubmission.poBox!));
-      }
-    }
-    
-    // Add document types
-    if (userDataSubmission.requiredDocumentTypes.isNotEmpty) {
-      debugPrint('📋 Adding ${userDataSubmission.requiredDocumentTypes.length} document types');
-      for (int i = 0; i < userDataSubmission.requiredDocumentTypes.length; i++) {
-        formData.fields.add(
-          MapEntry('required_document_types[$i]', userDataSubmission.requiredDocumentTypes[i])
-        );
-        debugPrint('   • ${userDataSubmission.requiredDocumentTypes[i]}');
-      }
-    }
-
-    // Add additional document titles if any
-    if (userDataSubmission.additionalDocumentTitles != null && userDataSubmission.additionalDocumentTitles!.isNotEmpty) {
-      debugPrint('📋 Adding ${userDataSubmission.additionalDocumentTitles!.length} additional document titles');
-      for (int i = 0; i < userDataSubmission.additionalDocumentTitles!.length; i++) {
-        formData.fields.add(
-          MapEntry('additional_document_titles[$i]', userDataSubmission.additionalDocumentTitles![i])
-        );
-      }
-    }
-    
-    // Add required document files
-    if (userDataSubmission.requiredDocuments != null && userDataSubmission.requiredDocuments!.isNotEmpty) {
-      debugPrint('📁 Adding ${userDataSubmission.requiredDocuments!.length} required document files');
-      
-      for (int i = 0; i < userDataSubmission.requiredDocuments!.length; i++) {
-        String filePath = userDataSubmission.requiredDocuments![i];
-        File file = File(filePath);
-        
-        if (file.existsSync()) {
-          String fileName = filePath.split('/').last;
-          
-          MultipartFile multipartFile = await MultipartFile.fromFile(
-            filePath,
-            filename: fileName,
-            contentType: DioMediaType.parse(_getContentType(fileName)),
-          );
-          
-          formData.files.add(MapEntry('required_documents[$i]', multipartFile));
-          debugPrint('   📎 Added file: $fileName');
-        } else {
-          debugPrint('   ❌ File not found: $filePath');
-          throw Exception('File not found: $filePath');
-        }
-      }
-    }
-
     // Add additional document files
-    if (userDataSubmission.additionalDocuments != null && userDataSubmission.additionalDocuments!.isNotEmpty) {
-      debugPrint('📁 Adding ${userDataSubmission.additionalDocuments!.length} additional document files');
-      
-      for (int i = 0; i < userDataSubmission.additionalDocuments!.length; i++) {
-        String filePath = userDataSubmission.additionalDocuments![i];
-        File file = File(filePath);
-        
-        if (file.existsSync()) {
-          String fileName = filePath.split('/').last;
-          
-          MultipartFile multipartFile = await MultipartFile.fromFile(
-            filePath,
-            filename: fileName,
-            contentType: DioMediaType.parse(_getContentType(fileName)),
-          );
-          
-          formData.files.add(MapEntry('additional_documents[$i]', multipartFile));
-          debugPrint('   📎 Added additional file: $fileName');
-        } else {
-          debugPrint('   ❌ Additional file not found: $filePath');
-          throw Exception('Additional file not found: $filePath');
-        }
-      }
-    }
+    await _addAdditionalDocumentFiles(formData, userData.additionalDocuments);
 
     // Debug: Print all form fields being sent
-    debugPrint('📤 FORM DATA FIELDS BEING SENT:');
-    for (var field in formData.fields) {
-      // Don't log sensitive data in production
-      if (field.key.contains('email') || field.key.contains('mobile')) {
-        debugPrint('   ${field.key}: ***masked***');
-      } else {
-        debugPrint('   ${field.key}: ${field.value}');
-      }
-    }
-    
-    debugPrint('📤 FORM DATA FILES BEING SENT:');
-    for (var file in formData.files) {
-      debugPrint('   ${file.key}: ${file.value.filename}');
-    }
+    _debugPrintFormData(formData);
     
     debugPrint('🚀 Sending request to server...');
     final response = await apiClient.request(
       "storebooking", 
       method: "post",
       data: formData,
-      isFormData: true, // Important for multipart uploads
+      isFormData: true,
     );
     
     debugPrint('✅ API Request successful: ${response.statusCode}');
+    debugPrint('📥 Response data: ${response.data}');
     return response;
+    
   } catch (e) {
     debugPrint('💥 API Service Error: $e');
     rethrow;
   }
 }
 
+// Helper method to add basic user fields
+void _addBasicUserFields(FormData formData, UserDataSubmissionModel userData) {
+  final basicFields = [
+    if (userData.uid.isNotEmpty)
+      MapEntry('uid', userData.uid),
+    if (userData.firstName.isNotEmpty)
+      MapEntry('first_name', userData.firstName),
+    if (userData.lastName.isNotEmpty)
+      MapEntry('last_name', userData.lastName),
+    if (userData.address.isNotEmpty)
+      MapEntry('address', userData.address),
+    if (userData.email.isNotEmpty)
+      MapEntry('email', userData.email),
+    if (userData.mobile.isNotEmpty)
+      MapEntry('mobile', userData.mobile),
+    if (userData.propertyId.isNotEmpty)
+      MapEntry('propertyid', userData.propertyId),
+    if (userData.unitId.isNotEmpty)
+      MapEntry('unitid', userData.unitId),
+    MapEntry('citizenship', userData.citizenship ? '1' : '0'),
+  ];
+
+  formData.fields.addAll(basicFields);
+  debugPrint('📋 Added basic user fields');
+}
+
+// Helper method to add additional document fields
+void _addAdditionalDocumentFields(FormData formData, UserDataSubmissionModel userData) {
+  // Add additional document titles
+  if (userData.additionalDocuments.isNotEmpty) {
+    debugPrint('📋 Adding ${userData.additionalDocuments.length} additional document titles');
+    for (int i = 0; i < userData.additionalDocuments.length; i++) {
+      final doc = userData.additionalDocuments[i];
+      if (doc.title.isNotEmpty) {
+        formData.fields.add(
+          MapEntry('additional_document_titles[$i]', doc.title)
+        );
+        debugPrint('   • Title[$i]: ${doc.title}');
+      }
+    }
+  }
+
+  // Add additional document expiry dates
+  if (userData.additionalDocuments.isNotEmpty) {
+    debugPrint('📋 Adding ${userData.additionalDocuments.length} additional document expiry dates');
+    for (int i = 0; i < userData.additionalDocuments.length; i++) {
+      final doc = userData.additionalDocuments[i];
+      formData.fields.add(
+        MapEntry('additional_document_expiry_dates[$i]', 
+            doc.expiryDate.toIso8601String().split('T')[0])
+      );
+      debugPrint('   • Expiry[$i]: ${doc.expiryDate.toIso8601String().split('T')[0]}');
+    }
+  }
+}
+
+// Helper method to add additional document files
+Future<void> _addAdditionalDocumentFiles(
+  FormData formData, 
+  List<AdditionalDocument> additionalDocuments,
+) async {
+  if (additionalDocuments.isNotEmpty) {
+    debugPrint('📁 Adding ${additionalDocuments.length} additional document files');
+    
+    for (int i = 0; i < additionalDocuments.length; i++) {
+      final doc = additionalDocuments[i];
+      
+      if (doc.file != null) {
+        try {
+          if (doc.file is File) {
+            // Handle File objects
+            File file = doc.file as File;
+            if (file.existsSync()) {
+              String fileName = file.path.split('/').last;
+              
+              MultipartFile multipartFile = await MultipartFile.fromFile(
+                file.path,
+                filename: fileName,
+              );
+              
+              formData.files.add(MapEntry('additional_documents[$i]', multipartFile));
+              debugPrint('   📎 Added additional file: $fileName');
+            } else {
+              debugPrint('   ❌ Additional file not found: ${file.path}');
+            }
+          } else if (doc.file is String) {
+            // Handle file paths as strings
+            String filePath = doc.file as String;
+            File file = File(filePath);
+            
+            if (file.existsSync()) {
+              String fileName = filePath.split('/').last;
+              
+              MultipartFile multipartFile = await MultipartFile.fromFile(
+                filePath,
+                filename: fileName,
+              );
+              
+              formData.files.add(MapEntry('additional_documents[$i]', multipartFile));
+              debugPrint('   📎 Added additional file: $fileName');
+            } else {
+              debugPrint('   ❌ Additional file not found: $filePath');
+            }
+          } else if (doc.file is Uint8List) {
+            // Handle byte arrays
+            Uint8List bytes = doc.file as Uint8List;
+            String fileName = 'document_${i}_${doc.title.replaceAll(' ', '_')}.pdf';
+            
+            MultipartFile multipartFile = MultipartFile.fromBytes(
+              bytes,
+              filename: fileName,
+            );
+            
+            formData.files.add(MapEntry('additional_documents[$i]', multipartFile));
+            debugPrint('   📎 Added additional file from bytes: $fileName');
+          } else {
+            debugPrint('   ⚠️ Unknown file type for document: ${doc.title}');
+          }
+        } catch (e) {
+          debugPrint('   ❌ Error processing file for document ${doc.title}: $e');
+        }
+      } else {
+        debugPrint('   ⚠️ No file provided for document: ${doc.title}');
+      }
+    }
+  }
+}
+
+// Helper method to debug form data
+void _debugPrintFormData(FormData formData) {
+  debugPrint('📦 FormData contents:');
+  debugPrint('   Fields:');
+  for (var field in formData.fields) {
+    debugPrint('     ${field.key}: ${field.value}');
+  }
+  debugPrint('   Files:');
+  for (var file in formData.files) {
+    debugPrint('     ${file.key}: ${file.value.filename}');
+  }
+}
+
+// If you need to determine content type based on file extension
 String _getContentType(String fileName) {
-  String extension = fileName.toLowerCase().split('.').last;
+  final extension = fileName.split('.').last.toLowerCase();
   switch (extension) {
     case 'pdf':
       return 'application/pdf';
+    case 'png':
+      return 'image/png';
     case 'jpg':
     case 'jpeg':
       return 'image/jpeg';
-    case 'png':
-      return 'image/png';
-    case 'webp':
-      return 'image/webp';
+    case 'gif':
+      return 'image/gif';
+    case 'doc':
+    case 'docx':
+      return 'application/msword';
     default:
       return 'application/octet-stream';
   }
@@ -790,10 +918,14 @@ String _getContentType(String fileName) {
   // Submit User Details for Booking result
   Future<Response> fetchingAgentChatReports(String uid) async {
     try {
+      final user = FirebaseAuth.instance.currentUser;
+       if (user == null) {
+      throw Exception("No user logged in");
+       }
       final response = await apiClient.request(
         "chatListByAgent",
         method: "post",
-        data: {"uid": uid},
+        data: {"uid": user.uid},
       );
 
       return response;

@@ -1,13 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/data/model/search_property_model.dart';
-import 'package:dar_al_safwa/presentation/view/login/login_screen.dart';
-import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/property_listing_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/loader_widget.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/data/model/search_property_model.dart';
+import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/view_model/property_listing_controller.dart';
+import 'package:majan/presentation/widgets/custom_elevated_button.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/loader_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
@@ -361,10 +360,10 @@ class PropertyListings extends StatelessWidget {
     final formattedPrice = isArabic
         ? (price?.formatted?.ar?.isNotEmpty ?? false
             ? price!.formatted!.ar
-            : '${price?.raw ?? 0} OMR')
+            : '${price?.raw ?? 0} AED')
         : (price?.formatted?.en?.isNotEmpty ?? false
             ? price!.formatted!.en
-            : '${price?.raw ?? 0} OMR');
+            : '${price?.raw ?? 0} AED');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

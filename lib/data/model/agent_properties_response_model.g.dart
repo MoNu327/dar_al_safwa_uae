@@ -62,16 +62,28 @@ Map<String, dynamic> _$AgentPropertyToJson(AgentProperty instance) =>
 
 AgentPropertyPrice _$AgentPropertyPriceFromJson(Map<String, dynamic> json) =>
     AgentPropertyPrice(
-      raw: json['raw'] as String?,
       formatted: json['formatted'] == null
           ? null
-          : LocalizedText.fromJson(json['formatted'] as Map<String, dynamic>),
+          : FormattedPrice.fromJson(json['formatted'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$AgentPropertyPriceToJson(AgentPropertyPrice instance) =>
     <String, dynamic>{
-      'raw': instance.raw,
       'formatted': instance.formatted,
+    };
+
+FormattedPrice _$FormattedPriceFromJson(Map<String, dynamic> json) =>
+    FormattedPrice(
+      raw: json['raw'] as String?,
+      en: json['en'] as String?,
+      ar: json['ar'] as String?,
+    );
+
+Map<String, dynamic> _$FormattedPriceToJson(FormattedPrice instance) =>
+    <String, dynamic>{
+      'raw': instance.raw,
+      'en': instance.en,
+      'ar': instance.ar,
     };
 
 LocalizedText _$LocalizedTextFromJson(Map<String, dynamic> json) =>

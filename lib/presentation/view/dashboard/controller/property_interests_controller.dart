@@ -1,4 +1,4 @@
-import 'package:dar_al_safwa/data/model/agent_chat_response.dart';
+import 'package:majan/data/model/agent_chat_response.dart';
 import 'package:get/get.dart';
 
 import '../../../../data/repositories/api_services.dart';

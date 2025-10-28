@@ -1,33 +1,35 @@
-import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/screens/dashboard_screen.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/add_property_screen.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/customer_enquiry_screen.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/properties_screen.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_dashboard.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_rectify_ticket_screen.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/technician_view_tickets.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenant_complaint_register.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
-import 'package:dar_al_safwa/presentation/view/error/screens/error_screen.dart';
-import 'package:dar_al_safwa/presentation/view/home/screens/home_screen.dart';
-import 'package:dar_al_safwa/presentation/view/inbox/screens/inbox_screen.dart';
-import 'package:dar_al_safwa/presentation/view/login/login_screen.dart';
-import 'package:dar_al_safwa/presentation/view/login/mobile_login_otp.dart';
-import 'package:dar_al_safwa/presentation/view/login/mobile_login_screen.dart';
-import 'package:dar_al_safwa/presentation/view/agent/screens/signin_screen.dart';
-import 'package:dar_al_safwa/presentation/view/agent/screens/signup_screen.dart';
-import 'package:dar_al_safwa/presentation/view/profile/screens/profile_screen.dart';
-import 'package:dar_al_safwa/presentation/view/profile/widgets/technician_profile_page.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/screens/proprety_details_screen.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/user_details_submission.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/widgets/view_gallery.dart';
-import 'package:dar_al_safwa/presentation/view/property_listings/screens/property_listings.dart';
-import 'package:dar_al_safwa/presentation/view/search/screens/search_screen.dart';
-import 'package:dar_al_safwa/presentation/view/splash/screens/splash_screen.dart';
-import 'package:dar_al_safwa/presentation/widgets/bottom_navbar_widget.dart';
+import 'package:majan/data/model/technican_ticket_view_model.dart';
+import 'package:majan/presentation/view/dashboard/screens/dashboard_screen.dart';
+import 'package:majan/presentation/view/dashboard/widgets/add_property_screen.dart';
+import 'package:majan/presentation/view/dashboard/widgets/agent_dashboard.dart';
+import 'package:majan/presentation/view/dashboard/widgets/customer_enquiry_screen.dart';
+import 'package:majan/presentation/view/dashboard/widgets/properties_screen.dart';
+import 'package:majan/presentation/view/dashboard/widgets/technician_dashboard.dart';
+import 'package:majan/presentation/view/dashboard/widgets/technician_rectify_ticket_screen.dart';
+import 'package:majan/presentation/view/dashboard/widgets/technician_view_tickets.dart';
+import 'package:majan/presentation/view/dashboard/widgets/tenant_complaint_register.dart';
+import 'package:majan/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
+import 'package:majan/presentation/view/error/screens/error_screen.dart';
+import 'package:majan/presentation/view/home/screens/home_screen.dart';
+import 'package:majan/presentation/view/inbox/screens/inbox_screen.dart';
+import 'package:majan/presentation/view/login/login_screen.dart';
+import 'package:majan/presentation/view/login/mobile_login_otp.dart';
+import 'package:majan/presentation/view/login/mobile_login_screen.dart';
+import 'package:majan/presentation/view/agent/screens/signin_screen.dart';
+import 'package:majan/presentation/view/agent/screens/signup_screen.dart';
+import 'package:majan/presentation/view/profile/screens/profile_screen.dart';
+import 'package:majan/presentation/view/profile/widgets/technician_profile_page.dart';
+import 'package:majan/presentation/view/property_details/screens/proprety_details_screen.dart';
+import 'package:majan/presentation/view/property_details/widgets/user_details_submission.dart';
+import 'package:majan/presentation/view/property_details/widgets/view_gallery.dart';
+import 'package:majan/presentation/view/property_listings/screens/property_listings.dart';
+import 'package:majan/presentation/view/search/screens/search_screen.dart';
+import 'package:majan/presentation/view/splash/screens/splash_screen.dart';
+import 'package:majan/presentation/widgets/bottom_navbar_widget.dart';
 import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
+import 'package:majan/presentation/widgets/notification_screen.dart';
 
 import '../../presentation/view/agent/screens/approval_pending.dart';
 import '../../presentation/view/chat/screen/agent_chat_screen.dart';
@@ -52,6 +54,7 @@ class AppRoute {
   static const String propertyListing = '/propertyListing';
   static const String propertyDetails = '/propertyDetails';
   static const String agent = '/agent';
+   static const String agentdashboard = '/agentdashboard';
   static const String viewGallery = '/viewGallery';
   static const String mobileLoginOtp = '/mobileLoginOtp';
   static const String approvalPendingPage = '/approvalPendingPage';
@@ -71,12 +74,17 @@ class AppRoute {
   static const String technicianTickets = '/technician-tickets';
   static const String technicianRectifyTicket = '/technician-rectify-ticket';
   static const String ticketDetails = '/ticket-details';
+   static const String notification = '/notifications';
 
 
   static final routes = [
     GetPage(
       name: signupWarning,
       page: () => SignupWarningScreen(),
+    ),
+     GetPage(
+      name: notification,
+      page: () => NotificationsScreen(),
     ),
     GetPage(
       name: initial,
@@ -101,6 +109,10 @@ class AppRoute {
     GetPage(
       name: signin,
       page: () => SigninScreen(),
+    ),
+      GetPage(
+      name: agentdashboard,
+      page: () => AgentDashboard(),
     ),
     GetPage(
       name: navbar,
@@ -140,7 +152,7 @@ class AppRoute {
     ),
     GetPage(
       name: tenantDocumentsList,
-      page: () => TenantsDocumentsWidget(),
+      page: () => TenantDocumentsView(),
     ),
     //  GetPage(
     //   name: tenantTicketDetails,
@@ -168,7 +180,7 @@ class AppRoute {
     ),
     GetPage(
       name: mobileLoginOtp,
-      page: () => MobileLoginOtp(),
+      page: () => MobileOtpScreen(),
     ),
     GetPage(
   name: tenantComplaintReg,

@@ -1,4 +1,4 @@
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
+import 'package:majan/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -13,7 +13,7 @@ class AgentRegisteredPropertyController extends GetxController {
   final errorMessage = RxString('');
   final count = 0.obs;
 
-  final selectedCurrency = 'OMR'.obs;
+  final selectedCurrency = 'AED'.obs;
   final selectedStatus = 'Available'.obs;
 
   final List<String> currencies = [
@@ -34,7 +34,20 @@ class AgentRegisteredPropertyController extends GetxController {
     super.onInit();
     loadAgentProperties();
   }
+//  Future<void> loadFcmTokenforagent(String uid,String fcmToken) async {
+//     try {
+//       final response = await _apiService.getFCMtokenforagent(uid,fcmToken);
 
+//       if (response.statusCode == 201 || response.statusCode == 200) {
+//         // Handle success if needed
+//         debugPrint('✅ FCM Token updated successfully');
+//       } else {
+//         debugPrint('❌ Failed to update FCM Token: ${response.statusMessage}');
+//       }
+//     } catch (e) {
+//       debugPrint('❌ Error updating FCM Token: $e');
+//     }
+//   }
   Future<void> loadAgentProperties() async {
     try {
       isLoading(true);
@@ -126,20 +139,26 @@ class AgentRegisteredPropertyController extends GetxController {
   }
 
   /// Helper to get formatted price with currency
-  String getFormattedPrice(AgentPropertyPrice? price) {
-    if (price == null) return '${selectedCurrency.value} 0';
+  /// Helper to get formatted price with currency
+String getFormattedPrice(AgentPropertyPrice? price) {
+  if (price == null) return '${selectedCurrency.value} 0';
 
-    final formatted = price.formatted;
-    final locale = Get.locale?.languageCode;
+  final formatted = price.formatted;
+  final locale = Get.locale?.languageCode;
 
-    if (locale == 'ar' && formatted?.ar != null) {
-      return formatted!.ar!;
-    } else if (formatted?.en != null) {
-      return formatted!.en!;
-    }
-
-    return '${selectedCurrency.value} ${price.raw ?? '0'}';
+  // First try to get the localized formatted price
+  if (locale == 'ar' && formatted?.ar != null) {
+    return formatted!.ar!;
+  } else if (formatted?.en != null) {
+    debugPrint('Formatted price in English: ${formatted!.en}');
+    return formatted!.en!;
   }
+  
+  // If formatted prices are null, fall back to the raw value
+  final rawValue = formatted?.raw ?? '0';
+  debugPrint('Raw price value: $rawValue');
+  return '${selectedCurrency.value} $rawValue';
+}
 
   /// Filter properties by status
   List<AgentProperty> get filteredProperties {
@@ -154,8 +173,8 @@ class AgentRegisteredPropertyController extends GetxController {
   /// Sort properties by price (ascending or descending)
   void sortPropertiesByPrice({bool ascending = true}) {
     agentProperties.sort((a, b) {
-      final priceA = double.tryParse(a.price?.raw ?? '0') ?? 0;
-      final priceB = double.tryParse(b.price?.raw ?? '0') ?? 0;
+      final priceA = double.tryParse(a.price?.formatted?.raw ?? '0') ?? 0;
+      final priceB = double.tryParse(b.price?.formatted?.raw ?? '0') ?? 0;
       return ascending ? priceA.compareTo(priceB) : priceB.compareTo(priceA);
     });
   }

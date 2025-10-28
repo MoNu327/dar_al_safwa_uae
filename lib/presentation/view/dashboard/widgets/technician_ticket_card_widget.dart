@@ -1,11 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/routes/app_route.dart';
-import 'package:dar_al_safwa/data/model/technican_ticket_view_model.dart';
-import 'package:dar_al_safwa/data/model/technician_complaints_response.dart';
-import 'package:dar_al_safwa/data/model/ticket_list_response_model.dart';
-import 'package:dar_al_safwa/domain/controller/technician_tickets_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart' show TicketDetailsScreen;
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
+import 'package:majan/core/routes/app_route.dart';
+import 'package:majan/data/model/technican_ticket_view_model.dart';
+import 'package:majan/data/model/technician_complaints_response.dart';
+import 'package:majan/data/model/ticket_list_response_model.dart';
+import 'package:majan/domain/controller/technician_tickets_controller.dart';
+import 'package:majan/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart' show TicketDetailsScreen;
+import 'package:majan/presentation/view/dashboard/widgets/tenants_tickets_list_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -32,6 +32,7 @@ Widget  buildTicketCard({
   ComplaintImages? images,
   required String complaintId,
   Complaint? complaint,
+  required String created_by,
 }) {
   // Enhanced date parsing with error handling
   DateTime? dateTime;
@@ -54,11 +55,15 @@ Widget  buildTicketCard({
   
 
   return InkWell(
-    onTap: () {
-      if (complaint != null) {
-        Get.to(() => TicketDetailsScreen(complaint: complaint));
-      }
-    },
+   onTap: () {
+  if (complaint != null) {
+    Get.to(() => TicketDetailsScreen(
+      complaintId: complaint.complaintId,
+      previewImageUrl: _getFirstAvailableImage(complaint), // Pass the image
+      previewImageTimestamp: complaint.formattedDate,
+    ));
+  }
+},
     child: Container(
       padding: EdgeInsets.all(Get.width * 0.04),
       decoration: BoxDecoration(
@@ -77,6 +82,7 @@ Widget  buildTicketCard({
         children: [
           // Enhanced Header Section
           _buildHeaderSection(
+            created_by: created_by,
             propertyName: propertyName,
             category: category,
             issue: issue,
@@ -117,6 +123,7 @@ Widget  buildTicketCard({
 
 // Helper method to build header section
 Widget _buildHeaderSection({
+  required String created_by,
   required String propertyName,
   required String category,
   required String issue,
@@ -139,6 +146,43 @@ Widget _buildHeaderSection({
               fontWeight: FontWeight.w600,
               color: AppColors.black,
             ),
+            SizedBox(height: Get.height * 0.005),
+            
+            // ✅ ADD CREATED BY HERE
+            // ✅ ADD CREATED BY WITH BADGE STYLE
+Container(
+  padding: EdgeInsets.symmetric(
+    horizontal: Get.width * 0.02,
+    vertical: Get.height * 0.003,
+  ),
+  decoration: BoxDecoration(
+    color: AppColors.primaryColor.withOpacity(0.1),
+    borderRadius: BorderRadius.circular(4),
+    border: Border.all(
+      color: AppColors.secondaryColor.withOpacity(0.3),
+      width: 1,
+    ),
+  ),
+  child: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(
+        Icons.person_outline,
+        size: 12,
+        color: AppColors.secondaryColor,
+      ),
+      SizedBox(width: Get.width * 0.01),
+      CustomTextWidget(
+        title: created_by,
+        fontSize: screenHeight * 0.012,
+        fontWeight: FontWeight.w500,
+        color: AppColors.secondaryColor,
+      ),
+    ],
+  ),
+),
+// SizedBox(height: Get.height * 0.005),
+            
             SizedBox(height: Get.height * 0.005),
             
             // Category and Issue with Icon
@@ -192,7 +236,6 @@ Widget _buildHeaderSection({
     ],
   );
 }
-
 // FIXED: Updated method to get assignment info from multiple sources with priority
 String? _getAssignedTechnicianId(String complaintId, TechnicianTicketsController controller, Complaint? complaint) {
   // Priority 1: From controller's local state (for recent assignments)
@@ -614,106 +657,97 @@ Widget _buildActionButtonsSection(
     children: [
       Expanded(
         child: CustomButtonWidget(
-          buttonHeight: screenHeight * 0.040,
-          buttonTitle: 'View Details',
-          onPressed: () {
-            if (complaint != null) {
-              debugPrint("Complaint Details inside navigation ==> $complaint");
-              Get.to(() => TicketDetailsScreen(complaint: complaint));
-            } else {
-              Get.snackbar(
-                'Error',
-                'Complaint details not available',
-                snackPosition: SnackPosition.BOTTOM,
-              );
-            }
-          },
-          buttonShape: 'rect',
-          borderColor: AppColors.darkGrey.withOpacity(0.2),
-          buttonColor: AppColors.white,
-          fontSize: screenHeight * 0.014,
-          buttonTextColor: AppColors.black,
-        ),
+  buttonHeight: screenHeight * 0.040,
+  buttonTitle: 'View Details',
+  onPressed: () {
+    if (complaint != null) {
+      debugPrint("Complaint Details inside navigation ==> $complaint");
+      Get.to(() => TicketDetailsScreen(
+        complaintId: complaint.complaintId,
+        previewImageUrl: _getFirstAvailableImage(complaint), // Pass the image
+        previewImageTimestamp: complaint.formattedDate,
+      ));
+    } else {
+      Get.snackbar(
+        'Error',
+        'Complaint details not available',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  },
+  buttonShape: 'rect',
+  borderColor: AppColors.darkGrey.withOpacity(0.2),
+  buttonColor: AppColors.white,
+  fontSize: screenHeight * 0.014,
+  buttonTextColor: AppColors.black,
+),
       ),
       SizedBox(width: Get.width * 0.02),
       Expanded(
-        child: CustomButtonWidget(
-          buttonHeight: screenHeight * 0.040,
-          buttonTitle: 'Reply',
-          onPressed: () async {
-            // Navigate to RectifyTicketsScreen and handle the result
-            final result = await Get.to(() => RectifyTicketsScreen(
-              complaintId: complaintId,
-              category: category,
-            ));
+  child: CustomButtonWidget(
+    buttonHeight: screenHeight * 0.040,
+    buttonTitle: 'Reply',
+    onPressed: () async {
+      final result = await Get.to(() => RectifyTicketsScreen(
+        complaintId: complaintId,
+        category: category,
+      ));
 
-            // Handle the result and refresh if needed
-            if (result != null && result is Map<String, dynamic>) {
-              print("Received result from rectify form: $result");
+      if (result != null && result is Map<String, dynamic>) {
+        print("Received result from rectify form: $result");
+        
+        if (result['updated'] == true) {
+          // CHANGE THIS: Force immediate refresh
+          final fetchController = Get.find<TechnicianTicketsController>();
+          final technicianUid = FirebaseAuth.instance.currentUser?.uid;
+          
+          if (technicianUid != null) {
+            try {
+              // Show loading indicator
+              Get.dialog(
+                const Center(child: CircularProgressIndicator()),
+                barrierDismissible: false,
+              );
               
-              if (result['updated'] == true) {
-                final technicianUid = result['technicianUid'];
-                
-                if (technicianUid != null) {
-                  try {
-                    final fetchController = Get.find<TechnicianTicketsController>();
-                    
-                    // Always force refresh all data to ensure UI is up to date
-                    print("Force refreshing all data after ticket update...");
-                    await fetchController.forceRefreshAllTickets(technicianUid);
-                    
-                    // Also refresh summary stats
-                    try {
-                      await fetchController.refreshSummaryOnly(technicianUid);
-                      print("Summary refreshed successfully");
-                    } catch (summaryError) {
-                      print("Summary refresh failed: $summaryError");
-                      // Continue even if summary fails
-                    }
-                    
-                    // Show success message after successful refresh
-                    Get.snackbar(
-                      'Success', 
-                      result['message'] ?? 'Updated successfully',
-                      backgroundColor: Colors.green, 
-                      colorText: Colors.white,
-                      snackPosition: SnackPosition.BOTTOM,
-                      duration: Duration(seconds: 3),
-                    );
-                    
-                  } catch (e) {
-                    print("Error refreshing data in receiving screen: $e");
-                    // Still show success message even if refresh fails
-                    Get.snackbar(
-                      'Success', 
-                      result['message'] ?? 'Updated successfully',
-                      backgroundColor: Colors.green, 
-                      colorText: Colors.white,
-                      snackPosition: SnackPosition.BOTTOM,
-                      duration: Duration(seconds: 3),
-                    );
-                  }
-                } else {
-                  // Show success message even without technician UID
-                  Get.snackbar(
-                    'Success', 
-                    result['message'] ?? 'Updated successfully',
-                    backgroundColor: Colors.green, 
-                    colorText: Colors.white,
-                    snackPosition: SnackPosition.BOTTOM,
-                    duration: Duration(seconds: 3),
-                  );
-                }
-              }
+              // Refresh all data
+              await fetchController.fetchTickets(technicianUid);
+              
+              // Close loading indicator
+              Get.back();
+              
+              // Show success message
+              Get.snackbar(
+                'Success', 
+                result['message'] ?? 'Updated successfully',
+                backgroundColor: Colors.green, 
+                colorText: Colors.white,
+                snackPosition: SnackPosition.BOTTOM,
+                duration: Duration(seconds: 2),
+              );
+              
+            } catch (e) {
+              // Close loading indicator if still showing
+              if (Get.isDialogOpen == true) Get.back();
+              
+              print("Error refreshing data: $e");
+              Get.snackbar(
+                'Warning', 
+                'Update successful but failed to refresh list',
+                backgroundColor: Colors.orange, 
+                colorText: Colors.white,
+              );
             }
-          },
-          buttonShape: 'rect',
-          borderColor: AppColors.darkGrey.withOpacity(0.2),
-          buttonColor: AppColors.white,
-          fontSize: screenHeight * 0.014,
-          buttonTextColor: AppColors.black,
-        ),
-      ),
+          }
+        }
+      }
+    },
+    buttonShape: 'rect',
+    borderColor: AppColors.darkGrey.withOpacity(0.2),
+    buttonColor: AppColors.white,
+    fontSize: screenHeight * 0.014,
+    buttonTextColor: AppColors.black,
+  ),
+),
     ],
   );
 }
@@ -891,7 +925,7 @@ void _updateTicketInList(
 
 // Helper method to get first available image
 String _getFirstAvailableImage(Complaint complaint) {
-  if (complaint.images.isNotEmpty) return complaint.images.first;
+  // if (complaint.complaintImages.isNotEmpty) return complaint.images.first;
 
   if (complaint.complaintImages.tenantUploaded.isNotEmpty) {
     return complaint.complaintImages.tenantUploaded.first;
@@ -916,8 +950,8 @@ String _getFirstAvailableImage(Complaint complaint) {
 bool _hasImages(Complaint? complaint) {
   if (complaint == null) return false;
   
-  return complaint.images.isNotEmpty ||
-      complaint.complaintImages.tenantUploaded.isNotEmpty ||
+  // return complaint.images.isNotEmpty ||
+     return complaint.complaintImages.tenantUploaded.isNotEmpty ||
       complaint.complaintImages.adminUploaded.isNotEmpty ||
       complaint.complaintImages.technicianUploaded.isNotEmpty ||
       complaint.complaintImages.adminTechnicianUploaded.isNotEmpty;

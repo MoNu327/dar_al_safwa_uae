@@ -1,16 +1,17 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/constants/custom_size.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/presentation/controllers/network_controller.dart';
-import 'package:dar_al_safwa/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
-import 'package:dar_al_safwa/presentation/view/profile/widgets/edit_profile_widget.dart';
-import 'package:dar_al_safwa/presentation/view/profile/widgets/testimonial_section.dart';
-import 'package:dar_al_safwa/presentation/view_model/firebase_auth_controller.dart';
-import 'package:dar_al_safwa/presentation/view_model/localization_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_elevated_button.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
-import 'package:dar_al_safwa/presentation/widgets/language_text_button.dart';
-import 'package:dar_al_safwa/presentation/widgets/no_internet_widegt.dart';
+import 'package:majan/core/constants/custom_size.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/presentation/controllers/network_controller.dart';
+import 'package:majan/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
+import 'package:majan/presentation/view/profile/screens/property_interest_history_view.dart';
+import 'package:majan/presentation/view/profile/widgets/edit_profile_widget.dart';
+import 'package:majan/presentation/view/profile/widgets/testimonial_section.dart';
+import 'package:majan/presentation/view_model/firebase_auth_controller.dart';
+import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/widgets/custom_elevated_button.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/widgets/language_text_button.dart';
+import 'package:majan/presentation/widgets/no_internet_widegt.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -89,29 +90,29 @@ class ProfileViewScreen extends StatelessWidget {
           );
         }),
         actions: [
-          (profileController.displayName != "Guest" &&
-                  (authService.userRole.value == 'tenant' ||
-                      authService.userRole.value == 'user' ||
-                      authService.userRole.value == 'agent'))
-              ? TextButton(
-                  onPressed: () {
-                    if (authService.userRole.value == 'tenant' ||
-                        authService.userRole.value == 'user') {
-                      Get.to(EditTenantProfileScreen());
-                    } else {
-                      profileController.toggleEdit();
-                    }
-                  },
-                  child: CustomTextWidget(
-                    title: localizationController.translate('Edit'),
-                    color: AppColors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )
-              : SizedBox.shrink()
-
-          // LanguageTextButton(localizationController: localizationController),
+          // Edit Button
+          if (profileController.displayName != "Guest" &&
+              (authService.userRole.value == 'tenant' ||
+                  authService.userRole.value == 'user' ||
+                  authService.userRole.value == 'agent'))
+            TextButton(
+              onPressed: () {
+                if (authService.userRole.value == 'tenant' ||
+                    authService.userRole.value == 'user') {
+                  // Navigate to tenant/user edit screen
+                  Get.to(() => EditTenantProfileScreen());
+                } else {
+                  // Toggle edit mode for agent
+                  profileController.toggleEdit();
+                }
+              },
+              child: CustomTextWidget(
+                title: localizationController.translate('Edit'),
+                color: AppColors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
         ],
       ),
       body: Padding(
@@ -198,11 +199,11 @@ class ProfileViewScreen extends StatelessWidget {
                                     (authService.userRole.value == 'agent')
                                 ? Column(
                                     children: [
-                                      _buildProfessionalInfo(),
+                                      // _buildProfessionalInfo(),
                                       kHeight(0.02),
                                       _buildStatsRow(),
                                       kHeight(0.02),
-                                      TestimonialSection(),
+                                      // TestimonialSection(),
                                       kHeight(0.01),
                                     ],
                                   )
@@ -248,110 +249,48 @@ class ProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomTabs() {
-    return Column(
-      children: [
+ Widget _buildBottomTabs() {
+  return Column(
+    children: [
+      // buildMenuTile(
+      //   leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
+      //   title: localizationController.translate('terms_and_condition'),
+      //   onTap: () {},
+      // ),
+      // kHeight(0.01),
+      buildMenuTile(
+        leading: Icon(HugeIcons.strokeRoundedSecurityCheck),
+        title: localizationController.translate('privacy_policy'),
+        onTap: () {
+          profileController.openWebsite(
+              "https://demoweb.waytracksystems.com/daralsafwa/uae/web/privacypolicy");
+        },
+      ),
+      kHeight(0.01),
+      buildMenuTile(
+        leading: Icon(HugeIcons.strokeRoundedAlert01),
+        title: localizationController.translate('delete_account'),
+        onTap: () {
+          profileController.openWebsite(
+              "https://demoweb.waytracksystems.com/daralsafwa/uae/account/delete");
+        },
+      ),
+      kHeight(0.01),
+      
+      // Only show Property Interest for 'user' role
+      if (authService.userRole.value == 'user' ||
+          authService.userRole.value == 'tenant')
         buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
-          title: localizationController.translate('terms_and_condition'),
-          onTap: () {},
+          leading: Icon(HugeIcons.strokeRoundedAddToList),
+          title: localizationController.translate('property_interest'),
+          onTap: () {
+            profileController.fetchPropertyInterests();
+            Get.to(() => PropertyInterestHistoryScreen());
+          },
         ),
-        kHeight(0.01),
-        buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedSecurityCheck),
-          title: localizationController.translate('privacy_policy'),
-          onTap: () {},
-        ),
-        kHeight(0.01),
-        buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedAlert01),
-          title: localizationController.translate('disclaimers'),
-          onTap: () {},
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProfessionalInfo() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.verified,
-              color: AppColors.blueColor,
-              size: smallIconSize,
-            ),
-            kWidth(0.01),
-            CustomTextWidget(
-              title: 'Verified Real Estate Agent',
-              fontSize: H18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.black,
-            ),
-          ],
-        ),
-        kHeight(0.01),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              width: Get.width * 0.15,
-              decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  color: AppColors.whiteLight),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.star,
-                    color: Colors.orange,
-                    size: smallIconSize,
-                  ),
-                  kWidth(0.01),
-                  Text(
-                    '4.8',
-                    style: TextStyle(
-                      fontSize: tagTitle,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.black600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            kWidth(0.01),
-            CustomTextWidget(
-              title: '(120 reviews)',
-              fontSize: tagTitle,
-              fontWeight: FontWeight.bold,
-              color: AppColors.darkGrey,
-            ),
-          ],
-        ),
-        kHeight(0.01),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.location_on,
-              color: AppColors.black,
-              size: smallIconSize,
-            ),
-            kWidth(0.01),
-            CustomTextWidget(
-              title: profileController.displayLocation,
-              fontSize: tagTitle,
-              fontWeight: FontWeight.bold,
-              color: AppColors.black,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+    ],
+  );
+}
 
   Widget _buildStatsRow() {
     return Container(
@@ -373,10 +312,10 @@ class ProfileViewScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildStatItem('24', 'Listings'),
-          _buildStatItem('14', 'Sold Property'),
-          _buildStatItem('5Y', 'Experience'),
-          _buildStatItem('48L', 'Sales'),
+          // _buildStatItem('24', 'Listings'),
+          // _buildStatItem('14', 'Sold Property'),
+          // _buildStatItem('5Y', 'Experience'),
+          // _buildStatItem('48L', 'Sales'),
         ],
       ),
     );

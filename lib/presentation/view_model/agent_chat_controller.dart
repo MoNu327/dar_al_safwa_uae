@@ -1,26 +1,36 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dar_al_safwa/presentation/widgets/jwttokengenration.dart';
+
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:majan/presentation/view/agent/customer_followup.dart';
+import 'package:majan/presentation/widgets/jwttokengenration.dart';
 
 import '../../domain/services/firebase_notification.dart';
 
 class AgentChatController extends GetxController {
+    void cleanup() {
+    messageController.clear();
+    isLoading.value = false;
+    isSendMessageLoading.value = false;
+    // Cancel any ongoing streams or operations
+  }
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseNotificationService notificationService =
-      FirebaseNotificationService();
+      FirebaseNotificationService(navigatorKey: Get.key);
 
   final TextEditingController messageController = TextEditingController();
   var chatData = RxMap<String, dynamic>();
   var agentStatus = "Online".obs;
   var isAgent = false.obs;
   var isLoading = true.obs;
+    var hasError = false.obs;
+  var errorMessage = ''.obs;
 
   String? currentChatId;
   String? agentId;
@@ -30,6 +40,7 @@ class AgentChatController extends GetxController {
   var unitId = ''.obs;
 
   var isSendMessageLoading = false.obs;
+  
 
   @override
   void onInit() {
@@ -54,6 +65,81 @@ class AgentChatController extends GetxController {
 
     checkUserRole();
   }
+
+   Future<void> retryFailedOperations() async {
+    try {
+      hasError(false);
+      isLoading(true);
+      
+      // Re-initialize based on user role
+      await checkUserRole();
+      
+    } catch (e) {
+      hasError(true);
+      errorMessage.value = e.toString();
+      Get.snackbar(
+        'Error', 
+        'Failed to retry: ${e.toString()}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  
+  
+void handleCustomerFollowUp() {
+  try {
+    // Validate required data before navigation
+    if (propertyId.value.isEmpty || currentChatId == null) {
+      Get.snackbar(
+        'Error', 
+        'Missing required information for follow-up',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final propertyIdInt = int.tryParse(propertyId.value);
+    if (propertyIdInt == null) {
+      Get.snackbar(
+        'Error', 
+        'Invalid property ID',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    Get.to(() => CustomerFollowUpScreen(
+      propertyId: propertyIdInt,
+      chatId: currentChatId!,
+      propertyName: propertyName.value,
+      agentEmail: agentEmail.value,
+      unitId: unitId.value, 
+      customerId: getCustomerId(), // Add this method
+    ));
+  } catch (e) {
+    debugPrint('❌ Navigation error: $e');
+    Get.snackbar(
+      'Error', 
+      'Failed to open follow-up: ${e.toString()}',
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+  }
+}
+
+// Add method to get customer ID
+String getCustomerId() {
+  if (isAgent.value) {
+    return chatData['user']?['id']?.toString() ?? '';
+  }
+  return _auth.currentUser?.uid ?? '';
+}
+
+
 
   Future<void> checkUserRole() async {
     try {
@@ -209,101 +295,117 @@ class AgentChatController extends GetxController {
   }
 
   Future<void> initializeAgenttoUserChat() async {
-    try {
-      isLoading(true);
-      debugPrint('🎭 Starting agent-to-user chat initialization');
+  try {
+    isLoading(true);
+    debugPrint('🎭 Starting agent-to-user chat initialization');
 
-      final agent = _auth.currentUser;
-      if (agent == null) throw Exception('Agent not authenticated');
+    final agent = _auth.currentUser;
+    if (agent == null) throw Exception('Agent not authenticated');
 
-      if (currentChatId == null || currentChatId!.isEmpty) {
-        throw Exception('No chat selected to reply to');
-      }
-
-      // Get the existing chat document
-      final chatDoc = await _firestore.collection('chats').doc(currentChatId).get();
-      if (!chatDoc.exists) throw Exception('Chat not found');
-
-      final chatDataFromFirestore = chatDoc.data() as Map<String, dynamic>;
-      debugPrint('📄 Agent retrieved chat data:');
-      debugPrint('   unitId: ${chatDataFromFirestore['unitId']}');
-      debugPrint('   propertyName: ${chatDataFromFirestore['propertyName']}');
-
-      // ✅ Update local unitId from Firestore
-      if (chatDataFromFirestore['unitId'] != null) {
-        unitId.value = chatDataFromFirestore['unitId'].toString();
-        debugPrint('✅ Agent updated local unitId to: ${unitId.value}');
-      }
-
-      // Validate participants
-      if (chatDataFromFirestore['participants'] == null ||
-          chatDataFromFirestore['participants']['userId'] == null) {
-        throw Exception('Invalid chat data structure');
-      }
-
-      final userId = chatDataFromFirestore['participants']['userId'];
-      
-      // Get user data
-      final userDoc = await _firestore.collection('users').doc(userId).get();
-      if (!userDoc.exists) throw Exception('User data not found');
-
-      final userData = userDoc.data() ?? {};
-
-      // Get property data if available
-      Map<String, dynamic> propertyData = {};
-      if (chatDataFromFirestore.containsKey('propertyId') &&
-          chatDataFromFirestore['propertyId'] != null) {
-        final propertyId = chatDataFromFirestore['propertyId'];
-        final propertyDoc = await _firestore.collection('properties').doc(propertyId).get();
-        if (propertyDoc.exists) {
-          propertyData = propertyDoc.data() ?? {};
-        }
-      }
-
-      // Update local chat data for UI
-      this.chatData.value = {
-        "chat_id": currentChatId,
-        "unitId": unitId.value, // ✅ Include unitId
-        "property": {
-          "id": chatDataFromFirestore['propertyId'] ?? '',
-          "title": chatDataFromFirestore['propertyName'] ?? 
-                   propertyData['title'] ?? 
-                   'Property enquiry',
-          "image": _validateImageUrl(propertyData['imageUrl']),
-        },
-        "user": {
-          "id": userId,
-          "name": userData['displayName'] ?? 'User',
-          "avatar": _validateImageUrl(userData['photoURL']),
-          "status": userData['status'] ?? 'offline',
-          "email": userData['email'] ?? '',
-        },
-        "agent": {
-          "id": agent.uid,
-          "name": agent.displayName ?? 'Agent',
-          "avatar": _validateImageUrl(agent.photoURL),
-          "email": agent.email ?? '',
-        },
-        "last_message": chatDataFromFirestore['lastMessage'] ?? '',
-        "last_message_at": chatDataFromFirestore['lastMessageAt']?.toDate().toString() ?? '',
-        "status": chatDataFromFirestore['status'] ?? 'active',
-      };
-
-      // Set user status
-      agentStatus.value = (userData['status'] ?? 'offline').toString().capitalizeFirst!;
-
-      // Start listening for messages
-      _setupMessageListener();
-
-      debugPrint('✅ Agent chat initialized successfully with unitId: ${unitId.value}');
-    } catch (e) {
-      debugPrint('❌ Failed to initialize agent chat: $e');
-      Get.snackbar('Error', 'Failed to load chat: ${e.toString()}');
-    } finally {
-      isLoading(false);
+    if (currentChatId == null || currentChatId!.isEmpty) {
+      throw Exception('No chat selected to reply to');
     }
-  }
 
+    // Get the existing chat document
+    final chatDoc = await _firestore.collection('chats').doc(currentChatId).get();
+    if (!chatDoc.exists) throw Exception('Chat not found');
+
+    final chatDataFromFirestore = chatDoc.data() as Map<String, dynamic>;
+    debugPrint('📄 Agent retrieved chat data:');
+    debugPrint('   unitId: ${chatDataFromFirestore['unitId']}');
+    debugPrint('   propertyName: ${chatDataFromFirestore['propertyName']}');
+
+    // ✅ Update local unitId from Firestore
+    if (chatDataFromFirestore['unitId'] != null) {
+      unitId.value = chatDataFromFirestore['unitId'].toString();
+      debugPrint('✅ Agent updated local unitId to: ${unitId.value}');
+    }
+
+    // Validate participants
+    if (chatDataFromFirestore['participants'] == null ||
+        chatDataFromFirestore['participants']['userId'] == null) {
+      throw Exception('Invalid chat data structure');
+    }
+
+    final userId = chatDataFromFirestore['participants']['userId'];
+    
+    // Get user data - but handle case where user document doesn't exist
+    Map<String, dynamic> userData = {};
+    String userName = 'Unknown User';
+    String userAvatar = 'https://i.postimg.cc/VLRdMxPK/profileimage.png';
+    String userStatus = 'offline';
+    String userEmail = '';
+
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    if (userDoc.exists) {
+      userData = userDoc.data() ?? {};
+      userName = userData['displayName'] ?? 'Unknown User';
+      userAvatar = _validateImageUrl(userData['photoURL']);
+      userStatus = userData['status'] ?? 'offline';
+      userEmail = userData['email'] ?? '';
+      debugPrint('✅ User data found: $userName');
+    } else {
+      debugPrint('⚠️ User document not found for ID: $userId');
+      // Use the userName passed from arguments if available
+      final args = Get.arguments as Map<String, dynamic>? ?? {};
+      userName = args['userName'] ?? 'Unknown User';
+      debugPrint('ℹ️ Using provided user name: $userName');
+    }
+
+    // Get property data if available
+    Map<String, dynamic> propertyData = {};
+    if (chatDataFromFirestore.containsKey('propertyId') &&
+        chatDataFromFirestore['propertyId'] != null) {
+      final propertyId = chatDataFromFirestore['propertyId'];
+      final propertyDoc = await _firestore.collection('properties').doc(propertyId).get();
+      if (propertyDoc.exists) {
+        propertyData = propertyDoc.data() ?? {};
+      }
+    }
+
+    // Update local chat data for UI
+    this.chatData.value = {
+      "chat_id": currentChatId,
+      "unitId": unitId.value, // ✅ Include unitId
+      "property": {
+        "id": chatDataFromFirestore['propertyId'] ?? '',
+        "title": chatDataFromFirestore['propertyName'] ?? 
+                 propertyData['title'] ?? 
+                 'Property enquiry',
+        "image": _validateImageUrl(propertyData['imageUrl']),
+      },
+      "user": {
+        "id": userId,
+        "name": userName, // Use the determined user name
+        "avatar": userAvatar,
+        "status": userStatus,
+        "email": userEmail,
+      },
+      "agent": {
+        "id": agent.uid,
+        "name": agent.displayName ?? 'Agent',
+        "avatar": _validateImageUrl(agent.photoURL),
+        "email": agent.email ?? '',
+      },
+      "last_message": chatDataFromFirestore['lastMessage'] ?? '',
+      "last_message_at": chatDataFromFirestore['lastMessageAt']?.toDate().toString() ?? '',
+      "status": chatDataFromFirestore['status'] ?? 'active',
+    };
+
+    // Set user status
+    agentStatus.value = userStatus.capitalizeFirst!;
+
+    // Start listening for messages
+    _setupMessageListener();
+
+    debugPrint('✅ Agent chat initialized successfully with unitId: ${unitId.value}');
+  } catch (e) {
+    debugPrint('❌ Failed to initialize agent chat: $e');
+    Get.snackbar('Error', 'Failed to load chat: ${e.toString()}');
+  } finally {
+    isLoading(false);
+  }
+}
   // ✅ Enhanced legacy method with unitId support
   Future<void> initializeChat({String? propertyId}) async {
     try {

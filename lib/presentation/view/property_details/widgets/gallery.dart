@@ -47,7 +47,7 @@ class Gallery extends StatelessWidget {
                       ? propertyDetailsController
                           .showUnitTypeBottomSheetForChat(
                               property?.agent?.email ?? "test@gmail.com",
-                              "41",
+                              property?.id.toString() ?? "0",
                               property?.title?.en ?? "")
                       : CustomSnackbar.show(
                           title: "Failed",

@@ -1,5 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/presentation/view/property_details/controller/gallery_controller.dart';
+import 'package:majan/presentation/view/property_details/controller/gallery_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:photo_view/photo_view.dart';

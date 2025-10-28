@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'package:dar_al_safwa/presentation/view/dashboard/controller/rectify_tickets_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_formfield_widget.dart';
+import 'package:majan/presentation/view/dashboard/controller/rectify_tickets_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_formfield_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -196,7 +196,7 @@ class RectifyTicketsScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   CustomTextWidget(
-                    title: 'OMR',
+                    title: 'AED',
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: AppColors.black,

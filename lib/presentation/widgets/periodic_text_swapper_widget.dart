@@ -1,5 +1,5 @@
-import 'package:dar_al_safwa/presentation/view_model/periodic_text_swapper_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/custom_text_widget.dart';
+import 'package:majan/presentation/view_model/periodic_text_swapper_controller.dart';
+import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 

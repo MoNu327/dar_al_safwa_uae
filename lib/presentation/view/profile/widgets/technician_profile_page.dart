@@ -1,7 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:dar_al_safwa/core/theme/app_colors.dart';
-import 'package:dar_al_safwa/domain/controller/technician_controller.dart';
-import 'package:dar_al_safwa/presentation/widgets/notification_navigation_widget.dart';
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/domain/controller/technician_controller.dart';
+import 'package:majan/presentation/view/profile/widgets/tenant_edit_profile_widget.dart';
+import 'package:majan/presentation/widgets/notification_navigation_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -34,18 +35,28 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-        surfaceTintColor: Colors.white,
-        title: CustomTextWidget(
-          title: 'Profile Details',
-          fontSize: 20,
-          color: Colors.black,
-          fontWeight: FontWeight.w600,
-        ),
-        actions: [notificationNavigation()],
-      ),
+     appBar: AppBar(
+  backgroundColor: Colors.white,
+  automaticallyImplyLeading: true, // Changed from false to true
+  surfaceTintColor: Colors.white,
+  leading: IconButton(
+    icon: Icon(
+      Icons.arrow_back_ios,
+      color: Colors.black,
+      size: 20,
+    ),
+    onPressed: () {
+      Get.back();
+    },
+  ),
+  title: CustomTextWidget(
+    title: 'Profile Details',
+    fontSize: 20,
+    color: Colors.black,
+    fontWeight: FontWeight.w600,
+  ),
+  actions: [notificationNavigation()],
+),
       body: Obx(() {
         if (controller.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
@@ -260,8 +271,8 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                   buttonWidth: Get.width * 0.9,
                   buttonTextColor: Colors.white,
                   onPressed: () {
-                    // TODO: Add edit profile functionality
-                  },
+                   Get.to(() => EditTenantProfileScreen());
+                },
                 ),
                 kHeight(0.02),
                 CustomButtonWidget(

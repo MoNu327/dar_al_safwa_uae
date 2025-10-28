@@ -1,7 +1,7 @@
-import 'package:dar_al_safwa/presentation/controllers/bottom_navbar_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:majan/presentation/controllers/bottom_navbar_controller.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
 import '../../core/constants/custom_size.dart';

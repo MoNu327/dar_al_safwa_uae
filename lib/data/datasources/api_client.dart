@@ -1,4 +1,4 @@
-import 'package:dar_al_safwa/core/routes/app_route.dart';
+import 'package:majan/core/routes/app_route.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -7,7 +7,7 @@ import 'package:get/get.dart' as getx;
 class ApiClient {
   final Dio _dio = Dio();
   final String baseUrl =
-      "https://webdesignilluminati.in/Projects/websites/daralsafwa/api/0/";
+            "https://demoweb.waytracksystems.com/daralsafwa/uae/api/0/";
 
   final _secureStorage = const FlutterSecureStorage();
 
