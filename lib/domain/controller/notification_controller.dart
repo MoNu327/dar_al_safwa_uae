@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/data/model/full_complaint_model.dart';
 import 'package:majan/data/model/notification_model.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:majan/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
@@ -15,6 +18,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 
+
 class NotificationController extends GetxController {
   // ✅ UPDATED: Use user-specific storage key
   static const String _storageKeyPrefix = 'stored_notifications_';
@@ -24,6 +28,8 @@ class NotificationController extends GetxController {
   final RxList<NotificationModel> notifications = <NotificationModel>[].obs;
   final RxInt unreadCount = 0.obs;
   final RxBool isLoading = false.obs;
+    ComplaintImages? images;
+
 
   // Stream controller for real-time notifications
   final StreamController<Map<String, dynamic>> _notificationStreamController =
@@ -670,122 +676,112 @@ Widget _buildLinkActions(String link) {
 
   // Download and open PDF using open_filex
   Future<void> _downloadAndOpenPdf(String url, String fileName) async {
-    try {
-      debugPrint('Starting PDF download for: $url');
+  try {
+    debugPrint('Starting PDF download for: $url');
 
-      // Request permissions based on Android version
-      if (Platform.isAndroid) {
-        final androidInfo = await DeviceInfoPlugin().androidInfo;
-        final sdkInt = androidInfo.version.sdkInt;
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
 
-        debugPrint('Android SDK: $sdkInt');
+      debugPrint('Android SDK: $sdkInt');
 
-        PermissionStatus status;
+      PermissionStatus status;
 
-        if (sdkInt >= 33) {
-          status = PermissionStatus.granted;
-        } else if (sdkInt >= 30) {
-          status = await Permission.storage.request();
-          if (!status.isGranted) {
-            status = await Permission.manageExternalStorage.request();
-          }
-        } else {
-          status = await Permission.storage.request();
+      if (sdkInt >= 33) {
+        status = PermissionStatus.granted;
+      } else if (sdkInt >= 30) {
+        status = await Permission.storage.request();
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.request();
         }
-
-        debugPrint('Permission status: $status');
-
-        if (!status.isGranted && sdkInt < 33) {
-          Get.snackbar(
-            'Permission Required',
-            'Storage permission is needed to download files',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-          );
-          return;
-        }
+      } else {
+        status = await Permission.storage.request();
       }
 
+      debugPrint('Permission status: $status');
+
+      if (!status.isGranted && sdkInt < 33) {
+        Get.snackbar(
+          'Permission Required',
+          'Storage permission is needed to download files',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+    }
+
+    // ✅ CHANGED: Show persistent downloading snackbar
+    Get.snackbar(
+      'Downloading',
+      'Downloading PDF file...',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.blue,
+      colorText: Colors.white,
+      showProgressIndicator: true,
+      isDismissible: false,
+      duration: null, // ← Makes it persistent
+    );
+
+    debugPrint('Fetching URL: $url');
+    final response = await http.get(Uri.parse(url));
+
+    debugPrint('Response status: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      String finalFileName = fileName;
+      if (!finalFileName.endsWith('.pdf')) {
+        finalFileName = '$finalFileName.pdf';
+      }
+
+      String filePath;
+
+      if (Platform.isAndroid) {
+        final downloadsDir = Directory('/storage/emulated/0/Download');
+
+        if (!await downloadsDir.exists()) {
+          await downloadsDir.create(recursive: true);
+        }
+
+        filePath = '${downloadsDir.path}/$finalFileName';
+        debugPrint('Using Downloads directory: $filePath');
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        filePath = '${directory.path}/$finalFileName';
+        debugPrint('Using iOS documents directory: $filePath');
+      }
+
+      final file = File(filePath);
+      debugPrint('Saving file to: $filePath');
+      await file.writeAsBytes(response.bodyBytes);
+      debugPrint('PDF saved successfully to: $filePath');
+
+      if (Platform.isAndroid) {
+        await _notifyMediaScanner(filePath);
+      }
+
+      // ✅ CHANGED: Close downloading snackbar
+      Get.closeAllSnackbars();
+
       Get.snackbar(
-        'Downloading',
-        'Downloading PDF file...',
+        'Download Complete',
+        Platform.isAndroid
+            ? 'File saved to Downloads folder\n$finalFileName'
+            : 'File saved successfully\n$finalFileName',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.green,
         colorText: Colors.white,
-        duration: const Duration(seconds: 2),
+        duration: const Duration(seconds: 4),
       );
 
-      debugPrint('Fetching URL: $url');
-      final response = await http.get(Uri.parse(url));
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      debugPrint('Response status: ${response.statusCode}');
+      try {
+        final result = await OpenFilex.open(filePath);
 
-      if (response.statusCode == 200) {
-        String finalFileName = fileName;
-        if (!finalFileName.endsWith('.pdf')) {
-          finalFileName = '$finalFileName.pdf';
-        }
-
-        String filePath;
-
-        if (Platform.isAndroid) {
-          final downloadsDir = Directory('/storage/emulated/0/Download');
-
-          if (!await downloadsDir.exists()) {
-            await downloadsDir.create(recursive: true);
-          }
-
-          filePath = '${downloadsDir.path}/$finalFileName';
-          debugPrint('Using Downloads directory: $filePath');
-        } else {
-          final directory = await getApplicationDocumentsDirectory();
-          filePath = '${directory.path}/$finalFileName';
-          debugPrint('Using iOS documents directory: $filePath');
-        }
-
-        final file = File(filePath);
-        debugPrint('Saving file to: $filePath');
-        await file.writeAsBytes(response.bodyBytes);
-        debugPrint('PDF saved successfully to: $filePath');
-
-        // Notify Android MediaStore
-        if (Platform.isAndroid) {
-          await _notifyMediaScanner(filePath);
-        }
-
-        Get.snackbar(
-          'Download Complete',
-          Platform.isAndroid
-              ? 'File saved to Downloads folder\n$finalFileName'
-              : 'File saved successfully\n$finalFileName',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 4),
-        );
-
-        // Wait a moment, then open using open_filex
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        try {
-          final result = await OpenFilex.open(filePath);
-
-          if (result.type != ResultType.done) {
-            debugPrint('Could not open PDF: ${result.message}');
-            Get.snackbar(
-              'File Saved',
-              Platform.isAndroid
-                  ? 'PDF saved to Downloads. Open it from your file manager.'
-                  : 'PDF saved. You can open it from the Files app.',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 5),
-            );
-          }
-        } catch (e) {
-          debugPrint('Error opening PDF: $e');
+        if (result.type != ResultType.done) {
+          debugPrint('Could not open PDF: ${result.message}');
           Get.snackbar(
             'File Saved',
             Platform.isAndroid
@@ -797,21 +793,37 @@ Widget _buildLinkActions(String link) {
             duration: const Duration(seconds: 5),
           );
         }
-      } else {
-        throw Exception('Failed to download file: ${response.statusCode}');
+      } catch (e) {
+        debugPrint('Error opening PDF: $e');
+        Get.snackbar(
+          'File Saved',
+          Platform.isAndroid
+              ? 'PDF saved to Downloads. Open it from your file manager.'
+              : 'PDF saved. You can open it from the Files app.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 5),
+        );
       }
-    } catch (e) {
-      debugPrint('Error downloading PDF: $e');
-      Get.snackbar(
-        'Download Failed',
-        'Could not download the file. Please try again.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+    } else {
+      // ✅ CHANGED: Close downloading snackbar on error
+      Get.closeAllSnackbars();
+      throw Exception('Failed to download file: ${response.statusCode}');
     }
+  } catch (e) {
+    debugPrint('Error downloading PDF: $e');
+    // ✅ CHANGED: Close downloading snackbar on error
+    Get.closeAllSnackbars();
+    Get.snackbar(
+      'Download Failed',
+      'Could not download the file. Please try again.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
   }
-
+}
   // Notify media scanner
   Future<void> _notifyMediaScanner(String filePath) async {
     try {
@@ -867,6 +879,7 @@ Widget _buildLinkActions(String link) {
       if (message != null && message.isNotEmpty) {
         Get.dialog(
           AlertDialog(
+            backgroundColor: AppColors.primaryColor,
             title: Row(
               children: [
                 const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
@@ -941,38 +954,685 @@ Widget _buildLinkActions(String link) {
         _handleBookingNavigation(data);
         break;
 
-      case 'complaint_status_update':
-      case 'ticket':
-      case 'complaint':
-      case 'tenant_ticket':
-      case 'complaint_reply':
-      case 'ticket_reply':
-      case 'ticket_update':
-        final ticketId = data['ticketId'] as String?;
-        final complaintId = data['complaintId'] as String?;
-        final complaintIdFromData = data['complaint_id']?.toString();
-
-        debugPrint(
-            '🎯 Tenant ticket notification - navigating to tickets list');
-        debugPrint(
-            '🎯 TicketId: $ticketId, ComplaintId: $complaintId, DataComplaintId: $complaintIdFromData');
-
-        final finalTicketId = complaintIdFromData ?? ticketId ?? complaintId;
-
-        Get.offAndToNamed('/tenantTicketsList', arguments: {
-          'ticketId': finalTicketId,
-          'highlightTicket': true,
-          'openTicket': true,
-          'fromNotification': true,
-          'notificationType': notificationType,
-        });
-        break;
+    case 'complaint_status_update':
+case 'ticket':
+case 'complaint':
+case 'tenant_ticket':
+case 'complaint_reply':
+case 'ticket_reply':
+case 'ticket_update':
+case 'new_complaint':  // ✅ ADD THIS LINE
+case 'new_ticket':     // ✅ ADD THIS LINE (just in case)
+  // Show detailed ticket dialog
+  _handleTicketNavigation(data, notification.type);
+  break;
 
      case 'property_interest':
     case 'customer_interest':
     case 'property_enquiry':
       _handlePropertyInterestNavigation(data, hasLink: hasLink, link: link);
       break;
+  }
+}
+// ✅ NEW: Handle ticket navigation with complete details
+// ✅ UPDATED: Handle ticket navigation with image preview support
+void _handleTicketNavigation(Map<String, dynamic> data, String notificationType) {
+  // Extract ticket ID
+  final ticketId = data['ticketId'] as String?;
+  final complaintId = data['complaintId'] as String?;
+  final complaintIdFromData = data['complaint_id']?.toString();
+  final complaintNumber = data['complaint_number'] as String?;
+  
+  final finalTicketId = complaintIdFromData ?? ticketId ?? complaintId;
+  final displayTicketId = complaintNumber ?? finalTicketId;
+  
+  // ✅ NEW: Extract image data from notification
+  final imageUrl = _extractPreviewImage(data);
+  final timestamp = data['timestamp'] as String?;
+  final createdAt = data['createdAt'] as String?;
+  final finalTimestamp = timestamp ?? createdAt;
+  
+  // Extract other data for dialog display
+  final message = data['message'] as String?;
+  final reply = data['reply'] as String?;
+  final category = data['category'] as String?;
+  final subCategory = data['sub_category'] as String?;
+  final status = data['status'] as String?;
+  final description = data['description'] as String?;
+  final propertyName = data['propertyName'] as String?;
+  final propertyTitle = data['property_title'] as String?;
+  final unitAddress = data['unit_address'] as String?;
+  final complainant = data['complainant'] as String?;
+  final updatedAt = data['updatedAt'] as String?;
+  final technicianName = data['technicianName'] as String?;
+  final priority = data['priority'] as String?;
+  
+  final finalPropertyName = propertyTitle ?? propertyName;
+  final finalCreatedAt = timestamp ?? createdAt;
+  final finalCategory = subCategory ?? category;
+  
+  debugPrint('🎯 Ticket notification - showing complete details');
+  debugPrint('   Ticket ID: $finalTicketId');
+  debugPrint('   Display ID: $displayTicketId');
+  debugPrint('   Image URL: $imageUrl');
+  debugPrint('   Type: $notificationType');
+  
+  // Build content widgets for dialog
+  List<Widget> contentWidgets = [];
+  
+  // Ticket ID/Number
+  if (displayTicketId != null && displayTicketId.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue[200]!, width: 1),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.confirmation_number, size: 18, color: Colors.blue[700]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ticket Number',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    displayTicketId,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Status and Category row
+  if (status != null || finalCategory != null) {
+    contentWidgets.add(
+      Row(
+        children: [
+          if (status != null) ...[
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Status',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      status,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (status != null && finalCategory != null) const SizedBox(width: 8),
+          if (finalCategory != null) ...[
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.purple[50],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Category',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      finalCategory,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Priority
+  if (priority != null && priority.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: _getPriorityColor(priority),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.flag, size: 14, color: _getPriorityIconColor(priority)),
+            const SizedBox(width: 6),
+            Text(
+              'Priority: $priority',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: _getPriorityIconColor(priority),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Complainant Name
+  if (complainant != null && complainant.isNotEmpty) {
+    contentWidgets.add(
+      Row(
+        children: [
+          const Icon(Icons.person_outline, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Complainant: $complainant',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Property Name and Unit Address
+  if (finalPropertyName != null || unitAddress != null) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (finalPropertyName != null) ...[
+              Row(
+                children: [
+                  const Icon(Icons.home, size: 18, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      finalPropertyName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (unitAddress != null) ...[
+              if (finalPropertyName != null) const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      unitAddress,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Technician Name
+  if (technicianName != null && technicianName.isNotEmpty) {
+    contentWidgets.add(
+      Row(
+        children: [
+          const Icon(Icons.engineering, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Assigned to: $technicianName',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Description
+  if (description != null && description.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.description, size: 16, color: Colors.grey[700]),
+                const SizedBox(width: 6),
+                Text(
+                  'Description',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Reply
+  if (reply != null && reply.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.green[200]!, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.reply, size: 16, color: Colors.green[700]),
+                const SizedBox(width: 6),
+                Text(
+                  'Technician Reply',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              reply,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Message
+  if (message != null && message.isNotEmpty && message != reply && message != description) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          message,
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Timestamps
+  if (finalCreatedAt != null || updatedAt != null) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (finalCreatedAt != null) ...[
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Created: ${_formatTimestamp(finalCreatedAt)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (updatedAt != null && updatedAt != finalCreatedAt) ...[
+              if (finalCreatedAt != null) const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.update, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Updated: ${_formatTimestamp(updatedAt)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+  
+  // Show dialog
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: AppColors.primaryColor,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.green[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.support_agent, color: Colors.green, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _getTicketTitle(notificationType),
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: Container(
+        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 400),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: contentWidgets.isNotEmpty
+                ? contentWidgets
+                : [
+                    const Text(
+                      'Your ticket has been updated',
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.6,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+          ),
+        ),
+      ),
+      actions: [
+        // ✅ UPDATED: View Full Ticket button with image and timestamp
+        if (finalTicketId != null && finalTicketId.isNotEmpty)
+          TextButton.icon(
+            onPressed: () {
+              Get.back(); // Close the dialog first
+              
+              // ✅ Navigate with all parameters like in buildTicketCard
+              Get.to(() => TicketDetailsScreen(
+                complaintId: finalTicketId,
+                previewImageUrl: imageUrl, // Pass the extracted image
+                previewImageTimestamp: finalTimestamp, // Pass the timestamp
+              ));
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            icon: const Icon(Icons.visibility, size: 18),
+            label: const Text('View Full Ticket', style: TextStyle(fontSize: 16)),
+          ),
+        // Close button
+        TextButton(
+          onPressed: () => Get.back(),
+          style: TextButton.styleFrom(foregroundColor: Colors.grey),
+          child: const Text('Close', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+}
+
+// ✅ NEW: Helper method to extract preview image from notification data
+String? _extractPreviewImage(Map<String, dynamic> data) {
+  // Try different possible image field names from notification data
+  final imageUrl = data['imageUrl'] as String?;
+  final image = data['image'] as String?;
+  final complaintImage = data['complaintImage'] as String?;
+  final previewImage = data['previewImage'] as String?;
+  
+  // Try to get from images array
+  final images = data['images'];
+  if (images != null) {
+    if (images is List && images.isNotEmpty) {
+      return images.first as String?;
+    } else if (images is Map) {
+      // Handle ComplaintImages structure
+      final tenantUploaded = images['tenantUploaded'] as List?;
+      if (tenantUploaded != null && tenantUploaded.isNotEmpty) {
+        return tenantUploaded.first as String?;
+      }
+      
+      final adminUploaded = images['adminUploaded'] as List?;
+      if (adminUploaded != null && adminUploaded.isNotEmpty) {
+        return adminUploaded.first as String?;
+      }
+      
+      final technicianUploaded = images['technicianUploaded'] as List?;
+      if (technicianUploaded != null && technicianUploaded.isNotEmpty) {
+        return technicianUploaded.first as String?;
+      }
+      
+      final adminTechnicianUploaded = images['adminTechnicianUploaded'] as List?;
+      if (adminTechnicianUploaded != null && adminTechnicianUploaded.isNotEmpty) {
+        return adminTechnicianUploaded.first as String?;
+      }
+    }
+  }
+  
+  // Return first available image URL
+  final result = previewImage ?? imageUrl ?? image ?? complaintImage;
+  
+  debugPrint('📸 Extracted preview image: ${result ?? "none"}');
+  return result;
+}
+
+// ✅ NEW: Format timestamp helper
+String _formatTimestamp(String timestamp) {
+  try {
+    final dateTime = DateTime.parse(timestamp);
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays == 0) {
+      return 'Today at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    }
+  } catch (e) {
+    return timestamp;
+  }
+}
+
+// ✅ Helper: Get ticket title based on type
+String _getTicketTitle(String type) {
+  switch (type) {
+    case 'complaint_reply':
+    case 'ticket_reply':
+      return 'New Reply on Ticket';
+    case 'ticket_update':
+    case 'complaint_status_update':
+      return 'Ticket Status Updated';
+    case 'complaint':
+      return 'Complaint Details';
+    case 'new_complaint':  // ✅ ADD THIS
+      return 'New Complaint Registered';
+    case 'new_ticket':  // ✅ ADD THIS
+      return 'New Ticket Created';
+    case 'tenant_ticket':
+      return 'Support Ticket Details';
+    default:
+      return 'Ticket Update';
+  }
+}
+// ✅ Helper: Get status color
+Color _getStatusColor(String status) {
+  switch (status.toLowerCase()) {
+    case 'pending':
+    case 'open':
+      return Colors.orange[100]!;
+    case 'in progress':
+    case 'assigned':
+      return Colors.blue[100]!;
+    case 'resolved':
+    case 'completed':
+    case 'closed':
+      return Colors.green[100]!;
+    case 'rejected':
+    case 'cancelled':
+      return Colors.red[100]!;
+    default:
+      return Colors.grey[100]!;
+  }
+}
+
+// ✅ Helper: Get priority color
+Color _getPriorityColor(String priority) {
+  switch (priority.toLowerCase()) {
+    case 'high':
+    case 'urgent':
+      return Colors.red[100]!;
+    case 'medium':
+      return Colors.orange[100]!;
+    case 'low':
+      return Colors.green[100]!;
+    default:
+      return Colors.grey[100]!;
+  }
+}
+
+// ✅ Helper: Get priority icon color
+Color _getPriorityIconColor(String priority) {
+  switch (priority.toLowerCase()) {
+    case 'high':
+    case 'urgent':
+      return Colors.red[700]!;
+    case 'medium':
+      return Colors.orange[700]!;
+    case 'low':
+      return Colors.green[700]!;
+    default:
+      return Colors.grey[700]!;
   }
 }
 
@@ -1136,6 +1796,7 @@ void _handlePropertyInterestNavigation(
   // Show dialog
   Get.dialog(
     AlertDialog(
+      backgroundColor: AppColors.primaryColor,
       title: Row(
         children: [
           Container(
@@ -1358,6 +2019,7 @@ void _handleFollowUpNavigation(
     
     Get.dialog(
       AlertDialog(
+        backgroundColor: AppColors.primaryColor,
         title: const Row(
           children: [
             Icon(Icons.event_note, color: Colors.blue, size: 24),
@@ -1496,148 +2158,6 @@ void _handleFollowUpNavigation(
     );
   }
 }
-
-// Updated _handleFollowUpNavigation with location support
-// void _handleFollowUpNavigation(
-//   Map<String, dynamic> data, {
-//   bool hasLink = false,
-//   String? link,
-// }) {
-//   final notes = data['notes'] as String?;
-  
-//   debugPrint('📝 Follow-up notification tapped');
-//   debugPrint('   Notes available: ${notes != null && notes.isNotEmpty}');
-//   debugPrint('   Has link: $hasLink');
-  
-//   if (notes != null && notes.isNotEmpty) {
-//     // Extract location if present
-//     final location = _extractLocation(notes);
-    
-//     Get.dialog(
-//       AlertDialog(
-//         title: const Row(
-//           children: [
-//             Icon(Icons.event_note, color: Colors.blue, size: 24),
-//             SizedBox(width: 8),
-//             Text('Visit Notes', style: TextStyle(fontSize: 18)),
-//           ],
-//         ),
-//         content: Container(
-//           constraints: const BoxConstraints(maxHeight: 500),
-//           child: SingleChildScrollView(
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               mainAxisSize: MainAxisSize.min,
-//               children: [
-//                 Text(
-//                   notes,
-//                   style: const TextStyle(
-//                     fontSize: 16, 
-//                     height: 1.6,
-//                     color: Colors.black87,
-//                   ),
-//                 ),
-                
-//                 // ✅ Location button if location exists
-//                 if (location != null) ...[
-//                   const SizedBox(height: 16),
-//                   Container(
-//                     padding: const EdgeInsets.all(12),
-//                     decoration: BoxDecoration(
-//                       color: Colors.green[50],
-//                       borderRadius: BorderRadius.circular(8),
-//                       border: Border.all(color: Colors.green[200]!, width: 1),
-//                     ),
-//                     child: Column(
-//                       crossAxisAlignment: CrossAxisAlignment.start,
-//                       children: [
-//                         Row(
-//                           children: [
-//                             Icon(Icons.location_on, size: 18, color: Colors.green[700]),
-//                             const SizedBox(width: 6),
-//                             Text(
-//                               'Location',
-//                               style: TextStyle(
-//                                 fontSize: 14,
-//                                 fontWeight: FontWeight.bold,
-//                                 color: Colors.green[700],
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                         const SizedBox(height: 8),
-//                         Text(
-//                           location,
-//                           style: const TextStyle(
-//                             fontSize: 13,
-//                             color: Colors.black87,
-//                           ),
-//                           maxLines: 2,
-//                           overflow: TextOverflow.ellipsis,
-//                         ),
-//                         const SizedBox(height: 10),
-//                         Row(
-//                           mainAxisAlignment: MainAxisAlignment.end,
-//                           children: [
-//                             // Copy button
-//                             TextButton.icon(
-//                               onPressed: () => _copyLocation(location),
-//                               style: TextButton.styleFrom(
-//                                 foregroundColor: Colors.green[700],
-//                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-//                               ),
-//                               icon: const Icon(Icons.copy, size: 16),
-//                               label: const Text('Copy', style: TextStyle(fontSize: 13)),
-//                             ),
-//                             const SizedBox(width: 8),
-//                             // Open in Maps button
-//                             ElevatedButton.icon(
-//                               onPressed: () => _openLocationInMaps(location),
-//                               style: ElevatedButton.styleFrom(
-//                                 backgroundColor: Colors.green[700],
-//                                 foregroundColor: Colors.white,
-//                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-//                                 elevation: 0,
-//                               ),
-//                               icon: const Icon(Icons.map, size: 16),
-//                               label: const Text('Open Map', style: TextStyle(fontSize: 13)),
-//                             ),
-//                           ],
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ],
-                
-//                 // ✅ Link actions if link exists
-//                 if (hasLink && link != null) _buildLinkActions(link),
-//               ],
-//             ),
-//           ),
-//         ),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Get.back(),
-//             style: TextButton.styleFrom(foregroundColor: Colors.blue),
-//             child: const Text('Close', style: TextStyle(fontSize: 16)),
-//           ),
-//         ],
-//       ),
-//       barrierDismissible: true,
-//     );
-//   } else {
-//     Get.snackbar(
-//       'No Notes',
-//       'No visit notes available for this notification',
-//       snackPosition: SnackPosition.BOTTOM,
-//       backgroundColor: Colors.orange,
-//       colorText: Colors.white,
-//       duration: const Duration(seconds: 3),
-//       icon: const Icon(Icons.info_outline, color: Colors.white),
-//     );
-//   }
-// }
-
 // Booking details handler
 void _handleBookingNavigation(Map<String, dynamic> data) {
   
@@ -1778,6 +2298,7 @@ void _handleBookingNavigation(Map<String, dynamic> data) {
   // Show dialog
   Get.dialog(
     AlertDialog(
+      backgroundColor: AppColors.primaryColor,
       title: const Row(
         children: [
           Icon(Icons.event_available, color: Colors.green, size: 24),

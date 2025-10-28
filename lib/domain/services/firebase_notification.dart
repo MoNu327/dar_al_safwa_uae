@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/services.dart';
+import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/data/repositories/api_services.dart';
 import 'package:majan/domain/controller/notification_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,13 +15,13 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:majan/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
-
-
-  class FirebaseNotificationService {
+class FirebaseNotificationService {
     final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
     final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
         FlutterLocalNotificationsPlugin();
@@ -219,7 +220,7 @@ import 'package:permission_handler/permission_handler.dart';
     }
 
     // Download and open PDF
-   Future<void> _downloadAndOpenPdf(String url, String fileName) async {
+ Future<void> _downloadAndOpenPdf(String url, String fileName) async {
   try {
     debugPrint('Starting PDF download for: $url');
     
@@ -256,16 +257,17 @@ import 'package:permission_handler/permission_handler.dart';
         return;
       }
     }
-    // iOS handles permissions differently - no special permission needed
-    // for app's document directory
 
+    // ✅ CHANGED: Show persistent downloading snackbar (no duration)
     Get.snackbar(
       'Downloading',
       'Downloading PDF file...',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Colors.blue,
       colorText: Colors.white,
-      duration: const Duration(seconds: 2),
+      showProgressIndicator: true,
+      isDismissible: false,
+      duration: null, // ← Makes it persistent
     );
 
     debugPrint('Fetching URL: $url');
@@ -291,7 +293,6 @@ import 'package:permission_handler/permission_handler.dart';
         filePath = '${downloadsDir.path}/$finalFileName';
         debugPrint('Using Downloads directory: $filePath');
       } else {
-        // ✅ iOS: Save to app's documents directory
         final directory = await getApplicationDocumentsDirectory();
         filePath = '${directory.path}/$finalFileName';
         debugPrint('Using iOS documents directory: $filePath');
@@ -302,24 +303,24 @@ import 'package:permission_handler/permission_handler.dart';
       await file.writeAsBytes(response.bodyBytes);
       debugPrint('PDF saved successfully to: $filePath');
 
-      // ✅ Only notify media scanner on Android
       if (Platform.isAndroid) {
         await _notifyMediaScanner(filePath);
       }
 
-      // ✅ Platform-specific success messages
+      // ✅ CHANGED: Close downloading snackbar before showing success
+      Get.closeAllSnackbars();
+
       Get.snackbar(
         'Download Complete',
         Platform.isAndroid 
           ? 'File saved to Downloads folder\n$finalFileName'
-          : 'File saved\n$finalFileName',
+          : 'File saved successfully\n$finalFileName',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green,
         colorText: Colors.white,
         duration: const Duration(seconds: 4),
       );
 
-      // Wait a moment for media scanner (Android), then open
       await Future.delayed(const Duration(milliseconds: 500));
       
       try {
@@ -330,7 +331,7 @@ import 'package:permission_handler/permission_handler.dart';
           'File Saved',
           Platform.isAndroid
             ? 'PDF saved to Downloads. Open it from your file manager.'
-            : 'PDF saved. Tap to open from Files app.',
+            : 'PDF saved to Documents. You can open it from the Files app.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.orange,
           colorText: Colors.white,
@@ -338,10 +339,14 @@ import 'package:permission_handler/permission_handler.dart';
         );
       }
     } else {
+      // ✅ CHANGED: Close downloading snackbar on error
+      Get.closeAllSnackbars();
       throw Exception('Failed to download file: ${response.statusCode}');
     }
   } catch (e) {
     debugPrint('Error downloading PDF: $e');
+    // ✅ CHANGED: Close downloading snackbar on error
+    Get.closeAllSnackbars();
     Get.snackbar(
       'Download Failed',
       'Could not download the file. Please try again.',
@@ -351,7 +356,6 @@ import 'package:permission_handler/permission_handler.dart';
     );
   }
 }
-
     Future<void> _notifyMediaScanner(String filePath) async {
       try {
         if (Platform.isAndroid) {
@@ -365,21 +369,44 @@ import 'package:permission_handler/permission_handler.dart';
     }
 
     // Helper method to open PDF file
-   Future<void> _openPdfFile(String filePath) async {
+  Future<void> _openPdfFile(String filePath) async {
   try {
-    if (Platform.isAndroid) {
-      const platform = MethodChannel('com.daralsafwa.app/file_opener');
-      await platform.invokeMethod('openFile', {'path': filePath});
-      debugPrint('File opened using native Android method');
+    debugPrint('Attempting to open file: $filePath');
+    
+    // ✅ Use open_filex for both platforms
+    final result = await OpenFilex.open(filePath);
+    
+    debugPrint('File open result: ${result.type} - ${result.message}');
+    
+    if (result.type == ResultType.done) {
+      debugPrint('File opened successfully');
+    } else if (result.type == ResultType.noAppToOpen) {
+      Get.snackbar(
+        'No App Available',
+        'Please install a PDF viewer app to open this file',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 4),
+      );
+    } else if (result.type == ResultType.fileNotFound) {
+      Get.snackbar(
+        'File Not Found',
+        'The file could not be found. Please try downloading again.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } else if (result.type == ResultType.permissionDenied) {
+      Get.snackbar(
+        'Permission Denied',
+        'Permission required to open this file',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } else {
-      // ✅ iOS: Use url_launcher
-      final uri = Uri.file(filePath);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        debugPrint('File opened using iOS url_launcher');
-      } else {
-        throw Exception('Cannot open file');
-      }
+      throw Exception('Failed to open file: ${result.message}');
     }
   } catch (e) {
     debugPrint('Error in _openPdfFile: $e');
@@ -512,6 +539,7 @@ import 'package:permission_handler/permission_handler.dart';
     
     Get.dialog(
       AlertDialog(
+        backgroundColor: AppColors.primaryColor,
         title: const Row(
           children: [
             Icon(Icons.event_available, color: Colors.green, size: 24),
@@ -620,154 +648,180 @@ import 'package:permission_handler/permission_handler.dart';
     break;
 
         // ✅ FOLLOW-UP - Show notes dialog (KEEP AS IS - WORKING)
-       case 'follow_up':
-case 'followup':
-case 'site_visit':
-case 'property_visit_scheduled':
-case 'property_visit_pending':
-case 'property_visited':
-case 'property_agreed':
-  debugPrint('🎯 Follow-up notification - showing notes with location');
-  final notes = data['notes'] as String?;
-  final location = notes != null ? _extractLocation(notes) : null;
-  
-  if (notes != null && notes.isNotEmpty) {
-    Get.dialog(
-      AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.event_note, color: Colors.blue, size: 24),
-            SizedBox(width: 8),
-            Text('Visit Notes', style: TextStyle(fontSize: 18)),
-          ],
-        ),
-        content: Container(
-          constraints: const BoxConstraints(maxHeight: 500),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  notes,
-                  style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+     case 'follow_up':
+        case 'followup':
+        case 'site_visit':
+        case 'property_visit_scheduled':
+        case 'property_visit_pending':
+        case 'property_visited':
+        case 'property_agreed':
+          debugPrint('🎯 Follow-up notification - showing notes with location');
+          final notes = data['notes'] as String?;
+          
+          if (notes != null && notes.isNotEmpty) {
+            // Extract location from notes
+            final location = _extractLocation(notes);
+            
+            debugPrint('   Notes available: true');
+            debugPrint('   Location found: ${location != null}');
+            if (location != null) {
+              debugPrint('   Location value: $location');
+            }
+            
+            Get.dialog(
+              AlertDialog(
+                backgroundColor: AppColors.primaryColor,
+                title: const Row(
+                  children: [
+                    Icon(Icons.event_note, color: Colors.blue, size: 24),
+                    SizedBox(width: 8),
+                    Text('Visit Notes', style: TextStyle(fontSize: 18)),
+                  ],
                 ),
-                
-                // ✅ Location button if location exists
-                if (location != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green[200]!, width: 1),
-                    ),
+                content: Container(
+                  constraints: const BoxConstraints(maxHeight: 500),
+                  child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, size: 18, color: Colors.green[700]),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Location',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green[700],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
+                        // Notes text
                         Text(
-                          location,
+                          notes,
                           style: const TextStyle(
-                            fontSize: 13,
+                            fontSize: 16, 
+                            height: 1.6,
                             color: Colors.black87,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () => _copyLocation(location),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.green[700],
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              ),
-                              icon: const Icon(Icons.copy, size: 16),
-                              label: const Text('Copy', style: TextStyle(fontSize: 13)),
+                        
+                        // ✅ Location section (only if location exists)
+                        if (location != null) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green[200]!, width: 1),
                             ),
-                            const SizedBox(width: 8),
-                            ElevatedButton.icon(
-                              onPressed: () => _openLocationInMaps(location),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[700],
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                elevation: 0,
-                              ),
-                              icon: const Icon(Icons.map, size: 16),
-                              label: const Text('Open Map', style: TextStyle(fontSize: 13)),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on, size: 18, color: Colors.green[700]),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Site Visit Location',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                // Show URL preview or coordinates
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    location.startsWith('http') 
+                                      ? 'Google Maps Link'
+                                      : location,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                // Action buttons
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    // Copy button
+                                    TextButton.icon(
+                                      onPressed: () => _copyLocation(location),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.green[700],
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      ),
+                                      icon: const Icon(Icons.copy, size: 16),
+                                      label: const Text('Copy', style: TextStyle(fontSize: 13)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Open in Maps button
+                                    ElevatedButton.icon(
+                                      onPressed: () => _openLocationInMaps(location),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green[700],
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        elevation: 0,
+                                      ),
+                                      icon: const Icon(Icons.map, size: 16),
+                                      label: const Text('Open Map', style: TextStyle(fontSize: 13)),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Get.back(),
+                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                    child: const Text('Close', style: TextStyle(fontSize: 16)),
+                  ),
                 ],
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-            child: const Text('Close', style: TextStyle(fontSize: 16)),
-          ),
-        ],
-      ),
-      barrierDismissible: true,
-    );
-  } else {
-    Get.snackbar(
-      'No Notes',
-      'No visit notes available',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 3),
-      icon: const Icon(Icons.info_outline, color: Colors.white),
-    );
-  }
-  break;
+              ),
+              barrierDismissible: true,
+            );
+          } else {
+            Get.snackbar(
+              'No Notes',
+              'No visit notes available for this notification',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 3),
+              icon: const Icon(Icons.info_outline, color: Colors.white),
+            );
+          }
+          break;
 
-        // ✅ TICKET/COMPLAINT - Show reply/update (KEEP AS IS - WORKING)
-        case 'ticket':
-        case 'complaint':
-        case 'tenant_ticket':
-        case 'complaint_reply':
-        case 'ticket_reply':
-        case 'ticket_update':
+        // ✅ TECHNICIAN ASSIGNMENT - Show details dialog
+        case 'technician_assignment':
+        case 'technician_ticket':
+        case 'job_update':
           final message = data['message'] as String?;
-          final ticketId = data['ticketId'] as String? ?? data['complaintId'] as String?;
-          final reply = data['reply'] as String?;
+          final ticketId = data['ticketId'] as String?;
+          final jobDetails = data['jobDetails'] as String?;
           
-          final content = reply ?? message ?? 'Your ticket has been updated';
+          final content = message ?? jobDetails ?? 'You have a new assignment';
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
-                  Icon(Icons.support_agent, color: Colors.green, size: 24),
+                  Icon(Icons.work, color: Colors.orange, size: 24),
                   SizedBox(width: 8),
-                  Text('Ticket Update', style: TextStyle(fontSize: 18)),
+                  Text('Assignment Details', style: TextStyle(fontSize: 18)),
                 ],
               ),
               content: Container(
@@ -800,6 +854,20 @@ case 'property_agreed':
           );
           break;
 
+        // ✅ TICKET/COMPLAINT - Show reply/update (KEEP AS IS - WORKING)
+     case 'ticket':
+case 'complaint':
+case 'tenant_ticket':
+case 'complaint_reply':
+case 'ticket_reply':
+case 'ticket_update':
+case 'complaint_status_update':
+case 'new_complaint':  // ✅ ADD THIS LINE
+case 'new_ticket':     // ✅ ADD THIS LINE
+  // Show detailed ticket dialog
+  _showDetailedTicketDialog(data, notificationType);
+  break;
+
         // ✅ PROPERTY - Show property details dialog
         case 'property':
         case 'property_update':
@@ -812,6 +880,7 @@ case 'property_agreed':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.home, color: Colors.purple, size: 24),
@@ -860,6 +929,7 @@ case 'property_agreed':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.description, color: Colors.teal, size: 24),
@@ -895,6 +965,7 @@ case 'property_agreed':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.report_problem, color: Colors.red, size: 24),
@@ -942,6 +1013,7 @@ case 'property_agreed':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.build, color: Colors.orange, size: 24),
@@ -994,6 +1066,7 @@ case 'property_agreed':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.question_answer, color: Colors.indigo, size: 24),
@@ -1039,6 +1112,7 @@ case 'property_agreed':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.pending_actions, color: Colors.amber, size: 24),
@@ -1086,6 +1160,7 @@ case 'property_agreed':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.notifications, color: Colors.blue, size: 24),
@@ -1266,6 +1341,7 @@ case 'property_enquiry':
   // Show dialog
   Get.dialog(
     AlertDialog(
+      backgroundColor: AppColors.primaryColor,
       title: Row(
         children: [
           Container(
@@ -1353,6 +1429,7 @@ case 'property_enquiry':
           
           Get.dialog(
             AlertDialog(
+              backgroundColor: AppColors.primaryColor,
               title: const Row(
                 children: [
                   Icon(Icons.info, color: Colors.grey, size: 24),
@@ -1395,6 +1472,8 @@ case 'property_enquiry':
     }
   }
 
+  
+
   // ============================================
   // 2. Update _navigateUsingNavigatorKey method
   // ============================================
@@ -1430,6 +1509,7 @@ case 'property_enquiry':
               context: context,
               barrierDismissible: true,
               builder: (BuildContext context) => AlertDialog(
+                backgroundColor: AppColors.primaryColor,
                 title: const Row(
                   children: [
                     Icon(Icons.event_note, color: Colors.blue, size: 24),
@@ -1577,73 +1657,617 @@ case 'property_enquiry':
     return 1; // Default to pending
   }
 
-   String? _extractLocation(String notes) {
-  // Look for "Location: " pattern in the notes
-  final locationPattern = RegExp(r'Location:\s*(.+?)(?:\n|$)', multiLine: true);
-  final match = locationPattern.firstMatch(notes);
+  // ✅ NEW: Show detailed ticket dialog
+void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationType) {
+    final ticketId = data['ticketId'] as String?;
+  final complaintId = data['complaintId'] as String?;
+  final complaintIdFromData = data['complaint_id']?.toString();
+  final complaintNumber = data['complaint_number'] as String?;  // ✅ NEW
   
-  if (match != null && match.group(1) != null) {
-    final location = match.group(1)!.trim();
-    // Check if it looks like coordinates or an address
-    if (location.isNotEmpty && location != '****' && !location.contains('*')) {
-      return location;
-    }
+  final finalTicketId = complaintIdFromData ?? ticketId ?? complaintId;
+  final displayTicketId = complaintNumber ?? finalTicketId;  // ✅ Use complaint_number if available
+  
+  final message = data['message'] as String?;
+  final reply = data['reply'] as String?;
+  final category = data['category'] as String?;
+  final subCategory = data['sub_category'] as String?;  // ✅ NEW
+  final status = data['status'] as String?;
+  final description = data['description'] as String?;
+  final propertyName = data['propertyName'] as String?;
+  final propertyTitle = data['property_title'] as String?;  // ✅ NEW
+  final unitAddress = data['unit_address'] as String?;  // ✅ NEW
+  final complainant = data['complainant'] as String?;  // ✅ NEW
+  final createdAt = data['createdAt'] as String?;
+  final updatedAt = data['updatedAt'] as String?;
+  final timestamp = data['timestamp'] as String?;  // ✅ NEW
+  final technicianName = data['technicianName'] as String?;
+  final priority = data['priority'] as String?;
+  
+  // Use property_title if propertyName is not available
+  final finalPropertyName = propertyTitle ?? propertyName;
+  
+  // Use timestamp if createdAt is not available
+  final finalCreatedAt = timestamp ?? createdAt;
+  
+  // Use sub_category if available, otherwise category
+  final finalCategory = subCategory ?? category;
+  
+  debugPrint('🎯 Ticket notification - showing complete details');
+  debugPrint('   Ticket ID: $finalTicketId');
+  debugPrint('   Display ID: $displayTicketId');
+  debugPrint('   Type: $notificationType');
+  debugPrint('   Category: $finalCategory');
+  debugPrint('   Status: $status');
+  
+  // Build content widgets
+  List<Widget> contentWidgets = [];
+  
+  // Ticket ID/Number
+  if (displayTicketId != null && displayTicketId.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue[200]!, width: 1),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.confirmation_number, size: 18, color: Colors.blue[700]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ticket Number',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    displayTicketId,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
   }
-  return null;
-}
-
-// Add method to open location in maps
-Future<void> _openLocationInMaps(String location) async {
-  try {
-    // Try to parse as coordinates first (format: lat,lng)
-    final coordPattern = RegExp(r'^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$');
-    final coordMatch = coordPattern.firstMatch(location.trim());
-    
-    Uri uri;
-    if (coordMatch != null) {
-      // It's coordinates - use them directly
-      final lat = coordMatch.group(1);
-      final lng = coordMatch.group(2);
-      uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-    } else {
-      // It's an address - search for it
-      final encodedLocation = Uri.encodeComponent(location);
-      uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encodedLocation');
-    }
-    
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      debugPrint('✅ Opened location in maps: $location');
-    } else {
-      throw Exception('Could not launch maps');
-    }
-  } catch (e) {
-    debugPrint('❌ Error opening maps: $e');
-    Get.snackbar(
-      'Error',
-      'Could not open location in maps',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
+  
+  // Status and Category row
+  if (status != null || finalCategory != null) {
+    contentWidgets.add(
+      Row(
+        children: [
+          if (status != null) ...[
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Status',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      status,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          if (status != null && finalCategory != null) const SizedBox(width: 8),
+          if (finalCategory != null) ...[
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.purple[50],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Category',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      finalCategory,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Priority (if available)
+  if (priority != null && priority.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: _getPriorityColor(priority),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.flag, size: 14, color: _getPriorityIconColor(priority)),
+            const SizedBox(width: 6),
+            Text(
+              'Priority: $priority',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: _getPriorityIconColor(priority),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // ✅ NEW: Complainant Name
+  if (complainant != null && complainant.isNotEmpty) {
+    contentWidgets.add(
+      Row(
+        children: [
+          const Icon(Icons.person_outline, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Complainant: $complainant',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Property Name and Unit Address
+  if (finalPropertyName != null || unitAddress != null) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (finalPropertyName != null) ...[
+              Row(
+                children: [
+                  const Icon(Icons.home, size: 18, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      finalPropertyName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (unitAddress != null) ...[
+              if (finalPropertyName != null) const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      unitAddress,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Technician Name
+  if (technicianName != null && technicianName.isNotEmpty) {
+    contentWidgets.add(
+      Row(
+        children: [
+          const Icon(Icons.engineering, size: 18, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Assigned to: $technicianName',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Description
+  if (description != null && description.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.description, size: 16, color: Colors.grey[700]),
+                const SizedBox(width: 6),
+                Text(
+                  'Description',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Reply (if this is a reply notification)
+  if (reply != null && reply.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.green[200]!, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.reply, size: 16, color: Colors.green[700]),
+                const SizedBox(width: 6),
+                Text(
+                  'Technician Reply',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              reply,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Message (if different from reply and description)
+  if (message != null && message.isNotEmpty && message != reply && message != description) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          message,
+          style: const TextStyle(
+            fontSize: 14,
+            height: 1.5,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Timestamps
+  if (finalCreatedAt != null || updatedAt != null) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey[50],
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (finalCreatedAt != null) ...[
+              Row(
+                children: [
+                  Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Created: ${_formatTimestamp(finalCreatedAt)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (updatedAt != null && updatedAt != finalCreatedAt) ...[
+              if (finalCreatedAt != null) const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.update, size: 14, color: Colors.grey[600]),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Updated: ${_formatTimestamp(updatedAt)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
+  
+  // Show dialog
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: AppColors.primaryColor,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.green[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.support_agent, color: Colors.green, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _getTicketTitle(notificationType!),
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: Container(
+        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 400),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: contentWidgets.isNotEmpty
+                ? contentWidgets
+                : [
+                    const Text(
+                      'Your ticket has been updated',
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.6,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+          ),
+        ),
+      ),
+      actions: [
+        // View Full Ticket button
+      // View Full Ticket button
+if (finalTicketId != null && finalTicketId.isNotEmpty)
+  TextButton.icon(
+    onPressed: () {
+      Get.back(); // Close the dialog first
+      
+      // Navigate directly to TicketDetailsScreen
+      Get.to(() => TicketDetailsScreen(
+        complaintId: finalTicketId,
+      ));
+    },
+    style: TextButton.styleFrom(foregroundColor: Colors.green),
+    icon: const Icon(Icons.visibility, size: 18),
+    label: const Text('View Full Ticket', style: TextStyle(fontSize: 16)),
+  ),
+        // Close button
+        TextButton(
+          onPressed: () => Get.back(),
+          style: TextButton.styleFrom(foregroundColor: Colors.grey),
+          child: const Text('Close', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
 }
 
-// Add method to copy location
-Future<void> _copyLocation(String location) async {
+// ✅ NEW: Format timestamp helper
+String _formatTimestamp(String timestamp) {
   try {
-    await Clipboard.setData(ClipboardData(text: location));
-    Get.snackbar(
-      'Location Copied',
-      'Location copied to clipboard',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 2),
-      icon: const Icon(Icons.check_circle, color: Colors.white),
-    );
+    final dateTime = DateTime.parse(timestamp);
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays == 0) {
+      return 'Today at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
+    }
   } catch (e) {
-    debugPrint('❌ Error copying location: $e');
+    return timestamp;
+  }
+}
+
+// ✅ Helper: Get ticket title based on type
+String _getTicketTitle(String type) {
+  switch (type) {
+    case 'complaint_reply':
+    case 'ticket_reply':
+      return 'New Reply on Ticket';
+    case 'ticket_update':
+    case 'complaint_status_update':
+      return 'Ticket Status Updated';
+    case 'complaint':
+      return 'Complaint Details';
+    case 'new_complaint':  // ✅ ADD THIS
+      return 'New Complaint Registered';
+    case 'new_ticket':  // ✅ ADD THIS
+      return 'New Ticket Created';
+    case 'tenant_ticket':
+      return 'Support Ticket Details';
+    default:
+      return 'Ticket Update';
+  }
+}
+
+Color _getStatusColor(String status) {
+  switch (status.toLowerCase()) {
+    case 'pending':
+    case 'open':
+      return Colors.orange[100]!;
+    case 'in progress':
+    case 'assigned':
+      return Colors.blue[100]!;
+    case 'resolved':
+    case 'completed':
+    case 'closed':
+      return Colors.green[100]!;
+    case 'rejected':
+    case 'cancelled':
+      return Colors.red[100]!;
+    default:
+      return Colors.grey[100]!;
+  }
+}
+
+Color _getPriorityColor(String priority) {
+  switch (priority.toLowerCase()) {
+    case 'high':
+    case 'urgent':
+      return Colors.red[100]!;
+    case 'medium':
+      return Colors.orange[100]!;
+    case 'low':
+      return Colors.green[100]!;
+    default:
+      return Colors.grey[100]!;
+  }
+}
+
+Color _getPriorityIconColor(String priority) {
+  switch (priority.toLowerCase()) {
+    case 'high':
+    case 'urgent':
+      return Colors.red[700]!;
+    case 'medium':
+      return Colors.orange[700]!;
+    case 'low':
+      return Colors.green[700]!;
+    default:
+      return Colors.grey[700]!;
   }
 }
     Future<void> _createNotificationChannels() async {
@@ -1923,6 +2547,125 @@ Future<void> _copyLocation(String location) async {
       }
     }
 
+    // ✅ UPDATED: Extract location URL from notes (supports both formats)
+String? _extractLocation(String notes) {
+  // Pattern 1: Look for Google Maps URL
+  final urlPattern = RegExp(
+    r'Location:\s*(https?://(?:www\.)?google\.com/maps[^\s\n]+)',
+    multiLine: true,
+  );
+  final urlMatch = urlPattern.firstMatch(notes);
+  
+  if (urlMatch != null && urlMatch.group(1) != null) {
+    final url = urlMatch.group(1)!.trim();
+    debugPrint('✅ Found Google Maps URL: $url');
+    return url;
+  }
+  
+  // Pattern 2: Look for plain coordinates (format: "Location: lat,lng")
+  final coordPattern = RegExp(
+    r'Location:\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)',
+    multiLine: true,
+  );
+  final coordMatch = coordPattern.firstMatch(notes);
+  
+  if (coordMatch != null) {
+    final lat = coordMatch.group(1);
+    final lng = coordMatch.group(2);
+    
+    if (lat != null && lng != null && lat != '0.0' && lng != '0.0') {
+      // Convert coordinates to Google Maps URL
+      final url = 'https://www.google.com/maps?q=$lat,$lng';
+      debugPrint('✅ Found coordinates, converted to URL: $url');
+      return url;
+    }
+  }
+  
+  debugPrint('⚠️ No location found in notes');
+  return null;
+}
+
+// ✅ UPDATED: Open location directly (URL or coordinates)
+Future<void> _openLocationInMaps(String location) async {
+  try {
+    Uri uri;
+    
+    // Check if it's already a URL
+    if (location.startsWith('http://') || location.startsWith('https://')) {
+      uri = Uri.parse(location);
+      debugPrint('📍 Opening URL directly: $location');
+    } 
+    // Check if it's coordinates (format: lat,lng)
+    else {
+      final coordPattern = RegExp(r'^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$');
+      final coordMatch = coordPattern.firstMatch(location.trim());
+      
+      if (coordMatch != null) {
+        final lat = coordMatch.group(1);
+        final lng = coordMatch.group(2);
+        uri = Uri.parse('https://www.google.com/maps?q=$lat,$lng');
+        debugPrint('📍 Opening coordinates: $lat,$lng');
+      } else {
+        // Treat as address text
+        final encodedLocation = Uri.encodeComponent(location);
+        uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encodedLocation');
+        debugPrint('📍 Opening address: $location');
+      }
+    }
+    
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      debugPrint('✅ Successfully opened location in maps');
+    } else {
+      throw Exception('Could not launch maps');
+    }
+  } catch (e) {
+    debugPrint('❌ Error opening maps: $e');
+    Get.snackbar(
+      'Error',
+      'Could not open location in maps',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+  }
+}
+
+// ✅ UPDATED: Copy location (URL or coordinates)
+Future<void> _copyLocation(String location) async {
+  try {
+    await Clipboard.setData(ClipboardData(text: location));
+    
+    // Determine what was copied for better UX
+    String copiedType = 'Location';
+    if (location.startsWith('http')) {
+      copiedType = 'Google Maps link';
+    } else if (location.contains(',') && !location.contains(' ')) {
+      copiedType = 'Coordinates';
+    }
+    
+    Get.snackbar(
+      '$copiedType Copied',
+      '$copiedType copied to clipboard',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.green,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 2),
+      icon: const Icon(Icons.check_circle, color: Colors.white),
+    );
+    debugPrint('✅ Copied to clipboard: $location');
+  } catch (e) {
+    debugPrint('❌ Error copying location: $e');
+    Get.snackbar(
+      'Error',
+      'Failed to copy location',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+  }
+}
+
     String _getChannelId(String? type) {
       switch (type) {
         case 'technician_assignment':
@@ -2010,6 +2753,18 @@ case 'property_enquiry':
       case 'ticket_reply':
       case 'ticket_update':
         return 'Ticket Update';
+
+         case 'ticket':
+    case 'complaint':
+    case 'tenant_ticket':
+    case 'complaint_reply':
+    case 'ticket_reply':
+    case 'ticket_update':
+      return 'Ticket Update';
+    case 'new_complaint':  // ✅ ADD THIS
+      return 'New Complaint Registered';
+    case 'new_ticket':  // ✅ ADD THIS
+      return 'New Ticket Created';
       // ✅ NEW: Follow-up notification titles
       case 'follow_up':
       case 'followup':
@@ -2058,14 +2813,20 @@ case 'customer_interest':
   return 'New Property Interest';
 case 'property_enquiry':
   return 'Property Enquiry';
+  
       default:
         return 'New Notification';
+        
     }
   }
 
   // Update _getDefaultBody to handle new types:
   String _getDefaultBody(Map<String, dynamic> data) {
     switch (data['type']) {
+       case 'new_complaint':  // ✅ ADD THIS
+      return data['description'] ?? 'A new complaint has been registered';
+    case 'new_ticket':  // ✅ ADD THIS
+      return data['description'] ?? 'A new ticket has been created';
       case 'technician_assignment':
         return 'You have been assigned a new job';
       case 'technician_ticket':
@@ -2183,7 +2944,4 @@ case 'property_enquiry':
     } catch (e) {
       debugPrint('Error in background handler with storage: $e');
     }
-
-   
-
   }
