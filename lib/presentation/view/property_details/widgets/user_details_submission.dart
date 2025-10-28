@@ -13,6 +13,7 @@ import '../../../../core/utils/validator.dart';
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_formfield_widget.dart';
 import '../../../widgets/custom_text_widget.dart';
+
 class UserDetailsSubmission extends StatefulWidget {
   @override
   _UserDetailsSubmissionState createState() => _UserDetailsSubmissionState();
@@ -23,27 +24,19 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
       Get.put(UserDataSubmissionController());
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  
+
   // Controllers for additional document form
   final TextEditingController _docTitleController = TextEditingController();
   DateTime? _selectedExpiryDate;
   File? _tempFile; // Temporary storage for file before adding document
-  
+
   bool get _allFieldsFilled =>
-    _docTitleController.text.isNotEmpty &&
-    _selectedExpiryDate != null &&
-    _tempFile != null;
-  
-  // Country code variables
-  String _selectedCountryCode = '+971'; // Default Oman code
-  final List<Map<String, String>> _countryCodes = [
-    {'code': '+968', 'name': 'Oman', 'flag': '🇴🇲'},
-    {'code': '+971', 'name': 'UAE', 'flag': '🇦🇪'},
-    {'code': '+966', 'name': 'Saudi Arabia', 'flag': '🇸🇦'},
-    {'code': '+974', 'name': 'Qatar', 'flag': '🇶🇦'},
-    {'code': '+965', 'name': 'Kuwait', 'flag': '🇰🇼'},
-    {'code': '+973', 'name': 'Bahrain', 'flag': '🇧🇭'},
-  ];
+      _docTitleController.text.isNotEmpty &&
+      _selectedExpiryDate != null &&
+      _tempFile != null;
+
+  // Country code - Only Oman
+  final String _omanCountryCode = '+971';
 
   @override
   void initState() {
@@ -54,31 +47,26 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
 
   // Method to automatically add document when all fields are filled
   void _tryAutoAddDocument() {
-    if (_docTitleController.text.isNotEmpty &&
-        _selectedExpiryDate != null &&
-        _tempFile != null) {
-      // All required fields are filled, add the document automatically
-      controller.addAdditionalDocument(
-        _docTitleController.text,
-        _selectedExpiryDate!,
-        _tempFile!,
-      );
-      
-      // Reset form
-      _docTitleController.clear();
-      setState(() {
-        _selectedExpiryDate = null;
-        _tempFile = null;
-      });
-      
-      Get.snackbar(
-        'Success',
-        'Document added successfully',
-        backgroundColor: AppColors.onlineGreen,
-        colorText: AppColors.white,
-      );
-    }
+  if (_docTitleController.text.isNotEmpty &&
+      _selectedExpiryDate != null &&
+      _tempFile != null) {
+    // All required fields are filled, add the document automatically
+    controller.addAdditionalDocument(
+      _docTitleController.text,
+      _selectedExpiryDate!,
+      _tempFile!,
+    );
+
+    // Reset form
+    _docTitleController.clear();
+    setState(() {
+      _selectedExpiryDate = null;
+      _tempFile = null;
+    });
+
+    // Snackbar removed - document is added silently
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -239,43 +227,39 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                     color: AppColors.black,
                     subTextColor: Colors.red,
                   ),
-                  
-                  // Country Code and Mobile Number Row
+
+                  // Country Code (Fixed to Oman) and Mobile Number Row
                   Row(
                     children: [
-                      // Country Code Dropdown
+                      // Fixed Oman Country Code Display
                       Container(
                         width: 100,
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 15),
                         decoration: BoxDecoration(
+                          color: Colors.grey[200],
                           border: Border.all(color: Colors.grey),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedCountryCode,
-                            isExpanded: true,
-                            items: _countryCodes.map((country) {
-                              return DropdownMenuItem<String>(
-                                value: country['code'],
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 8),
-                                  child: Text(
-                                    '${country['flag']} ${country['code']}',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setState(() {
-                                _selectedCountryCode = newValue!;
-                              });
-                            },
-                          ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '🇴🇲',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              _omanCountryCode,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       SizedBox(width: 10),
-                      
+
                       // Mobile Number Field
                       Expanded(
                         child: CustomTextFieldWidget(
@@ -283,20 +267,19 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                           controller: controller.mobileCtrl,
                           readOnly: !controller.isEditMode.value,
                           keyboardType: TextInputType.phone,
-                          validator: (value) => Validator.validateMobileWithCountryCode(
-                            value, 
-                            countryCode: _selectedCountryCode
-                          ),
+                          validator: (value) =>
+                              Validator.validateMobileWithCountryCode(value,
+                                  countryCode: _omanCountryCode),
                         ),
                       ),
                     ],
                   ),
-                  
+
                   // Helper text showing the full number format
                   Padding(
                     padding: EdgeInsets.only(top: 4, left: 110),
                     child: Text(
-                      'Format: $_selectedCountryCode XXXX XXXX',
+                      'Format: $_omanCountryCode XXXX XXXX',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -311,7 +294,8 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                       color: Color(0xFFFFF8E1), // Light yellowish background
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Color(0xFFFFECB3), // Slightly darker yellow border
+                        color:
+                            Color(0xFFFFECB3), // Slightly darker yellow border
                         width: 1,
                       ),
                     ),
@@ -323,14 +307,14 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                           title: "Additional Documents",
                           fontWeight: FontWeight.w700,
                           fontSize: 18,
-                          color: AppColors.secondaryColor, // Orange color for the title
+                          color: AppColors.secondaryColor,
                         ),
                         kHeight(0.01),
 
                         // Add Document Form
                         Card(
                           margin: EdgeInsets.only(bottom: 16),
-                          color: Color(0xFFFFFDE7), // Very light yellow for the card
+                          color: Color(0xFFFFFDE7),
                           child: Padding(
                             padding: EdgeInsets.all(16),
                             child: Column(
@@ -342,47 +326,49 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                   color: AppColors.black,
                                 ),
                                 kHeight(0.01),
-                                
+
                                 // Document Title
                                 CustomTextFieldWidget(
-                                  hintText: 'Document Title (e.g., Passport, Visa)',
+                                  hintText:
+                                      'Document Title (e.g., Passport, Visa)',
                                   controller: _docTitleController,
                                   keyboardType: TextInputType.text,
                                   onChanged: (value) {
-                                    // Try to auto-add when title is entered and other fields are complete
                                     _tryAutoAddDocument();
                                   },
-                                  // Removed validator to prevent interference with auto-add
                                 ),
                                 kHeight(0.01),
-                                
+
                                 // Expiry Date
                                 Container(
                                   decoration: BoxDecoration(
-                                    color: Color(0xFFFFF9C4), // Light yellow background
+                                    color: Color(0xFFFFF9C4),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
                                   child: Row(
                                     children: [
                                       Expanded(
                                         child: Text(
                                           _selectedExpiryDate == null
-                                            ? 'Select Expiry Date *'
-                                            : 'Expiry: ${_selectedExpiryDate!.toLocal().toString().split(' ')[0]}',
+                                              ? 'Select Expiry Date *'
+                                              : 'Expiry: ${_selectedExpiryDate!.toLocal().toString().split(' ')[0]}',
                                           style: TextStyle(
-                                            color: _selectedExpiryDate == null 
-                                              ? Colors.red // Red color to indicate required
-                                              : AppColors.black,
-                                            fontWeight: _selectedExpiryDate == null
-                                              ? FontWeight.w500
-                                              : FontWeight.normal,
+                                            color: _selectedExpiryDate == null
+                                                ? Colors.red
+                                                : AppColors.black,
+                                            fontWeight:
+                                                _selectedExpiryDate == null
+                                                    ? FontWeight.w500
+                                                    : FontWeight.normal,
                                           ),
                                         ),
                                       ),
                                       TextButton(
                                         onPressed: () async {
-                                          final DateTime? picked = await showDatePicker(
+                                          final DateTime? picked =
+                                              await showDatePicker(
                                             context: context,
                                             initialDate: DateTime.now(),
                                             firstDate: DateTime.now(),
@@ -391,7 +377,6 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                           if (picked != null) {
                                             setState(() {
                                               _selectedExpiryDate = picked;
-                                              // Try to auto-add when date is selected and other fields are complete
                                               _tryAutoAddDocument();
                                             });
                                           }
@@ -407,7 +392,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                   ),
                                 ),
                                 kHeight(0.01),
-                                
+
                                 // File Upload with required indicator
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,36 +417,39 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                     SizedBox(height: 4),
                                     ElevatedButton.icon(
                                       onPressed: () async {
-                                        final result = await FilePicker.platform.pickFiles(
+                                        final result =
+                                            await FilePicker.platform.pickFiles(
                                           type: FileType.custom,
-                                          allowedExtensions: ['jpg', 'png', 'pdf', 'jpeg'],
+                                          allowedExtensions: [
+                                            'jpg',
+                                            'png',
+                                            'pdf',
+                                            'jpeg'
+                                          ],
                                         );
-                                        if (result != null && result.files.single.path != null) {
-                                          final file = File(result.files.single.path!);
+                                        if (result != null &&
+                                            result.files.single.path != null) {
+                                          final file =
+                                              File(result.files.single.path!);
                                           setState(() {
                                             _tempFile = file;
-                                            // Try to auto-add when file is selected and other fields are complete
                                             _tryAutoAddDocument();
                                           });
-                                          Get.snackbar(
-                                            'Success',
-                                            'File selected: ${result.files.single.name}',
-                                            backgroundColor: AppColors.onlineGreen,
-                                            colorText: AppColors.white,
-                                          );
                                         }
                                       },
-                                      icon: Icon(Icons.upload_file, color: AppColors.white),
+                                      icon: Icon(Icons.upload_file,
+                                          color: AppColors.white),
                                       label: Text(
-                                        _tempFile == null 
-                                          ? "Choose File *" 
-                                          : "Change File (${_tempFile!.path.split('/').last})",
-                                        style: TextStyle(color: AppColors.white),
+                                        _tempFile == null
+                                            ? "Choose File *"
+                                            : "Change File (${_tempFile!.path.split('/').last})",
+                                        style:
+                                            TextStyle(color: AppColors.white),
                                       ),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _tempFile == null 
-                                          ? AppColors.secondaryColor // Orange when no file selected
-                                          : AppColors.onlineGreen, // Green when file selected
+                                        backgroundColor: _tempFile == null
+                                            ? AppColors.secondaryColor
+                                            : AppColors.onlineGreen,
                                         foregroundColor: AppColors.white,
                                       ),
                                     ),
@@ -479,70 +467,6 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                   ],
                                 ),
                                 kHeight(0.01),
-                                
-                                // Add Document Button (as fallback)
-                                // Center(
-                                //   child: ElevatedButton(
-                                //     onPressed: () {
-                                //       // Validate all fields are filled
-                                //       if (_docTitleController.text.isEmpty) {
-                                //         Get.snackbar(
-                                //           'Error',
-                                //           'Please enter a document title',
-                                //           backgroundColor: Colors.red,
-                                //           colorText: AppColors.white,
-                                //         );
-                                //         return;
-                                //       }
-                                //       if (_selectedExpiryDate == null) {
-                                //         Get.snackbar(
-                                //           'Error',
-                                //           'Please select an expiry date',
-                                //           backgroundColor: Colors.red,
-                                //           colorText: AppColors.white,
-                                //         );
-                                //         return;
-                                //       }
-                                //       if (_tempFile == null) {
-                                //         Get.snackbar(
-                                //           'Error',
-                                //           'Please select a file',
-                                //           backgroundColor: Colors.red,
-                                //           colorText: AppColors.white,
-                                //         );
-                                //         return;
-                                //       }
-                                      
-                                //       controller.addAdditionalDocument(
-                                //         _docTitleController.text,
-                                //         _selectedExpiryDate!,
-                                //         _tempFile!,
-                                //       );
-                                      
-                                //       // Reset form
-                                //       _docTitleController.clear();
-                                //       setState(() {
-                                //         _selectedExpiryDate = null;
-                                //         _tempFile = null;
-                                //       });
-                                      
-                                //       Get.snackbar(
-                                //         'Success',
-                                //         'Document added successfully',
-                                //         backgroundColor: AppColors.onlineGreen,
-                                //         colorText: AppColors.white,
-                                //       );
-                                //     },
-                                //     child: Text(
-                                //       'Add Document',
-                                //       style: TextStyle(color: AppColors.white),
-                                //     ),
-                                //     style: ElevatedButton.styleFrom(
-                                //       backgroundColor: AppColors.secondaryColor,
-                                //       foregroundColor: AppColors.white,
-                                //     ),
-                                //   ),
-                                // ),
                               ],
                             ),
                           ),
@@ -550,7 +474,8 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
 
                         // List of Added Documents
                         Obx(() {
-                          if (controller.user.value.additionalDocuments.isEmpty) {
+                          if (controller
+                              .user.value.additionalDocuments.isEmpty) {
                             return Container(
                               padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
@@ -571,9 +496,11 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                           return ListView.builder(
                             shrinkWrap: true,
                             physics: NeverScrollableScrollPhysics(),
-                            itemCount: controller.user.value.additionalDocuments.length,
+                            itemCount: controller
+                                .user.value.additionalDocuments.length,
                             itemBuilder: (context, index) {
-                              final doc = controller.user.value.additionalDocuments[index];
+                              final doc = controller
+                                  .user.value.additionalDocuments[index];
                               return Card(
                                 margin: EdgeInsets.symmetric(vertical: 5),
                                 color: Color(0xFFFFFDE7),
@@ -597,7 +524,8 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                   ),
                                   trailing: IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => controller.removeAdditionalDocument(index),
+                                    onPressed: () => controller
+                                        .removeAdditionalDocument(index),
                                   ),
                                 ),
                               );
@@ -620,54 +548,79 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                       border: Border.all(color: Color(0xFFFFF9C4)),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.info_outline, color: AppColors.secondaryColor),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: CustomTextWidget(
-                                title: "Application Information:",
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.secondaryColor,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline,
+                                  color: AppColors.secondaryColor),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: CustomTextWidget(
+                                  title: "Application Information:",
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.secondaryColor,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        kHeight(0.01),
-                        _buildInfoRow("Property", propertyName),
-_buildInfoRow("First Name", controller.firstNameCtrl.text.isNotEmpty ? controller.firstNameCtrl.text : "Not provided"),
-_buildInfoRow("Last Name", controller.lastNameCtrl.text.isNotEmpty ? controller.lastNameCtrl.text : "Not provided"),
-_buildInfoRow("Address", controller.addressCtrl.text.isNotEmpty ? controller.addressCtrl.text : "Not provided"),
-_buildInfoRow("Email", controller.emailCtrl.text.isNotEmpty ? controller.emailCtrl.text : "Not provided"),
-_buildInfoRow("Mobile", controller.mobileCtrl.text.isNotEmpty ? 
-    "$_selectedCountryCode ${controller.mobileCtrl.text}" : "Not provided"),
-_buildInfoRow(
-    "Citizenship",
-    controller.selectedCitizenship.value == 1
-        ? "Native"
-        : "Foreign"),
-_buildInfoRow("Documents Added", 
-    "${controller.user.value.additionalDocuments.length} document(s)"),
+                            ],
+                          ),
+                          kHeight(0.01),
+                          _buildInfoRow("Property", propertyName),
+                          _buildInfoRow(
+                              "First Name",
+                              controller.firstNameCtrl.text.isNotEmpty
+                                  ? controller.firstNameCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Last Name",
+                              controller.lastNameCtrl.text.isNotEmpty
+                                  ? controller.lastNameCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Address",
+                              controller.addressCtrl.text.isNotEmpty
+                                  ? controller.addressCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Email",
+                              controller.emailCtrl.text.isNotEmpty
+                                  ? controller.emailCtrl.text
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Mobile",
+                              controller.mobileCtrl.text.isNotEmpty
+                                  ? "$_omanCountryCode ${controller.mobileCtrl.text}"
+                                  : "Not provided"),
+                          _buildInfoRow(
+                              "Citizenship",
+                              controller.selectedCitizenship.value == 1
+                                  ? "Native"
+                                  : "Foreign"),
+                          _buildInfoRow("Documents Added",
+                              "${controller.user.value.additionalDocuments.length} document(s)"),
 
-// Display the list of added documents if any
-if (controller.user.value.additionalDocuments.isNotEmpty) ...[
-  SizedBox(height: 8),
-  CustomTextWidget(
-    title: "Document Details:",
-    fontWeight: FontWeight.w600,
-    color: AppColors.secondaryColor,
-    fontSize: 14,
-  ),
-  SizedBox(height: 4),
-],
-for (var i = 0; i < controller.user.value.additionalDocuments.length; i++)
-  _buildInfoRow(
-    "  • ${controller.user.value.additionalDocuments[i].title}",
-    "Expires: ${controller.user.value.additionalDocuments[i].expiryDate.toLocal().toString().split(' ')[0]}",
-  ),]
-                    ),
+                          // Display the list of added documents if any
+                          if (controller
+                              .user.value.additionalDocuments.isNotEmpty) ...[
+                            SizedBox(height: 8),
+                            CustomTextWidget(
+                              title: "Document Details:",
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondaryColor,
+                              fontSize: 14,
+                            ),
+                            SizedBox(height: 4),
+                          ],
+                          for (var i = 0;
+                              i <
+                                  controller
+                                      .user.value.additionalDocuments.length;
+                              i++)
+                            _buildInfoRow(
+                              "  • ${controller.user.value.additionalDocuments[i].title}",
+                              "Expires: ${controller.user.value.additionalDocuments[i].expiryDate.toLocal().toString().split(' ')[0]}",
+                            ),
+                        ]),
                   ),
 
                   kHeight(0.03),
@@ -707,9 +660,10 @@ for (var i = 0; i < controller.user.value.additionalDocuments.length; i++)
                         : () async {
                             if (_formKey.currentState!.validate()) {
                               // Format mobile number with country code before submission
-                              final formattedMobile = _selectedCountryCode + controller.mobileCtrl.text;
+                              final formattedMobile = _omanCountryCode +
+                                  controller.mobileCtrl.text;
                               controller.mobileCtrl.text = formattedMobile;
-                              
+
                               await controller.submitUserData();
                             } else {
                               Get.snackbar(
@@ -739,7 +693,9 @@ for (var i = 0; i < controller.user.value.additionalDocuments.length; i++)
     if (file is File) {
       final path = file.path.toLowerCase();
       if (path.endsWith('.pdf')) return Icons.picture_as_pdf;
-      if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png')) {
+      if (path.endsWith('.jpg') ||
+          path.endsWith('.jpeg') ||
+          path.endsWith('.png')) {
         return Icons.image;
       }
     }
@@ -778,5 +734,5 @@ for (var i = 0; i < controller.user.value.additionalDocuments.length; i++)
   void dispose() {
     _docTitleController.dispose();
     super.dispose();
-    }
+  }
 }

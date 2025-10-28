@@ -490,42 +490,76 @@ class FirebaseNotificationService {
       switch (notificationType) {
         
         // ✅ CHAT - Show message dialog
-        case 'chat':
-        case 'message':
-          final message = data['message'] as String?;
-          final userName = data['userName'] as String? ?? 'User';
-          
-          if (message != null && message.isNotEmpty) {
-            Get.dialog(
-              AlertDialog(
-                title: Row(
-                  children: [
-                    const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
-                    const SizedBox(width: 8),
-                    Text('Message from $userName', style: const TextStyle(fontSize: 18)),
-                  ],
-                ),
-                content: Container(
-                  constraints: const BoxConstraints(maxHeight: 400),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      message,
-                      style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
-                    ),
+       case 'chat':
+case 'message':
+  debugPrint('💬 Chat notification detected');
+  
+  final message = data['message'] as String?;
+  final userName = data['userName'] as String? ?? data['user_name'] as String? ?? 'User';
+  final chatMessage = data['chatMessage'] as String?;  // Alternative field
+  
+  final displayMessage = message ?? chatMessage;
+  
+  debugPrint('   User: $userName');
+  debugPrint('   Message: $displayMessage');
+  
+  if (displayMessage != null && displayMessage.isNotEmpty) {
+    // ✅ Use Future.delayed to ensure dialog shows after navigation is complete
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (Get.isDialogOpen != true) {  // ✅ Check if dialog is already open
+        Get.dialog(
+          AlertDialog(
+            backgroundColor: AppColors.splashBackgroundColor,
+            title: Row(
+              children: [
+                const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Message from $userName',
+                    style: const TextStyle(fontSize: 18),
                   ),
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Get.back(),
-                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                    child: const Text('Close', style: TextStyle(fontSize: 16)),
+              ],
+            ),
+            content: Container(
+              constraints: const BoxConstraints(maxHeight: 400),
+              child: SingleChildScrollView(
+                child: Text(
+                  displayMessage,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    height: 1.6,
+                    color: Colors.black87,
                   ),
-                ],
+                ),
               ),
-              barrierDismissible: true,
-            );
-          }
-          break;
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                child: const Text('Close', style: TextStyle(fontSize: 16)),
+              ),
+            ],
+          ),
+          barrierDismissible: true,
+        );
+      }
+    });
+  } else {
+    debugPrint('⚠️ No message content found in chat notification');
+    Get.snackbar(
+      'New Message',
+      'You have a new chat message',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.blue,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 3),
+      icon: const Icon(Icons.chat_bubble, color: Colors.white),
+    );
+  }
+  break;
 
           case 'booking':
   case 'property_booking':
@@ -539,7 +573,7 @@ class FirebaseNotificationService {
     
     Get.dialog(
       AlertDialog(
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor:  AppColors.splashBackgroundColor,
         title: const Row(
           children: [
             Icon(Icons.event_available, color: Colors.green, size: 24),
@@ -670,7 +704,7 @@ class FirebaseNotificationService {
             
             Get.dialog(
               AlertDialog(
-                backgroundColor: AppColors.primaryColor,
+                backgroundColor: AppColors.splashBackgroundColor,
                 title: const Row(
                   children: [
                     Icon(Icons.event_note, color: Colors.blue, size: 24),
@@ -816,7 +850,7 @@ class FirebaseNotificationService {
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.work, color: Colors.orange, size: 24),
@@ -880,7 +914,7 @@ case 'new_ticket':     // ✅ ADD THIS LINE
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.home, color: Colors.purple, size: 24),
@@ -929,7 +963,7 @@ case 'new_ticket':     // ✅ ADD THIS LINE
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.description, color: Colors.teal, size: 24),
@@ -965,7 +999,7 @@ case 'new_ticket':     // ✅ ADD THIS LINE
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.report_problem, color: Colors.red, size: 24),
@@ -1013,7 +1047,7 @@ case 'new_ticket':     // ✅ ADD THIS LINE
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.build, color: Colors.orange, size: 24),
@@ -1066,7 +1100,7 @@ case 'new_ticket':     // ✅ ADD THIS LINE
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.question_answer, color: Colors.indigo, size: 24),
@@ -1112,7 +1146,7 @@ case 'new_ticket':     // ✅ ADD THIS LINE
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.pending_actions, color: Colors.amber, size: 24),
@@ -1160,7 +1194,7 @@ case 'new_ticket':     // ✅ ADD THIS LINE
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.notifications, color: Colors.blue, size: 24),
@@ -1341,7 +1375,7 @@ case 'property_enquiry':
   // Show dialog
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.primaryColor,
+      backgroundColor:  AppColors.splashBackgroundColor,
       title: Row(
         children: [
           Container(
@@ -1429,7 +1463,7 @@ case 'property_enquiry':
           
           Get.dialog(
             AlertDialog(
-              backgroundColor: AppColors.primaryColor,
+              backgroundColor:  AppColors.splashBackgroundColor,
               title: const Row(
                 children: [
                   Icon(Icons.info, color: Colors.grey, size: 24),
@@ -1509,7 +1543,7 @@ case 'property_enquiry':
               context: context,
               barrierDismissible: true,
               builder: (BuildContext context) => AlertDialog(
-                backgroundColor: AppColors.primaryColor,
+                backgroundColor:  AppColors.splashBackgroundColor,
                 title: const Row(
                   children: [
                     Icon(Icons.event_note, color: Colors.blue, size: 24),
@@ -2112,7 +2146,7 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
   // Show dialog
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.primaryColor,
+      backgroundColor:  AppColors.splashBackgroundColor,
       title: Row(
         children: [
           Container(

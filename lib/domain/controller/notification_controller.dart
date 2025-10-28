@@ -872,50 +872,92 @@ Widget _buildLinkActions(String link) {
   
   switch (notification.type) {
    case 'chat':
-    case 'message':
-      final message = data['message'] as String?;
-      final userName = data['userName'] as String? ?? 'User';
-      
-      if (message != null && message.isNotEmpty) {
-        Get.dialog(
-          AlertDialog(
-            backgroundColor: AppColors.primaryColor,
-            title: Row(
+case 'message':
+  debugPrint('💬 Stored chat notification tapped');
+  
+  final message = data['message'] as String?;
+  final userName = data['userName'] as String? ?? data['user_name'] as String? ?? 'User';
+  final chatMessage = data['chatMessage'] as String?;
+  final hasLink = _hasLink(data);
+  final link = hasLink ? _getLink(data) : null;
+  
+  final displayMessage = message ?? chatMessage;
+  
+  debugPrint('   User: $userName');
+  debugPrint('   Message: $displayMessage');
+  debugPrint('   Has link: $hasLink');
+  
+  if (displayMessage != null && displayMessage.isNotEmpty) {
+    // ✅ Ensure GetX context is ready
+    if (Get.context == null) {
+      debugPrint('⚠️ GetX context not ready, retrying...');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handleRegularNavigation(notification);
+      });
+      return;
+    }
+    
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.splashBackgroundColor,
+        title: Row(
+          children: [
+            const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Message from $userName',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          constraints: const BoxConstraints(maxHeight: 400),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
-                const SizedBox(width: 8),
-                Text('Message from $userName', style: const TextStyle(fontSize: 18)),
+                // Message content
+                Text(
+                  displayMessage,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    height: 1.6,
+                    color: Colors.black87,
+                  ),
+                ),
+                
+                // ✅ Link actions if link exists
+                if (hasLink && link != null) _buildLinkActions(link),
               ],
             ),
-            content: Container(
-              constraints: const BoxConstraints(maxHeight: 400),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      message,
-                      style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
-                    ),
-                    // ✅ Add link actions if link exists
-                    if (hasLink && link != null) _buildLinkActions(link),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(),
-                style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                child: const Text('Close', style: TextStyle(fontSize: 16)),
-              ),
-            ],
           ),
-          barrierDismissible: true,
-        );
-      }
-      break;
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+            child: const Text('Close', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+  } else {
+    debugPrint('⚠️ No message content in stored notification');
+    Get.snackbar(
+      'Chat Notification',
+      'You have a chat notification',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.blue,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 3),
+      icon: const Icon(Icons.chat_bubble, color: Colors.white),
+    );
+  }
+  break;
       
     case 'property':
     case 'property_update':
@@ -1430,7 +1472,7 @@ void _handleTicketNavigation(Map<String, dynamic> data, String notificationType)
   // Show dialog
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.primaryColor,
+      backgroundColor:  AppColors.splashBackgroundColor,
       title: Row(
         children: [
           Container(
@@ -1796,7 +1838,7 @@ void _handlePropertyInterestNavigation(
   // Show dialog
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.primaryColor,
+      backgroundColor:  AppColors.splashBackgroundColor,
       title: Row(
         children: [
           Container(
@@ -2019,7 +2061,7 @@ void _handleFollowUpNavigation(
     
     Get.dialog(
       AlertDialog(
-        backgroundColor: AppColors.primaryColor,
+        backgroundColor:  AppColors.splashBackgroundColor,
         title: const Row(
           children: [
             Icon(Icons.event_note, color: Colors.blue, size: 24),
@@ -2298,7 +2340,7 @@ void _handleBookingNavigation(Map<String, dynamic> data) {
   // Show dialog
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.primaryColor,
+      backgroundColor:  AppColors.splashBackgroundColor,
       title: const Row(
         children: [
           Icon(Icons.event_available, color: Colors.green, size: 24),

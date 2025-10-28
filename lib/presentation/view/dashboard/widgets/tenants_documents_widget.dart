@@ -538,10 +538,13 @@ class TenantDocumentsView extends StatelessWidget {
 
     // Show options dialog
     Get.dialog(
+      
       Dialog(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenWidth3),
+        
         ),
+        backgroundColor: AppColors.splashBackgroundColor,
         child: Container(
           padding: EdgeInsets.all(screenWidth5),
           child: Column(
