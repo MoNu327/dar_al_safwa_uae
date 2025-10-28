@@ -8,15 +8,18 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/custom_text_widget.dart';
+
 class TicketDetailsScreen extends StatefulWidget {
   final String complaintId;
-    final String? previewImageUrl; // Add this parameter
+    final String? previewImageUrl;
+    final String? previewImageTimestamp; // Add this parameter
 
 
   const TicketDetailsScreen({
     super.key,
     required this.complaintId,
-    this.previewImageUrl, // Initialize it in the constructor
+    this.previewImageUrl, 
+    this.previewImageTimestamp// Initialize it in the constructor
   });
 
   @override
@@ -334,24 +337,22 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
 
 Widget _buildImagesSection() {
   // Get all images from different sources
-  var tenantImages = controller.tenantImages.toList(); // Convert to mutable list
+  var tenantImages = controller.tenantImages.toList();
+  // final tenantImages = controller.tenantImages.toList(); // Convert to mutable list
   final technicianImages = controller.technicianImages;
   final adminImages = controller.adminImages;
 
   // Add preview image to tenant images if it exists and isn't already there
   if (widget.previewImageUrl != null && 
-      widget.previewImageUrl!.isNotEmpty &&
-      !tenantImages.any((img) => img.imagePath == widget.previewImageUrl)) {
-    
-    // Create a ComplaintImage object for the preview
-    final previewImage = ComplaintImage(
-      imagePath: widget.previewImageUrl!,
-      timestamp: DateTime.now().toIso8601String(), // Use current time as fallback
-      // uploadedBy: 'tenant', // Mark as tenant uploaded
-    );
-    
-    // Add to the beginning of tenant images
-    tenantImages.insert(0, previewImage);
+    widget.previewImageUrl!.isNotEmpty &&
+    !tenantImages.any((img) => img.imagePath == widget.previewImageUrl)) {
+  
+  final previewImage = ComplaintImage(
+    imagePath: widget.previewImageUrl!,
+    timestamp: widget.previewImageTimestamp ?? DateTime.now().toIso8601String(), // ✅ Use actual timestamp
+  );
+  
+  tenantImages.insert(0, previewImage);
     
     print('🖼️ Added preview image to tenant images');
   }
@@ -440,6 +441,7 @@ Widget _buildImagesSection() {
         // Show admin images section if they exist
         if (adminImages.isNotEmpty)
           _buildImageCategory("Admin Images", adminImages, Colors.orange),
+        
       ],
     ),
   );

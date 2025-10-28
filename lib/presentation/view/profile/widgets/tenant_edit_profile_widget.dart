@@ -219,8 +219,8 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
       _selectedCountryFlag = countryCode.code!; // OM
     });
   },
-  initialSelection: 'AED', // ISO code for Oman
-  favorite: const ['+971', 'AED', '+971', 'AE'],
+  initialSelection: 'OMR', // ISO code for Oman
+  favorite: const ['+968', 'OMR', '+971', 'AE'],
   showCountryOnly: false,
   showOnlyCountryWhenClosed: false,
   alignLeft: false,
@@ -243,8 +243,8 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
                             if (value == null || value.trim().isEmpty) {
                               return "Please enter phone number";
                             }
-                            if (value.length < 9) {
-                              return "Phone number must be 9 digits";
+                            if (value.length < 8) {
+                              return "Phone number must be 8 digits";
                             }
                             return null;
                           },

@@ -194,19 +194,34 @@ class AgentInfo {
   }
 }
 
+// ✅ CORRECTED: PropertyInfo with direct latitude and longitude fields
 class PropertyInfo {
   final String id;
   final String title;
+  final double? latitude;   // ✅ Direct field from API
+  final double? longitude;  // ✅ Direct field from API
 
   PropertyInfo({
     required this.id,
     required this.title,
+    this.latitude,
+    this.longitude,
   });
 
   factory PropertyInfo.fromJson(Map<String, dynamic> json) {
     return PropertyInfo(
       id: json['id']?.toString() ?? '',
       title: json['title'] ?? '',
+      latitude: json['latitude'] != null 
+          ? (json['latitude'] is String 
+              ? double.tryParse(json['latitude']) 
+              : (json['latitude'] as num?)?.toDouble())
+          : null,
+      longitude: json['longitude'] != null 
+          ? (json['longitude'] is String 
+              ? double.tryParse(json['longitude']) 
+              : (json['longitude'] as num?)?.toDouble())
+          : null,
     );
   }
 
@@ -214,7 +229,27 @@ class PropertyInfo {
     return {
       'id': id,
       'title': title,
+      'latitude': latitude,
+      'longitude': longitude,
     };
+  }
+
+  // ✅ Helper method to check if property has valid coordinates
+  bool get hasValidCoordinates {
+    return latitude != null && 
+           longitude != null && 
+           latitude != 0.0 && 
+           longitude != 0.0 &&
+           latitude!.abs() <= 90 && 
+           longitude!.abs() <= 180;
+  }
+
+  // ✅ Helper method to get Google Maps URL
+  String? get googleMapsUrl {
+    if (hasValidCoordinates) {
+      return 'https://www.google.com/maps?q=$latitude,$longitude';
+    }
+    return null;
   }
 }
 

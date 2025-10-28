@@ -52,7 +52,7 @@ class SigninScreen extends StatelessWidget {
                             _buildHeader(),
                             Center(
                               child: Image.asset(
-                                "assets/logo/launcher.jpg",
+                                "assets/logo/launcher.png",
                                 width: Get.width * 0.3,
                                 height: Get.height * 0.1,
                                 fit: BoxFit.cover,
@@ -227,12 +227,25 @@ class SigninScreen extends StatelessWidget {
     );
   }
 
+// Reusable method to build back button
+Widget _buildBackButton() {
+  return IconButton(
+    onPressed: () {
+      Get.back();
+    },
+    icon: Icon(
+      Icons.arrow_back_ios,
+      color: AppColors.black,
+      size: Get.height * 0.025,
+    ),
+  );
+}
   // Header with back button and language button
   Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _buildDummyText(),
+        _buildBackButton(),
         LanguageTextButton(localizationController: localizationController),
       ],
     );

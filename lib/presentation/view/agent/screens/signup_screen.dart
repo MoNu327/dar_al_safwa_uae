@@ -36,7 +36,7 @@ class SignUpScreen extends StatelessWidget {
             return SingleChildScrollView(
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
+                child: SingleChildScrollView(
                   child: Center(
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -55,7 +55,7 @@ class SignUpScreen extends StatelessWidget {
                             kHeight(0.005),
                             Center(
                               child: Image.asset(
-                                "assets/logo/launcher.jpg",
+                                "assets/logo/launcher.png",
                                 width: Get.width * 0.3,
                                 height: Get.height * 0.1,
                                 fit: BoxFit.cover,
@@ -70,7 +70,7 @@ class SignUpScreen extends StatelessWidget {
                               fontSize: Get.height * 0.018,
                             ),
                             SizedBox(height: Get.height * 0.03),
-
+                  
                             // Full Name Field
                             CustomTextFieldWidget(
                                 isBorderNeeded: true,
@@ -101,7 +101,7 @@ class SignUpScreen extends StatelessWidget {
                                   _formKey.currentState!.validate();
                                 },
                                 labelTextColor: AppColors.black),
-
+                  
                             // Email Field
                             CustomTextFieldWidget(
                                 isBorderNeeded: true,
@@ -134,7 +134,7 @@ class SignUpScreen extends StatelessWidget {
                                       RegExp(r'\s')),
                                 ],
                                 labelTextColor: AppColors.black),
-
+                  
                             // Mobile Number Field
                             CustomTextFieldWidget(
                                 isBorderNeeded: true,
@@ -153,7 +153,7 @@ class SignUpScreen extends StatelessWidget {
                                     return 'Mobile number should not start with a space';
                                   }
                                   if (value.length != 10) {
-                                    return 'Mobile number must be 10 digits';
+                                    return 'Mobile number must be 8 digits';
                                   }
                                   return null;
                                 },
@@ -167,13 +167,13 @@ class SignUpScreen extends StatelessWidget {
                                       RegExp(r'\s')),
                                 ],
                                 labelTextColor: AppColors.black),
-
+                  
                             // Gender Selection Field
                             _buildGenderSelection(),
-
+                  
                             // Date of Birth Field
                             _buildDateOfBirthField(),
-
+                  
                             // Location Field
                             CustomTextFieldWidget(
                                 isBorderNeeded: true,
@@ -202,10 +202,10 @@ class SignUpScreen extends StatelessWidget {
                                   _formKey.currentState!.validate();
                                 },
                                 labelTextColor: AppColors.black),
-
+                  
                             // WhatsApp Availability Checkbox
                             _buildWhatsAppAvailabilityField(),
-
+                  
                             // Conditional WhatsApp Number Field
                             Obx(() {
                               return authService.selectedWhatsAppStatus.value
@@ -231,8 +231,8 @@ class SignUpScreen extends StatelessWidget {
                                           if (value.startsWith(' ')) {
                                             return 'WhatsApp number should not start with a space';
                                           }
-                                          if (value.length != 10) {
-                                            return 'WhatsApp number must be 10 digits';
+                                          if (value.length != 8) {
+                                            return 'WhatsApp number must be 8 digits';
                                           }
                                         }
                                         return null;
@@ -248,7 +248,7 @@ class SignUpScreen extends StatelessWidget {
                                       ],
                                       labelTextColor: AppColors.black);
                             }),
-
+                  
                             // Password Field
                             Obx(() {
                               return CustomTextFieldWidget(
@@ -297,9 +297,9 @@ class SignUpScreen extends StatelessWidget {
                                   ],
                                   labelTextColor: AppColors.black);
                             }),
-
+                  
                             SizedBox(height: Get.height * 0.01),
-
+                  
                             kHeight(0.03),
                             _buildSignupButton(),
                             kHeight(0.02),

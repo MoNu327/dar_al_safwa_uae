@@ -1,12 +1,13 @@
 import 'package:majan/data/model/followup_history_response.dart';
 import 'package:majan/domain/controller/customer_followup_controller.dart';
-import 'package:majan/domain/controller/submit_follow_up.dart';
 import 'package:majan/presentation/view/agent/screens/follow_up_history.dart';
+import 'package:majan/presentation/widgets/maps_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:majan/core/constants/custom_size.dart';
+import 'package:latlong2/latlong.dart';
 
 class CustomerFollowUpScreen extends StatefulWidget {
   final int propertyId;
@@ -37,13 +38,19 @@ class _CustomerFollowUpScreenState extends State<CustomerFollowUpScreen> {
   final TextEditingController _notesController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   int _currentTabIndex = 0; // 0: New Follow-up, 1: History
+  final List<String> _noteHistory = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeData();
-      _addTabChangeListener();
-  }
+ @override
+void initState() {
+  super.initState();
+  _initializeData();
+  _addTabChangeListener();
+  
+  // Debug property location after data loads
+  Future.delayed(Duration(seconds: 2), () {
+    _debugPropertyLocation();
+  });
+}
 
 void _addTabChangeListener() {
   // This will ensure history loads when switching to history tab
@@ -54,6 +61,57 @@ void _addTabChangeListener() {
       _loadHistoryData();
     }
   });
+}
+
+Map<String, double>? _extractLocationFromNotes(String notes) {
+  // Pattern 1: Look for "Location: lat,lng" format (simple coordinates)
+  final coordPattern = RegExp(r'Location:\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)');
+  final match = coordPattern.firstMatch(notes);
+  
+  if (match != null) {
+    final lat = double.tryParse(match.group(1) ?? '');
+    final lng = double.tryParse(match.group(2) ?? '');
+    
+    if (lat != null && lng != null && lat != 0.0 && lng != 0.0) {
+      debugPrint('✅ Found coordinates (simple format): $lat, $lng');
+      return {'latitude': lat, 'longitude': lng};
+    }
+  }
+  
+  // Pattern 2: Look for Google Maps URL with ?q= parameter
+  final mapsUrlPattern1 = RegExp(
+    r'https?://(?:www\.)?google\.com/maps\?q=(-?\d+\.?\d*),\s*(-?\d+\.?\d*)'
+  );
+  final urlMatch1 = mapsUrlPattern1.firstMatch(notes);
+  
+  if (urlMatch1 != null) {
+    final lat = double.tryParse(urlMatch1.group(1) ?? '');
+    final lng = double.tryParse(urlMatch1.group(2) ?? '');
+    
+    if (lat != null && lng != null && lat != 0.0 && lng != 0.0) {
+      debugPrint('✅ Found coordinates (Google Maps ?q= format): $lat, $lng');
+      return {'latitude': lat, 'longitude': lng};
+    }
+  }
+  
+  // Pattern 3: Look for Google Maps URL with @ parameter
+  final mapsUrlPattern2 = RegExp(
+    r'https?://(?:www\.)?google\.com/maps.*?@(-?\d+\.?\d*),(-?\d+\.?\d*)'
+  );
+  final urlMatch2 = mapsUrlPattern2.firstMatch(notes);
+  
+  if (urlMatch2 != null) {
+    final lat = double.tryParse(urlMatch2.group(1) ?? '');
+    final lng = double.tryParse(urlMatch2.group(2) ?? '');
+    
+    if (lat != null && lng != null && lat != 0.0 && lng != 0.0) {
+      debugPrint('✅ Found coordinates (Google Maps @ format): $lat, $lng');
+      return {'latitude': lat, 'longitude': lng};
+    }
+  }
+  
+  debugPrint('⚠️ No location coordinates found in notes');
+  return null;
 }
   // Initialize data loading
 void _initializeData() {
@@ -112,30 +170,70 @@ void _loadHistoryData() {
   }
 
   // Enhanced method to generate site visit notes
-  void _generateSiteVisitNotes(String technicianId) {
-    final followUpData = controller.followUpData.value;
-    final selectedTechnician = controller.supervisorsList
-        .firstWhereOrNull((tech) => tech.uid == technicianId);
+// Enhanced method to generate site visit notes
+void _generateSiteVisitNotes(String technicianId) {
+  final followUpData = controller.followUpData.value;
+  final selectedTechnician = controller.supervisorsList
+      .firstWhereOrNull((tech) => tech.uid == technicianId);
+  
+  if (followUpData != null && selectedTechnician != null) {
+    final now = DateTime.now();
+    final formattedDate = '${_getMonthName(now.month)} ${now.day}, ${now.year}';
     
-    if (followUpData != null && selectedTechnician != null) {
-      final now = DateTime.now();
-      final formattedDate = '${_getMonthName(now.month)} ${now.day}, ${now.year}';
-      
-      final noteContent = '''Dear ${followUpData.userInfo.fullName},
+    // ✅ Access latitude and longitude directly from propertyInfo
+    final latitude = followUpData.propertyInfo.latitude ?? 0.0;
+    final longitude = followUpData.propertyInfo.longitude ?? 0.0;
+    
+    debugPrint('📍 Property Location Coordinates:');
+    debugPrint('   Property ID: ${followUpData.propertyInfo.id}');
+    debugPrint('   Property: ${followUpData.propertyInfo.title}');
+    debugPrint('   Latitude: $latitude');
+    debugPrint('   Longitude: $longitude');
+    debugPrint('   Valid: ${followUpData.propertyInfo.hasValidCoordinates}');
+    
+    // ✅ Create location section for notes using the helper method
+    String locationText = '';
+    if (followUpData.propertyInfo.hasValidCoordinates) {
+      locationText = '\n\nLocation: ${followUpData.propertyInfo.googleMapsUrl}';
+      debugPrint('✅ Valid location added to notes');
+    } else {
+      debugPrint('⚠️ No valid coordinates - location not included');
+    }
+    
+    final noteContent = '''Dear ${followUpData.userInfo.fullName},
 
 Your site visit is scheduled for $formattedDate for:
 - Property: ${followUpData.propertyInfo.title}
 - Contact Person: ${selectedTechnician.fullName} (${selectedTechnician.mobile ?? 'N/A'})
 
-Please ensure you are available at the scheduled time. The technician will contact you prior to the visit.
+We expect you there between 2 and 4 PM.$locationText
+
+Please ensure you are available at the scheduled time.
 
 Best regards,
 ${followUpData.agentInfo.displayName}''';
 
-      _notesController.text = noteContent;
+    _notesController.text = noteContent;
+    
+    debugPrint('📝 Site visit notes generated with location: ${locationText.isNotEmpty}');
+  }
+}
+void _debugPropertyLocation() {
+  final followUpData = controller.followUpData.value;
+  if (followUpData != null) {
+    debugPrint('🔍 Debugging Property Location Structure:');
+    debugPrint('   Property Info: ${followUpData.propertyInfo}');
+    debugPrint('   Location object: ${followUpData.propertyInfo.latitude}');
+    debugPrint('   Location object: ${followUpData.propertyInfo.longitude}');
+    
+    // Print the entire property info as JSON if possible
+    try {
+      debugPrint('   Full Property Data: ${followUpData.propertyInfo.toJson()}');
+    } catch (e) {
+      debugPrint('   Cannot convert to JSON: $e');
     }
   }
-
+}
   // Helper method to get month name
   String _getMonthName(int month) {
     const months = [
@@ -402,12 +500,13 @@ ${followUpData.agentInfo.displayName}''';
  // In your existing CustomerFollowUpScreen, update the _buildHistoryCard method:
 
 Widget _buildHistoryCard(FollowUpHistoryItem historyItem) {
+  final locationData = _extractLocationFromNotes(historyItem.notes);
+  
   return Card(
     elevation: 2,
     margin: EdgeInsets.zero,
     child: InkWell(
       onTap: () {
-        // Navigate to detail screen when card is tapped
         _showFollowUpDetails(historyItem);
       },
       borderRadius: BorderRadius.circular(8),
@@ -459,10 +558,7 @@ Widget _buildHistoryCard(FollowUpHistoryItem historyItem) {
             SizedBox(height: screenHeight1),
             
             // Customer Information
-            _buildHistoryInfoRow(
-              'Customer ID:',
-              historyItem.customerId,
-            ),
+            _buildHistoryInfoRow('Customer ID:', historyItem.customerId),
             
             // Property Information
             _buildHistoryInfoRow(
@@ -472,23 +568,55 @@ Widget _buildHistoryCard(FollowUpHistoryItem historyItem) {
             
             // Technician Information (if available)
             if (historyItem.technicianId != null && historyItem.technicianId!.isNotEmpty)
-              _buildHistoryInfoRow(
-                'Technician ID:',
-                historyItem.technicianId!,
-              ),
+              _buildHistoryInfoRow('Technician ID:', historyItem.technicianId!),
             
             // Flag Information (if available)
             if (historyItem.flag != null && historyItem.flag!.isNotEmpty)
-              _buildHistoryInfoRow(
-                'Flag:',
-                historyItem.flag!,
-              ),
+              _buildHistoryInfoRow('Flag:', historyItem.flag!),
             
-            // Notes Preview (show first 100 characters)
-            _buildHistoryInfoRow(
-              'Notes:',
-              _getNotesPreview(historyItem.notes),
-            ),
+            // Notes Preview
+            _buildHistoryInfoRow('Notes:', _getNotesPreview(historyItem.notes)),
+            
+            // ✅ NEW: Location Map Preview (if coordinates found in notes)
+            if (locationData != null) ...[
+              SizedBox(height: screenHeight1),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.green.shade200),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.green.shade50,
+                ),
+                padding: EdgeInsets.all(screenWidth1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, 
+                          size: 16, 
+                          color: Colors.green.shade700
+                        ),
+                        SizedBox(width: screenWidth5),
+                        CustomTextWidget(
+                          title: 'Site Visit Location',
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: screenHeight1),
+                    LocationPreview(
+                      initialLocation: LatLng(
+                        locationData['latitude']!,
+                        locationData['longitude']!,
+                      ),
+                      previewHeight: 120,
+                    ),
+                  ],
+                ),
+              ),
+            ],
             
             // Tap hint
             Align(
@@ -855,38 +983,43 @@ void _showFollowUpDetails(FollowUpHistoryItem historyItem) {
     );
   }
 
-  Widget _buildNotesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Follow-up Notes'),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: _notesController.text.trim().isEmpty ? Colors.red.shade300 : Colors.grey),
-            borderRadius: BorderRadius.circular(8),
+ Widget _buildNotesSection() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _buildSectionHeader('Follow-up Notes'),
+      Container(
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _notesController.text.trim().isEmpty
+                ? Colors.red.shade300
+                : Colors.grey,
           ),
-          child: TextFormField(
-            controller: _notesController,
-            maxLines: 8,
-            decoration: const InputDecoration(
-              hintText: 'Enter detailed feedback about the interaction, next steps, or any special instructions...',
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.all(12),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter follow-up notes';
-              }
-              if (value.trim().length < 10) {
-                return 'Notes should be at least 10 characters long';
-              }
-              return null;
-            },
-          ),
+          borderRadius: BorderRadius.circular(8),
         ),
-      ],
-    );
-  }
+        child: TextFormField(
+          controller: _notesController,
+          maxLines: 10,
+          decoration: const InputDecoration(
+            hintText:
+                'Enter detailed feedback about the interaction, next steps, or any special instructions...',
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.all(12),
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Please enter follow-up notes';
+            }
+            if (value.trim().length < 10) {
+              return 'Notes should be at least 10 characters long';
+            }
+            return null;
+          },
+        ),
+      ),
+    ],
+  );
+}
 
   Widget _buildSubmitButton() {
     return Obx(() {
@@ -986,6 +1119,7 @@ void _showFollowUpDetails(FollowUpHistoryItem historyItem) {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    
 
     // Use controller's validation method
     final validationError = controller.validateFormData(
@@ -1034,6 +1168,10 @@ void _showFollowUpDetails(FollowUpHistoryItem historyItem) {
     final String notes = _notesController.text.trim();
 
     print('Submitting follow-up with customer UID: $customerId');
+
+    final now = DateTime.now();
+  // final timestamp = '[${now.day}/${now.month}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}]\n';
+  // final notesWithTimestamp = timestamp + _notesController.text.trim();
 
     // Submit the follow-up
     final success = await controller.submitFollowUp(
