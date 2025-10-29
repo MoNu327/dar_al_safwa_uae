@@ -18,7 +18,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/custom_elevated_button.dart';
 import '../../../widgets/custom_text_widget.dart';
 import 'technician_rectify_ticket_screen.dart';
-
 Widget  buildTicketCard({
   required String propertyName,
   required String category,
@@ -32,6 +31,7 @@ Widget  buildTicketCard({
   ComplaintImages? images,
   required String complaintId,
   Complaint? complaint,
+  required String created_by,
 }) {
   // Enhanced date parsing with error handling
   DateTime? dateTime;
@@ -59,6 +59,7 @@ Widget  buildTicketCard({
     Get.to(() => TicketDetailsScreen(
       complaintId: complaint.complaintId,
       previewImageUrl: _getFirstAvailableImage(complaint), // Pass the image
+      previewImageTimestamp: complaint.formattedDate,
     ));
   }
 },
@@ -80,6 +81,7 @@ Widget  buildTicketCard({
         children: [
           // Enhanced Header Section
           _buildHeaderSection(
+            created_by: created_by,
             propertyName: propertyName,
             category: category,
             issue: issue,
@@ -120,6 +122,7 @@ Widget  buildTicketCard({
 
 // Helper method to build header section
 Widget _buildHeaderSection({
+  required String created_by,
   required String propertyName,
   required String category,
   required String issue,
@@ -142,6 +145,43 @@ Widget _buildHeaderSection({
               fontWeight: FontWeight.w600,
               color: AppColors.black,
             ),
+            SizedBox(height: Get.height * 0.005),
+            
+            // ✅ ADD CREATED BY HERE
+            // ✅ ADD CREATED BY WITH BADGE STYLE
+Container(
+  padding: EdgeInsets.symmetric(
+    horizontal: Get.width * 0.02,
+    vertical: Get.height * 0.003,
+  ),
+  decoration: BoxDecoration(
+    color: AppColors.primaryColor.withOpacity(0.1),
+    borderRadius: BorderRadius.circular(4),
+    border: Border.all(
+      color: AppColors.secondaryColor.withOpacity(0.3),
+      width: 1,
+    ),
+  ),
+  child: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(
+        Icons.person_outline,
+        size: 12,
+        color: AppColors.secondaryColor,
+      ),
+      SizedBox(width: Get.width * 0.01),
+      CustomTextWidget(
+        title: created_by,
+        fontSize: screenHeight * 0.012,
+        fontWeight: FontWeight.w500,
+        color: AppColors.secondaryColor,
+      ),
+    ],
+  ),
+),
+// SizedBox(height: Get.height * 0.005),
+            
             SizedBox(height: Get.height * 0.005),
             
             // Category and Issue with Icon
@@ -195,7 +235,6 @@ Widget _buildHeaderSection({
     ],
   );
 }
-
 // FIXED: Updated method to get assignment info from multiple sources with priority
 String? _getAssignedTechnicianId(String complaintId, TechnicianTicketsController controller, Complaint? complaint) {
   // Priority 1: From controller's local state (for recent assignments)
@@ -617,98 +656,97 @@ Widget _buildActionButtonsSection(
     children: [
       Expanded(
         child: CustomButtonWidget(
-          buttonHeight: screenHeight * 0.040,
-          buttonTitle: 'View Details',
-          onPressed: () {
-            if (complaint != null) {
-              debugPrint("Complaint Details inside navigation ==> $complaint");
-              Get.to(() => TicketDetailsScreen(
-                complaintId: complaint.complaintId,
-                previewImageUrl: _getFirstAvailableImage(complaint),
-              ));
-            } else {
-              Get.snackbar(
-                'Error',
-                'Complaint details not available',
-                snackPosition: SnackPosition.BOTTOM,
-              );
-            }
-          },
-          buttonShape: 'rect',
-          borderColor: AppColors.darkGrey.withOpacity(0.2),
-          buttonColor: AppColors.white,
-          fontSize: screenHeight * 0.014,
-          buttonTextColor: AppColors.black,
-        ),
+  buttonHeight: screenHeight * 0.040,
+  buttonTitle: 'View Details',
+  onPressed: () {
+    if (complaint != null) {
+      debugPrint("Complaint Details inside navigation ==> $complaint");
+      Get.to(() => TicketDetailsScreen(
+        complaintId: complaint.complaintId,
+        previewImageUrl: _getFirstAvailableImage(complaint), // Pass the image
+        previewImageTimestamp: complaint.formattedDate,
+      ));
+    } else {
+      Get.snackbar(
+        'Error',
+        'Complaint details not available',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  },
+  buttonShape: 'rect',
+  borderColor: AppColors.darkGrey.withOpacity(0.2),
+  buttonColor: AppColors.white,
+  fontSize: screenHeight * 0.014,
+  buttonTextColor: AppColors.black,
+),
       ),
       SizedBox(width: Get.width * 0.02),
       Expanded(
-        child: CustomButtonWidget(
-          buttonHeight: screenHeight * 0.040,
-          buttonTitle: 'Reply',
-          onPressed: () async {
-            final result = await Get.to(() => RectifyTicketsScreen(
-              complaintId: complaintId,
-              category: category,
-            ));
+  child: CustomButtonWidget(
+    buttonHeight: screenHeight * 0.040,
+    buttonTitle: 'Reply',
+    onPressed: () async {
+      final result = await Get.to(() => RectifyTicketsScreen(
+        complaintId: complaintId,
+        category: category,
+      ));
 
-            if (result != null && result is Map<String, dynamic>) {
-              print("Received result from rectify form: $result");
+      if (result != null && result is Map<String, dynamic>) {
+        print("Received result from rectify form: $result");
+        
+        if (result['updated'] == true) {
+          // CHANGE THIS: Force immediate refresh
+          final fetchController = Get.find<TechnicianTicketsController>();
+          final technicianUid = FirebaseAuth.instance.currentUser?.uid;
+          
+          if (technicianUid != null) {
+            try {
+              // Show loading indicator
+              Get.dialog(
+                const Center(child: CircularProgressIndicator()),
+                barrierDismissible: false,
+              );
               
-              if (result['updated'] == true) {
-                final fetchController = Get.find<TechnicianTicketsController>();
-                final technicianUid = FirebaseAuth.instance.currentUser?.uid;
-                
-                if (technicianUid != null) {
-                  try {
-                    // Show loading indicator
-                    Get.dialog(
-                      const Center(child: CircularProgressIndicator()),
-                      barrierDismissible: false,
-                    );
-                    
-                    // CRITICAL FIX: Refresh BOTH tickets AND statistics
-                    await Future.wait([
-                      fetchController.fetchTickets(technicianUid),
-                      fetchController.getSummaryForTechnician(technicianUid), // ADD THIS LINE
-                    ]);
-                    
-                    // Close loading indicator
-                    Get.back();
-                    
-                    // Show success message
-                    Get.snackbar(
-                      'Success', 
-                      result['message'] ?? 'Updated successfully',
-                      backgroundColor: Colors.green, 
-                      colorText: Colors.white,
-                      snackPosition: SnackPosition.BOTTOM,
-                      duration: Duration(seconds: 2),
-                    );
-                    
-                  } catch (e) {
-                    // Close loading indicator if still showing
-                    if (Get.isDialogOpen == true) Get.back();
-                    
-                    print("Error refreshing data: $e");
-                    Get.snackbar(
-                      'Warning', 
-                      'Update successful but failed to refresh list',
-                      backgroundColor: Colors.orange, 
-                      colorText: Colors.white,
-                    );
-                  }
-                }
-              }
+              // Refresh all data
+              await fetchController.fetchTickets(technicianUid);
+              
+              // Close loading indicator
+              Get.back();
+              
+              // Show success message
+              Get.snackbar(
+                'Success', 
+                result['message'] ?? 'Updated successfully',
+                backgroundColor: Colors.green, 
+                colorText: Colors.white,
+                snackPosition: SnackPosition.BOTTOM,
+                duration: Duration(seconds: 2),
+              );
+              
+            } catch (e) {
+              // Close loading indicator if still showing
+              if (Get.isDialogOpen == true) Get.back();
+              
+              print("Error refreshing data: $e");
+              Get.snackbar(
+                'Warning', 
+                'Update successful but failed to refresh list',
+                backgroundColor: Colors.orange, 
+                colorText: Colors.white,
+              );
             }
-          },
-          buttonShape: 'rect',
-          borderColor: AppColors.darkGrey.withOpacity(0.2),
-          buttonColor: AppColors.white,
-          fontSize: screenHeight * 0.014,
-          buttonTextColor: AppColors.black,
-        ),
-      ),
+          }
+        }
+      }
+    },
+    buttonShape: 'rect',
+    borderColor: AppColors.darkGrey.withOpacity(0.2),
+    buttonColor: AppColors.white,
+    fontSize: screenHeight * 0.014,
+    buttonTextColor: AppColors.black,
+  ),
+),
     ],
   );
 }

@@ -52,11 +52,13 @@ class TechnicanMessage {
 
 class TechnicanData {
   final List<PropertyStats> propertyStats;
+  final int totalAssignedProperties; // ✅ ADDED - This is the key field
   final String location;
   final String technicianId;
 
   TechnicanData({
     required this.propertyStats,
+    required this.totalAssignedProperties, // ✅ ADDED
     required this.location,
     required this.technicianId,
   });
@@ -68,6 +70,7 @@ class TechnicanData {
               .map((e) => PropertyStats.fromJson(e))
               .toList()
           : [],
+      totalAssignedProperties: int.tryParse(json['total_assigned_properties']?.toString() ?? '0') ?? 0, // ✅ ADDED
       location: json['location']?.toString() ?? '',
       technicianId: json['technician_id']?.toString() ?? '',
     );
@@ -76,6 +79,7 @@ class TechnicanData {
   Map<String, dynamic> toJson() {
     return {
       'propertyStats': propertyStats.map((e) => e.toJson()).toList(),
+      'total_assigned_properties': totalAssignedProperties, // ✅ ADDED
       'location': location,
       'technician_id': technicianId,
     };
