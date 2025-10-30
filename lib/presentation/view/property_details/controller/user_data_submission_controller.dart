@@ -54,34 +54,31 @@ class UserDataSubmissionController extends GetxController {
 
   // Method to extract only the last 8 digits (remove country code)
   String _extractPhoneNumber(String fullNumber) {
-    if (fullNumber.isEmpty) return '';
-
-    // Remove all non-digit characters first
-    String cleanNumber = fullNumber.replaceAll(RegExp(r'[^\d]'), '');
-
-    // If number is longer than 8 digits, take the last 8 digits
-    if (cleanNumber.length > 8) {
-      return cleanNumber.substring(cleanNumber.length - 8);
-    }
-
-    // If it's exactly 8 digits or less, return as is
-    return cleanNumber;
+  if (fullNumber.isEmpty) return '';
+  
+  String cleanNumber = fullNumber.replaceAll(RegExp(r'[^\d]'), '');
+  
+  // If number is longer than 9 digits, take the last 9 digits
+  if (cleanNumber.length > 9) {
+    return cleanNumber.substring(cleanNumber.length - 9);
   }
+  
+  return cleanNumber;
+}
 
   // Method to format phone number for display (without country code)
   String _formatPhoneNumberForDisplay(String phoneNumber) {
-    String extracted = _extractPhoneNumber(phoneNumber);
-
-    if (extracted.isEmpty) return '';
-
-    // Format as XXXX XXXX if we have 8 digits
-    if (extracted.length == 8) {
-      return '${extracted.substring(0, 4)} ${extracted.substring(4)}';
-    }
-
-    return extracted;
+  String extracted = _extractPhoneNumber(phoneNumber);
+  
+  if (extracted.isEmpty) return '';
+  
+  // Format as XXX XXX XXX if we have 9 digits
+  if (extracted.length == 9) {
+    return '${extracted.substring(0, 3)} ${extracted.substring(3, 6)} ${extracted.substring(6)}';
   }
-
+  
+  return extracted;
+}
   // New method to fetch user data from Firestore
   Future<Map<String, String>> _fetchUserDataFromFirestore() async {
     try {
@@ -279,11 +276,10 @@ class UserDataSubmissionController extends GetxController {
     }
 
     String cleanMobile = user.value.mobile.replaceAll(RegExp(r'[^\d]'), '');
-    if (cleanMobile.length < 8) {
-      errorMessage.value =
-          'Please enter a valid mobile number (minimum 8 digits)';
-      return false;
-    }
+if (cleanMobile.length < 9) {
+  errorMessage.value = 'Please enter a valid mobile number (minimum 9 digits)';
+  return false;
+}
 
     // Format the mobile number for display
     mobileCtrl.text = _formatPhoneNumberForDisplay(cleanMobile);

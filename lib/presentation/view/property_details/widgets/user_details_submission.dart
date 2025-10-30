@@ -651,33 +651,37 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                     ),
 
                   /// Submit Button
-                  CustomButtonWidget(
-                    buttonTitle: controller.isLoading.value
-                        ? "Processing..."
-                        : "Submit Application",
-                    onPressed: controller.isLoading.value
-                        ? null
-                        : () async {
-                            if (_formKey.currentState!.validate()) {
-                              // Format mobile number with country code before submission
-                              final formattedMobile = uaecountrycode +
-                                  controller.mobileCtrl.text;
-                              controller.mobileCtrl.text = formattedMobile;
+                  /// Submit Button
+CustomButtonWidget(
+  buttonTitle: controller.isLoading.value
+      ? "Processing..."
+      : "Submit Application",
+  onPressed: controller.isLoading.value
+      ? null
+      : () async {
+          // Dismiss keyboard first
+          FocusScope.of(context).unfocus();
+          
+          if (_formKey.currentState!.validate()) {
+            // Format mobile number with country code before submission
+            final formattedMobile = uaecountrycode +
+                controller.mobileCtrl.text;
+            controller.mobileCtrl.text = formattedMobile;
 
-                              await controller.submitUserData();
-                            } else {
-                              Get.snackbar(
-                                "Form Error",
-                                "Please fix the form errors and try again.",
-                                backgroundColor: Colors.red.shade100,
-                                colorText: Colors.black,
-                                snackPosition: SnackPosition.BOTTOM,
-                              );
-                            }
-                          },
-                    buttonColor: AppColors.secondaryColor,
-                    buttonTextColor: AppColors.white,
-                  ),
+            await controller.submitUserData();
+          } else {
+            Get.snackbar(
+              "Form Error",
+              "Please fix the form errors and try again.",
+              backgroundColor: Colors.red.shade100,
+              colorText: Colors.black,
+              snackPosition: SnackPosition.BOTTOM,
+            );
+          }
+        },
+  buttonColor: AppColors.secondaryColor,
+  buttonTextColor: AppColors.white,
+),
 
                   kHeight(0.02),
                 ],
