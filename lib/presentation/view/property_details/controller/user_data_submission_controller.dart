@@ -1,13 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:majan/core/theme/app_colors.dart';
-import 'package:majan/data/model/user_data_submission_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../data/model/user_data_submission_model.dart';
 import '../../../../data/repositories/api_services.dart';
 
 class UserDataSubmissionController extends GetxController {

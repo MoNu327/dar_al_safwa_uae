@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:majan/core/routes/app_route.dart';
 import 'package:majan/data/repositories/api_services.dart';
 import 'package:majan/presentation/view/property_details/controller/property_details_controller.dart';
@@ -11,13 +13,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 class LoginController extends GetxController {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ApiService _service = ApiService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Rx<bool> isGoogleLoading = false.obs;
   final image = Rx<String?>(null);
   final errorMessage = Rx<String?>(null);
   final isLoading = false.obs;
   final isGoogleSigningIn = false.obs;
-
 
   /// 🔁 Holds redirection info after login
   Map<String, dynamic>? postLoginRedirectArgs;
@@ -29,67 +31,77 @@ class LoginController extends GetxController {
     fetchDynamicImage();
   }
 
-  /// 🔁 Called after login to redirect user accordingly
-  // void handlePostLogin() {
-  //   debugPrint("🔁 handlePostLogin called.");
-  //   final args = postLoginRedirectArgs;
-  //   debugPrint("PostLoginRedirectArgs: $args");
+  /// Get platform information
+  String _getPlatformInfo() {
+    if (Platform.isIOS) {
+      return 'ios';
+    } else if (Platform.isAndroid) {
+      return 'android';
+    } else if (Platform.isWindows) {
+      return 'windows';
+    } else if (Platform.isMacOS) {
+      return 'macos';
+    } else if (Platform.isLinux) {
+      return 'linux';
+    } else {
+      return 'web';
+    }
+  }
 
-  //   if (args != null && args['redirectToBooking'] == true) {
-  //     final propertyId = int.tryParse(args['propertyId']?.toString() ?? '0') ?? 0;
-  //     debugPrint("Redirecting to property details with propertyId: $propertyId");
+  /// Log user activity after successful login
+  Future<void> logLoginActivity(String uid) async {
+    try {
+      debugPrint('📊 [logLoginActivity] Starting for user: $uid');
 
-  //     if (propertyId != null) {
-  //       Get.offNamedUntil(AppRoute.propertyDetails, (route) => false, arguments: {
-  //         'propertyId': propertyId});postLoginRedirectArgs!.clear();
-  //     } else {
-  //       debugPrint("PropertyId is invalid. Redirecting to navbar.");
-  //       Get.offAllNamed(AppRoute.navbar);
-  //     }
-  //   } else {
-  //     debugPrint("No redirect arguments found. Navigating to navbar.");
-  //     Get.offAllNamed(AppRoute.navbar);
-  //   }
-  // }
+      // Determine which collection the user belongs to
+      String collection = 'users';
+      
+      // Check if user is an agent
+      final agentDoc = await _firestore.collection('agents').doc(uid).get();
+      if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
+        collection = 'agents';
+      } else {
+        // Check if user is a technician
+        final techDoc = await _firestore.collection('technicians').doc(uid).get();
+        if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
+          collection = 'technicians';
+        }
+      }
 
-  /// 🔐 Google Sign-In flow
-  // Future<void> loginWithGoogle() async {
-  //   debugPrint("🔐 Starting loginWithGoogle");
-  //   try {
-  //     isGoogleLoading.value = true;
-  //     debugPrint("Google loading state: ${isGoogleLoading.value}");
+      // Fetch user document to get platform data
+      final userDoc = await _firestore.collection(collection).doc(uid).get();
 
-  //     final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-  //     debugPrint("GoogleSignIn user: $googleUser");
+      String mode;
+      String modeUpdated;
 
-  //     if (googleUser == null) {
-  //       debugPrint("❌ Google Sign-In canceled by user.");
-  //       return;
-  //     }
+      if (userDoc.exists) {
+        final userData = userDoc.data();
+        mode = userData?['mode'] ?? _getPlatformInfo();
+        modeUpdated = userData?['modeupdated'] ?? _getPlatformInfo();
+        debugPrint('✅ [logLoginActivity] Platform data from $collection - mode: $mode, modeupdated: $modeUpdated');
+      } else {
+        // Fallback to detected platform
+        mode = _getPlatformInfo();
+        modeUpdated = _getPlatformInfo();
+        debugPrint('⚠️ [logLoginActivity] Using detected platform: $mode');
+      }
 
-  //     final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-  //     debugPrint("Google AccessToken: ${googleAuth.accessToken}");
-  //     debugPrint("Google IdToken: ${googleAuth.idToken}");
+      // Call the API
+      debugPrint('🔄 [logLoginActivity] Calling API...');
+      final response = await _service.getuserlogactivity(uid, mode, modeUpdated);
 
-  //     final AuthCredential credential = GoogleAuthProvider.credential(
-  //       accessToken: googleAuth.accessToken,
-  //       idToken: googleAuth.idToken,
-  //     );
-
-  //     final UserCredential userCredential = await _auth.signInWithCredential(credential);
-  //     debugPrint("✅ Google sign-in success: ${userCredential.user?.displayName}");
-  //     debugPrint("User UID: ${userCredential.user?.uid}");
-  //     debugPrint("User Email: ${userCredential.user?.email}");
-
-  //     // ✅ Post-login redirection
-  //     handlePostLogin();
-  //   } catch (e) {
-  //     debugPrint("❌ Error signing in with Google: $e");
-  //   } finally {
-  //     isGoogleLoading.value = false;
-  //     debugPrint("Google loading state set to: ${isGoogleLoading.value}");
-  //   }
-  // }
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('✅ [logLoginActivity] Login activity logged successfully');
+        debugPrint('📦 [logLoginActivity] Response: ${response.data}');
+      } else {
+        debugPrint('⚠️ [logLoginActivity] Failed with status: ${response.statusCode}');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ [logLoginActivity] Error: $e');
+      debugPrint('📝 [logLoginActivity] Stack trace: $stackTrace');
+      // Don't block login flow if logging fails
+    }
+  }
 
   /// 🔓 Logout the current user
   Future<void> logout() async {

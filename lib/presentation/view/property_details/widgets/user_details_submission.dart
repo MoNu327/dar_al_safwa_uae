@@ -36,7 +36,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
       _tempFile != null;
 
   // Country code - Only Oman
-  final String _omanCountryCode = '+971';
+  final String uaecountrycode = '+971';
 
   @override
   void initState() {
@@ -249,7 +249,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                             ),
                             SizedBox(width: 4),
                             Text(
-                              _omanCountryCode,
+                              uaecountrycode,
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -269,7 +269,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                           keyboardType: TextInputType.phone,
                           validator: (value) =>
                               Validator.validateMobileWithCountryCode(value,
-                                  countryCode: _omanCountryCode),
+                                  countryCode: uaecountrycode),
                         ),
                       ),
                     ],
@@ -279,7 +279,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                   Padding(
                     padding: EdgeInsets.only(top: 4, left: 110),
                     child: Text(
-                      'Format: $_omanCountryCode XXXX XXXX',
+                      'Format: $uaecountrycode XXXX XXXX',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[600],
@@ -330,7 +330,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                 // Document Title
                                 CustomTextFieldWidget(
                                   hintText:
-                                      'Document Title (e.g., Passport, Visa)',
+                                      'Document Title ( e.g., Emirates ID,Trade License)',
                                   controller: _docTitleController,
                                   keyboardType: TextInputType.text,
                                   onChanged: (value) {
@@ -589,7 +589,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                           _buildInfoRow(
                               "Mobile",
                               controller.mobileCtrl.text.isNotEmpty
-                                  ? "$_omanCountryCode ${controller.mobileCtrl.text}"
+                                  ? "$uaecountrycode ${controller.mobileCtrl.text}"
                                   : "Not provided"),
                           _buildInfoRow(
                               "Citizenship",
@@ -660,7 +660,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                         : () async {
                             if (_formKey.currentState!.validate()) {
                               // Format mobile number with country code before submission
-                              final formattedMobile = _omanCountryCode +
+                              final formattedMobile = uaecountrycode +
                                   controller.mobileCtrl.text;
                               controller.mobileCtrl.text = formattedMobile;
 

@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-class EditProfileScreen extends StatelessWidget {
+class EditProfileScreen extends StatefulWidget {
   final ProfileController controller;
   final LocalizationController localizationController;
 
@@ -18,6 +18,42 @@ class EditProfileScreen extends StatelessWidget {
     required this.controller,
     required this.localizationController,
   }) : super(key: key);
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Strip +971 prefix from phone numbers when loading
+    _preparePhoneNumbers();
+  }
+
+  /// Remove +971 prefix from phone numbers for display
+  void _preparePhoneNumbers() {
+    // Handle main phone number
+    String phone = widget.controller.phoneController.text;
+    if (phone.startsWith('+971')) {
+      widget.controller.phoneController.text = phone.substring(4);
+    } else if (phone.startsWith('971')) {
+      widget.controller.phoneController.text = phone.substring(3);
+    } else if (phone.startsWith('0') && phone.length == 10) {
+      // If stored as 0501234567, remove leading 0
+      widget.controller.phoneController.text = phone.substring(1);
+    }
+
+    // Handle WhatsApp number
+    String whatsapp = widget.controller.whatsappController.text;
+    if (whatsapp.startsWith('+971')) {
+      widget.controller.whatsappController.text = whatsapp.substring(4);
+    } else if (whatsapp.startsWith('971')) {
+      widget.controller.whatsappController.text = whatsapp.substring(3);
+    } else if (whatsapp.startsWith('0') && whatsapp.length == 10) {
+      widget.controller.whatsappController.text = whatsapp.substring(1);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +65,11 @@ class EditProfileScreen extends StatelessWidget {
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: AppColors.black),
           onPressed: () {
-            controller.toggleEdit();
+            widget.controller.toggleEdit();
           },
         ),
         title: Text(
-          localizationController.translate('edit_profile') ?? 'Edit Profile',
+          widget.localizationController.translate('edit_profile') ?? 'Edit Profile',
           style: TextStyle(
             color: AppColors.black,
             fontSize: appBarTitles,
@@ -42,10 +78,10 @@ class EditProfileScreen extends StatelessWidget {
         ),
         actions: [
           Obx(() => TextButton(
-                onPressed: controller.isSaving.value
+                onPressed: widget.controller.isSaving.value
                     ? null
-                    : () => controller.saveProfile(),
-                child: controller.isSaving.value
+                    : () => _saveProfile(),
+                child: widget.controller.isSaving.value
                     ? SizedBox(
                         width: 20,
                         height: 20,
@@ -56,8 +92,7 @@ class EditProfileScreen extends StatelessWidget {
                         ),
                       )
                     : CustomTextWidget(
-                        title:
-                            localizationController.translate('save') ?? 'Save',
+                        title: widget.localizationController.translate('save') ?? 'Save',
                         color: AppColors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -66,7 +101,7 @@ class EditProfileScreen extends StatelessWidget {
         ],
       ),
       body: Obx(() {
-        if (controller.isLoading.value) {
+        if (widget.controller.isLoading.value) {
           return Center(child: CircularProgressIndicator());
         }
 
@@ -80,7 +115,7 @@ class EditProfileScreen extends StatelessWidget {
               _buildBasicInformation(),
               kHeight(0.03),
               _buildContactDetails(),
-              // if (controller.userRole.value == 'agent') ...[
+              // if (widget.controller.userRole.value == 'agent') ...[
               //   kHeight(0.03),
               //   _buildProfessionalDetails(),
               // ],
@@ -92,6 +127,32 @@ class EditProfileScreen extends StatelessWidget {
     );
   }
 
+  /// Save profile with +971 prefix added back
+  Future<void> _saveProfile() async {
+    // Add +971 prefix before saving
+    String phone = widget.controller.phoneController.text.trim();
+    String whatsapp = widget.controller.whatsappController.text.trim();
+    
+    // Store original values
+    String originalPhone = phone;
+    String originalWhatsapp = whatsapp;
+    
+    // Add prefix for saving
+    if (phone.isNotEmpty && !phone.startsWith('+971')) {
+      widget.controller.phoneController.text = '+971$phone';
+    }
+    if (whatsapp.isNotEmpty && !whatsapp.startsWith('+971')) {
+      widget.controller.whatsappController.text = '+971$whatsapp';
+    }
+    
+    // Save profile
+    await widget.controller.saveProfile();
+    
+    // Restore display values (without prefix)
+    widget.controller.phoneController.text = originalPhone;
+    widget.controller.whatsappController.text = originalWhatsapp;
+  }
+
   Widget _buildProfileImage() {
     return Center(
       child: Stack(
@@ -101,8 +162,8 @@ class EditProfileScreen extends StatelessWidget {
                 backgroundColor: AppColors.lightGrey2,
                 child: ClipOval(
                   child: CachedNetworkImage(
-                    imageUrl: controller.profilePicUrl.value.isNotEmpty
-                        ? controller.profilePicUrl.value
+                    imageUrl: widget.controller.profilePicUrl.value.isNotEmpty
+                        ? widget.controller.profilePicUrl.value
                         : FirebaseAuth.instance.currentUser?.photoURL ??
                             "https://i.postimg.cc/VLRdMxPK/profileimage.png",
                     width: screenWidth * 0.2,
@@ -151,7 +212,7 @@ class EditProfileScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          localizationController.translate('basic_info') ?? 'Basic Information',
+          widget.localizationController.translate('basic_info') ?? 'Basic Information',
           style: TextStyle(
             fontSize: H18,
             fontWeight: FontWeight.w600,
@@ -160,9 +221,9 @@ class EditProfileScreen extends StatelessWidget {
         ),
         kHeight(0.02),
         _buildTextField(
-          hint: localizationController.translate('enter_full_name') ??
+          hint: widget.localizationController.translate('enter_full_name') ??
               'Enter full name',
-          controller: controller.fullNameController,
+          controller: widget.controller.fullNameController,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Full name is required';
@@ -175,12 +236,12 @@ class EditProfileScreen extends StatelessWidget {
           children: [
             Expanded(
               child: _buildDropdownField(
-                hint: localizationController.translate('gender') ?? 'Gender',
-                value: controller.gender.value,
+                hint: widget.localizationController.translate('gender') ?? 'Gender',
+                value: widget.controller.gender.value,
                 items: ['Male', 'Female', 'Others'],
                 onChanged: (value) {
                   if (value != null) {
-                    controller.gender.value = value;
+                    widget.controller.gender.value = value;
                   }
                 },
               ),
@@ -188,18 +249,18 @@ class EditProfileScreen extends StatelessWidget {
             kWidth(0.03),
             Expanded(
               child: _buildDateField(
-                hint: localizationController.translate('date_of_birth') ??
+                hint: widget.localizationController.translate('date_of_birth') ??
                     'Date of Birth',
-                value: controller.dateOfBirth.value,
-                onTap: () => controller.selectDate(),
+                value: widget.controller.dateOfBirth.value,
+                onTap: () => widget.controller.selectDate(),
               ),
             ),
           ],
         ),
         kHeight(0.015),
         _buildTextField(
-          hint: localizationController.translate('location') ?? 'Location',
-          controller: controller.locationController,
+          hint: widget.localizationController.translate('location') ?? 'Location',
+          controller: widget.controller.locationController,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Location is required';
@@ -216,7 +277,7 @@ class EditProfileScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          localizationController.translate('contact_info') ?? 'Contact Details',
+          widget.localizationController.translate('contact_info') ?? 'Contact Details',
           style: TextStyle(
             fontSize: H18,
             fontWeight: FontWeight.w600,
@@ -224,30 +285,27 @@ class EditProfileScreen extends StatelessWidget {
           ),
         ),
         kHeight(0.02),
-        _buildTextField(
-          hint: localizationController.translate('phone_number') ??
+        // Phone number with fixed UAE country code
+        // Note: This maps to 'mobile' field in Firestore
+        _buildPhoneField(
+          hint: widget.localizationController.translate('phone_number') ??
               'Phone number',
-          controller: controller.phoneController,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(10),
-          ],
+          controller: widget.controller.phoneController,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Phone number is required';
             }
-            if (value.length != 8) {
-              return 'Phone number must be 8 digits';
+            if (value.length != 9) {
+              return 'Phone number must be 9 digits';
             }
             return null;
           },
         ),
         kHeight(0.015),
         _buildTextField(
-          hint: localizationController.translate('email_address') ??
+          hint: widget.localizationController.translate('email_address') ??
               'Email address',
-          controller: controller.emailController,
+          controller: widget.controller.emailController,
           keyboardType: TextInputType.emailAddress,
           enabled: false, // Email should not be editable
           validator: (value) {
@@ -258,18 +316,14 @@ class EditProfileScreen extends StatelessWidget {
           },
         ),
         kHeight(0.015),
-        _buildTextField(
-          hint: localizationController.translate('whatsapp_number') ??
-              'WhatsApp number',
-          controller: controller.whatsappController,
-          keyboardType: TextInputType.phone,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(8),
-          ],
+        // WhatsApp number with fixed UAE country code (optional)
+        _buildPhoneField(
+          hint: widget.localizationController.translate('whatsapp_number') ??
+              'WhatsApp number (optional)',
+          controller: widget.controller.whatsappController,
           validator: (value) {
-            if (value != null && value.isNotEmpty && value.length != 8) {
-              return 'WhatsApp number must be 8 digits';
+            if (value != null && value.isNotEmpty && value.length != 9) {
+              return 'WhatsApp number must be 9 digits';
             }
             return null;
           },
@@ -283,7 +337,7 @@ class EditProfileScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          localizationController.translate('professional_details') ??
+          widget.localizationController.translate('professional_details') ??
               'Professional Details',
           style: TextStyle(
             fontSize: H18,
@@ -294,27 +348,27 @@ class EditProfileScreen extends StatelessWidget {
         kHeight(0.02),
         _buildTextField(
           hint:
-              localizationController.translate('agency_name') ?? 'Agency name',
-          controller: controller.agencyNameController,
+              widget.localizationController.translate('agency_name') ?? 'Agency name',
+          controller: widget.controller.agencyNameController,
         ),
         kHeight(0.015),
         _buildTextField(
-          hint: localizationController.translate('agent_license_number') ??
+          hint: widget.localizationController.translate('agent_license_number') ??
               'Agent License Number',
-          controller: controller.licenseController,
+          controller: widget.controller.licenseController,
         ),
         kHeight(0.015),
         _buildTextField(
-          hint: localizationController.translate('years_of_experience') ??
+          hint: widget.localizationController.translate('years_of_experience') ??
               'Years of Experience',
-          controller: controller.experienceController,
+          controller: widget.controller.experienceController,
           keyboardType: TextInputType.number,
         ),
         kHeight(0.015),
         _buildTextField(
-          hint: localizationController.translate('working_cities') ??
+          hint: widget.localizationController.translate('working_cities') ??
               'Working Cities',
-          controller: controller.citiesController,
+          controller: widget.controller.citiesController,
         ),
         kHeight(0.015),
         // Display agent status (read-only)
@@ -328,7 +382,7 @@ class EditProfileScreen extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                localizationController.translate('status') ?? 'Status: ',
+                widget.localizationController.translate('status') ?? 'Status: ',
                 style: TextStyle(
                   fontSize: tagTitle,
                   color: AppColors.black500,
@@ -338,11 +392,11 @@ class EditProfileScreen extends StatelessWidget {
               Obx(() => Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(controller.agentStatus.value),
+                      color: _getStatusColor(widget.controller.agentStatus.value),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      controller.agentStatus.value.toUpperCase(),
+                      widget.controller.agentStatus.value.toUpperCase(),
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.white,
@@ -404,6 +458,86 @@ class EditProfileScreen extends StatelessWidget {
           color: enabled ? AppColors.black : AppColors.black500,
         ),
         validator: validator,
+      ),
+    );
+  }
+
+  /// Phone field with fixed UAE country code (+971)
+  /// Displays without prefix, but saves with "+971" prefix
+  Widget _buildPhoneField({
+    required String hint,
+    required TextEditingController controller,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.lightGrey2,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          // Fixed UAE country code
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth4,
+              vertical: screenWidth4,
+            ),
+            child: Row(
+              children: [
+                // UAE Flag
+                Text(
+                  '🇦🇪',
+                  style: TextStyle(fontSize: 20),
+                ),
+                SizedBox(width: screenWidth2),
+                // Country code
+                Text(
+                  '+971',
+                  style: TextStyle(
+                    fontSize: tagTitle,
+                    color: AppColors.black,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(width: screenWidth2),
+                // Divider
+                Container(
+                  height: 24,
+                  width: 1,
+                  color: AppColors.black500.withOpacity(0.3),
+                ),
+              ],
+            ),
+          ),
+          // Phone number input (without +971 prefix)
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(9),
+              ],
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: TextStyle(
+                  color: AppColors.black500,
+                  fontSize: tagTitle,
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: screenWidth2,
+                  vertical: screenWidth4,
+                ),
+              ),
+              style: TextStyle(
+                fontSize: tagTitle,
+                color: AppColors.black,
+              ),
+              validator: validator,
+            ),
+          ),
+        ],
       ),
     );
   }

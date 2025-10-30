@@ -32,13 +32,47 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
     // }
   }
 
+  /// Format mobile number for display
+  /// If number doesn't have country code, add +971
+  String _formatMobileNumber(String mobile) {
+    if (mobile.isEmpty) return 'No phone number';
+    
+    // If already has +971, return as is
+    if (mobile.startsWith('+971')) {
+      return mobile;
+    }
+    
+    // If starts with 971, add +
+    if (mobile.startsWith('971')) {
+      return '+$mobile';
+    }
+    
+    // If starts with 0, replace with +971
+    if (mobile.startsWith('0')) {
+      return '+971${mobile.substring(1)}';
+    }
+    
+    // Otherwise, add +971 prefix
+    return '+971$mobile';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true,
         surfaceTintColor: Colors.white,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () {
+            Get.back();
+          },
+        ),
         title: CustomTextWidget(
           title: 'Profile Details',
           fontSize: 20,
@@ -89,13 +123,17 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                 ),
                 kHeight(0.02),
                 CustomTextWidget(
-                  title: technician.fullName,
+                  title: technician.fullName.isNotEmpty 
+                      ? technician.fullName 
+                      : 'Technician',
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
                 CustomTextWidget(
-                  title: technician.role,
+                  title: technician.role.isNotEmpty 
+                      ? technician.role.toUpperCase() 
+                      : 'TECHNICIAN',
                   fontSize: 16,
                   color: AppColors.black800,
                 ),
@@ -113,7 +151,12 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildInfoRow(Icons.phone_outlined, technician.mobile),
+                          Expanded(
+                            child: _buildInfoRow(
+                              Icons.phone_outlined, 
+                              _formatMobileNumber(technician.mobile),
+                            ),
+                          ),
                           Container(
                             height: screenHeight * 0.020,
                             width: screenWidth * 0.14,
@@ -131,11 +174,22 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                           )
                         ],
                       ),
-                      _buildInfoRow(Icons.location_on_outlined,
-                          "Location: ${technician.location}"),
-                      _buildInfoRow(Icons.email_outlined, technician.email),
                       _buildInfoRow(
-                          Icons.badge_outlined, 'UID: ${technician.uid}'),
+                        Icons.location_on_outlined,
+                        technician.location.isNotEmpty 
+                            ? technician.location 
+                            : 'Location not set',
+                      ),
+                      _buildInfoRow(
+                        Icons.email_outlined, 
+                        technician.email.isNotEmpty 
+                            ? technician.email 
+                            : 'No email',
+                      ),
+                      _buildInfoRow(
+                        Icons.badge_outlined, 
+                        'UID: ${technician.uid}',
+                      ),
                     ],
                   ),
                 ),
@@ -261,8 +315,8 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                   buttonWidth: Get.width * 0.9,
                   buttonTextColor: Colors.white,
                   onPressed: () {
-                   Get.to(() => EditTenantProfileScreen());
-                },
+                    Get.to(() => EditTenantProfileScreen());
+                  },
                 ),
                 kHeight(0.02),
                 CustomButtonWidget(
@@ -281,7 +335,9 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
                       buttonColor: Colors.red,
                       confirmTextColor: Colors.white,
                       onConfirm: () {
-                        Get.back(); // Perform logout
+                        Get.back(); // Close dialog
+                        // TODO: Add actual logout logic here
+                        // controller.logout();
                       },
                     );
                   },
@@ -302,11 +358,14 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
         children: [
           Icon(icon, size: 20, color: AppColors.black),
           kWidth(0.03),
-          CustomTextWidget(
-            title: text,
-            fontSize: screenHeight * 0.016,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
+          Expanded(
+            child: CustomTextWidget(
+              title: text,
+              fontSize: screenHeight * 0.016,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+              maxLines: 2,
+            ),
           ),
         ],
       ),

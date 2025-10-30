@@ -52,7 +52,7 @@ class SigninScreen extends StatelessWidget {
                             _buildHeader(),
                             Center(
                               child: Image.asset(
-                                "assets/logo/launcher.png",
+                                "assets/logo/launcher.jpg",
                                 width: Get.width * 0.3,
                                 height: Get.height * 0.1,
                                 fit: BoxFit.cover,
@@ -227,8 +227,8 @@ class SigninScreen extends StatelessWidget {
     );
   }
 
-// Reusable method to build back button
-Widget _buildBackButton() {
+  // Header with back button and language button
+ Widget _buildBackButton() {
   return IconButton(
     onPressed: () {
       Get.back();

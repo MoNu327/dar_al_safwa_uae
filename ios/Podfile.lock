@@ -1535,7 +1535,7 @@ PODS:
   - ObjcExceptionBridging (7.1.5):
     - ObjcExceptionBridging/ObjcExceptionBridging (= 7.1.5)
   - ObjcExceptionBridging/ObjcExceptionBridging (7.1.5)
-  - open_file_ios (0.0.1):
+  - open_filex (0.0.2):
     - Flutter
   - OrderedSet (6.0.3)
   - path_provider_foundation (0.0.1):
@@ -1610,7 +1610,7 @@ DEPENDENCIES:
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
-  - open_file_ios (from `.symlinks/plugins/open_file_ios/ios`)
+  - open_filex (from `.symlinks/plugins/open_filex/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - RecaptchaEnterprise
@@ -1707,8 +1707,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/google_sign_in_ios/darwin"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
-  open_file_ios:
-    :path: ".symlinks/plugins/open_file_ios/ios"
+  open_filex:
+    :path: ".symlinks/plugins/open_filex/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   permission_handler_apple:
@@ -1776,7 +1776,7 @@ SPEC CHECKSUMS:
   leveldb-library: cc8b8f8e013647a295ad3f8cd2ddf49a6f19be19
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   ObjcExceptionBridging: d3d37d62981bb7f252ecb31b62d7e23a96bbfb8a
-  open_file_ios: 461db5853723763573e140de3193656f91990d9e
+  open_filex: 6e26e659846ec990262224a12ef1c528bb4edbe4
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2

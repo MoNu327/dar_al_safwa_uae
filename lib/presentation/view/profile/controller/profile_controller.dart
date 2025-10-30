@@ -123,12 +123,33 @@ class ProfileController extends GetxController {
   /// Check if user has property interests
   bool get hasPropertyInterests => propertyInterests.isNotEmpty;
 
+  /// Populate controllers without toggling edit mode (for tenant/user screens)
+  void populateControllersForEdit() {
+    _populateControllers();
+  }
+
   /// Toggle editing mode
   void toggleEdit() {
     isEditing.value = !isEditing.value;
     if (isEditing.value) {
       _populateControllers();
+    } else {
+      // Clear controllers when exiting edit mode
+      _clearControllers();
     }
+  }
+
+  /// Clear all text controllers
+  void _clearControllers() {
+    fullNameController.clear();
+    phoneController.clear();
+    whatsappController.clear();
+    emailController.clear();
+    locationController.clear();
+    agencyNameController.clear();
+    licenseController.clear();
+    experienceController.clear();
+    citiesController.clear();
   }
 
   Future<void> openWebsite(String url) async {
@@ -146,11 +167,24 @@ class ProfileController extends GetxController {
     }
   }
 
+  /// Strip country code prefix from phone number for display
+  String _stripCountryCode(String phoneNumber) {
+    if (phoneNumber.startsWith('+971')) {
+      return phoneNumber.substring(4); // Remove "+971"
+    } else if (phoneNumber.startsWith('971')) {
+      return phoneNumber.substring(3); // Remove "971"
+    } else if (phoneNumber.startsWith('0') && phoneNumber.length == 10) {
+      return phoneNumber.substring(1); // Remove leading "0"
+    }
+    return phoneNumber;
+  }
+
   /// Populate controllers with current values
   void _populateControllers() {
     fullNameController.text = fullName.value;
-    phoneController.text = phoneNumber.value.replaceAll("+968", "");
-    whatsappController.text = whatsappNumber.value.replaceAll("+968", "");
+    // Strip +971 prefix when populating controllers
+    phoneController.text = _stripCountryCode(phoneNumber.value);
+    whatsappController.text = _stripCountryCode(whatsappNumber.value);
     emailController.text = email.value;
     locationController.text = location.value;
 
@@ -162,9 +196,9 @@ class ProfileController extends GetxController {
     }
   }
 
-  /// Phone number validation (must be exactly 8 digits)
-  bool validateOmanPhone(String number) {
-    final regex = RegExp(r'^[0-9]{8}$');
+  /// Phone number validation (must be exactly 9 digits for UAE)
+  bool validateUAEPhone(String number) {
+    final regex = RegExp(r'^[0-9]{9}$');
     return regex.hasMatch(number);
   }
 
@@ -179,13 +213,35 @@ class ProfileController extends GetxController {
         return;
       }
 
-      if (!validateOmanPhone(phoneController.text.trim())) {
-        Get.snackbar('Error', 'Phone number must be exactly 8 digits.');
+      // Get the raw phone numbers from controllers (without prefix)
+      String rawPhone = phoneController.text.trim();
+      String rawWhatsApp = whatsappController.text.trim();
+
+      // Strip any existing prefix before validation
+      rawPhone = _stripCountryCode(rawPhone);
+      rawWhatsApp = _stripCountryCode(rawWhatsApp);
+
+      // Validate phone number (must be exactly 9 digits for UAE)
+      if (!validateUAEPhone(rawPhone)) {
+        Get.snackbar('Error', 'Phone number must be exactly 9 digits.');
         return;
       }
 
-      phoneNumber.value = "+968${phoneController.text.trim()}";
-      whatsappNumber.value = "+968${whatsappController.text.trim()}";
+      // Validate WhatsApp if provided
+      if (rawWhatsApp.isNotEmpty && !validateUAEPhone(rawWhatsApp)) {
+        Get.snackbar('Error', 'WhatsApp number must be exactly 9 digits.');
+        return;
+      }
+
+      // NOW add +971 prefix for storage in Firestore
+      phoneNumber.value = "+971$rawPhone";
+      
+      // Only add WhatsApp number if provided
+      if (rawWhatsApp.isNotEmpty) {
+        whatsappNumber.value = "+971$rawWhatsApp";
+      } else {
+        whatsappNumber.value = "";
+      }
 
       if (userRole.value == 'agent') {
         await _updateAgentProfile(user.uid);
@@ -193,13 +249,24 @@ class ProfileController extends GetxController {
         await _updateUserProfile(user.uid);
       }
 
-      fullNameController.clear();
-      emailController.clear();
-      phoneController.clear();
-      locationController.clear();
-
+      // CRITICAL FIX: Set editing mode to false FIRST
       isEditing.value = false;
+      
+      // Refresh the profile data
+      await fetchUserCredentials();
+
+      // Show success message
       Get.snackbar('Success', 'Profile updated successfully');
+
+      // For tenant/user, just go back instead of navigating to navbar
+      if (userRole.value == 'tenant' || userRole.value == 'user') {
+        // Close the edit screen and return to profile view
+        Get.back();
+      } else {
+        // For agents using inline edit, the Obx will automatically switch to ProfileViewScreen
+        // No navigation needed
+      }
+
     } catch (e) {
       Get.snackbar('Error', 'Failed to update profile: $e');
       debugPrint('Error updating profile: $e');
@@ -229,7 +296,6 @@ class ProfileController extends GetxController {
     fullName.value = agentData['displayName'] as String? ?? '';
     phoneNumber.value = agentData['mobile'] as String? ?? '';
     whatsappNumber.value = agentData['whatsAppNumber'] as String? ?? '';
-    email.value = agentData['email'] as String? ?? '';
     gender.value = agentData['gender'] as String? ?? '';
     dateOfBirth.value = agentData['dob'] as String? ?? '';
     location.value = agentData['location'] as String? ?? '';
@@ -253,19 +319,21 @@ class ProfileController extends GetxController {
     final userData = {
       'displayName': fullNameController.text.trim(),
       'mobile': phoneNumber.value,
+      'phoneNumber': phoneNumber.value, // Also update phoneNumber field
       'whatsAppNumber': whatsappNumber.value,
       'location': locationController.text.trim(),
       'gender': gender.value,
       'dob': dateOfBirth.value,
       'imageUrl': profilePicUrl.value,
       'updatedAt': FieldValue.serverTimestamp(),
+      'lastUpdated': FieldValue.serverTimestamp(),
     };
 
     await _firestore.collection('users').doc(uid).update(userData);
+    
     fullName.value = userData['displayName'] as String? ?? '';
     phoneNumber.value = userData['mobile'] as String? ?? '';
     whatsappNumber.value = userData['whatsAppNumber'] as String? ?? '';
-    email.value = userData['email'] as String? ?? '';
     gender.value = userData['gender'] as String? ?? '';
     dateOfBirth.value = userData['dob'] as String? ?? '';
     location.value = userData['location'] as String? ?? '';
@@ -279,6 +347,7 @@ class ProfileController extends GetxController {
         role: userCredential.value!.role,
         location: location.value,
         status: userCredential.value!.status,
+        phoneNumber: phoneNumber.value,
         imageUrl: profilePicUrl.value,
       );
     }
@@ -292,11 +361,17 @@ class ProfileController extends GetxController {
 
       if (user == null) return;
 
+      debugPrint('🔄 ProfileController: Auth state changed - User: ${user.uid}');
+      debugPrint('🔍 Fetching credentials for: ${user.uid}');
+      debugPrint('📧 Firebase Auth Email: ${user.email}');
+      debugPrint('👤 Firebase Auth Display Name: ${user.displayName}');
+
       final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
 
       if (agentDoc.exists) {
         userRole.value = 'agent';
         final agentData = agentDoc.data()!;
+        debugPrint('✅ Agent data found: ${agentData['displayName']}');
         _populateAgentData(agentData);
         Get.find<AgentController>().currentUser = agentCredential.value;
       } else {
@@ -305,6 +380,8 @@ class ProfileController extends GetxController {
 
         if (userDoc.exists) {
           final userData = userDoc.data()!;
+          debugPrint('✅ User data found: ${userData['displayName']}');
+          debugPrint('📝 User data populated - Name: ${userData['displayName']}, Email: ${userData['email']}');
           _populateUserData(userData);
           Get.find<UserController>().currentUser = userCredential.value;
         }
@@ -313,6 +390,7 @@ class ProfileController extends GetxController {
       // Fetch property interests after loading user data
       await fetchPropertyInterests();
     } catch (e) {
+      debugPrint('❌ Error fetching profile: $e');
       Get.snackbar('Error', 'Failed to fetch profile: $e');
     } finally {
       isLoading(false);
@@ -349,7 +427,8 @@ class ProfileController extends GetxController {
 
   void _populateUserData(Map<String, dynamic> userData) {
     fullName.value = userData['displayName'] ?? '';
-    phoneNumber.value = userData['mobile'] ?? '';
+    // Handle both 'mobile' and 'phoneNumber' fields
+    phoneNumber.value = userData['mobile'] ?? userData['phoneNumber'] ?? '';
     whatsappNumber.value = userData['whatsAppNumber'] ?? '';
     email.value = userData['email'] ?? '';
     gender.value = userData['gender'] ?? '';
@@ -364,6 +443,7 @@ class ProfileController extends GetxController {
       role: userData['role'] ?? 'user',
       location: userData['location'] ?? '',
       status: userData['status'] ?? 'active',
+      phoneNumber: phoneNumber.value,
       imageUrl: profilePicUrl.value,
     );
   }

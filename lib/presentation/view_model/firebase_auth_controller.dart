@@ -1,22 +1,24 @@
 import 'dart:async';
 import 'dart:core';
+import 'dart:io';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:majan/core/routes/app_route.dart';
 import 'package:majan/data/model/agent_model.dart';
 import 'package:majan/data/model/technician_model.dart';
+import 'package:majan/data/repositories/api_services.dart';
 import 'package:majan/domain/controller/agent_controller.dart';
 import 'package:majan/domain/controller/notification_controller.dart';
 import 'package:majan/domain/controller/technician_controller.dart';
-import 'package:majan/presentation/view/profile/controller/profile_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../data/model/user_model.dart';
 import '../../domain/controller/user_controller.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
 
 class AuthService extends GetxController {
   final FirebaseAuth auth = FirebaseAuth.instance;
@@ -72,6 +74,83 @@ class AuthService extends GetxController {
     return null;
   }
 
+  /// Get current platform information
+String _getPlatformInfo() {
+  if (Platform.isIOS) {
+    return 'ios';
+  } else if (Platform.isAndroid) {
+    return 'android';
+  } else if (Platform.isWindows) {
+    return 'windows';
+  } else if (Platform.isMacOS) {
+    return 'macos';
+  } else if (Platform.isLinux) {
+    return 'linux';
+  } else {
+    return 'web';
+  }
+}
+
+/// Get device information including platform
+Map<String, dynamic> _getDeviceInfo() {
+  return {
+    'mode': _getPlatformInfo(),
+    'modeupdated': _getPlatformInfo(),
+    'lastLoginAt': FieldValue.serverTimestamp(),
+  };
+}
+
+/// Log user activity after successful login
+Future<void> _logLoginActivity(String uid) async {
+  try {
+    debugPrint('📊 Logging login activity for user: $uid');
+
+    // Determine which collection the user belongs to
+    String collection = 'users';
+    
+    final agentDoc = await _firestore.collection('agents').doc(uid).get();
+    if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
+      collection = 'agents';
+      debugPrint('✅ User identified as agent');
+    } else {
+      final techDoc = await _firestore.collection('technicians').doc(uid).get();
+      if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
+        collection = 'technicians';
+        debugPrint('✅ User identified as technician');
+      }
+    }
+
+    final userDoc = await _firestore.collection(collection).doc(uid).get();
+
+    String mode;
+    String modeUpdated;
+
+    if (userDoc.exists) {
+      final userData = userDoc.data();
+      mode = userData?['mode'] ?? _getPlatformInfo();
+      modeUpdated = userData?['modeupdated'] ?? _getPlatformInfo();
+      debugPrint('✅ Platform data from $collection - mode: $mode, modeupdated: $modeUpdated');
+    } else {
+      mode = _getPlatformInfo();
+      modeUpdated = _getPlatformInfo();
+      debugPrint('⚠️ Using detected platform: $mode');
+    }
+
+    // Call the API
+    debugPrint('🔄 Calling login activity API...');
+    final response = await ApiService().getuserlogactivity(uid, mode, modeUpdated);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      debugPrint('✅ Login activity logged successfully');
+      debugPrint('📦 Response: ${response.data}');
+    } else {
+      debugPrint('⚠️ Login activity API failed with status: ${response.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('❌ Error logging login activity: $e');
+    // Don't block login flow if logging fails
+  }
+}
 
   @override
   void onReady() {
@@ -86,85 +165,101 @@ class AuthService extends GetxController {
 
   /// Check if user is already logged in when app starts
    Future<void> checkAutoLogin() async {
-    if (hasCheckedAutoLogin.value) return;
+  if (hasCheckedAutoLogin.value) return;
+  
+  try {
+    isAutoLoggingIn(true);
+    debugPrint('🔍 Checking for existing user session...');
     
-    try {
-      isAutoLoggingIn(true);
-      debugPrint('🔍 Checking for existing user session...');
+    final currentUser = auth.currentUser;
+    
+    if (currentUser != null) {
+      debugPrint('✅ Found existing user session: ${currentUser.uid}');
+      debugPrint('📧 Email: ${currentUser.email}');
+      debugPrint('📱 Phone: ${currentUser.phoneNumber}');
       
-      final currentUser = auth.currentUser;
+      // ✅ Load notifications
+      _notificationController?.setUserId(currentUser.uid);
+      debugPrint('📱 Notifications loaded for user: ${currentUser.uid}');
       
-      if (currentUser != null) {
-        debugPrint('✅ Found existing user session: ${currentUser.uid}');
-        debugPrint('📧 Email: ${currentUser.email}');
-        debugPrint('📱 Phone: ${currentUser.phoneNumber}');
-        
-        // ✅ NEW: Load user's notifications
-        _notificationController?.setUserId(currentUser.uid);
-        debugPrint('📱 Notifications loaded for user: ${currentUser.uid}');
-        
-        // Sync FCM token
-        await _syncFCMToken(currentUser);
-        
-        // Let handleAuthChanged take care of navigation
-      } else {
-        debugPrint('❌ No existing user session found');
-        // ✅ NEW: Clear notifications when no user
-        _notificationController?.clearUserId();
-        
-        if (Get.currentRoute != AppRoute.login) {
-          Get.offAllNamed(AppRoute.login);
-        }
+      // ✅ Log login activity for auto-login
+      await _logLoginActivity(currentUser.uid);
+      
+      // ✅ Sync FCM token (this will now also update platform info)
+      await _syncFCMToken(currentUser);
+      
+      // Let handleAuthChanged take care of navigation
+    } else {
+      debugPrint('❌ No existing user session found');
+      _notificationController?.clearUserId();
+      
+      if (Get.currentRoute != AppRoute.login) {
+        Get.offAllNamed(AppRoute.login);
       }
-      
-      hasCheckedAutoLogin(true);
-    } catch (e) {
-      debugPrint('❌ Error during auto-login check: $e');
-      Get.offAllNamed(AppRoute.login);
-    } finally {
-      isAutoLoggingIn(false);
     }
+    
+    hasCheckedAutoLogin(true);
+  } catch (e) {
+    debugPrint('❌ Error during auto-login check: $e');
+    Get.offAllNamed(AppRoute.login);
+  } finally {
+    isAutoLoggingIn(false);
   }
+}
 
   Future<void> _syncFCMToken(User user) async {
-    try {
-      debugPrint('🔄 Syncing FCM token for user: ${user.uid}');
-      
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      
-      if (fcmToken == null) {
-        debugPrint('⚠️ FCM token is null');
-        return;
-      }
-      
-      debugPrint('✅ FCM Token: $fcmToken');
-      
-      // Determine collection
-      String collection = 'users';
-      
-      final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
-      if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
-        collection = 'agents';
-      } else {
-        final techDoc = await _firestore.collection('technicians').doc(user.uid).get();
-        if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
-          collection = 'technicians';
-        }
-      }
-      
-      debugPrint('📁 Saving to: $collection');
-      
-      await _firestore.collection(collection).doc(user.uid).update({
-        'fcmToken': fcmToken,
-        'lastTokenUpdate': FieldValue.serverTimestamp(),
-        'lastLoginAt': FieldValue.serverTimestamp(),
-      });
-      
-      debugPrint('✅ Token synced to $collection/${user.uid}');
-    } catch (e) {
-      debugPrint('❌ Error syncing token: $e');
+  try {
+    debugPrint('🔄 Syncing FCM token for user: ${user.uid}');
+    
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    
+    if (fcmToken == null) {
+      debugPrint('⚠️ FCM token is null');
+      return;
     }
+    
+    debugPrint('✅ FCM Token: $fcmToken');
+    
+    // Determine collection
+    String collection = 'users';
+    
+    final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
+    if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
+      collection = 'agents';
+    } else {
+      final techDoc = await _firestore.collection('technicians').doc(user.uid).get();
+      if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
+        collection = 'technicians';
+      }
+    }
+    
+    debugPrint('📁 Saving to: $collection');
+    
+    // ✅ Get current document to check if platform exists
+    final userDoc = await _firestore.collection(collection).doc(user.uid).get();
+    final currentData = userDoc.data();
+    
+    // ✅ Prepare update data
+    Map<String, dynamic> updateData = {
+      'fcmToken': fcmToken,
+      'lastTokenUpdate': FieldValue.serverTimestamp(),
+      'lastLoginAt': FieldValue.serverTimestamp(),
+      'modeupdated': _getPlatformInfo(),
+    };
+    
+    // ✅ Only set 'platform' if it doesn't exist (first time)
+    if (currentData == null || !currentData.containsKey('mode') || currentData['mode'] == null) {
+      updateData['mode'] = _getPlatformInfo();
+      debugPrint('🆕 Setting initial platform: ${_getPlatformInfo()}');
+    }
+    
+    await _firestore.collection(collection).doc(user.uid).update(updateData);
+    
+    debugPrint('✅ Token and platform synced to $collection/${user.uid}');
+  } catch (e) {
+    debugPrint('❌ Error syncing token: $e');
   }
+}
 
   void handleAuthChanged(User? user) async {
   debugPrint('🔄 Auth state changed. User: ${user?.email ?? user?.phoneNumber ?? 'null'}');
@@ -469,6 +564,11 @@ class AuthService extends GetxController {
         await _handleExistingPhoneUser(userCredential.user!);
       }
 
+      // ✅ Log login activity for phone authentication
+      if (userCredential.user != null) {
+        await _logLoginActivity(userCredential.user!.uid);
+      }
+
       return userCredential;
     } catch (e) {
       debugPrint('Phone verification error: $e');
@@ -547,14 +647,17 @@ class AuthService extends GetxController {
           status: 'pending',
           phoneNumber: user.phoneNumber);
       await _firestore.collection('users').doc(user.uid).set({
-        'uid': user.uid,
-        'email': null,
-        'displayName': fullNameController.text.trim(),
-        'photoURL': null,
-        'phoneNumber': user.phoneNumber,
-        'role': 'user',
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+  'uid': user.uid,
+  'email': null,
+  'displayName': fullNameController.text.trim(),
+  'photoURL': null,
+  'phoneNumber': user.phoneNumber,
+  'role': 'user',
+  'mode': _getPlatformInfo(), // ✅ Add this
+  'createdAt': FieldValue.serverTimestamp(),
+  'modeupdated': _getPlatformInfo(), // ✅ Add this
+  'lastLoginAt': FieldValue.serverTimestamp(),
+}, SetOptions(merge: true));
 
       userRole.value = 'user';
 
@@ -717,20 +820,23 @@ Future<void> _handleNewGoogleUser(
         firebaseUser.displayName ??
         email.split('@')[0];
 
-    final userData = {
-      'uid': firebaseUser.uid,
-      'email': email,
-      'displayName': displayName,
-      'photoURL': googleUser.photoUrl ?? firebaseUser.photoURL ?? '',
-      'phoneNumber': firebaseUser.phoneNumber ?? '',
-      'role': 'user',
-      'status': 'active',
-      'provider': 'google',
-      'location': '',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'registrationCompleted': true,
-    };
+   final userData = {
+  'uid': firebaseUser.uid,
+  'email': email,
+  'displayName': displayName,
+  'photoURL': googleUser.photoUrl ?? firebaseUser.photoURL ?? '',
+  'phoneNumber': firebaseUser.phoneNumber ?? '',
+  'role': 'user',
+  'status': 'active',
+  'provider': 'google',
+  'mode': _getPlatformInfo(), // ✅ Add this
+  'location': '',
+  'createdAt': FieldValue.serverTimestamp(),
+  'updatedAt': FieldValue.serverTimestamp(),
+  'registrationCompleted': true,
+  'modeupdated': _getPlatformInfo(), // ✅ Add this
+  'lastLoginAt': FieldValue.serverTimestamp(),
+};
 
     debugPrint('Creating Firestore document with data: $userData');
 
@@ -755,6 +861,9 @@ Future<void> _handleNewGoogleUser(
 
     Get.find<UserController>().currentUser = userModel;
     debugPrint('✅ User model created and stored: ${userModel.toJson()}');
+
+    // ✅ Log login activity for new Google user
+    await _logLoginActivity(firebaseUser.uid);
 
     Get.snackbar(
       'Welcome!',
@@ -786,6 +895,7 @@ Future<void> _handleNewGoogleUser(
 
     Get.offAllNamed('/login');
   }
+  
 }
 
 
@@ -842,6 +952,9 @@ Image URL: ${userModel.imageUrl}
         // Store user in controller
         Get.find<UserController>().currentUser = userModel;
         debugPrint('Existing user logged in: ${userModel.toJson()}');
+
+        // ✅ Log login activity for existing Google user
+        await _logLoginActivity(user.uid);
 
         // Navigate based on role
         if (userModel.role == 'tenant') {
@@ -1098,6 +1211,9 @@ Image URL: ${userModel.imageUrl}
       Get.find<AgentController>().currentUser = userModel;
       debugPrint('User details stored: ${userModel.toJson()}');
 
+      // ✅ Log login activity for agent
+      await _logLoginActivity(credential.user!.uid);
+
       navigateToHome();
       debugPrint('Navigation to agent home completed');
 
@@ -1172,6 +1288,9 @@ Image URL: ${userModel.imageUrl}
       Get.find<TechnicianController>().currentUser = userModel;
       debugPrint('Technician details stored: ${userModel.toJson()}');
 
+      // ✅ Log login activity for technician
+      await _logLoginActivity(credential.user!.uid);
+
       Get.offAllNamed(AppRoute.technicianDashboard);
 
       return credential;
@@ -1237,22 +1356,26 @@ Image URL: ${userModel.imageUrl}
 
       final agentRef = _firestore.collection('agents').doc(user.uid);
       batch.set(
-          agentRef,
-          {
-            'uid': user.uid,
-            'email': user.email,
-            'displayName': fullName,
-            'mobile': mobileNo,
-            'profilePic': "",
-            'gender': gender,
-            'dob': dob,
-            'location': location,
-            'whatsAppNumber': whatsAppNumber,
-            'role': 'agent',
-            'status': 'pending',
-            'createdAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true));
+  agentRef,
+  {
+    'uid': user.uid,
+    'email': user.email,
+    'displayName': fullName,
+    'mobile': mobileNo,
+    'profilePic': "",
+    'gender': gender,
+    'dob': dob,
+    'location': location,
+    'whatsAppNumber': whatsAppNumber,
+    'role': 'agent',
+    'status': 'pending',
+    'mode': _getPlatformInfo(), // ✅ Add this
+    'createdAt': FieldValue.serverTimestamp(),
+    'modeupdated': _getPlatformInfo(), // ✅ Add this
+    'lastLoginAt': FieldValue.serverTimestamp(),
+  },
+  SetOptions(merge: true)
+);
 
       await batch.commit();
 
@@ -1264,6 +1387,30 @@ Image URL: ${userModel.imageUrl}
     }
   }
 
+
+/// One-time method to update existing users with platform info
+Future<void> updateExistingUsersWithPlatform() async {
+  try {
+    final currentUser = auth.currentUser;
+    if (currentUser == null) return;
+
+    final platformInfo = _getDeviceInfo();
+    
+    // Check all possible collections
+    final collections = ['users', 'agents', 'technicians'];
+    
+    for (final collection in collections) {
+      final doc = await _firestore.collection(collection).doc(currentUser.uid).get();
+      if (doc.exists) {
+        await _firestore.collection(collection).doc(currentUser.uid).update(platformInfo);
+        debugPrint('✅ Updated $collection/${currentUser.uid} with platform info');
+        break;
+      }
+    }
+  } catch (e) {
+    debugPrint('❌ Error updating platform info: $e');
+  }
+}
   Future<UserModel?> loginWithPhone(String phone) async {
     final snapshot = await FirebaseFirestore.instance
         .collection("users")
@@ -1388,21 +1535,24 @@ Image URL: ${userModel.imageUrl}
       displayName = firebaseUser.displayName ?? email.split('@')[0];
     }
 
-    final userData = {
-      'uid': firebaseUser.uid,
-      'email': email,
-      'displayName': displayName,
-      'photoURL': firebaseUser.photoURL ?? '',
-      'phoneNumber': firebaseUser.phoneNumber ?? '',
-      'role': 'user',
-      'status': 'active',
-      'provider': 'apple',
-      'appleUserId': appleCredential.userIdentifier,
-      'location': '',
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-      'registrationCompleted': true,
-    };
+   final userData = {
+  'uid': firebaseUser.uid,
+  'email': email,
+  'displayName': displayName,
+  'photoURL': firebaseUser.photoURL ?? '',
+  'phoneNumber': firebaseUser.phoneNumber ?? '',
+  'role': 'user',
+  'status': 'active',
+  'provider': 'apple',
+  'mode': _getPlatformInfo(), // ✅ Add this
+  'appleUserId': appleCredential.userIdentifier,
+  'location': '',
+  'createdAt': FieldValue.serverTimestamp(),
+  'updatedAt': FieldValue.serverTimestamp(),
+  'registrationCompleted': true,
+  'modeupdated': _getPlatformInfo(), // ✅ Add this
+  'lastLoginAt': FieldValue.serverTimestamp(),
+};
 
     await _firestore
         .collection('users')
@@ -1425,6 +1575,9 @@ Image URL: ${userModel.imageUrl}
 
     Get.find<UserController>().currentUser = userModel;
     debugPrint('✅ User model created and stored: ${userModel.toJson()}');
+
+    // ✅ Log login activity for new Apple user
+    await _logLoginActivity(firebaseUser.uid);
 
     Get.snackbar(
       'Welcome!',
@@ -1505,6 +1658,9 @@ Image URL: ${userModel.imageUrl}
 
         Get.find<UserController>().currentUser = userModel;
         debugPrint('Existing user logged in: ${userModel.toJson()}');
+
+        // ✅ Log login activity for existing Apple user
+        await _logLoginActivity(user.uid);
 
         // Navigate based on role
         if (userModel.role == 'tenant') {

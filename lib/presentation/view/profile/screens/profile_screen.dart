@@ -249,125 +249,48 @@ class ProfileViewScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomTabs() {
-    return Column(
-      children: [
-        // buildMenuTile(
-        //   leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
-        //   title: localizationController.translate('terms_and_condition'),
-        //   onTap: () {},
-        // ),
-        // kHeight(0.01),
+ Widget _buildBottomTabs() {
+  return Column(
+    children: [
+      // buildMenuTile(
+      //   leading: Icon(HugeIcons.strokeRoundedDocumentValidation),
+      //   title: localizationController.translate('terms_and_condition'),
+      //   onTap: () {},
+      // ),
+      // kHeight(0.01),
+      buildMenuTile(
+        leading: Icon(HugeIcons.strokeRoundedSecurityCheck),
+        title: localizationController.translate('privacy_policy'),
+        onTap: () {
+          profileController.openWebsite(
+              "https://demoweb.waytracksystems.com/daralsafwa/uae/web/privacypolicy");
+        },
+      ),
+      kHeight(0.01),
+      buildMenuTile(
+        leading: Icon(HugeIcons.strokeRoundedAlert01),
+        title: localizationController.translate('delete_account'),
+        onTap: () {
+          profileController.openWebsite(
+              "https://demoweb.waytracksystems.com/daralsafwa/uae/account/delete");
+        },
+      ),
+      kHeight(0.01),
+      
+      // Only show Property Interest for 'user' role
+      if (authService.userRole.value == 'user' ||
+          authService.userRole.value == 'tenant')
         buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedSecurityCheck),
-          title: localizationController.translate('privacy_policy'),
-          onTap: () {
-            profileController.openWebsite(
-                "https://demoweb.waytracksystems.com/daralsafwa/uae/web/privacypolicy");
-          },
-        ),
-        kHeight(0.01),
-        buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedAlert01),
-          title: localizationController.translate('delete_account'),
-          onTap: () {
-            profileController.openWebsite(
-                "https://demoweb.waytracksystems.com/daralsafwa/uae/account/delete");
-          },
-        ),
-        kHeight(0.01),
-        buildMenuTile(
-          leading: Icon(HugeIcons.strokeRoundedAlert01),
+          leading: Icon(HugeIcons.strokeRoundedAddToList),
           title: localizationController.translate('property_interest'),
           onTap: () {
-             profileController.fetchPropertyInterests();
-             Get.to(() => PropertyInterestHistoryScreen());
+            profileController.fetchPropertyInterests();
+            Get.to(() => PropertyInterestHistoryScreen());
           },
         ),
-      ],
-    );
-  }
-
-  // Widget _buildProfessionalInfo() {
-  //   return Column(
-  //     children: [
-  //       Row(
-  //         mainAxisAlignment: MainAxisAlignment.center,
-  //         children: [
-  //           Icon(
-  //             Icons.verified,
-  //             color: AppColors.blueColor,
-  //             size: smallIconSize,
-  //           ),
-  //           kWidth(0.01),
-  //           CustomTextWidget(
-  //             title: 'Verified Real Estate Agent',
-  //             fontSize: H18,
-  //             fontWeight: FontWeight.bold,
-  //             color: AppColors.black,
-  //           ),
-  //         ],
-  //       ),
-  //       kHeight(0.01),
-  //       Row(
-  //         mainAxisAlignment: MainAxisAlignment.center,
-  //         children: [
-  //           Container(
-  //             padding: EdgeInsets.all(8),
-  //             width: Get.width * 0.15,
-  //             decoration: BoxDecoration(
-  //                 borderRadius: BorderRadius.circular(14),
-  //                 color: AppColors.whiteLight),
-  //             child: Row(
-  //               mainAxisAlignment: MainAxisAlignment.center,
-  //               children: [
-  //                 Icon(
-  //                   Icons.star,
-  //                   color: Colors.orange,
-  //                   size: smallIconSize,
-  //                 ),
-  //                 kWidth(0.01),
-  //                 Text(
-  //                   '4.8',
-  //                   style: TextStyle(
-  //                     fontSize: tagTitle,
-  //                     fontWeight: FontWeight.bold,
-  //                     color: AppColors.black600,
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //           kWidth(0.01),
-  //           CustomTextWidget(
-  //             title: '(120 reviews)',
-  //             fontSize: tagTitle,
-  //             fontWeight: FontWeight.bold,
-  //             color: AppColors.darkGrey,
-  //           ),
-  //         ],
-  //       ),
-  //       kHeight(0.01),
-  //       Row(
-  //         mainAxisAlignment: MainAxisAlignment.center,
-  //         children: [
-  //           Icon(
-  //             Icons.location_on,
-  //             color: AppColors.black,
-  //             size: smallIconSize,
-  //           ),
-  //           kWidth(0.01),
-  //           CustomTextWidget(
-  //             title: profileController.displayLocation,
-  //             fontSize: tagTitle,
-  //             fontWeight: FontWeight.bold,
-  //             color: AppColors.black,
-  //           ),
-  //         ],
-  //       ),
-  //     ],
-  //   );
-  // }
+    ],
+  );
+}
 
   Widget _buildStatsRow() {
     return Container(

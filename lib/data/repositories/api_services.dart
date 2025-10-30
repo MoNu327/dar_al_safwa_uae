@@ -20,6 +20,25 @@ class ApiService {
 
   ApiService();
 
+   Future<Response> getuserlogactivity(String uid, String mode, String modeUpdated) async {
+  try {
+    final response = await apiClient.request(
+      "log-user-activity", 
+      method: "post",
+      data: {
+        "uid": uid,
+        "mode": mode,
+        "mode_updated": modeUpdated,  // ⚠️ Changed from "modeupdated" to "mode_updated"
+      }
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+
   Future<Response> getComplaintCategories() async {
     try {
       final response = await apiClient.request(

@@ -21,14 +21,18 @@ class TechnicianTicketsController extends GetxController {
   final RxMap<String, String> selectedTechnicianIds = <String, String>{}.obs;
   final RxMap<String, bool> showAssignmentSection = <String, bool>{}.obs;
   final RxList<ComplaintCategory> complaintCategory = <ComplaintCategory>[].obs;
-  final RxMap<String, Complaint> localAssignedTickets = <String, Complaint>{}.obs;
-  final RxMap<String, Map<String, dynamic>> assignmentHistory = <String, Map<String, dynamic>>{}.obs;
+  final RxMap<String, Complaint> localAssignedTickets =
+      <String, Complaint>{}.obs;
+  final RxMap<String, Map<String, dynamic>> assignmentHistory =
+      <String, Map<String, dynamic>>{}.obs;
   final RxInt selectedComplaintId = 0.obs;
   final RxBool isLoadingCompliantList = false.obs;
-  final RxList<Map<String, dynamic>> availableTechnicians = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> availableTechnicians =
+      <Map<String, dynamic>>[].obs;
   RxList<Complaint> ticket = <Complaint>[].obs;
   var filteredTickets = <Complaint>[].obs;
-  final Rx<ComplaintStatisticsResponse?> technicianStats = Rx<ComplaintStatisticsResponse?>(null);
+  final Rx<ComplaintStatisticsResponse?> technicianStats =
+      Rx<ComplaintStatisticsResponse?>(null);
   final RxBool isStatsLoading = false.obs;
   final RxString statsErrorMessage = ''.obs;
 
@@ -49,13 +53,13 @@ class TechnicianTicketsController extends GetxController {
       await _loadAssignmentHistoryFromStorage();
       await GetStorage.init();
       await getAvailableTechnicians();
-      
+
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser != null) {
         await fetchTickets(currentUser.uid);
         debugTicketVisibility();
       }
-      
+
       debugPrint("✅ Controller initialization complete");
     } catch (e) {
       debugPrint("❌ Error initializing controller: $e");
@@ -82,21 +86,22 @@ class TechnicianTicketsController extends GetxController {
   }
 
   // 🚨 MAJOR FIX: Enhanced merging to ALWAYS include assigned tickets
-  List<Complaint> _mergeWithAssignedTickets(List<Complaint> apiComplaints, String currentUserId) {
+  List<Complaint> _mergeWithAssignedTickets(
+      List<Complaint> apiComplaints, String currentUserId) {
     final Map<String, Complaint> mergedTickets = {};
-    
+
     // 1. Add all API tickets
     for (final complaint in apiComplaints) {
       mergedTickets[complaint.complaintId] = complaint;
     }
-    
+
     // 2. Add all locally assigned tickets
     for (final entry in localAssignedTickets.entries) {
       if (!mergedTickets.containsKey(entry.key)) {
         mergedTickets[entry.key] = entry.value;
       }
     }
-    
+
     // 3. Apply any stored assignments
     for (final entry in assignedTechnicianIds.entries) {
       if (mergedTickets.containsKey(entry.key)) {
@@ -108,11 +113,15 @@ class TechnicianTicketsController extends GetxController {
         );
       }
     }
-    
+
     return mergedTickets.values.toList();
   }
 
-  Future<void> _saveAssignmentHistory(String complaintId, String fromTechnicianId, String toTechnicianId, String toTechnicianName) async {
+  Future<void> _saveAssignmentHistory(
+      String complaintId,
+      String fromTechnicianId,
+      String toTechnicianId,
+      String toTechnicianName) async {
     try {
       final historyData = {
         'fromTechnicianId': fromTechnicianId,
@@ -121,11 +130,12 @@ class TechnicianTicketsController extends GetxController {
         'assignedAt': DateTime.now().toIso8601String(),
         'complaintId': complaintId,
       };
-      
+
       assignmentHistory[complaintId] = historyData;
       await _storage.write('assignment_history_$complaintId', historyData);
-      
-      debugPrint("📝 Assignment history saved: $complaintId -> $toTechnicianName");
+
+      debugPrint(
+          "📝 Assignment history saved: $complaintId -> $toTechnicianName");
     } catch (e) {
       debugPrint("❌ Failed to save assignment history: $e");
     }
@@ -135,37 +145,41 @@ class TechnicianTicketsController extends GetxController {
     try {
       final allKeys = _storage.getKeys();
       final List<String> keysList = [];
-      
+
       for (final key in allKeys) {
         if (key is String && key.startsWith('assignment_history_')) {
           keysList.add(key);
         }
       }
-      
+
       debugPrint("📂 Found ${keysList.length} assignment history records");
-      
+
       for (final key in keysList) {
         try {
           final complaintId = key.replaceFirst('assignment_history_', '');
           final historyData = _storage.read(key);
-          
+
           if (historyData != null && historyData is Map) {
-            assignmentHistory[complaintId] = Map<String, dynamic>.from(historyData);
+            assignmentHistory[complaintId] =
+                Map<String, dynamic>.from(historyData);
             debugPrint("📂 Loaded assignment history: $complaintId");
           }
         } catch (e) {
           debugPrint("❌ Error loading assignment history for key $key: $e");
         }
       }
-      
-      debugPrint("✅ Loaded ${assignmentHistory.length} assignment history records");
+
+      debugPrint(
+          "✅ Loaded ${assignmentHistory.length} assignment history records");
     } catch (e) {
       debugPrint("❌ Failed to load assignment history from storage: $e");
     }
   }
 
-  Future<void> assignTechnicianWithoutRemoval(String complaintId, String technicianId) async {
-    debugPrint("🔄 Assigning technician: $technicianId to complaint: $complaintId");
+  Future<void> assignTechnicianWithoutRemoval(
+      String complaintId, String technicianId) async {
+    debugPrint(
+        "🔄 Assigning technician: $technicianId to complaint: $complaintId");
     try {
       setAssigning(complaintId, true);
 
@@ -195,13 +209,14 @@ class TechnicianTicketsController extends GetxController {
           "user_uid": userUid,
         },
       );
-      
+
       if (response.data['success'] == true) {
         final techName = availableTechnicians.firstWhere(
-          (t) => t['id'] == technicianId,
-          orElse: () => {'name': 'Unknown Technician'},
-        )['name'] ?? 'Unknown Technician';
-        
+              (t) => t['id'] == technicianId,
+              orElse: () => {'name': 'Unknown Technician'},
+            )['name'] ??
+            'Unknown Technician';
+
         // 🚨 CRITICAL: Force update all assignment states
         await _forceUpdateAssignmentState(
           complaintId: complaintId,
@@ -209,7 +224,7 @@ class TechnicianTicketsController extends GetxController {
           technicianName: techName,
           fromTechnicianId: userUid,
         );
-        
+
         debugPrint("✅ Technician assigned successfully");
       } else {
         final errorMsg = response.data['message']?['en'] ?? 'Assignment failed';
@@ -238,7 +253,8 @@ class TechnicianTicketsController extends GetxController {
 
       // 2. Update storage
       await _saveAssignmentToStorage(complaintId, technicianId, technicianName);
-      await _saveAssignmentHistory(complaintId, fromTechnicianId, technicianId, technicianName);
+      await _saveAssignmentHistory(
+          complaintId, fromTechnicianId, technicianId, technicianName);
 
       // 3. Update all ticket lists
       _updateTicketInAllLists(
@@ -251,7 +267,8 @@ class TechnicianTicketsController extends GetxController {
       tickets.refresh();
       filteredTickets.refresh();
 
-      debugPrint("✅ FORCE UPDATED assignment state for $complaintId -> $technicianName");
+      debugPrint(
+          "✅ FORCE UPDATED assignment state for $complaintId -> $technicianName");
     } catch (e) {
       debugPrint("❌ Error in force update assignment: $e");
       rethrow;
@@ -261,17 +278,17 @@ class TechnicianTicketsController extends GetxController {
   Future<void> _clearPreviousAssignmentState(String complaintId) async {
     try {
       // debugPrint("🧹 Clearing previous assignment state for $complaintId");
-      
+
       // Clear from memory
       assignedTechnicianIds.remove(complaintId);
       assignedTechnicianNames.remove(complaintId);
       selectedTechnicianIds.remove(complaintId);
       showAssignmentSection.remove(complaintId);
-      
+
       // Clear from storage
       await _storage.remove('assigned_$complaintId');
       await _storage.remove('assignment_history_$complaintId');
-      
+
       debugPrint("✅ Cleared previous assignment state");
     } catch (e) {
       debugPrint("❌ Error clearing previous assignment: $e");
@@ -310,14 +327,16 @@ class TechnicianTicketsController extends GetxController {
 
       // Update in local assigned tickets
       if (localAssignedTickets.containsKey(complaintId)) {
-        localAssignedTickets[complaintId] = localAssignedTickets[complaintId]!.copyWith(
+        localAssignedTickets[complaintId] =
+            localAssignedTickets[complaintId]!.copyWith(
           assignedTechnicianId: technicianId,
           assignedTechnicianName: technicianName,
           status: 'Assigned',
         );
       }
 
-      debugPrint("✅ Updated ticket in all lists: $complaintId -> $technicianName");
+      debugPrint(
+          "✅ Updated ticket in all lists: $complaintId -> $technicianName");
     } catch (e) {
       debugPrint("❌ Error updating ticket in all lists: $e");
     }
@@ -327,25 +346,28 @@ class TechnicianTicketsController extends GetxController {
   Complaint? _findTicketInAllLists(String complaintId) {
     try {
       // First try in main tickets list
-      final ticketInMain = tickets.where((t) => t.complaintId == complaintId).firstOrNull;
+      final ticketInMain =
+          tickets.where((t) => t.complaintId == complaintId).firstOrNull;
       if (ticketInMain != null) {
         // debugPrint("🔍 Found ticket in main list: $complaintId");
         return ticketInMain;
       }
-      
+
       // Then try in filtered tickets list
-      final ticketInFiltered = filteredTickets.where((t) => t.complaintId == complaintId).firstOrNull;
+      final ticketInFiltered = filteredTickets
+          .where((t) => t.complaintId == complaintId)
+          .firstOrNull;
       if (ticketInFiltered != null) {
         // debugPrint("🔍 Found ticket in filtered list: $complaintId");
         return ticketInFiltered;
       }
-      
+
       // Finally try in local assigned tickets
       if (localAssignedTickets.containsKey(complaintId)) {
         // debugPrint("🔍 Found ticket in local storage: $complaintId");
         return localAssignedTickets[complaintId];
       }
-      
+
       debugPrint("❌ Ticket not found in any list: $complaintId");
       return null;
     } catch (e) {
@@ -355,254 +377,271 @@ class TechnicianTicketsController extends GetxController {
   }
 
   // 🚨 ENHANCED: Ticket fetching with comprehensive assigned ticket preservation
-Future<void> fetchTickets(String userId) async {
-  try {
-    debugPrint("🔄 Fetching ALL tickets for user: $userId");
-    isLoading.value = true;
-    
-    // STEP 1: Load all stored assignment data FIRST (critical!)
-    await _loadAssignmentsFromStorage();
-    await _loadAssignedTicketsFromStorage();
-    await _loadAssignmentHistoryFromStorage();
-    
-    debugPrint("📂 Loaded storage data:");
-    debugPrint("  - Assignments: ${assignedTechnicianIds.length}");
-    debugPrint("  - Local tickets: ${localAssignedTickets.length}");
-    debugPrint("  - Assignment history: ${assignmentHistory.length}");
+  Future<void> fetchTickets(String userId) async {
+    try {
+      debugPrint("🔄 Fetching ALL tickets for user: $userId");
+      isLoading.value = true;
 
-    // STEP 2: Fetch current tickets from API (these are tickets currently assigned TO this technician)
-    final List<Complaint> currentApiTickets = await _fetchTicketsFromAPI(userId);
-    // debugPrint("📥 Current API tickets: ${currentApiTickets.length}");
+      // STEP 1: Load all stored assignment data FIRST (critical!)
+      await _loadAssignmentsFromStorage();
+      await _loadAssignedTicketsFromStorage();
+      await _loadAssignmentHistoryFromStorage();
 
-    // STEP 3: 🚨 PRESERVE ASSIGNED TICKETS - Include tickets that were assigned BY this technician
-    final List<Complaint> assignedByThisTechnician = await _getTicketsAssignedByThisTechnician(userId);
-    // debugPrint("📤 Tickets assigned BY this technician: ${assignedByThisTechnician.length}");
-    
-    // STEP 4: 🚨 COMPREHENSIVE MERGE - Combine all tickets
-    final mergedComplaints = _comprehensiveMergeAllTickets(
-      currentApiTickets, 
-      assignedByThisTechnician, 
-      userId
-    );
-    // debugPrint("🔄 After COMPREHENSIVE merge: ${mergedComplaints.length} tickets");
-    
-    // STEP 5: Apply stored assignments to ensure consistency
-    final updatedComplaints = _applyStoredAssignmentsToComplaints(mergedComplaints);
-    // debugPrint("✅ After applying assignments: ${updatedComplaints.length} tickets");
-    
-    // STEP 6: Update the observable lists
-    tickets.clear();
-    filteredTickets.clear();
-    tickets.addAll(updatedComplaints);
-    filteredTickets.addAll(updatedComplaints);
-    
-    // STEP 7: Final verification and recovery
-    await _verifyAndRecoverAssignedTickets();
-    
-    // debugPrint("✅ Final ticket count: ${tickets.length}");
-    debugTicketVisibility();
-    
-  } catch (e, st) {
-    debugPrint("❌ Error fetching tickets: $e");
-    debugPrint(st.toString());
-    _showLocallyAssignedTicketsOnly();
-  } finally {
-    isLoading.value = false;
+      debugPrint("📂 Loaded storage data:");
+      debugPrint("  - Assignments: ${assignedTechnicianIds.length}");
+      debugPrint("  - Local tickets: ${localAssignedTickets.length}");
+      debugPrint("  - Assignment history: ${assignmentHistory.length}");
+
+      // STEP 2: Fetch current tickets from API (these are tickets currently assigned TO this technician)
+      final List<Complaint> currentApiTickets =
+          await _fetchTicketsFromAPI(userId);
+      // debugPrint("📥 Current API tickets: ${currentApiTickets.length}");
+
+      // STEP 3: 🚨 PRESERVE ASSIGNED TICKETS - Include tickets that were assigned BY this technician
+      final List<Complaint> assignedByThisTechnician =
+          await _getTicketsAssignedByThisTechnician(userId);
+      // debugPrint("📤 Tickets assigned BY this technician: ${assignedByThisTechnician.length}");
+
+      // STEP 4: 🚨 COMPREHENSIVE MERGE - Combine all tickets
+      final mergedComplaints = _comprehensiveMergeAllTickets(
+          currentApiTickets, assignedByThisTechnician, userId);
+      // debugPrint("🔄 After COMPREHENSIVE merge: ${mergedComplaints.length} tickets");
+
+      // STEP 5: Apply stored assignments to ensure consistency
+      final updatedComplaints =
+          _applyStoredAssignmentsToComplaints(mergedComplaints);
+      // debugPrint("✅ After applying assignments: ${updatedComplaints.length} tickets");
+
+      // STEP 6: Update the observable lists
+      tickets.clear();
+      filteredTickets.clear();
+      tickets.addAll(updatedComplaints);
+      filteredTickets.addAll(updatedComplaints);
+
+      // STEP 7: Final verification and recovery
+      await _verifyAndRecoverAssignedTickets();
+
+      // debugPrint("✅ Final ticket count: ${tickets.length}");
+      debugTicketVisibility();
+    } catch (e, st) {
+      debugPrint("❌ Error fetching tickets: $e");
+      debugPrint(st.toString());
+      _showLocallyAssignedTicketsOnly();
+    } finally {
+      isLoading.value = false;
+    }
   }
-}
 
-Future<List<Complaint>> _getTicketsAssignedByThisTechnician(String currentUserId) async {
-  final List<Complaint> assignedTickets = [];
-  
-  try {
-    // Get tickets from assignment history where this technician was the assignor
-    for (final entry in assignmentHistory.entries) {
-      final complaintId = entry.key;
-      final historyData = entry.value;
-      final fromTechnicianId = historyData['fromTechnicianId']?.toString() ?? '';
-      
-      // Only include tickets assigned BY this technician
-      if (fromTechnicianId == currentUserId) {
-        // Check if we have the ticket in local storage
+  Future<List<Complaint>> _getTicketsAssignedByThisTechnician(
+      String currentUserId) async {
+    final List<Complaint> assignedTickets = [];
+
+    try {
+      // Get tickets from assignment history where this technician was the assignor
+      for (final entry in assignmentHistory.entries) {
+        final complaintId = entry.key;
+        final historyData = entry.value;
+        final fromTechnicianId =
+            historyData['fromTechnicianId']?.toString() ?? '';
+
+        // Only include tickets assigned BY this technician
+        if (fromTechnicianId == currentUserId) {
+          // Check if we have the ticket in local storage
+          if (localAssignedTickets.containsKey(complaintId)) {
+            final ticket = localAssignedTickets[complaintId]!;
+            assignedTickets.add(ticket);
+            debugPrint(
+                "📤 Including ticket assigned BY this technician: $complaintId -> ${historyData['toTechnicianName']}");
+          }
+        }
+      }
+
+      // Also include any currently assigned tickets (from assignedTechnicianIds)
+      for (final entry in assignedTechnicianIds.entries) {
+        final complaintId = entry.key;
+        final technicianId = entry.value;
+        final technicianName =
+            assignedTechnicianNames[complaintId] ?? 'Unknown';
+
+        // Skip if already added from history
+        if (assignedTickets.any((t) => t.complaintId == complaintId)) {
+          continue;
+        }
+
+        // Include if we have the ticket in local storage
         if (localAssignedTickets.containsKey(complaintId)) {
           final ticket = localAssignedTickets[complaintId]!;
           assignedTickets.add(ticket);
-          debugPrint("📤 Including ticket assigned BY this technician: $complaintId -> ${historyData['toTechnicianName']}");
+          // debugPrint("📤 Including currently assigned ticket: $complaintId -> $technicianName");
+        }
+      }
+
+      debugPrint(
+          "✅ Found ${assignedTickets.length} tickets assigned by this technician");
+      return assignedTickets;
+    } catch (e) {
+      debugPrint("❌ Error getting assigned tickets: $e");
+      return [];
+    }
+  }
+
+// 🆕 ENHANCED: Comprehensive merge that handles all ticket sources
+  List<Complaint> _comprehensiveMergeAllTickets(
+      List<Complaint> currentApiTickets,
+      List<Complaint> assignedByThisTechnician,
+      String currentUserId) {
+    final Map<String, Complaint> mergedTickets = {};
+
+    // 1. Add current API tickets (tickets currently assigned TO this technician)
+    for (final complaint in currentApiTickets) {
+      mergedTickets[complaint.complaintId] = complaint;
+      debugPrint(
+          "➕ API ticket: ${complaint.complaintId} - ${complaint.status}");
+    }
+
+    // 2. Add tickets assigned BY this technician (even if no longer in API)
+    for (final complaint in assignedByThisTechnician) {
+      if (!mergedTickets.containsKey(complaint.complaintId)) {
+        mergedTickets[complaint.complaintId] = complaint;
+        debugPrint(
+            "➕ Assigned ticket: ${complaint.complaintId} - ${complaint.status}");
+      } else {
+        // If ticket exists in both, prefer the one with assignment info
+        final existingTicket = mergedTickets[complaint.complaintId]!;
+        if (complaint.assignedTechnicianId != null &&
+            existingTicket.assignedTechnicianId == null) {
+          mergedTickets[complaint.complaintId] = complaint;
+          debugPrint(
+              "🔄 Updated with assignment info: ${complaint.complaintId}");
         }
       }
     }
-    
-    // Also include any currently assigned tickets (from assignedTechnicianIds)
-    for (final entry in assignedTechnicianIds.entries) {
-      final complaintId = entry.key;
-      final technicianId = entry.value;
-      final technicianName = assignedTechnicianNames[complaintId] ?? 'Unknown';
-      
-      // Skip if already added from history
-      if (assignedTickets.any((t) => t.complaintId == complaintId)) {
-        continue;
-      }
-      
-      // Include if we have the ticket in local storage
-      if (localAssignedTickets.containsKey(complaintId)) {
-        final ticket = localAssignedTickets[complaintId]!;
-        assignedTickets.add(ticket);
-        // debugPrint("📤 Including currently assigned ticket: $complaintId -> $technicianName");
-      }
-    }
-    
-    debugPrint("✅ Found ${assignedTickets.length} tickets assigned by this technician");
-    return assignedTickets;
-    
-  } catch (e) {
-    debugPrint("❌ Error getting assigned tickets: $e");
-    return [];
-  }
-}
 
-// 🆕 ENHANCED: Comprehensive merge that handles all ticket sources
-List<Complaint> _comprehensiveMergeAllTickets(
-  List<Complaint> currentApiTickets, 
-  List<Complaint> assignedByThisTechnician, 
-  String currentUserId
-) {
-  final Map<String, Complaint> mergedTickets = {};
-  
-  // 1. Add current API tickets (tickets currently assigned TO this technician)
-  for (final complaint in currentApiTickets) {
-    mergedTickets[complaint.complaintId] = complaint;
-    debugPrint("➕ API ticket: ${complaint.complaintId} - ${complaint.status}");
-  }
-  
-  // 2. Add tickets assigned BY this technician (even if no longer in API)
-  for (final complaint in assignedByThisTechnician) {
-    if (!mergedTickets.containsKey(complaint.complaintId)) {
-      mergedTickets[complaint.complaintId] = complaint;
-      debugPrint("➕ Assigned ticket: ${complaint.complaintId} - ${complaint.status}");
-    } else {
-      // If ticket exists in both, prefer the one with assignment info
-      final existingTicket = mergedTickets[complaint.complaintId]!;
-      if (complaint.assignedTechnicianId != null && existingTicket.assignedTechnicianId == null) {
-        mergedTickets[complaint.complaintId] = complaint;
-        debugPrint("🔄 Updated with assignment info: ${complaint.complaintId}");
+    // 3. Add any other locally stored tickets
+    for (final entry in localAssignedTickets.entries) {
+      final complaintId = entry.key;
+      final localTicket = entry.value;
+
+      if (!mergedTickets.containsKey(complaintId)) {
+        mergedTickets[complaintId] = localTicket;
+        debugPrint("➕ Local ticket: $complaintId - ${localTicket.status}");
       }
     }
+
+    debugPrint(
+        "🔄 COMPREHENSIVE MERGE COMPLETE: ${mergedTickets.length} total tickets");
+    return mergedTickets.values.toList();
   }
-  
-  // 3. Add any other locally stored tickets
-  for (final entry in localAssignedTickets.entries) {
-    final complaintId = entry.key;
-    final localTicket = entry.value;
-    
-    if (!mergedTickets.containsKey(complaintId)) {
-      mergedTickets[complaintId] = localTicket;
-      debugPrint("➕ Local ticket: $complaintId - ${localTicket.status}");
-    }
-  }
-  
-  debugPrint("🔄 COMPREHENSIVE MERGE COMPLETE: ${mergedTickets.length} total tickets");
-  return mergedTickets.values.toList();
-}
 
   // 🆕 CRITICAL: Verification and recovery method for assigned tickets
   Future<void> _verifyAndRecoverAssignedTickets() async {
-  debugPrint("🔍 VERIFICATION: Checking all assigned tickets are present...");
-  
-  final missingTickets = <Complaint>[];
-  final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
-  
-  // Check assignments (tickets currently assigned to others)
-  for (final entry in assignedTechnicianIds.entries) {
-    final complaintId = entry.key;
-    final assignedTechName = assignedTechnicianNames[complaintId] ?? 'Unknown';
-    
-    final ticketPresent = tickets.any((t) => t.complaintId == complaintId);
-    if (!ticketPresent) {
-      debugPrint("❌ MISSING: Assigned ticket not in UI: $complaintId -> $assignedTechName");
-      
-      // Try to recover from local storage
-      if (localAssignedTickets.containsKey(complaintId)) {
-        missingTickets.add(localAssignedTickets[complaintId]!);
-        debugPrint("🔧 Will recover: $complaintId");
-      }
-    } else {
-      debugPrint("✅ PRESENT: $complaintId -> $assignedTechName");
-    }
-  }
-  
-  // Check assignment history (tickets assigned BY this technician)
-  for (final entry in assignmentHistory.entries) {
-    final complaintId = entry.key;
-    final historyData = entry.value;
-    final fromTechnicianId = historyData['fromTechnicianId']?.toString() ?? '';
-    
-    // Only check tickets assigned BY this technician
-    if (fromTechnicianId == currentUserId) {
+    debugPrint("🔍 VERIFICATION: Checking all assigned tickets are present...");
+
+    final missingTickets = <Complaint>[];
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    // Check assignments (tickets currently assigned to others)
+    for (final entry in assignedTechnicianIds.entries) {
+      final complaintId = entry.key;
+      final assignedTechName =
+          assignedTechnicianNames[complaintId] ?? 'Unknown';
+
       final ticketPresent = tickets.any((t) => t.complaintId == complaintId);
-      if (!ticketPresent && localAssignedTickets.containsKey(complaintId)) {
-        // Don't add duplicates
-        if (!missingTickets.any((t) => t.complaintId == complaintId)) {
+      if (!ticketPresent) {
+        debugPrint(
+            "❌ MISSING: Assigned ticket not in UI: $complaintId -> $assignedTechName");
+
+        // Try to recover from local storage
+        if (localAssignedTickets.containsKey(complaintId)) {
           missingTickets.add(localAssignedTickets[complaintId]!);
-          debugPrint("🔧 Will recover from history: $complaintId -> ${historyData['toTechnicianName']}");
+          debugPrint("🔧 Will recover: $complaintId");
+        }
+      } else {
+        debugPrint("✅ PRESENT: $complaintId -> $assignedTechName");
+      }
+    }
+
+    // Check assignment history (tickets assigned BY this technician)
+    for (final entry in assignmentHistory.entries) {
+      final complaintId = entry.key;
+      final historyData = entry.value;
+      final fromTechnicianId =
+          historyData['fromTechnicianId']?.toString() ?? '';
+
+      // Only check tickets assigned BY this technician
+      if (fromTechnicianId == currentUserId) {
+        final ticketPresent = tickets.any((t) => t.complaintId == complaintId);
+        if (!ticketPresent && localAssignedTickets.containsKey(complaintId)) {
+          // Don't add duplicates
+          if (!missingTickets.any((t) => t.complaintId == complaintId)) {
+            missingTickets.add(localAssignedTickets[complaintId]!);
+            debugPrint(
+                "🔧 Will recover from history: $complaintId -> ${historyData['toTechnicianName']}");
+          }
         }
       }
     }
+
+    // Recover missing tickets
+    if (missingTickets.isNotEmpty) {
+      debugPrint(
+          "🔧 RECOVERING ${missingTickets.length} missing assigned tickets...");
+
+      final updatedMissingTickets =
+          _applyStoredAssignmentsToComplaints(missingTickets);
+
+      tickets.addAll(updatedMissingTickets);
+      filteredTickets.addAll(updatedMissingTickets);
+
+      // Force UI refresh
+      tickets.refresh();
+      filteredTickets.refresh();
+
+      debugPrint(
+          "✅ RECOVERY COMPLETE: Added ${updatedMissingTickets.length} tickets");
+      debugPrint("✅ New total ticket count: ${tickets.length}");
+    } else {
+      debugPrint("✅ VERIFICATION PASSED: All assigned tickets are present");
+    }
   }
-  
-  // Recover missing tickets
-  if (missingTickets.isNotEmpty) {
-    debugPrint("🔧 RECOVERING ${missingTickets.length} missing assigned tickets...");
-    
-    final updatedMissingTickets = _applyStoredAssignmentsToComplaints(missingTickets);
-    
-    tickets.addAll(updatedMissingTickets);
-    filteredTickets.addAll(updatedMissingTickets);
-    
-    // Force UI refresh
-    tickets.refresh();
-    filteredTickets.refresh();
-    
-    debugPrint("✅ RECOVERY COMPLETE: Added ${updatedMissingTickets.length} tickets");
-    debugPrint("✅ New total ticket count: ${tickets.length}");
-  } else {
-    debugPrint("✅ VERIFICATION PASSED: All assigned tickets are present");
-  }
-}
-  Future<void> _updateAssignmentState(String complaintId, String technicianId) async {
+
+  Future<void> _updateAssignmentState(
+      String complaintId, String technicianId) async {
     try {
       final tech = availableTechnicians.firstWhere(
         (t) => t['id'] == technicianId,
         orElse: () => {'id': technicianId, 'name': 'Unknown Technician'},
       );
-      
+
       final technicianName = tech['name'] ?? 'Unknown Technician';
       final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-      
+
       // Update local state IMMEDIATELY
       assignedTechnicianIds[complaintId] = technicianId;
       assignedTechnicianNames[complaintId] = technicianName;
-      
+
       // Save to persistent storage
       await _saveAssignmentToStorage(complaintId, technicianId, technicianName);
-      
+
       // Clear UI state
       selectedTechnicianIds.remove(complaintId);
       showAssignmentSection[complaintId] = false;
-      
+
       // Update ticket in current lists
       _updateTicketInList(complaintId, technicianId, technicianName);
-      
+
       // Force UI refresh
       tickets.refresh();
       filteredTickets.refresh();
-      
+
       // Refresh technician stats
       if (currentUserId != null) {
         await getSummaryForTechnician(currentUserId);
         debugPrint("✅ Refreshed technician stats after assignment");
       }
-      
-      debugPrint("✅ Assignment state updated and saved for $complaintId -> $technicianName");
+
+      debugPrint(
+          "✅ Assignment state updated and saved for $complaintId -> $technicianName");
     } catch (e) {
       debugPrint("❌ Error updating assignment state: $e");
     }
@@ -612,21 +651,23 @@ List<Complaint> _comprehensiveMergeAllTickets(
     try {
       debugPrint("🔄 API failed - showing ALL locally stored tickets...");
       final ticketsToShow = <Complaint>[];
-      
+
       // Include ALL locally assigned tickets
       for (final entry in localAssignedTickets.entries) {
         final complaintId = entry.key;
-        if (assignedTechnicianIds.containsKey(complaintId) || assignmentHistory.containsKey(complaintId)) {
+        if (assignedTechnicianIds.containsKey(complaintId) ||
+            assignmentHistory.containsKey(complaintId)) {
           ticketsToShow.add(entry.value);
           debugPrint("💾 Including ticket: $complaintId");
         }
       }
-      
+
       if (ticketsToShow.isNotEmpty) {
-        final updatedComplaints = _applyStoredAssignmentsToComplaints(ticketsToShow);
+        final updatedComplaints =
+            _applyStoredAssignmentsToComplaints(ticketsToShow);
         tickets.assignAll(updatedComplaints);
         filteredTickets.assignAll(updatedComplaints);
-        
+
         debugPrint("✅ Showing ${ticketsToShow.length} locally stored tickets");
       } else {
         debugPrint("⚠️ No locally stored tickets found");
@@ -640,15 +681,16 @@ List<Complaint> _comprehensiveMergeAllTickets(
     }
   }
 
-  Future<void> _saveAssignedTicketToStorage(String complaintId, Complaint ticket) async {
+  Future<void> _saveAssignedTicketToStorage(
+      String complaintId, Complaint ticket) async {
     try {
       // Store in local memory immediately
       localAssignedTickets[complaintId] = ticket;
-      
+
       // Convert ticket to JSON and save to persistent storage
       final ticketJson = ticket.toJson();
       await _storage.write('assigned_ticket_$complaintId', ticketJson);
-      
+
       debugPrint("💾 Assigned ticket saved to storage: $complaintId");
       debugPrint("  - Status: ${ticket.status}");
       debugPrint("  - Property: ${ticket.propertyName}");
@@ -661,53 +703,56 @@ List<Complaint> _comprehensiveMergeAllTickets(
     try {
       final allKeys = _storage.getKeys();
       final List<String> keysList = [];
-      
+
       for (final key in allKeys) {
         if (key is String && key.startsWith('assigned_ticket_')) {
           keysList.add(key);
         }
       }
-      
+
       debugPrint("📂 Found ${keysList.length} stored assigned tickets");
-      
+
       int successfullyLoaded = 0;
       for (final key in keysList) {
         try {
           final complaintId = key.replaceFirst('assigned_ticket_', '');
           final ticketData = _storage.read(key);
-          
+
           if (ticketData != null && ticketData is Map<String, dynamic>) {
             final ticket = Complaint.fromJson(ticketData);
             localAssignedTickets[complaintId] = ticket;
             successfullyLoaded++;
-            
-            debugPrint("📂 Loaded assigned ticket: $complaintId - ${ticket.propertyName}");
+
+            debugPrint(
+                "📂 Loaded assigned ticket: $complaintId - ${ticket.propertyName}");
           }
         } catch (e) {
           debugPrint("❌ Error loading assigned ticket for key $key: $e");
           // Continue loading other tickets even if one fails
         }
       }
-      
-      debugPrint("✅ Successfully loaded $successfullyLoaded assigned tickets from storage");
+
+      debugPrint(
+          "✅ Successfully loaded $successfullyLoaded assigned tickets from storage");
     } catch (e) {
       debugPrint("❌ Failed to load assigned tickets from storage: $e");
     }
   }
 
-  Future<void> _saveAssignmentToStorage(String complaintId, String technicianId, String technicianName) async {
+  Future<void> _saveAssignmentToStorage(
+      String complaintId, String technicianId, String technicianName) async {
     try {
       // Save to memory
       assignedTechnicianIds[complaintId] = technicianId;
       assignedTechnicianNames[complaintId] = technicianName;
-      
+
       // Save to persistent storage
       await _storage.write('assigned_$complaintId', {
         'technicianId': technicianId,
         'technicianName': technicianName,
         'timestamp': DateTime.now().toIso8601String(),
       });
-      
+
       debugPrint("💾 Assignment saved for $complaintId");
     } catch (e) {
       debugPrint("❌ Failed to save assignment: $e");
@@ -718,32 +763,39 @@ List<Complaint> _comprehensiveMergeAllTickets(
     try {
       final allKeys = _storage.getKeys();
       final List<String> assignmentKeys = [];
-      
+
       // First collect all relevant keys
       for (final key in allKeys) {
-        if (key is String && key.startsWith('assigned_') && !key.contains('ticket') && !key.contains('history')) {
+        if (key is String &&
+            key.startsWith('assigned_') &&
+            !key.contains('ticket') &&
+            !key.contains('history')) {
           assignmentKeys.add(key);
         }
       }
-      
+
       debugPrint("📂 Found ${assignmentKeys.length} assignment records");
-      
+
       // Now load each assignment
       for (final key in assignmentKeys) {
         try {
           final data = _storage.read(key);
           if (data is Map) {
             final complaintId = key.replaceFirst('assigned_', '');
-            assignedTechnicianIds[complaintId] = data['technicianId']?.toString() ?? '';
-            assignedTechnicianNames[complaintId] = data['technicianName']?.toString() ?? '';
-            debugPrint("📂 Loaded assignment: $complaintId -> ${assignedTechnicianNames[complaintId]}");
+            assignedTechnicianIds[complaintId] =
+                data['technicianId']?.toString() ?? '';
+            assignedTechnicianNames[complaintId] =
+                data['technicianName']?.toString() ?? '';
+            debugPrint(
+                "📂 Loaded assignment: $complaintId -> ${assignedTechnicianNames[complaintId]}");
           }
         } catch (e) {
           debugPrint("❌ Error loading assignment for key $key: $e");
         }
       }
-      
-      debugPrint("✅ Successfully loaded ${assignedTechnicianIds.length} assignments");
+
+      debugPrint(
+          "✅ Successfully loaded ${assignedTechnicianIds.length} assignments");
     } catch (e) {
       debugPrint("❌ Failed to load assignments from storage: $e");
     }
@@ -782,8 +834,9 @@ List<Complaint> _comprehensiveMergeAllTickets(
             .map(Complaint.fromJson)
             .toList();
       } else if (data is Map<String, dynamic>) {
-        final bool ok = TechnicianComplaintsResponse.statusFromJson(data['status']);
-        
+        final bool ok =
+            TechnicianComplaintsResponse.statusFromJson(data['status']);
+
         if (ok) {
           final dynamic inner = data['data'];
           if (inner is List) {
@@ -803,33 +856,39 @@ List<Complaint> _comprehensiveMergeAllTickets(
     }
   }
 
-  List<Complaint> _applyStoredAssignmentsToComplaints(List<Complaint> complaints) {
+  List<Complaint> _applyStoredAssignmentsToComplaints(
+      List<Complaint> complaints) {
     final updatedComplaints = <Complaint>[];
-    
+
     for (final complaint in complaints) {
       final complaintId = complaint.complaintId;
       final storedTechId = assignedTechnicianIds[complaintId];
       final storedTechName = assignedTechnicianNames[complaintId];
-      
-      if (storedTechId != null && storedTechName != null && storedTechId.isNotEmpty) {
+
+      if (storedTechId != null &&
+          storedTechName != null &&
+          storedTechId.isNotEmpty) {
         try {
           final updatedComplaint = complaint.copyWith(
             assignedTechnicianId: storedTechId,
             assignedTechnicianName: storedTechName,
-            status: complaint.status == 'pending' ? 'Assigned' : complaint.status,
+            status:
+                complaint.status == 'pending' ? 'Assigned' : complaint.status,
           );
-          
+
           updatedComplaints.add(updatedComplaint);
-          debugPrint("🔄 Applied stored assignment to complaint $complaintId: $storedTechName");
+          debugPrint(
+              "🔄 Applied stored assignment to complaint $complaintId: $storedTechName");
         } catch (e) {
-          debugPrint("❌ Error applying assignment to complaint $complaintId: $e");
+          debugPrint(
+              "❌ Error applying assignment to complaint $complaintId: $e");
           updatedComplaints.add(complaint);
         }
       } else {
         updatedComplaints.add(complaint);
       }
     }
-    
+
     return updatedComplaints;
   }
 
@@ -838,19 +897,20 @@ List<Complaint> _comprehensiveMergeAllTickets(
     assignedTechnicianNames.remove(complaintId);
     selectedTechnicianIds.remove(complaintId);
     showAssignmentSection.remove(complaintId);
-    
+
     localAssignedTickets.remove(complaintId);
     assignmentHistory.remove(complaintId);
-    
+
     try {
       await _storage.remove('assigned_technician_$complaintId');
       await _storage.remove('assigned_ticket_$complaintId');
       await _storage.remove('assignment_history_$complaintId');
-      debugPrint("🗑️ Cleared assignment, ticket, and history from storage for: $complaintId");
+      debugPrint(
+          "🗑️ Cleared assignment, ticket, and history from storage for: $complaintId");
     } catch (e) {
       debugPrint("❌ Failed to clear assignment from storage: $e");
     }
-    
+
     tickets.refresh();
     filteredTickets.refresh();
   }
@@ -858,10 +918,11 @@ List<Complaint> _comprehensiveMergeAllTickets(
   void debugTicketVisibility() {
     debugPrint("🔍 TICKET VISIBILITY DEBUG:");
     debugPrint("🎫 UI shows: ${tickets.length} tickets");
-    debugPrint("💾 Assigned tickets in storage: ${assignedTechnicianIds.length}");
+    debugPrint(
+        "💾 Assigned tickets in storage: ${assignedTechnicianIds.length}");
     debugPrint("📥 Local assigned tickets: ${localAssignedTickets.length}");
     debugPrint("📝 Assignment history: ${assignmentHistory.length}");
-    
+
     debugPrint("\n📋 Assignment Details:");
     for (final entry in assignedTechnicianIds.entries) {
       final complaintId = entry.key;
@@ -869,139 +930,153 @@ List<Complaint> _comprehensiveMergeAllTickets(
       final hasLocalTicket = localAssignedTickets.containsKey(complaintId);
       final inCurrentList = tickets.any((t) => t.complaintId == complaintId);
       final hasHistory = assignmentHistory.containsKey(complaintId);
-      
-      debugPrint("  $complaintId -> $techName (Local: $hasLocalTicket, InList: $inCurrentList, History: $hasHistory)");
+
+      debugPrint(
+          "  $complaintId -> $techName (Local: $hasLocalTicket, InList: $inCurrentList, History: $hasHistory)");
     }
-    
+
     debugPrint("\n🎫 Current Tickets in UI:");
     for (int i = 0; i < tickets.length; i++) {
       final ticket = tickets[i];
       final isAssigned = assignedTechnicianIds.containsKey(ticket.complaintId);
       final assignedTo = assignedTechnicianNames[ticket.complaintId] ?? 'None';
-      debugPrint("  ${i + 1}. ${ticket.complaintId} - ${ticket.status} - Assigned to: $assignedTo");
+      debugPrint(
+          "  ${i + 1}. ${ticket.complaintId} - ${ticket.status} - Assigned to: $assignedTo");
     }
   }
 
-
-Future<void> refreshTicketsFromAPI(String userId) async {
-  try {
-    debugPrint("🔄 Refreshing tickets from API for user: $userId");
-    await _fetchTicketsFromAPI(userId);
-    debugPrint("✅ API tickets refresh completed");
-  } catch (e) {
-    debugPrint("❌ Error refreshing tickets from API: $e");
+  Future<void> refreshTicketsFromAPI(String userId) async {
+    try {
+      debugPrint("🔄 Refreshing tickets from API for user: $userId");
+      await _fetchTicketsFromAPI(userId);
+      debugPrint("✅ API tickets refresh completed");
+    } catch (e) {
+      debugPrint("❌ Error refreshing tickets from API: $e");
+    }
   }
-}
+
   // 🆕 ENHANCED: Comprehensive refresh that ensures ALL assigned tickets remain visible
-Future<void> refreshAllData(String userId) async {
-  try {
-    debugPrint("🔄 Starting COMPREHENSIVE data refresh for user: $userId");
-    
-    // Step 1: Load all stored data first
-    await _loadAssignmentsFromStorage();
-    await _loadAssignedTicketsFromStorage();
-    await _loadAssignmentHistoryFromStorage();
-    
-    debugPrint("📂 Loaded ${assignedTechnicianIds.length} assignments from storage");
-    debugPrint("📂 Loaded ${localAssignedTickets.length} local tickets from storage");
-    
-    // Step 2: Fetch fresh tickets (which will automatically merge with stored assignments)
-    await fetchTickets(userId);
-    
-    // Step 3: Ensure ALL assigned tickets are visible (redundant safety check)
-    await _ensureAssignedTicketsVisible();
-    
-    // Step 4: Refresh summary stats
+  Future<void> refreshAllData(String userId) async {
     try {
-      await getSummaryForTechnician(userId);
-      debugPrint("✅ Summary refreshed successfully");
-    } catch (summaryError) {
-      debugPrint("❌ Error refreshing summary: $summaryError");
-    }
+      debugPrint("🔄 Starting COMPREHENSIVE data refresh for user: $userId");
 
-    // Step 5: Refresh API tickets specifically
-    try {
-      await refreshTicketsFromAPI(userId);
-      debugPrint("✅ API tickets refreshed successfully");
-    } catch (ticketsError) {
-      debugPrint("❌ Error refreshing API tickets: $ticketsError");
+      // Step 1: Load all stored data first
+      await _loadAssignmentsFromStorage();
+      await _loadAssignedTicketsFromStorage();
+      await _loadAssignmentHistoryFromStorage();
+
+      debugPrint(
+          "📂 Loaded ${assignedTechnicianIds.length} assignments from storage");
+      debugPrint(
+          "📂 Loaded ${localAssignedTickets.length} local tickets from storage");
+
+      // Step 2: Fetch fresh tickets (which will automatically merge with stored assignments)
+      await fetchTickets(userId);
+
+      // Step 3: Ensure ALL assigned tickets are visible (redundant safety check)
+      await _ensureAssignedTicketsVisible();
+
+      // Step 4: Refresh summary stats
+      try {
+        await getSummaryForTechnician(userId);
+        debugPrint("✅ Summary refreshed successfully");
+      } catch (summaryError) {
+        debugPrint("❌ Error refreshing summary: $summaryError");
+      }
+
+      // Step 5: Refresh API tickets specifically
+      try {
+        await refreshTicketsFromAPI(userId);
+        debugPrint("✅ API tickets refreshed successfully");
+      } catch (ticketsError) {
+        debugPrint("❌ Error refreshing API tickets: $ticketsError");
+      }
+
+      // Step 6: Final verification
+      debugTicketVisibility();
+
+      debugPrint("✅ COMPREHENSIVE data refresh completed");
+      debugPrint("✅ Final UI ticket count: ${tickets.length}");
+    } catch (e) {
+      debugPrint("❌ Error during comprehensive refresh: $e");
     }
-    
-    // Step 6: Final verification
-    debugTicketVisibility();
-    
-    debugPrint("✅ COMPREHENSIVE data refresh completed");
-    debugPrint("✅ Final UI ticket count: ${tickets.length}");
-  } catch (e) {
-    debugPrint("❌ Error during comprehensive refresh: $e");
   }
-}
 
   // 🆕 ENHANCED: Ensure assigned tickets are visible with better recovery
   Future<void> _ensureAssignedTicketsVisible() async {
     debugPrint("🔍 ENSURING all assigned tickets are visible...");
-    
+
     final missingTickets = <Complaint>[];
-    
+
     // Check if any assigned tickets are missing from the current list
     for (final entry in assignedTechnicianIds.entries) {
       final complaintId = entry.key;
-      final assignedTechName = assignedTechnicianNames[complaintId] ?? 'Unknown';
+      final assignedTechName =
+          assignedTechnicianNames[complaintId] ?? 'Unknown';
       final isInCurrentList = tickets.any((t) => t.complaintId == complaintId);
-      
+
       if (!isInCurrentList) {
-        debugPrint("❌ MISSING assigned ticket: $complaintId -> $assignedTechName");
-        
+        debugPrint(
+            "❌ MISSING assigned ticket: $complaintId -> $assignedTechName");
+
         if (localAssignedTickets.containsKey(complaintId)) {
           final localTicket = localAssignedTickets[complaintId]!;
           missingTickets.add(localTicket);
           debugPrint("🔧 Will recover: $complaintId from local storage");
         } else {
-          debugPrint("⚠️ WARNING: No local ticket data for missing assignment: $complaintId");
+          debugPrint(
+              "⚠️ WARNING: No local ticket data for missing assignment: $complaintId");
         }
       } else {
-        debugPrint("✅ Assignment present in UI: $complaintId -> $assignedTechName");
+        debugPrint(
+            "✅ Assignment present in UI: $complaintId -> $assignedTechName");
       }
     }
-    
+
     // Also check assignment history for tickets assigned BY this technician
     final currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
     for (final entry in assignmentHistory.entries) {
       final complaintId = entry.key;
       final historyData = entry.value;
-      final fromTechnicianId = historyData['fromTechnicianId']?.toString() ?? '';
-      
+      final fromTechnicianId =
+          historyData['fromTechnicianId']?.toString() ?? '';
+
       // Only check tickets assigned BY this technician
       if (fromTechnicianId == currentUserId) {
-        final isInCurrentList = tickets.any((t) => t.complaintId == complaintId);
-        
+        final isInCurrentList =
+            tickets.any((t) => t.complaintId == complaintId);
+
         if (!isInCurrentList && localAssignedTickets.containsKey(complaintId)) {
           // Don't add duplicates
           if (!missingTickets.any((t) => t.complaintId == complaintId)) {
             final localTicket = localAssignedTickets[complaintId]!;
             missingTickets.add(localTicket);
-            debugPrint("🔧 Will recover from history: $complaintId -> ${historyData['toTechnicianName']}");
+            debugPrint(
+                "🔧 Will recover from history: $complaintId -> ${historyData['toTechnicianName']}");
           }
         }
       }
     }
-    
+
     // Recover missing tickets
     if (missingTickets.isNotEmpty) {
-      debugPrint("🔧 RECOVERING ${missingTickets.length} missing assigned tickets...");
-      
-      final updatedMissingTickets = _applyStoredAssignmentsToComplaints(missingTickets);
-      
+      debugPrint(
+          "🔧 RECOVERING ${missingTickets.length} missing assigned tickets...");
+
+      final updatedMissingTickets =
+          _applyStoredAssignmentsToComplaints(missingTickets);
+
       tickets.addAll(updatedMissingTickets);
       filteredTickets.addAll(updatedMissingTickets);
-      
+
       // Force UI refresh
       tickets.refresh();
       filteredTickets.refresh();
-      
-      debugPrint("✅ RECOVERY COMPLETE: Added ${updatedMissingTickets.length} missing tickets");
+
+      debugPrint(
+          "✅ RECOVERY COMPLETE: Added ${updatedMissingTickets.length} missing tickets");
       debugPrint("✅ New total ticket count: ${tickets.length}");
-      
+
       // Verify all assignments are now present
       _verifyAllAssignmentsPresent();
     } else {
@@ -1011,16 +1086,18 @@ Future<void> refreshAllData(String userId) async {
 
   // 🆕 Final verification method
   void _verifyAllAssignmentsPresent() {
-    debugPrint("🔍 FINAL VERIFICATION: Checking all assignments are present...");
-    
+    debugPrint(
+        "🔍 FINAL VERIFICATION: Checking all assignments are present...");
+
     int presentCount = 0;
     int missingCount = 0;
-    
+
     for (final entry in assignedTechnicianIds.entries) {
       final complaintId = entry.key;
-      final assignedTechName = assignedTechnicianNames[complaintId] ?? 'Unknown';
+      final assignedTechName =
+          assignedTechnicianNames[complaintId] ?? 'Unknown';
       final isPresent = tickets.any((t) => t.complaintId == complaintId);
-      
+
       if (isPresent) {
         presentCount++;
         debugPrint("✅ VERIFIED: $complaintId -> $assignedTechName");
@@ -1029,16 +1106,17 @@ Future<void> refreshAllData(String userId) async {
         debugPrint("❌ STILL MISSING: $complaintId -> $assignedTechName");
       }
     }
-    
+
     debugPrint("📊 VERIFICATION RESULTS:");
     debugPrint("  - Present assignments: $presentCount");
     debugPrint("  - Missing assignments: $missingCount");
     debugPrint("  - Total UI tickets: ${tickets.length}");
-    
+
     if (missingCount == 0) {
       debugPrint("🎉 SUCCESS: All assigned tickets are present in UI!");
     } else {
-      debugPrint("⚠️ WARNING: $missingCount assigned tickets are still missing from UI");
+      debugPrint(
+          "⚠️ WARNING: $missingCount assigned tickets are still missing from UI");
     }
   }
 
@@ -1063,7 +1141,8 @@ Future<void> refreshAllData(String userId) async {
     }
   }
 
-  void _updateTicketInList(String complaintId, String technicianId, String technicianName) {
+  void _updateTicketInList(
+      String complaintId, String technicianId, String technicianName) {
     try {
       // Update in main tickets list
       for (int i = 0; i < tickets.length; i++) {
@@ -1071,33 +1150,38 @@ Future<void> refreshAllData(String userId) async {
           tickets[i] = tickets[i].copyWith(
             assignedTechnicianId: technicianId,
             assignedTechnicianName: technicianName,
-            status: tickets[i].status == 'pending' ? 'Assigned' : tickets[i].status,
+            status:
+                tickets[i].status == 'pending' ? 'Assigned' : tickets[i].status,
           );
           debugPrint("✅ Updated ticket in main list: $complaintId");
           break;
         }
       }
-      
+
       // Update in filtered tickets list
       for (int i = 0; i < filteredTickets.length; i++) {
         if (filteredTickets[i].complaintId == complaintId) {
           filteredTickets[i] = filteredTickets[i].copyWith(
             assignedTechnicianId: technicianId,
             assignedTechnicianName: technicianName,
-            status: filteredTickets[i].status == 'pending' ? 'Assigned' : filteredTickets[i].status,
+            status: filteredTickets[i].status == 'pending'
+                ? 'Assigned'
+                : filteredTickets[i].status,
           );
           debugPrint("✅ Updated ticket in filtered list: $complaintId");
           break;
         }
       }
-      
+
       // Also update in local assigned tickets storage
       if (localAssignedTickets.containsKey(complaintId)) {
         final existingTicket = localAssignedTickets[complaintId]!;
         localAssignedTickets[complaintId] = existingTicket.copyWith(
           assignedTechnicianId: technicianId,
           assignedTechnicianName: technicianName,
-          status: existingTicket.status == 'pending' ? 'Assigned' : existingTicket.status,
+          status: existingTicket.status == 'pending'
+              ? 'Assigned'
+              : existingTicket.status,
         );
         debugPrint("✅ Updated ticket in local storage: $complaintId");
       }
@@ -1109,12 +1193,14 @@ Future<void> refreshAllData(String userId) async {
   void debugStoredAssignments() {
     debugPrint("🔍 Current stored assignments:");
     for (final entry in assignedTechnicianIds.entries) {
-      debugPrint("  ${entry.key} -> ${assignedTechnicianNames[entry.key]} (${entry.value})");
+      debugPrint(
+          "  ${entry.key} -> ${assignedTechnicianNames[entry.key]} (${entry.value})");
     }
-    
+
     debugPrint("🔍 Current locally assigned tickets:");
     for (final entry in localAssignedTickets.entries) {
-      debugPrint("  ${entry.key} -> Status: ${entry.value.status}, Property: ${entry.value.propertyName}");
+      debugPrint(
+          "  ${entry.key} -> Status: ${entry.value.status}, Property: ${entry.value.propertyName}");
     }
   }
 
@@ -1122,27 +1208,30 @@ Future<void> refreshAllData(String userId) async {
   Future<void> forceRefreshAllTickets(String userId) async {
     try {
       debugPrint("🔄 FORCE REFRESH: Starting comprehensive ticket refresh");
-      
+
       // Step 1: Load all stored data
       await _loadAssignmentsFromStorage();
       await _loadAssignedTicketsFromStorage();
       await _loadAssignmentHistoryFromStorage();
-      
-      debugPrint("📂 Loaded ${assignedTechnicianIds.length} assignments from storage");
-      debugPrint("📂 Loaded ${localAssignedTickets.length} local tickets from storage");
-      
+
+      debugPrint(
+          "📂 Loaded ${assignedTechnicianIds.length} assignments from storage");
+      debugPrint(
+          "📂 Loaded ${localAssignedTickets.length} local tickets from storage");
+
       // Step 2: Fetch tickets with comprehensive merge
       await fetchTickets(userId);
-      
+
       // Step 3: Multiple safety checks to ensure assigned tickets are visible
       await _ensureAssignedTicketsVisible();
       await _verifyAndRecoverAssignedTickets();
-      
+
       // Step 4: Final verification and debug
       debugTicketVisibility();
       _verifyAllAssignmentsPresent();
-      
-      debugPrint("✅ FORCE REFRESH: Complete - Final count: ${tickets.length} tickets");
+
+      debugPrint(
+          "✅ FORCE REFRESH: Complete - Final count: ${tickets.length} tickets");
     } catch (e) {
       debugPrint("❌ FORCE REFRESH: Error: $e");
     }
@@ -1158,26 +1247,27 @@ Future<void> refreshAllData(String userId) async {
 
     if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
       final normalizedSelectedStatus = status.toLowerCase().trim();
-      
+
       result = result.where((tickets) {
         final ticketStatus = tickets.statusText.en?.toLowerCase().trim() ?? '';
-        debugPrint("🔍 Status Filter: Comparing '$normalizedSelectedStatus' vs '$ticketStatus'");
-        
+        debugPrint(
+            "🔍 Status Filter: Comparing '$normalizedSelectedStatus' vs '$ticketStatus'");
+
         switch (normalizedSelectedStatus) {
           case 'pending':
-            return ticketStatus == 'pending' || 
-                  ticketStatus.contains('pend') ||
-                  ticketStatus.contains('open');
+            return ticketStatus == 'pending' ||
+                ticketStatus.contains('pend') ||
+                ticketStatus.contains('open');
           case 'in progress':
-            return ticketStatus.contains('progress') || 
-                  ticketStatus.contains('progres') ||
-                  ticketStatus.contains('processing') ||
-                  ticketStatus.contains('in-progress');
+            return ticketStatus.contains('progress') ||
+                ticketStatus.contains('progres') ||
+                ticketStatus.contains('processing') ||
+                ticketStatus.contains('in-progress');
           case 'resolved':
             return ticketStatus.contains('resolve') ||
-                  ticketStatus.contains('complete') ||
-                  ticketStatus.contains('closed') ||
-                  ticketStatus.contains('finished');
+                ticketStatus.contains('complete') ||
+                ticketStatus.contains('closed') ||
+                ticketStatus.contains('finished');
           default:
             return ticketStatus == normalizedSelectedStatus;
         }
@@ -1187,39 +1277,45 @@ Future<void> refreshAllData(String userId) async {
     if (startDate != null || endDate != null) {
       result = result.where((tickets) {
         try {
-          final ticketDate = _parseTicketDate(tickets.lastUpdated ?? tickets.lastUpdated);
+          final ticketDate =
+              _parseTicketDate(tickets.lastUpdated ?? tickets.lastUpdated);
           if (ticketDate == null) {
-            debugPrint("⚠️ Could not parse date for ticket ${tickets.complaintId}");
+            debugPrint(
+                "⚠️ Could not parse date for ticket ${tickets.complaintId}");
             return false;
           }
 
-          final ticketDateOnly = DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
-          final startDateOnly = startDate != null 
+          final ticketDateOnly =
+              DateTime(ticketDate.year, ticketDate.month, ticketDate.day);
+          final startDateOnly = startDate != null
               ? DateTime(startDate.year, startDate.month, startDate.day)
               : DateTime(1900);
           final endDateOnly = endDate != null
               ? DateTime(endDate.year, endDate.month, endDate.day)
               : DateTime(2100);
 
-          return (ticketDateOnly.isAtSameMomentAs(startDateOnly) || 
+          return (ticketDateOnly.isAtSameMomentAs(startDateOnly) ||
                   ticketDateOnly.isAfter(startDateOnly)) &&
-                (ticketDateOnly.isAtSameMomentAs(endDateOnly) || 
+              (ticketDateOnly.isAtSameMomentAs(endDateOnly) ||
                   ticketDateOnly.isBefore(endDateOnly));
         } catch (e) {
-          debugPrint("❌ Error filtering by date for ticket ${tickets.complaintId}: $e");
+          debugPrint(
+              "❌ Error filtering by date for ticket ${tickets.complaintId}: $e");
           return false;
         }
       }).toList();
     }
 
     filteredTickets.assignAll(result);
-    debugPrint("✅ Applied filters. ${filteredTickets.length} tickets match criteria.");
+    debugPrint(
+        "✅ Applied filters. ${filteredTickets.length} tickets match criteria.");
   }
 
   DateTime? _parseTicketDate(String? dateString) {
     if (dateString == null || dateString.isEmpty) return null;
 
-    final cleanDateString = dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}\)?'), '');
+    final cleanDateString =
+        dateString.trim().replaceAll(RegExp(r'[+-]\d{2}:?\d{2}\)?'), '');
 
     final possibleFormats = [
       "yyyy-MM-dd HH:mm:ss",
@@ -1251,39 +1347,46 @@ Future<void> refreshAllData(String userId) async {
     isStatsLoading.value = true;
     statsErrorMessage.value = '';
     technicianStats.value = null;
-    
+
     try {
       final response = await apiClient.request(
         "Technician/PropertyStats",
         method: "post",
         data: {"technician_id": uid},
       );
-      
+
       if (response.data['success'] == true) {
-        technicianStats.value = ComplaintStatisticsResponse.fromJson(response.data);
-        final propertyCount = technicianStats.value?.data?.propertyStats.length ?? 0;
+        technicianStats.value =
+            ComplaintStatisticsResponse.fromJson(response.data);
+        final propertyCount =
+            technicianStats.value?.data?.propertyStats.length ?? 0;
         debugPrint('Technician stats loaded: $propertyCount properties');
       } else {
-        String errorMessage = 'We are currently performing maintenance. Please try again later.';
-        
+        String errorMessage =
+            'We are currently performing maintenance. Please try again later.';
+
         if (response.data['message'] != null) {
           final messageData = response.data['message'];
           if (messageData is Map && messageData['en'] != null) {
-            errorMessage = "We're experiencing some issues. ${messageData['en'].toString()}";
+            errorMessage =
+                "We're experiencing some issues. ${messageData['en'].toString()}";
           } else if (messageData is String) {
-            if (messageData.toLowerCase().contains('maintenance') || 
+            if (messageData.toLowerCase().contains('maintenance') ||
                 messageData.toLowerCase().contains('unavailable')) {
-              errorMessage = 'The system is currently under maintenance. Please try again later.';
+              errorMessage =
+                  'The system is currently under maintenance. Please try again later.';
             } else {
-              errorMessage = "We're having technical difficulties. $messageData";
+              errorMessage =
+                  "We're having technical difficulties. $messageData";
             }
           }
         }
-        
+
         statsErrorMessage.value = errorMessage;
       }
     } catch (e) {
-      statsErrorMessage.value = 'Our systems are temporarily unavailable. Please check back shortly.';
+      statsErrorMessage.value =
+          'Our systems are temporarily unavailable. Please check back shortly.';
       debugPrint('Exception in getSummaryForTechnician: $e');
     } finally {
       isStatsLoading.value = false;
@@ -1309,16 +1412,20 @@ Future<void> refreshAllData(String userId) async {
       debugPrint("📡 Response received: ${response.statusCode}");
 
       if (response.statusCode == 200) {
-        final parsedResponse = TechnicianDropdownResponse.fromJson(response.data);
-        
+        final parsedResponse =
+            TechnicianDropdownResponse.fromJson(response.data);
+
         if (parsedResponse.success) {
-          final techniciansList = parsedResponse.data.technicians.map((tech) => {
-            'id': tech.uid,
-            'name': tech.fullName,
-          }).toList();
+          final techniciansList = parsedResponse.data.technicians
+              .map((tech) => {
+                    'id': tech.uid,
+                    'name': tech.fullName,
+                  })
+              .toList();
 
           availableTechnicians.assignAll(techniciansList);
-          debugPrint("📋 Loaded ${techniciansList.length} available technicians");
+          debugPrint(
+              "📋 Loaded ${techniciansList.length} available technicians");
         }
       }
     } catch (e) {
@@ -1331,20 +1438,19 @@ Future<void> refreshAllData(String userId) async {
   Future<void> assignTechnician(String complaintId, String technicianId) async {
     try {
       await assignTechnicianWithoutRemoval(complaintId, technicianId);
-      
+
       Get.snackbar(
-        '✅ Success', 
+        '✅ Success',
         'Technician assigned successfully',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green.withOpacity(0.8),
         colorText: Colors.white,
         duration: const Duration(seconds: 3),
       );
-      
     } catch (e) {
       debugPrint("❌ Assignment error: $e");
       Get.snackbar(
-        'Error', 
+        'Error',
         'Failed to assign technician: ${e.toString()}',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.withOpacity(0.8),
@@ -1363,211 +1469,216 @@ Future<void> refreshAllData(String userId) async {
   }
 
   Future<void> fetchComplaintDetails(String complaintId) async {
-  try {
-    debugPrint("🔄 Fetching complete complaint details for: $complaintId");
-    isLoading.value = true;
+    try {
+      debugPrint("🔄 Fetching complete complaint details for: $complaintId");
+      isLoading.value = true;
 
-    final response = await apiClient.request(
-      "complaint-detailscopy",
-      method: "post",
-      data: {"complaint_id": complaintId},
-    );
+      final response = await apiClient.request(
+        "complaint-detailscopy",
+        method: "post",
+        data: {"complaint_id": complaintId},
+      );
 
-    if (response.data['success'] == true) {
-      final data = response.data['data'];
-      
-      debugPrint("✅ Received timeline-based complaint data");
-      
-      // Transform timeline format to flat format
-      final transformedData = _transformTimelineToFlat(data);
-      
-      debugPrint("✅ Transformed data:");
-      debugPrint("  - Payment: ${transformedData['amount_paid']}");
-      debugPrint("  - Payment Status: ${transformedData['amount_paid_status']}");
-      debugPrint("  - Technician images: ${transformedData['complaint_images']?['technician_uploaded']?.length ?? 0}");
-      
-      // Parse as Complaint
-      final complaint = Complaint.fromJson(transformedData);
-      
-      // Update in lists
-      final index = tickets.indexWhere((t) => t.complaintId == complaintId);
-      if (index != -1) {
-        tickets[index] = complaint;
-      } else {
-        tickets.add(complaint);
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+
+        debugPrint("✅ Received timeline-based complaint data");
+
+        // Transform timeline format to flat format
+        final transformedData = _transformTimelineToFlat(data);
+
+        debugPrint("✅ Transformed data:");
+        debugPrint("  - Payment: ${transformedData['amount_paid']}");
+        debugPrint(
+            "  - Payment Status: ${transformedData['amount_paid_status']}");
+        debugPrint(
+            "  - Technician images: ${transformedData['complaint_images']?['technician_uploaded']?.length ?? 0}");
+
+        // Parse as Complaint
+        final complaint = Complaint.fromJson(transformedData);
+
+        // Update in lists
+        final index = tickets.indexWhere((t) => t.complaintId == complaintId);
+        if (index != -1) {
+          tickets[index] = complaint;
+        } else {
+          tickets.add(complaint);
+        }
+
+        final filteredIndex =
+            filteredTickets.indexWhere((t) => t.complaintId == complaintId);
+        if (filteredIndex != -1) {
+          filteredTickets[filteredIndex] = complaint;
+        } else {
+          filteredTickets.add(complaint);
+        }
+
+        // Force UI refresh
+        tickets.refresh();
+        filteredTickets.refresh();
+
+        debugPrint("✅ Ticket updated in lists");
       }
-      
-      final filteredIndex = filteredTickets.indexWhere((t) => t.complaintId == complaintId);
-      if (filteredIndex != -1) {
-        filteredTickets[filteredIndex] = complaint;
-      } else {
-        filteredTickets.add(complaint);
-      }
-      
-      // Force UI refresh
-      tickets.refresh();
-      filteredTickets.refresh();
-      
-      debugPrint("✅ Ticket updated in lists");
+    } catch (e) {
+      debugPrint("❌ Error fetching complaint details: $e");
+    } finally {
+      isLoading.value = false;
     }
-  } catch (e) {
-    debugPrint("❌ Error fetching complaint details: $e");
-  } finally {
-    isLoading.value = false;
   }
-}
 
 // Transform timeline-based response to flat format
-Map<String, dynamic> _transformTimelineToFlat(Map<String, dynamic> data) {
-  final complaint = data['complaint'] ?? {};
-  final property = data['property'] ?? {};
-  final timeline = (data['timeline'] as List?) ?? [];
-  
-  // Extract payment info from timeline
-  String? amountPaid;
-  String? paymentStatus;
-  String? paymentMethod;
-  
-  final paymentEvents = timeline.where((event) => event['type'] == 'payment').toList();
-  if (paymentEvents.isNotEmpty) {
-    final latestPayment = paymentEvents.last;
-    amountPaid = latestPayment['amount']?.toString();
-    
-    // Convert status text to code
-    final statusText = latestPayment['status']?.toString().toLowerCase();
-    if (statusText == 'unpaid') {
-      paymentStatus = '0';
-    } else if (statusText == 'partially paid') {
-      paymentStatus = '1';
-    } else if (statusText == 'fully paid') {
-      paymentStatus = '2';
-    }
-    
-    // Convert method text to code
-    final methodText = latestPayment['method']?.toString().toLowerCase();
-    if (methodText == 'card') {
-      paymentMethod = '1';
-    } else if (methodText == 'cash') {
-      paymentMethod = '2';
-    } else if (methodText == 'transfer' || methodText == 'others') {
-      paymentMethod = '3';
-    }
-  }
-  
-  // Extract images from timeline, categorized by uploader
-  List<String> tenantImages = [];
-  List<String> adminImages = [];
-  List<String> technicianImages = [];
-  
-  final imageEvents = timeline.where((event) => event['type'] == 'image_upload').toList();
-  for (var imageEvent in imageEvents) {
-    final imagePath = imageEvent['image_path']?.toString();
-    if (imagePath == null || imagePath.isEmpty) continue;
-    
-    final uploadedBy = imageEvent['by'];
-    if (uploadedBy is Map) {
-      final uploaderType = uploadedBy['type']?.toString().toLowerCase();
-      
-      if (uploaderType == 'technician') {
-        technicianImages.add(imagePath);
-      } else if (uploaderType == 'admin') {
-        adminImages.add(imagePath);
-      } else if (uploaderType == 'user') {
-        tenantImages.add(imagePath);
+  Map<String, dynamic> _transformTimelineToFlat(Map<String, dynamic> data) {
+    final complaint = data['complaint'] ?? {};
+    final property = data['property'] ?? {};
+    final timeline = (data['timeline'] as List?) ?? [];
+
+    // Extract payment info from timeline
+    String? amountPaid;
+    String? paymentStatus;
+    String? paymentMethod;
+
+    final paymentEvents =
+        timeline.where((event) => event['type'] == 'payment').toList();
+    if (paymentEvents.isNotEmpty) {
+      final latestPayment = paymentEvents.last;
+      amountPaid = latestPayment['amount']?.toString();
+
+      // Convert status text to code
+      final statusText = latestPayment['status']?.toString().toLowerCase();
+      if (statusText == 'unpaid') {
+        paymentStatus = '0';
+      } else if (statusText == 'partially paid') {
+        paymentStatus = '1';
+      } else if (statusText == 'fully paid') {
+        paymentStatus = '2';
+      }
+
+      // Convert method text to code
+      final methodText = latestPayment['method']?.toString().toLowerCase();
+      if (methodText == 'card') {
+        paymentMethod = '1';
+      } else if (methodText == 'cash') {
+        paymentMethod = '2';
+      } else if (methodText == 'transfer' || methodText == 'others') {
+        paymentMethod = '3';
       }
     }
+
+    // Extract images from timeline, categorized by uploader
+    List<String> tenantImages = [];
+    List<String> adminImages = [];
+    List<String> technicianImages = [];
+
+    final imageEvents =
+        timeline.where((event) => event['type'] == 'image_upload').toList();
+    for (var imageEvent in imageEvents) {
+      final imagePath = imageEvent['image_path']?.toString();
+      if (imagePath == null || imagePath.isEmpty) continue;
+
+      final uploadedBy = imageEvent['by'];
+      if (uploadedBy is Map) {
+        final uploaderType = uploadedBy['type']?.toString().toLowerCase();
+
+        if (uploaderType == 'technician') {
+          technicianImages.add(imagePath);
+        } else if (uploaderType == 'admin') {
+          adminImages.add(imagePath);
+        } else if (uploaderType == 'user') {
+          tenantImages.add(imagePath);
+        }
+      }
+    }
+
+    // Extract technician info from timeline
+    List<Map<String, dynamic>> assignedTechnicians = [];
+    final techAssignmentEvents = timeline
+        .where((event) =>
+            event['type'] == 'technician_assigned' ||
+            event['type'] == 'escalation')
+        .toList();
+
+    for (var event in techAssignmentEvents) {
+      final technician = event['technician'];
+      if (technician is Map && technician['uid'] != null) {
+        assignedTechnicians.add({
+          'technician_id': technician['uid'],
+          'name': technician['name'] ?? '',
+          'email': technician['email'] ?? '',
+          'phone': technician['phone'] ?? '',
+          'photo': technician['photo'],
+          'assigned_at': event['timestamp'] ?? '',
+        });
+      }
+    }
+
+    // Build flat structure
+    return {
+      'id': complaint['id'],
+      'complaint_id': complaint['id'],
+      'complaint_number': complaint['complaint_number'],
+      'description': complaint['description'],
+      'replybytechnician': _extractLatestReply(timeline, 'technician'),
+      'replybyadmin': _extractLatestReply(timeline, 'admin'),
+      'amount_paid': amountPaid,
+      'amount_paid_status': paymentStatus,
+      'date': complaint['created_at'],
+      'created_at': complaint['created_at'],
+      'status': _statusTextToCode(complaint['status']),
+      'status_text': {'en': complaint['status']},
+      'category': complaint['category'],
+      'subcategory': complaint['subcategory'],
+      'property_name': property['title'],
+      'unit_number': property['unit']?['number'],
+      'unit_type': property['unit']?['type'],
+      'full_address': property['unit']?['address_format'],
+      'flatno_id': property['id'],
+      'created_by': complaint['created_by'],
+      'property': {
+        'id': property['id'],
+        'title': property['title'],
+        'unit_number': property['unit']?['number'],
+        'address_format': property['unit']?['address_format'],
+        'unit_type': property['unit']?['type'],
+        'assigned_technicians': assignedTechnicians,
+      },
+      'assigned_technicians': assignedTechnicians,
+      'complaint_images': {
+        'tenant_uploaded': tenantImages,
+        'admin_uploaded': adminImages,
+        'technician_uploaded': technicianImages,
+        'admin_technician_uploaded': [],
+      },
+      'timeline': timeline,
+    };
   }
-  
-  // Extract technician info from timeline
-  List<Map<String, dynamic>> assignedTechnicians = [];
-  final techAssignmentEvents = timeline.where((event) => 
-    event['type'] == 'technician_assigned' || event['type'] == 'escalation'
-  ).toList();
-  
-  for (var event in techAssignmentEvents) {
-    final technician = event['technician'];
-    if (technician is Map && technician['uid'] != null) {
-      assignedTechnicians.add({
-        'technician_id': technician['uid'],
-        'name': technician['name'] ?? '',
-        'email': technician['email'] ?? '',
-        'phone': technician['phone'] ?? '',
-        'photo': technician['photo'],
-        'assigned_at': event['timestamp'] ?? '',
-      });
+
+  String? _extractLatestReply(List<dynamic> timeline, String replyType) {
+    final replies = timeline.where((event) {
+      if (event['type'] != 'reply') return false;
+      final by = event['by'];
+      return by is Map && by['type']?.toString().toLowerCase() == replyType;
+    }).toList();
+
+    if (replies.isEmpty) return null;
+    return replies.last['message']?.toString();
+  }
+
+  String _statusTextToCode(String? statusText) {
+    if (statusText == null) return '0';
+
+    switch (statusText.toLowerCase()) {
+      case 'pending':
+        return '0';
+      case 'in progress':
+        return '1';
+      case 'resolved':
+        return '2';
+      case 'closed':
+        return '3';
+      default:
+        return '0';
     }
   }
-  
-  // Build flat structure
-  return {
-    'id': complaint['id'],
-    'complaint_id': complaint['id'],
-    'complaint_number': complaint['complaint_number'],
-    'description': complaint['description'],
-    'replybytechnician': _extractLatestReply(timeline, 'technician'),
-    'replybyadmin': _extractLatestReply(timeline, 'admin'),
-    'amount_paid': amountPaid,
-    'amount_paid_status': paymentStatus,
-    'date': complaint['created_at'],
-    'created_at': complaint['created_at'],
-    'status': _statusTextToCode(complaint['status']),
-    'status_text': {
-      'en': complaint['status']
-    },
-    'category': complaint['category'],
-    'subcategory': complaint['subcategory'],
-    'property_name': property['title'],
-    'unit_number': property['unit']?['number'],
-    'unit_type': property['unit']?['type'],
-    'full_address': property['unit']?['address_format'],
-    'flatno_id': property['id'],
-    'created_by': complaint['created_by'],
-    'property': {
-      'id': property['id'],
-      'title': property['title'],
-      'unit_number': property['unit']?['number'],
-      'address_format': property['unit']?['address_format'],
-      'unit_type': property['unit']?['type'],
-      'assigned_technicians': assignedTechnicians,
-    },
-    'assigned_technicians': assignedTechnicians,
-    'complaint_images': {
-      'tenant_uploaded': tenantImages,
-      'admin_uploaded': adminImages,
-      'technician_uploaded': technicianImages,
-      'admin_technician_uploaded': [],
-    },
-    'timeline': timeline,
-  };
-}
-
-String? _extractLatestReply(List<dynamic> timeline, String replyType) {
-  final replies = timeline.where((event) {
-    if (event['type'] != 'reply') return false;
-    final by = event['by'];
-    return by is Map && by['type']?.toString().toLowerCase() == replyType;
-  }).toList();
-  
-  if (replies.isEmpty) return null;
-  return replies.last['message']?.toString();
-}
-
-String _statusTextToCode(String? statusText) {
-  if (statusText == null) return '0';
-  
-  switch (statusText.toLowerCase()) {
-    case 'pending':
-      return '0';
-    case 'in progress':
-      return '1';
-    case 'resolved':
-      return '2';
-    case 'closed':
-      return '3';
-    default:
-      return '0';
-  }
-}
 
   void setAssigning(String complaintId, bool value) {
     if (isAssigningMap[complaintId] == value) return;
