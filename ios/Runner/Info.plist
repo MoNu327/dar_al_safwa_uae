@@ -122,6 +122,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to take photos of rental properties and cheque details or transaction details for rental approval.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+<string>We need permission to send you notifications about property updates, bookings, and important messages.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to upload property images for your rental listings and Cheque details.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
@@ -148,5 +150,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<!-- ✅ NEW: Photo Library Add Permission (for saving files) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to save downloaded documents and PDFs to your device.</string>
 </dict>
 </plist>
