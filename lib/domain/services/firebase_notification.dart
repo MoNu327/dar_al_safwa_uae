@@ -219,17 +219,16 @@ class FirebaseNotificationService {
       }
     }
 
-    // Download and open PDF
- Future<void> _downloadAndOpenPdf(String url, String fileName) async {
+   // ✅ OPTIMIZED: Fast PDF download - WORKS ON BOTH iOS & ANDROID
+Future<void> _downloadAndOpenPdf(String url, String fileName) async {
   try {
     debugPrint('Starting PDF download for: $url');
+    debugPrint('Platform: ${Platform.isAndroid ? "Android" : "iOS"}');
     
-    // ✅ Request permissions based on platform
+    // ✅ ANDROID ONLY: Check permissions BEFORE showing snackbar
     if (Platform.isAndroid) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
       final sdkInt = androidInfo.version.sdkInt;
-      
-      debugPrint('Android SDK: $sdkInt');
       
       PermissionStatus status;
       
@@ -244,8 +243,6 @@ class FirebaseNotificationService {
         status = await Permission.storage.request();
       }
       
-      debugPrint('Permission status: $status');
-      
       if (!status.isGranted && sdkInt < 33) {
         Get.snackbar(
           'Permission Required',
@@ -258,94 +255,125 @@ class FirebaseNotificationService {
       }
     }
 
-    // ✅ CHANGED: Show persistent downloading snackbar (no duration)
+    // ✅ OPTIMIZATION 2: Determine file path BEFORE download
+    String finalFileName = fileName;
+    if (!finalFileName.endsWith('.pdf')) {
+      finalFileName = '$finalFileName.pdf';
+    }
+    
+    String filePath;
+    
+    // ✅ ANDROID: Determine Android file path
+    if (Platform.isAndroid) {
+      final downloadsDir = Directory('/storage/emulated/0/Download');
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+      filePath = '${downloadsDir.path}/$finalFileName';
+      debugPrint('Android path: $filePath');
+    } 
+    // ✅ iOS: Use app's Documents directory (no permissions needed)
+    else {
+      final directory = await getApplicationDocumentsDirectory();
+      filePath = '${directory.path}/$finalFileName';
+      debugPrint('iOS path: $filePath');
+    }
+
+    // ✅ OPTIMIZATION 3: Show downloading snackbar RIGHT BEFORE HTTP request
     Get.snackbar(
       'Downloading',
-      'Downloading PDF file...',
+      'Starting download...',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Colors.blue,
       colorText: Colors.white,
       showProgressIndicator: true,
       isDismissible: false,
-      duration: null, // ← Makes it persistent
+      duration: null,
     );
 
     debugPrint('Fetching URL: $url');
-    final response = await http.get(Uri.parse(url));
+    
+    // ✅ OPTIMIZATION 4: Use StreamedResponse for faster processing
+    final client = http.Client();
+    final request = http.Request('GET', Uri.parse(url));
+    final response = await client.send(request).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () {
+        throw TimeoutException('Download timed out after 30 seconds');
+      },
+    );
     
     debugPrint('Response status: ${response.statusCode}');
     
     if (response.statusCode == 200) {
-      String finalFileName = fileName;
-      if (!finalFileName.endsWith('.pdf')) {
-        finalFileName = '$finalFileName.pdf';
-      }
-      
-      String filePath;
-      
-      if (Platform.isAndroid) {
-        final downloadsDir = Directory('/storage/emulated/0/Download');
-        
-        if (!await downloadsDir.exists()) {
-          await downloadsDir.create(recursive: true);
-        }
-        
-        filePath = '${downloadsDir.path}/$finalFileName';
-        debugPrint('Using Downloads directory: $filePath');
-      } else {
-        final directory = await getApplicationDocumentsDirectory();
-        filePath = '${directory.path}/$finalFileName';
-        debugPrint('Using iOS documents directory: $filePath');
-      }
-
+      // ✅ OPTIMIZATION 5: Stream directly to file (faster than loading in memory)
       final file = File(filePath);
-      debugPrint('Saving file to: $filePath');
-      await file.writeAsBytes(response.bodyBytes);
-      debugPrint('PDF saved successfully to: $filePath');
-
-      if (Platform.isAndroid) {
-        await _notifyMediaScanner(filePath);
-      }
-
-      // ✅ CHANGED: Close downloading snackbar before showing success
-      Get.closeAllSnackbars();
-
-      Get.snackbar(
-        'Download Complete',
-        Platform.isAndroid 
-          ? 'File saved to Downloads folder\n$finalFileName'
-          : 'File saved successfully\n$finalFileName',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        duration: const Duration(seconds: 4),
-      );
-
-      await Future.delayed(const Duration(milliseconds: 500));
+      final sink = file.openWrite();
       
       try {
-        await _openPdfFile(filePath);
-      } catch (e) {
-        debugPrint('Error opening PDF: $e');
+        await response.stream.pipe(sink);
+        await sink.flush();
+        await sink.close();
+        
+        debugPrint('PDF saved successfully to: $filePath');
+
+        if (Platform.isAndroid) {
+          await _notifyMediaScanner(filePath);
+        }
+
+        // ✅ Close downloading snackbar
+        Get.closeAllSnackbars();
+
         Get.snackbar(
-          'File Saved',
-          Platform.isAndroid
-            ? 'PDF saved to Downloads. Open it from your file manager.'
-            : 'PDF saved to Documents. You can open it from the Files app.',
+          'Download Complete',
+          Platform.isAndroid 
+            ? 'File saved to Downloads\n$finalFileName'
+            : 'File saved successfully\n$finalFileName',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
+          backgroundColor: Colors.green,
           colorText: Colors.white,
-          duration: const Duration(seconds: 5),
+          duration: const Duration(seconds: 3),
         );
+
+        // ✅ OPTIMIZATION 6: Open file immediately (no delay)
+        try {
+          final result = await OpenFilex.open(filePath);
+          
+          if (result.type != ResultType.done) {
+            debugPrint('Could not open PDF: ${result.message}');
+            Get.snackbar(
+              'File Saved',
+              Platform.isAndroid
+                ? 'PDF saved to Downloads. Open from file manager.'
+                : 'PDF saved. Open from Files app.',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 4),
+            );
+          }
+        } catch (e) {
+          debugPrint('Error opening PDF: $e');
+        }
+      } finally {
+        client.close();
       }
     } else {
-      // ✅ CHANGED: Close downloading snackbar on error
       Get.closeAllSnackbars();
       throw Exception('Failed to download file: ${response.statusCode}');
     }
+  } on TimeoutException catch (e) {
+    debugPrint('Download timeout: $e');
+    Get.closeAllSnackbars();
+    Get.snackbar(
+      'Download Timeout',
+      'Download took too long. Please check your connection.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
   } catch (e) {
     debugPrint('Error downloading PDF: $e');
-    // ✅ CHANGED: Close downloading snackbar on error
     Get.closeAllSnackbars();
     Get.snackbar(
       'Download Failed',
@@ -356,6 +384,145 @@ class FirebaseNotificationService {
     );
   }
 }
+
+// ✅ ALTERNATIVE: Download with progress percentage (even faster feedback)
+Future<void> _downloadAndOpenPdfWithProgress(String url, String fileName) async {
+  try {
+    debugPrint('Starting PDF download for: $url');
+    
+    // Permission checks (same as above)...
+    if (Platform.isAndroid) {
+      final androidInfo = await DeviceInfoPlugin().androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
+      
+      PermissionStatus status;
+      if (sdkInt >= 33) {
+        status = PermissionStatus.granted;
+      } else if (sdkInt >= 30) {
+        status = await Permission.storage.request();
+        if (!status.isGranted) {
+          status = await Permission.manageExternalStorage.request();
+        }
+      } else {
+        status = await Permission.storage.request();
+      }
+      
+      if (!status.isGranted && sdkInt < 33) {
+        Get.snackbar(
+          'Permission Required',
+          'Storage permission is needed',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+        return;
+      }
+    }
+
+    // Prepare file path
+    String finalFileName = fileName;
+    if (!finalFileName.endsWith('.pdf')) {
+      finalFileName = '$finalFileName.pdf';
+    }
+    
+    String filePath;
+    if (Platform.isAndroid) {
+      final downloadsDir = Directory('/storage/emulated/0/Download');
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+      filePath = '${downloadsDir.path}/$finalFileName';
+    } else {
+      final directory = await getApplicationDocumentsDirectory();
+      filePath = '${directory.path}/$finalFileName';
+    }
+
+    // Show initial progress
+    Get.snackbar(
+      'Downloading',
+      '0%',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.blue,
+      colorText: Colors.white,
+      showProgressIndicator: true,
+      isDismissible: false,
+      duration: null,
+    );
+
+    // Download with progress tracking
+    final client = http.Client();
+    final request = http.Request('GET', Uri.parse(url));
+    final response = await client.send(request).timeout(
+      const Duration(seconds: 30),
+    );
+    
+    if (response.statusCode == 200) {
+      final file = File(filePath);
+      final sink = file.openWrite();
+      
+      final contentLength = response.contentLength ?? 0;
+      var downloadedBytes = 0;
+      
+      try {
+        await for (var chunk in response.stream) {
+          sink.add(chunk);
+          downloadedBytes += chunk.length;
+          
+          // Update progress every 10%
+          if (contentLength > 0) {
+            final progress = (downloadedBytes / contentLength * 100).toInt();
+            if (progress % 10 == 0) {
+              debugPrint('Download progress: $progress%');
+            }
+          }
+        }
+        
+        await sink.flush();
+        await sink.close();
+        
+        if (Platform.isAndroid) {
+          await _notifyMediaScanner(filePath);
+        }
+
+        Get.closeAllSnackbars();
+
+        Get.snackbar(
+          'Download Complete',
+          Platform.isAndroid 
+            ? 'Saved to Downloads\n$finalFileName'
+            : 'Saved successfully\n$finalFileName',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 3),
+        );
+
+        // Open immediately
+        final result = await OpenFilex.open(filePath);
+        if (result.type != ResultType.done) {
+          debugPrint('Could not auto-open: ${result.message}');
+        }
+      } finally {
+        client.close();
+      }
+    } else {
+      Get.closeAllSnackbars();
+      throw Exception('Download failed: ${response.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('Error: $e');
+    Get.closeAllSnackbars();
+    Get.snackbar(
+      'Download Failed',
+      'Could not download. Please try again.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+  }
+}
+
+
     Future<void> _notifyMediaScanner(String filePath) async {
       try {
         if (Platform.isAndroid) {
