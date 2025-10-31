@@ -37,7 +37,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.daralsafwa.app</string>
+				<string>com.majan.app</string>
 			</array>
 		</dict>
 	</array>
@@ -58,6 +58,8 @@
 		<string>appleid</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -122,17 +124,22 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to take photos of rental properties and cheque details or transaction details for rental approval.</string>
-	<key>NSUserNotificationsUsageDescription</key>
-<string>We need permission to send you notifications about property updates, bookings, and important messages.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to save downloaded documents and PDFs to your device.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to upload property images for your rental listings and Cheque details.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>We need permission to send you notifications about property updates, bookings, and important messages.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
 		<string>remote-notification</string>
+		<string>bluetooth-peripheral</string>
 	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -150,12 +157,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UIFileSharingEnabled</key>
-	<true/>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
-	<!-- ✅ NEW: Photo Library Add Permission (for saving files) -->
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>We need access to save downloaded documents and PDFs to your device.</string>
 </dict>
 </plist>
