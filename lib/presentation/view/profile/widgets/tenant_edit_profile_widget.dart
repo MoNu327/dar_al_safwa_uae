@@ -110,59 +110,31 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Profile Picture Section
+                    // Profile Picture Section (Read-only)
                     Center(
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: Get.width * 0.25,
-                            height: Get.width * 0.25,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.lightGrey,
-                                width: 2,
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius:
-                                  BorderRadius.circular(Get.width * 0.125),
-                              child: auth.currentUser?.photoURL != null
-                                  ? Image.network(
-                                      auth.currentUser?.photoURL ?? '',
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return _buildDefaultProfileIcon();
-                                      },
-                                    )
-                                  : _buildDefaultProfileIcon(),
-                            ),
+                      child: Container(
+                        width: Get.width * 0.25,
+                        height: Get.width * 0.25,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.lightGrey,
+                            width: 2,
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: _changeProfilePicture,
-                              child: Container(
-                                width: Get.width * 0.08,
-                                height: Get.width * 0.08,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryColor,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  Icons.camera_alt,
-                                  color: AppColors.white,
-                                  size: Get.width * 0.04,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(Get.width * 0.125),
+                          child: auth.currentUser?.photoURL != null
+                              ? Image.network(
+                                  auth.currentUser?.photoURL ?? '',
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return _buildDefaultProfileIcon();
+                                  },
+                                )
+                              : _buildDefaultProfileIcon(),
+                        ),
                       ),
                     ),
 
@@ -342,59 +314,6 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
       
       _profileController.phoneController.text = originalPhone;
     }
-  }
-
-  void _changeProfilePicture() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: Get.height * 0.2,
-          padding: EdgeInsets.all(screenWidth1),
-          child: Column(
-            children: [
-              CustomTextWidget(
-                title: "Change Profile Picture",
-                fontSize: Get.height * 0.02,
-                fontWeight: FontWeight.w600,
-              ),
-              SizedBox(height: screenHeight1),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(screenWidth1),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryColor.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.camera_alt,
-                            color: AppColors.primaryColor,
-                            size: Get.width * 0.08,
-                          ),
-                        ),
-                        SizedBox(height: screenHeight05),
-                        CustomTextWidget(
-                          title: "Gallery",
-                          fontSize: Get.height * 0.014,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   void _showDeleteAccountDialog() {

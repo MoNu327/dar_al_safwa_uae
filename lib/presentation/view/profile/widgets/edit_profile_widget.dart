@@ -155,55 +155,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Widget _buildProfileImage() {
     return Center(
-      child: Stack(
-        children: [
-          Obx(() => CircleAvatar(
-                radius: screenWidth10,
-                backgroundColor: AppColors.lightGrey2,
-                child: ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: widget.controller.profilePicUrl.value.isNotEmpty
-                        ? widget.controller.profilePicUrl.value
-                        : FirebaseAuth.instance.currentUser?.photoURL ??
-                            "https://i.postimg.cc/VLRdMxPK/profileimage.png",
-                    width: screenWidth * 0.2,
-                    height: screenWidth * 0.2,
-                    fit: BoxFit.cover,
-                    errorWidget: (context, url, error) {
-                      return Icon(
-                        Icons.person,
-                        size: screenWidth10,
-                        color: AppColors.grey,
-                      );
-                    },
-                  ),
-                ),
-              )),
-          Positioned(
-            bottom: 0,
-            right: 0,
-            child: GestureDetector(
-              onTap: () {
-                // TODO: Implement image picker functionality
-                Get.snackbar(
-                    'Info', 'Image picker functionality to be implemented');
-              },
-              child: Container(
-                padding: EdgeInsets.all(screenWidth1),
-                decoration: BoxDecoration(
-                  color: AppColors.blueColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.camera_alt,
-                  color: AppColors.white,
-                  size: smallIconSize,
-                ),
+      child: Obx(() => CircleAvatar(
+            radius: screenWidth10,
+            backgroundColor: AppColors.lightGrey2,
+            child: ClipOval(
+              child: CachedNetworkImage(
+                imageUrl: widget.controller.profilePicUrl.value.isNotEmpty
+                    ? widget.controller.profilePicUrl.value
+                    : FirebaseAuth.instance.currentUser?.photoURL ??
+                        "https://i.postimg.cc/VLRdMxPK/profileimage.png",
+                width: screenWidth * 0.2,
+                height: screenWidth * 0.2,
+                fit: BoxFit.cover,
+                errorWidget: (context, url, error) {
+                  return Icon(
+                    Icons.person,
+                    size: screenWidth10,
+                    color: AppColors.grey,
+                  );
+                },
               ),
             ),
-          ),
-        ],
-      ),
+          )),
     );
   }
 
