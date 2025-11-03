@@ -33,6 +33,7 @@ class MobileNumberUpdatePage extends StatefulWidget {
 class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
   final TextEditingController mobileController = TextEditingController();
   final RxBool isLoading = false.obs;
+  final RxString selectedCountryCode = '+971'.obs;
 
   Future<void> _handleSave() async {
     final mobile = mobileController.text.trim();
@@ -43,15 +44,16 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
 
     isLoading.value = true;
     final controller = Get.find<PropertyDetailsController>();
+    final fullPhoneNumber = '${selectedCountryCode.value}$mobile';
     await controller.saveMobileNumber(
-      mobile: mobile,
+      mobile: fullPhoneNumber,
       phone: widget.phone,
       propertyId: widget.propertyId,
     );
     isLoading.value = false;
 
     // Pass result back and close the page
-    Get.back(result: {'phoneNumber': mobile});
+    Get.back(result: {'phoneNumber': fullPhoneNumber});
   }
 
   @override
@@ -89,13 +91,45 @@ class _MobileNumberUpdatePageState extends State<MobileNumberUpdatePage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: mobileController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'Mobile Number',
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 56,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text(
+                            '🇦🇪',
+                            style: TextStyle(fontSize: 24),
+                          ),
+                          const SizedBox(width: 8),
+                          Obx(() => Text(
+                                selectedCountryCode.value,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              )),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: mobileController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'Mobile Number',
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 40),
                 Center(

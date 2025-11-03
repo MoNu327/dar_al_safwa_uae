@@ -163,103 +163,159 @@ Future<void> _logLoginActivity(String uid) async {
     checkAutoLogin();
   }
 
-  /// Check if user is already logged in when app starts
-   Future<void> checkAutoLogin() async {
-  if (hasCheckedAutoLogin.value) return;
+ /// Check if user is already logged in when app starts
+Future<void> checkAutoLogin() async {
+  if (hasCheckedAutoLogin.value) {
+    debugPrint('⏭️ [checkAutoLogin] Already checked, skipping');
+    return;
+  }
   
   try {
     isAutoLoggingIn(true);
-    debugPrint('🔍 Checking for existing user session...');
+    debugPrint('🔍 [checkAutoLogin] Starting auto-login check...');
     
     final currentUser = auth.currentUser;
     
     if (currentUser != null) {
-      debugPrint('✅ Found existing user session: ${currentUser.uid}');
-      debugPrint('📧 Email: ${currentUser.email}');
-      debugPrint('📱 Phone: ${currentUser.phoneNumber}');
+      debugPrint('✅ [checkAutoLogin] Found existing user session: ${currentUser.uid}');
+      debugPrint('📧 [checkAutoLogin] Email: ${currentUser.email}');
+      debugPrint('📱 [checkAutoLogin] Phone: ${currentUser.phoneNumber}');
       
       // ✅ Load notifications
       _notificationController?.setUserId(currentUser.uid);
-      debugPrint('📱 Notifications loaded for user: ${currentUser.uid}');
+      debugPrint('📱 [checkAutoLogin] Notifications loaded for user: ${currentUser.uid}');
       
-      // ✅ Log login activity for auto-login
-      await _logLoginActivity(currentUser.uid);
-      
-      // ✅ Sync FCM token (this will now also update platform info)
+      // ✅ CRITICAL: Sync FCM token FIRST (updates platform info)
+      debugPrint('🔄 [checkAutoLogin] Calling _syncFCMToken...');
       await _syncFCMToken(currentUser);
+      debugPrint('✅ [checkAutoLogin] _syncFCMToken completed');
+      
+      // ✅ THEN log login activity (reads updated platform info)
+      debugPrint('📊 [checkAutoLogin] Calling _logLoginActivity...');
+      await _logLoginActivity(currentUser.uid);
+      debugPrint('✅ [checkAutoLogin] _logLoginActivity completed');
       
       // Let handleAuthChanged take care of navigation
+      debugPrint('✅ [checkAutoLogin] Auto-login setup complete');
     } else {
-      debugPrint('❌ No existing user session found');
+      debugPrint('❌ [checkAutoLogin] No existing user session found');
       _notificationController?.clearUserId();
       
       if (Get.currentRoute != AppRoute.login) {
+        debugPrint('➡️ [checkAutoLogin] Navigating to login');
         Get.offAllNamed(AppRoute.login);
       }
     }
     
     hasCheckedAutoLogin(true);
-  } catch (e) {
-    debugPrint('❌ Error during auto-login check: $e');
+    debugPrint('✅ [checkAutoLogin] Check completed, flag set to true');
+  } catch (e, stackTrace) {
+    debugPrint('❌ [checkAutoLogin] ERROR: $e');
+    debugPrint('📝 [checkAutoLogin] Stack trace: $stackTrace');
     Get.offAllNamed(AppRoute.login);
   } finally {
     isAutoLoggingIn(false);
+    debugPrint('🏁 [checkAutoLogin] Process finished');
   }
 }
 
-  Future<void> _syncFCMToken(User user) async {
+Future<void> _syncFCMToken(User user) async {
   try {
-    debugPrint('🔄 Syncing FCM token for user: ${user.uid}');
+    debugPrint('🔄 [_syncFCMToken] Starting for user: ${user.uid}');
     
     final fcmToken = await FirebaseMessaging.instance.getToken();
     
     if (fcmToken == null) {
-      debugPrint('⚠️ FCM token is null');
+      debugPrint('⚠️ [_syncFCMToken] FCM token is null');
       return;
     }
     
-    debugPrint('✅ FCM Token: $fcmToken');
+    debugPrint('✅ [_syncFCMToken] FCM Token: ${fcmToken.substring(0, 20)}...');
     
     // Determine collection
     String collection = 'users';
     
+    debugPrint('🔍 [_syncFCMToken] Checking agents collection...');
     final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
     if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
       collection = 'agents';
+      debugPrint('✅ [_syncFCMToken] User is agent');
     } else {
+      debugPrint('🔍 [_syncFCMToken] Checking technicians collection...');
       final techDoc = await _firestore.collection('technicians').doc(user.uid).get();
       if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
         collection = 'technicians';
+        debugPrint('✅ [_syncFCMToken] User is technician');
+      } else {
+        debugPrint('✅ [_syncFCMToken] User is regular user');
       }
     }
     
-    debugPrint('📁 Saving to: $collection');
+    debugPrint('📁 [_syncFCMToken] Target collection: $collection');
     
-    // ✅ Get current document to check if platform exists
+    // Get current document to check if this is first time
+    debugPrint('📖 [_syncFCMToken] Reading current document...');
     final userDoc = await _firestore.collection(collection).doc(user.uid).get();
     final currentData = userDoc.data();
     
-    // ✅ Prepare update data
+    final currentPlatform = _getPlatformInfo();
+    debugPrint('📱 [_syncFCMToken] Current platform: $currentPlatform');
+    
+    if (currentData != null) {
+      debugPrint('📊 [_syncFCMToken] Existing data:');
+      debugPrint('   - mode: ${currentData['mode']}');
+      debugPrint('   - modeupdated: ${currentData['modeupdated']}');
+      debugPrint('   - originalPlatform: ${currentData['originalPlatform']}');
+    } else {
+      debugPrint('⚠️ [_syncFCMToken] Document does not exist!');
+    }
+    
+    // ✅ Prepare update data with ALL timestamp fields
     Map<String, dynamic> updateData = {
       'fcmToken': fcmToken,
       'lastTokenUpdate': FieldValue.serverTimestamp(),
       'lastLoginAt': FieldValue.serverTimestamp(),
-      'modeupdated': _getPlatformInfo(),
+      'lastUpdated': FieldValue.serverTimestamp(), // ✅ FIX: Add this!
+      'updatedAt': FieldValue.serverTimestamp(),    // ✅ FIX: Add this too!
+      'mode': currentPlatform,
+      'modeupdated': currentPlatform,
     };
     
-    // ✅ Only set 'platform' if it doesn't exist (first time)
-    if (currentData == null || !currentData.containsKey('mode') || currentData['mode'] == null) {
-      updateData['mode'] = _getPlatformInfo();
-      debugPrint('🆕 Setting initial platform: ${_getPlatformInfo()}');
+    debugPrint('📝 [_syncFCMToken] Update data prepared:');
+    debugPrint('   - mode: $currentPlatform');
+    debugPrint('   - modeupdated: $currentPlatform');
+    
+    // Only set 'originalPlatform' if it doesn't exist
+    if (currentData == null || !currentData.containsKey('originalPlatform') || currentData['originalPlatform'] == null) {
+      updateData['originalPlatform'] = currentPlatform;
+      debugPrint('🆕 [_syncFCMToken] Setting original platform: $currentPlatform');
+    } else {
+      debugPrint('ℹ️ [_syncFCMToken] Keeping original platform: ${currentData['originalPlatform']}');
     }
     
+    debugPrint('💾 [_syncFCMToken] Updating Firestore document...');
     await _firestore.collection(collection).doc(user.uid).update(updateData);
     
-    debugPrint('✅ Token and platform synced to $collection/${user.uid}');
-  } catch (e) {
-    debugPrint('❌ Error syncing token: $e');
+    debugPrint('✅✅✅ [_syncFCMToken] SUCCESS! Token and platform synced to $collection/${user.uid}');
+    debugPrint('📱 [_syncFCMToken] Platform updated to: $currentPlatform');
+    
+    // Verification: Read back the document to confirm update
+    debugPrint('🔍 [_syncFCMToken] Verifying update...');
+    final verifyDoc = await _firestore.collection(collection).doc(user.uid).get();
+    final verifyData = verifyDoc.data();
+    if (verifyData != null) {
+      debugPrint('✅ [_syncFCMToken] Verification - Updated values:');
+      debugPrint('   - mode: ${verifyData['mode']}');
+      debugPrint('   - modeupdated: ${verifyData['modeupdated']}');
+      debugPrint('   - lastUpdated: ${verifyData['lastUpdated']}');
+    }
+    
+  } catch (e, stackTrace) {
+    debugPrint('❌ [_syncFCMToken] ERROR: $e');
+    debugPrint('📝 [_syncFCMToken] Stack trace: $stackTrace');
+    // Don't rethrow - we don't want to block login
   }
-}
+} 
 
   void handleAuthChanged(User? user) async {
   debugPrint('🔄 Auth state changed. User: ${user?.email ?? user?.phoneNumber ?? 'null'}');
@@ -544,45 +600,52 @@ Future<void> _logLoginActivity(String uid) async {
   }
 
   Future<UserCredential?> verifyPhoneNumber({
-    required String verificationId,
-    required String smsCode,
-  }) async {
-    try {
-      isVerifyPhone(true);
-      debugPrint('Verifying phone number...');
+  required String verificationId,
+  required String smsCode,
+}) async {
+  try {
+    isVerifyPhone(true);
+    debugPrint('Verifying phone number...');
 
-      final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: smsCode,
-      );
+    final credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
 
-      final userCredential = await auth.signInWithCredential(credential);
+    final userCredential = await auth.signInWithCredential(credential);
 
-      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        await _createNewPhoneUser(userCredential.user!);
-      } else {
-        await _handleExistingPhoneUser(userCredential.user!);
-      }
-
-      // ✅ Log login activity for phone authentication
-      if (userCredential.user != null) {
-        await _logLoginActivity(userCredential.user!.uid);
-      }
-
-      return userCredential;
-    } catch (e) {
-      debugPrint('Phone verification error: $e');
-      Get.snackbar(
-        'Error',
-        e is FirebaseAuthException
-            ? e.message ?? 'Verification failed'
-            : 'Phone verification failed',
-      );
-      return null;
-    } finally {
-      isVerifyPhone(false);
+    // ✅ CRITICAL FIX: Sync FCM token BEFORE creating/handling user
+    if (userCredential.user != null) {
+      debugPrint('🔄 Syncing FCM token and platform info...');
+      await _syncFCMToken(userCredential.user!);
+      debugPrint('✅ FCM token and platform synced');
     }
+
+    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+      await _createNewPhoneUser(userCredential.user!);
+    } else {
+      await _handleExistingPhoneUser(userCredential.user!);
+    }
+
+    // ✅ Log login activity for phone authentication
+    if (userCredential.user != null) {
+      await _logLoginActivity(userCredential.user!.uid);
+    }
+
+    return userCredential;
+  } catch (e) {
+    debugPrint('Phone verification error: $e');
+    Get.snackbar(
+      'Error',
+      e is FirebaseAuthException
+          ? e.message ?? 'Verification failed'
+          : 'Phone verification failed',
+    );
+    return null;
+  } finally {
+    isVerifyPhone(false);
   }
+}
 
   Future<void> resendVerificationCode(String phoneNumber) async {
     try {
@@ -709,101 +772,90 @@ Future<void> _logLoginActivity(String uid) async {
   }
 
   Future<UserCredential?> signInWithGoogle() async {
-    try {
-      debugPrint('🔐 Google Sign-In started...');
-      isSignInGoogle(true);
+  try {
+    debugPrint('🔐 Google Sign-In started...');
+    isSignInGoogle(true);
 
-      // Clean previous sessions
-      await _googleSignIn.signOut();
-      debugPrint('Previous Google sessions cleared');
+    await _googleSignIn.signOut();
+    debugPrint('Previous Google sessions cleared');
 
-      // Trigger Google Sign-In
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        debugPrint('❌ Google sign-in cancelled by user');
-        return null;
-      }
-
-      debugPrint('✅ Google user selected: ${googleUser.email}');
-      debugPrint('Google user ID: ${googleUser.id}');
-      debugPrint('Google user displayName: ${googleUser.displayName}');
-
-      // IMPORTANT: Get email from GoogleSignInAccount, not Firebase User
-      final String? googleEmail = googleUser.email;
-      if (googleEmail == null || googleEmail.isEmpty) {
-        debugPrint('❌ Google account has no email address');
-        Get.snackbar('Error', 'Google account must have a valid email address');
-        await _googleSignIn.signOut();
-        return null;
-      }
-
-      // Get authentication details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      debugPrint('✅ Google authentication tokens received');
-
-      // Validate tokens
-      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-        debugPrint('❌ Missing Google authentication tokens');
-        throw Exception('Failed to get Google authentication tokens');
-      }
-
-      // Create Firebase credential
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-      debugPrint('✅ Firebase credential created');
-
-      // Sign in to Firebase
-      final UserCredential userCredential =
-          await auth.signInWithCredential(credential);
-      final User? firebaseUser = userCredential.user;
-
-      if (firebaseUser == null) {
-        throw Exception('Firebase sign-in failed - no user returned');
-      }
-
-      debugPrint('✅ Firebase authentication successful');
-      debugPrint('Firebase User UID: ${firebaseUser.uid}');
-      debugPrint('Firebase User Email: ${firebaseUser.email}');
-      debugPrint('Google User Email: $googleEmail');
-      debugPrint(
-          'Is New User: ${userCredential.additionalUserInfo?.isNewUser ?? false}');
-
-      // Handle user based on whether they're new or existing
-      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        debugPrint('🆕 Handling new user...');
-        await _handleNewGoogleUser(firebaseUser, googleUser);
-      } else {
-        debugPrint('👤 Handling existing user...');
-        await _handleExistingGoogleUser(firebaseUser);
-      }
-
-      debugPrint('✅ Google sign-in completed successfully');
-      return userCredential;
-    } catch (e) {
-      debugPrint('❌ Google sign-in error: $e');
-
-      // Handle specific error types
-      if (e is FirebaseAuthException) {
-        _handleFirebaseAuthException(e);
-      } else if (e is PlatformException) {
-        _handlePlatformException(e);
-      } else {
-        Get.snackbar(
-          'Sign-in Failed',
-          'An unexpected error occurred: ${e.toString()}',
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[800],
-        );
-      }
-
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) {
+      debugPrint('❌ Google sign-in cancelled by user');
       return null;
-    } finally {
-      isSignInGoogle(false);
     }
+
+    debugPrint('✅ Google user selected: ${googleUser.email}');
+
+    final String? googleEmail = googleUser.email;
+    if (googleEmail == null || googleEmail.isEmpty) {
+      debugPrint('❌ Google account has no email address');
+      Get.snackbar('Error', 'Google account must have a valid email address');
+      await _googleSignIn.signOut();
+      return null;
+    }
+
+    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    debugPrint('✅ Google authentication tokens received');
+
+    if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+      debugPrint('❌ Missing Google authentication tokens');
+      throw Exception('Failed to get Google authentication tokens');
+    }
+
+    final OAuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    debugPrint('✅ Firebase credential created');
+
+    final UserCredential userCredential = await auth.signInWithCredential(credential);
+    final User? firebaseUser = userCredential.user;
+
+    if (firebaseUser == null) {
+      throw Exception('Firebase sign-in failed - no user returned');
+    }
+
+    debugPrint('✅ Firebase authentication successful');
+    debugPrint('Firebase User UID: ${firebaseUser.uid}');
+
+    // ✅ CRITICAL FIX: Sync FCM token BEFORE handling user
+    debugPrint('🔄 Syncing FCM token and platform info...');
+    await _syncFCMToken(firebaseUser);
+    debugPrint('✅ FCM token and platform synced');
+
+    // Handle user based on whether they're new or existing
+    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+      debugPrint('🆕 Handling new user...');
+      await _handleNewGoogleUser(firebaseUser, googleUser);
+    } else {
+      debugPrint('👤 Handling existing user...');
+      await _handleExistingGoogleUser(firebaseUser);
+    }
+
+    debugPrint('✅ Google sign-in completed successfully');
+    return userCredential;
+  } catch (e) {
+    debugPrint('❌ Google sign-in error: $e');
+
+    if (e is FirebaseAuthException) {
+      _handleFirebaseAuthException(e);
+    } else if (e is PlatformException) {
+      _handlePlatformException(e);
+    } else {
+      Get.snackbar(
+        'Sign-in Failed',
+        'An unexpected error occurred: ${e.toString()}',
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+      );
+    }
+
+    return null;
+  } finally {
+    isSignInGoogle(false);
   }
+}
 
   // Handle new Google user
 Future<void> _handleNewGoogleUser(
@@ -1184,11 +1236,15 @@ Image URL: ${userModel.imageUrl}
     if (credential.user != null) {
       _notificationController?.setUserId(credential.user!.uid);
       debugPrint('📱 Notifications loaded for agent: ${credential.user!.uid}');
+      
+      // ✅ CRITICAL FIX: Sync FCM token and platform info
+      debugPrint('🔄 Syncing FCM token and platform info...');
+      await _syncFCMToken(credential.user!);
+      debugPrint('✅ FCM token and platform synced');
     }
 
     // Verify this is actually an agent
-    final userDoc =
-        await _firestore.collection('agents').doc(credential.user?.uid).get();
+    final userDoc = await _firestore.collection('agents').doc(credential.user?.uid).get();
 
     if (userDoc.exists &&
         userDoc.data()?['role'] == 'agent' &&
@@ -1255,13 +1311,17 @@ Image URL: ${userModel.imageUrl}
       password: password,
     );
 
-    debugPrint(
-        'Firebase authentication successful, verifying Technician role...');
+    debugPrint('Firebase authentication successful, verifying Technician role...');
     
     // ✅ CRITICAL: Set user ID immediately
     if (credential.user != null) {
       _notificationController?.setUserId(credential.user!.uid);
       debugPrint('📱 Notifications loaded for technician: ${credential.user!.uid}');
+      
+      // ✅ CRITICAL FIX: Sync FCM token and platform info
+      debugPrint('🔄 Syncing FCM token and platform info...');
+      await _syncFCMToken(credential.user!);
+      debugPrint('✅ FCM token and platform synced');
     }
     
     final userDoc = await _firestore
@@ -1426,85 +1486,79 @@ Future<void> updateExistingUsersWithPlatform() async {
     }
   }
 
-  Future<UserCredential?> signInWithApple() async {
-    try {
-      debugPrint('🔐 Apple Sign-In started...');
-      isSignInApple(true);
+ Future<UserCredential?> signInWithApple() async {
+  try {
+    debugPrint('🔐 Apple Sign-In started...');
+    isSignInApple(true);
 
-      // Trigger Apple Sign-In
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+    );
 
-      debugPrint('✅ Apple credential received');
-      debugPrint('Apple user ID: ${appleCredential.userIdentifier}');
-      debugPrint(
-          'Apple user email: ${appleCredential.email ?? 'Not provided'}');
+    debugPrint('✅ Apple credential received');
+    debugPrint('Apple user ID: ${appleCredential.userIdentifier}');
 
-      // Validate tokens
-      if (appleCredential.identityToken == null) {
-        debugPrint('❌ Missing Apple identity token');
-        throw Exception('Failed to get Apple authentication token');
-      }
-
-      // Create Firebase credential
-      final OAuthCredential credential = OAuthProvider("apple.com").credential(
-        idToken: appleCredential.identityToken,
-        accessToken: appleCredential.authorizationCode,
-      );
-      debugPrint('✅ Firebase credential created');
-
-      // Sign in to Firebase
-      final UserCredential userCredential =
-          await auth.signInWithCredential(credential);
-      final User? firebaseUser = userCredential.user;
-
-      if (firebaseUser == null) {
-        throw Exception('Firebase sign-in failed - no user returned');
-      }
-
-      debugPrint('✅ Firebase authentication successful');
-      debugPrint('Firebase User UID: ${firebaseUser.uid}');
-      debugPrint('Firebase User Email: ${firebaseUser.email}');
-      debugPrint(
-          'Is New User: ${userCredential.additionalUserInfo?.isNewUser ?? false}');
-
-      // Handle user based on whether they're new or existing
-      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-        debugPrint('🆕 Handling new Apple user...');
-        await _handleNewAppleUser(firebaseUser, appleCredential);
-      } else {
-        debugPrint('👤 Handling existing Apple user...');
-        await _handleExistingAppleUser(firebaseUser);
-      }
-
-      debugPrint('✅ Apple sign-in completed successfully');
-      return userCredential;
-    } catch (e) {
-      debugPrint('❌ Apple sign-in error: $e');
-
-      // Handle specific error types
-      if (e is FirebaseAuthException) {
-        _handleFirebaseAuthException(e);
-      } else if (e is SignInWithAppleAuthorizationException) {
-        _handleAppleAuthException(e);
-      } else {
-        Get.snackbar(
-          'Sign-in Failed',
-          'An unexpected error occurred: ${e.toString()}',
-          backgroundColor: Colors.red[100],
-          colorText: Colors.red[800],
-        );
-      }
-
-      return null;
-    } finally {
-      isSignInApple(false);
+    if (appleCredential.identityToken == null) {
+      debugPrint('❌ Missing Apple identity token');
+      throw Exception('Failed to get Apple authentication token');
     }
+
+    final OAuthCredential credential = OAuthProvider("apple.com").credential(
+      idToken: appleCredential.identityToken,
+      accessToken: appleCredential.authorizationCode,
+    );
+    debugPrint('✅ Firebase credential created');
+
+    final UserCredential userCredential = await auth.signInWithCredential(credential);
+    final User? firebaseUser = userCredential.user;
+
+    if (firebaseUser == null) {
+      throw Exception('Firebase sign-in failed - no user returned');
+    }
+
+    debugPrint('✅ Firebase authentication successful');
+    debugPrint('Firebase User UID: ${firebaseUser.uid}');
+
+    // ✅ CRITICAL FIX: Sync FCM token BEFORE handling user
+    debugPrint('🔄 Syncing FCM token and platform info...');
+    await _syncFCMToken(firebaseUser);
+    debugPrint('✅ FCM token and platform synced');
+
+    // Handle user based on whether they're new or existing
+    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+      debugPrint('🆕 Handling new Apple user...');
+      await _handleNewAppleUser(firebaseUser, appleCredential);
+    } else {
+      debugPrint('👤 Handling existing Apple user...');
+      await _handleExistingAppleUser(firebaseUser);
+    }
+
+    debugPrint('✅ Apple sign-in completed successfully');
+    return userCredential;
+  } catch (e) {
+    debugPrint('❌ Apple sign-in error: $e');
+
+    if (e is FirebaseAuthException) {
+      _handleFirebaseAuthException(e);
+    } else if (e is SignInWithAppleAuthorizationException) {
+      _handleAppleAuthException(e);
+    } else {
+      Get.snackbar(
+        'Sign-in Failed',
+        'An unexpected error occurred: ${e.toString()}',
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+      );
+    }
+
+    return null;
+  } finally {
+    isSignInApple(false);
   }
+}
 
   // Handle new Apple user
   Future<void> _handleNewAppleUser(

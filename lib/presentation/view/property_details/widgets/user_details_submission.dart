@@ -47,26 +47,48 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
 
   // Method to automatically add document when all fields are filled
   void _tryAutoAddDocument() {
-  if (_docTitleController.text.isNotEmpty &&
-      _selectedExpiryDate != null &&
-      _tempFile != null) {
-    // All required fields are filled, add the document automatically
-    controller.addAdditionalDocument(
-      _docTitleController.text,
-      _selectedExpiryDate!,
-      _tempFile!,
-    );
+    if (_docTitleController.text.isNotEmpty &&
+        _selectedExpiryDate != null &&
+        _tempFile != null) {
+      // All required fields are filled, add the document automatically
+      controller.addAdditionalDocument(
+        _docTitleController.text,
+        _selectedExpiryDate!,
+        _tempFile!,
+      );
 
-    // Reset form
-    _docTitleController.clear();
-    setState(() {
-      _selectedExpiryDate = null;
-      _tempFile = null;
-    });
+      // Reset form
+      _docTitleController.clear();
+      setState(() {
+        _selectedExpiryDate = null;
+        _tempFile = null;
+      });
 
-    // Snackbar removed - document is added silently
+      // Snackbar removed - document is added silently
+    }
   }
-}
+
+  // Check if at least one image document exists
+  bool _hasAtLeastOneImage() {
+    return controller.user.value.additionalDocuments.any((doc) {
+      if (doc.file is File) {
+        final path = doc.file.path.toLowerCase();
+        return path.endsWith('.jpg') || 
+               path.endsWith('.jpeg') || 
+               path.endsWith('.png');
+      }
+      return false;
+    });
+  }
+
+  // Check if current temp file is an image
+  bool _isImageFile(File? file) {
+    if (file == null) return false;
+    final path = file.path.toLowerCase();
+    return path.endsWith('.jpg') || 
+           path.endsWith('.jpeg') || 
+           path.endsWith('.png');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -303,11 +325,33 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CustomTextWidget(
-                          title: "Additional Documents",
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                          color: AppColors.secondaryColor,
+                        Row(
+                          children: [
+                            CustomTextWidget(
+                              title: "Additional Documents",
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                              color: AppColors.secondaryColor,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              "*",
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        kHeight(0.005),
+                        Text(
+                          "At least one image document is required",
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
                         kHeight(0.01),
 
@@ -464,6 +508,36 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                           ),
                                         ),
                                       ),
+                                    // Show image type indicator if file is selected
+                                    if (_tempFile != null)
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 4),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              _isImageFile(_tempFile)
+                                                  ? Icons.check_circle
+                                                  : Icons.info,
+                                              size: 16,
+                                              color: _isImageFile(_tempFile)
+                                                  ? Colors.green
+                                                  : Colors.orange,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              _isImageFile(_tempFile)
+                                                  ? "Image file (JPG/PNG)"
+                                                  : "PDF file (at least one image required)",
+                                              style: TextStyle(
+                                                color: _isImageFile(_tempFile)
+                                                    ? Colors.green.shade700
+                                                    : Colors.orange.shade700,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                   ],
                                 ),
                                 kHeight(0.01),
@@ -479,57 +553,151 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                             return Container(
                               padding: EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryColor.withOpacity(0.5),
+                                color: Colors.red.shade50,
                                 borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.shade300),
                               ),
-                              child: Center(
-                                child: Text(
-                                  "No additional documents added yet",
-                                  style: TextStyle(
-                                    color: AppColors.secondaryColor,
-                                    fontStyle: FontStyle.italic,
+                              child: Column(
+                                children: [
+                                  Icon(Icons.warning_amber_rounded, 
+                                       color: Colors.red, size: 32),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    "No documents added yet",
+                                    style: TextStyle(
+                                      color: Colors.red.shade900,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    "At least one image document is required to submit",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
                               ),
                             );
                           }
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
-                            itemCount: controller
-                                .user.value.additionalDocuments.length,
-                            itemBuilder: (context, index) {
-                              final doc = controller
-                                  .user.value.additionalDocuments[index];
-                              return Card(
-                                margin: EdgeInsets.symmetric(vertical: 5),
-                                color: Color(0xFFFFFDE7),
-                                child: ListTile(
-                                  leading: Icon(
-                                    _getDocumentIcon(doc.file),
-                                    color: Color(0xFFFFA000),
+                          
+                          // Check if at least one image exists
+                          final hasImage = _hasAtLeastOneImage();
+                          
+                          return Column(
+                            children: [
+                              // Warning banner if no image
+                              if (!hasImage)
+                                Container(
+                                  padding: EdgeInsets.all(12),
+                                  margin: EdgeInsets.only(bottom: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.orange.shade300),
                                   ),
-                                  title: Text(
-                                    doc.title,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    'Expires: ${doc.expiryDate.toLocal().toString().split(' ')[0]}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[700],
-                                    ),
-                                  ),
-                                  trailing: IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => controller
-                                        .removeAdditionalDocument(index),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded, 
+                                           color: Colors.orange, size: 24),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          "Please add at least one image document (JPG/PNG)",
+                                          style: TextStyle(
+                                            color: Colors.orange.shade900,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              );
-                            },
+                              
+                              // Document list
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: controller
+                                    .user.value.additionalDocuments.length,
+                                itemBuilder: (context, index) {
+                                  final doc = controller
+                                      .user.value.additionalDocuments[index];
+                                  final isImage = _isImageFile(doc.file as File?);
+                                  
+                                  return Card(
+                                    margin: EdgeInsets.symmetric(vertical: 5),
+                                    color: Color(0xFFFFFDE7),
+                                    child: ListTile(
+                                      leading: Stack(
+                                        children: [
+                                          Icon(
+                                            _getDocumentIcon(doc.file),
+                                            color: Color(0xFFFFA000),
+                                            size: 32,
+                                          ),
+                                          if (isImage)
+                                            Positioned(
+                                              right: 0,
+                                              bottom: 0,
+                                              child: Icon(
+                                                Icons.check_circle,
+                                                color: Colors.green,
+                                                size: 16,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      title: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              doc.title,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                          if (isImage)
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green.shade100,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                "IMAGE",
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.green.shade900,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      subtitle: Text(
+                                        'Expires: ${doc.expiryDate.toLocal().toString().split(' ')[0]}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[700],
+                                        ),
+                                      ),
+                                      trailing: IconButton(
+                                        icon: Icon(Icons.delete, color: Colors.red),
+                                        onPressed: () => controller
+                                            .removeAdditionalDocument(index),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           );
                         }),
                       ],
@@ -651,37 +819,51 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                     ),
 
                   /// Submit Button
-                  /// Submit Button
-CustomButtonWidget(
-  buttonTitle: controller.isLoading.value
-      ? "Processing..."
-      : "Submit Application",
-  onPressed: controller.isLoading.value
-      ? null
-      : () async {
-          // Dismiss keyboard first
-          FocusScope.of(context).unfocus();
-          
-          if (_formKey.currentState!.validate()) {
-            // Format mobile number with country code before submission
-            final formattedMobile = uaecountrycode +
-                controller.mobileCtrl.text;
-            controller.mobileCtrl.text = formattedMobile;
+                  CustomButtonWidget(
+                    buttonTitle: controller.isLoading.value
+                        ? "Processing..."
+                        : "Submit Application",
+                    onPressed: controller.isLoading.value
+                        ? null
+                        : () async {
+                            // Dismiss keyboard first
+                            FocusScope.of(context).unfocus();
+                            
+                            // Validate form
+                            if (!_formKey.currentState!.validate()) {
+                              Get.snackbar(
+                                "Form Error",
+                                "Please fix the form errors and try again.",
+                                backgroundColor: Colors.red.shade100,
+                                colorText: Colors.black,
+                                snackPosition: SnackPosition.BOTTOM,
+                              );
+                              return;
+                            }
+                            
+                            // Check if at least one image document exists
+                            if (!_hasAtLeastOneImage()) {
+                              Get.snackbar(
+                                "Missing Required Document",
+                                "Please add at least one image document (JPG/PNG) before submitting.",
+                                backgroundColor: Colors.red.shade100,
+                                colorText: Colors.black,
+                                snackPosition: SnackPosition.BOTTOM,
+                                duration: Duration(seconds: 4),
+                              );
+                              return;
+                            }
+                            
+                            // Format mobile number with country code before submission
+                            final formattedMobile = uaecountrycode +
+                                controller.mobileCtrl.text;
+                            controller.mobileCtrl.text = formattedMobile;
 
-            await controller.submitUserData();
-          } else {
-            Get.snackbar(
-              "Form Error",
-              "Please fix the form errors and try again.",
-              backgroundColor: Colors.red.shade100,
-              colorText: Colors.black,
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          }
-        },
-  buttonColor: AppColors.secondaryColor,
-  buttonTextColor: AppColors.white,
-),
+                            await controller.submitUserData();
+                          },
+                    buttonColor: AppColors.secondaryColor,
+                    buttonTextColor: AppColors.white,
+                  ),
 
                   kHeight(0.02),
                 ],
