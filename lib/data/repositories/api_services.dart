@@ -652,14 +652,15 @@ Future<Response> getpropertyinteresthistory(String uid) async {
     }
   }
 
-  Future<Response> postPropertyInterest(
+ Future<Response> postPropertyInterest(
       String uid,
       int PropertyId,
       int unitType,
       int count,
       String comments,
       int enqtype,
-      String mobileNumber) async {
+      String mobileNumber,
+      String agentid) async {
     // API Refining Needed
     try {
       final response = await apiClient.request(
@@ -672,7 +673,8 @@ Future<Response> getpropertyinteresthistory(String uid) async {
           "count": count,
           "comments": comments,
           "enqtype": enqtype,
-          "mobile": mobileNumber
+          "mobile": mobileNumber,
+          "agent_id":agentid,
         },
       );
 
@@ -681,7 +683,6 @@ Future<Response> getpropertyinteresthistory(String uid) async {
       rethrow;
     }
   }
-
   //proerty review post api
 
   Future<Response> propertyReviewPost(

@@ -107,14 +107,14 @@ class SearchScreen extends StatelessWidget {
           ],
         ),
         body: Obx(() {
-          // Show loading indicator
+          // Show loading indicator for search dropdown
           if (searchScreenController.isLoadingSearchDropdown.value) {
             return const Center(
               child: CustomLoaderWidget(),
             );
           }
 
-          // Show error message if any
+          // Show error message for dropdown fetch failure
           if (searchScreenController.searchDropdownErrorMessage.value.isNotEmpty) {
             return Center(
               child: Column(
@@ -133,14 +133,61 @@ class SearchScreen extends StatelessWidget {
                     child: CustomTextWidget(
                       title: searchScreenController.searchDropdownErrorMessage.value,
                       textAlign: TextAlign.center,
+                      fontSize: screenHeight * 0.02,
                     ),
                   ),
-                  kHeight(0.02),
-                  ElevatedButton(
-                    onPressed: searchScreenController.refreshSearchDropdown,
-                    child: CustomTextWidget(
-                      title: localizationController.translate('retry'),
-                    ),
+                  kHeight(0.03),
+                  // Action buttons row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Back button
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          searchScreenController.searchDropdownErrorMessage.value = '';
+                          searchScreenController.refreshSearchDropdown();
+                        },
+                        icon: const Icon(Icons.arrow_back, size: 20),
+                        label: CustomTextWidget(
+                          title: localizationController.translate('back') ?? 'Back',
+                          color: Colors.white,
+                          fontSize: screenHeight * 0.018,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.05,
+                            vertical: screenHeight * 0.015,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.04),
+                      // Retry button
+                      ElevatedButton.icon(
+                        onPressed: searchScreenController.refreshSearchDropdown,
+                        icon: const Icon(Icons.refresh, size: 20),
+                        label: CustomTextWidget(
+                          title: localizationController.translate('retry') ?? 'Retry',
+                          color: Colors.white,
+                          fontSize: screenHeight * 0.018,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.05,
+                            vertical: screenHeight * 0.015,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -152,7 +199,7 @@ class SearchScreen extends StatelessWidget {
             return NoInternetWidegt();
           }
 
-          // Check if data is available
+          // Check if dropdown data is available
           final dropdownData = searchScreenController.searchDropdownResponse.value?.data;
           
           if (dropdownData == null) {
@@ -167,10 +214,11 @@ class SearchScreen extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   kHeight(0.02),
-                  ElevatedButton(
+                  ElevatedButton.icon(
                     onPressed: searchScreenController.refreshSearchDropdown,
-                    child: CustomTextWidget(
-                      title: localizationController.translate('retry'),
+                    icon: const Icon(Icons.refresh),
+                    label: CustomTextWidget(
+                      title: localizationController.translate('retry') ?? 'Retry',
                     ),
                   ),
                 ],
@@ -178,7 +226,122 @@ class SearchScreen extends StatelessWidget {
             );
           }
 
-          // Main content
+          // Show loading indicator for search results
+          if (searchScreenController.isLoadingSearchResults.value) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CustomLoaderWidget(),
+                  kHeight(0.02),
+                  CustomTextWidget(
+                    title: 'Searching properties...',
+                    fontSize: screenHeight * 0.018,
+                    color: AppColors.secondaryColor,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // Show "No Properties Found" message
+          if (searchScreenController.searchResults.isEmpty && 
+              searchScreenController.searchResponse.value != null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    height: screenHeight * 0.25,
+                    child: Lottie.asset(
+                      "assets/lottie/NotFoundLottie.json",
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  kHeight(0.02),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                    child: CustomTextWidget(
+                      title: 'No properties found matching your criteria',
+                      textAlign: TextAlign.center,
+                      fontSize: screenHeight * 0.022,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.secondaryColor,
+                    ),
+                  ),
+                  kHeight(0.01),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                    child: CustomTextWidget(
+                      title: 'Try adjusting your search filters',
+                      textAlign: TextAlign.center,
+                      fontSize: screenHeight * 0.018,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  kHeight(0.04),
+                  // Action buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Back button
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          // Clear search results and go back to search form
+                          searchScreenController.clearSearchResults();
+                        },
+                        icon: const Icon(Icons.arrow_back, size: 20),
+                        label: CustomTextWidget(
+                          title: localizationController.translate('back') ?? 'Back',
+                          color: Colors.white,
+                          fontSize: screenHeight * 0.018,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.06,
+                            vertical: screenHeight * 0.018,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: screenWidth * 0.04),
+                      // Try Again button
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          // Clear and reset search
+                          searchScreenController.clearSearchResults();
+                          searchScreenController.clearSelections();
+                        },
+                        icon: const Icon(Icons.search, size: 20),
+                        label: CustomTextWidget(
+                          title: 'New Search',
+                          color: Colors.white,
+                          fontSize: screenHeight * 0.018,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.06,
+                            vertical: screenHeight * 0.018,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // Main content - Search form or results
           return SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.symmetric(
@@ -187,6 +350,7 @@ class SearchScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
+                  // Search form
                   PropertySearchCard(
                     propertyOptions: dropdownData.propertyOptions,
                     propertyTypes: dropdownData.propertyTypes,
@@ -195,14 +359,36 @@ class SearchScreen extends StatelessWidget {
                     propertyPrices: dropdownData.propertyPrices,
                   ),
                   kHeight(0.02),
-                  Lottie.asset(
-                    'assets/lottie/search.json',
-                    width: screenWidth * 0.5,
-                    height: screenHeight * 0.3,
-                    fit: BoxFit.contain,
-                    repeat: true,
-                    animate: true,
-                  ),
+                  
+                  // Show search animation if no results yet
+                  if (searchScreenController.searchResults.isEmpty)
+                    Lottie.asset(
+                      'assets/lottie/search.json',
+                      width: screenWidth * 0.5,
+                      height: screenHeight * 0.3,
+                      fit: BoxFit.contain,
+                      repeat: true,
+                      animate: true,
+                    ),
+                  
+                  // Show search results if available
+                  if (searchScreenController.searchResults.isNotEmpty)
+                    Column(
+                      children: [
+                        // Results count
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
+                          child: CustomTextWidget(
+                            title: 'Found ${searchScreenController.searchResultsCount} properties',
+                            fontSize: screenHeight * 0.02,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                        // Display search results here
+                        // Add your property list widget
+                      ],
+                    ),
                 ],
               ),
             ),

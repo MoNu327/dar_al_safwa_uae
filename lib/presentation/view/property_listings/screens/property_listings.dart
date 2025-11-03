@@ -26,68 +26,203 @@ class PropertyListings extends StatelessWidget {
       backgroundColor: AppColors.white,
       body: SafeArea(
         child: Obx(() {
+          // Loading state
           if (controller.isLoadingSearchResults.value) {
             return const Center(child: CustomLoaderWidget());
           }
 
+          // Error state with back button
           if (controller.searchResultErrorMessage.isNotEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  SizedBox(
-                      height: screenHeight * 0.3,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      height: screenHeight * 0.25,
                       child: Lottie.asset(
-                          fit: BoxFit.cover,
-                          "assets/lottie/NotFoundLottie.json")),
-                  kHeight(0.02),
-                  CustomTextWidget(
-                    title: controller.searchResultErrorMessage.value,
-                  ),
-                  kHeight(0.03),
-                  CustomButtonWidget(
-                    buttonTitle: localizationController.translate('retry'),
-                    onPressed: controller.fetchSearchResult,
-                    buttonHeight: screenHeight * 0.06,
-                    buttonWidth: screenWidth * 0.4,
-                  )
-                ],
+                        fit: BoxFit.contain,
+                        "assets/lottie/NotFoundLottie.json",
+                      ),
+                    ),
+                    kHeight(0.02),
+                    CustomTextWidget(
+                      title: controller.searchResultErrorMessage.value,
+                      textAlign: TextAlign.center,
+                      fontSize: screenHeight * 0.022,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.secondaryColor,
+                    ),
+                    kHeight(0.01),
+                    CustomTextWidget(
+                      title: localizationController.translate('adjust_search_filters') ?? 
+                             'Try adjusting your search filters',
+                      textAlign: TextAlign.center,
+                      fontSize: screenHeight * 0.018,
+                      color: Colors.grey,
+                    ),
+                    kHeight(0.04),
+                    // Action buttons row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Back button
+                        ElevatedButton.icon(
+                          onPressed: () => Get.back(),
+                          icon: const Icon(Icons.arrow_back, size: 20),
+                          label: CustomTextWidget(
+                            title: localizationController.translate('back') ?? 'Back',
+                            color: Colors.white,
+                            fontSize: screenHeight * 0.018,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondaryColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.05,
+                              vertical: screenHeight * 0.018,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.04),
+                        // Retry button
+                        ElevatedButton.icon(
+                          onPressed: controller.fetchSearchResult,
+                          icon: const Icon(Icons.refresh, size: 20),
+                          label: CustomTextWidget(
+                            title: localizationController.translate('retry') ?? 'Retry',
+                            color: Colors.white,
+                            fontSize: screenHeight * 0.018,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondaryColor,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth * 0.05,
+                              vertical: screenHeight * 0.018,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           }
 
+          // Empty results state with back button
           final properties = controller.searchResults.value?.data ?? [];
           if (properties.isEmpty) {
-            return Center(
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: Get.width * 0.05,
+                vertical: Get.height * 0.05,
+              ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(
-                      height: screenHeight * 0.3,
-                      child: Lottie.asset(
-                          fit: BoxFit.cover,
-                          "assets/lottie/NotFoundLottie.json")),
-                  kHeight(0.02),
-                  CustomTextWidget(
-                    title:
-                        localizationController.translate('no_properties_found'),
+                  _buildHeaderWithoutProperty(isArabic),
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              height: screenHeight * 0.25,
+                              child: Lottie.asset(
+                                fit: BoxFit.contain,
+                                "assets/lottie/NotFoundLottie.json",
+                              ),
+                            ),
+                            kHeight(0.02),
+                            CustomTextWidget(
+                              title: localizationController.translate('no_properties_found') ?? 
+                                     'No properties found matching your criteria',
+                              textAlign: TextAlign.center,
+                              fontSize: screenHeight * 0.022,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.secondaryColor,
+                            ),
+                            kHeight(0.01),
+                            CustomTextWidget(
+                              title: localizationController.translate('try_different_filters') ?? 
+                                     'Try different search filters or criteria',
+                              textAlign: TextAlign.center,
+                              fontSize: screenHeight * 0.018,
+                              color: Colors.grey,
+                            ),
+                            kHeight(0.04),
+                            // Action buttons row
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Back to Search button
+                                ElevatedButton.icon(
+                                  onPressed: () => Get.back(),
+                                  icon: const Icon(Icons.arrow_back, size: 20),
+                                  label: CustomTextWidget(
+                                    title: localizationController.translate('back_to_search') ?? 'Back to Search',
+                                    color: Colors.white,
+                                    fontSize: screenHeight * 0.018,
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.secondaryColor,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.05,
+                                      vertical: screenHeight * 0.018,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: screenWidth * 0.04),
+                                // New Search button
+                                ElevatedButton.icon(
+                                  onPressed: () => Get.back(),
+                                  icon: const Icon(Icons.search, size: 20),
+                                  label: CustomTextWidget(
+                                    title: localizationController.translate('new_search') ?? 'New Search',
+                                    color: Colors.white,
+                                    fontSize: screenHeight * 0.018,
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryColor,
+                                    foregroundColor: Colors.white,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth * 0.05,
+                                      vertical: screenHeight * 0.018,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  kHeight(0.02),
-                  CustomButtonWidget(
-                    buttonTitle: localizationController.translate('Go Back'),
-                    onPressed: () {
-                      Get.toNamed("'/search'");
-                    },
-                    buttonHeight: screenHeight * 0.06,
-                    buttonWidth: screenWidth * 0.40,
-                  )
                 ],
               ),
             );
           }
 
+          // Property list with results
           return SingleChildScrollView(
             padding: EdgeInsets.symmetric(
               horizontal: Get.width * 0.05,
@@ -107,6 +242,51 @@ class PropertyListings extends StatelessWidget {
   }
 
   Widget _buildHeader(Property property, bool isArabic) {
+    final controller = Get.find<PropertyListingController>();
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        vertical: Get.height * 0.005,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.whiteLight,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.lightGrey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: AppColors.black600,
+              size: Get.height * 0.02,
+            ),
+            onPressed: () => Get.back(),
+          ),
+          Expanded(
+            child: CustomTextWidget(
+              fontSize: tagTitle,
+              title: isArabic
+                  ? '${controller.propertyTypeName} | ${controller.propertyLocationName} | ${controller.propertyBedsBathName}'
+                  : '${controller.propertyTypeName} | ${controller.propertyLocationName} | ${controller.propertyBedsBathName}',
+              fontWeight: FontWeight.w500,
+              color: AppColors.black600,
+              maxLines: 2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderWithoutProperty(bool isArabic) {
     final controller = Get.find<PropertyListingController>();
 
     return Container(
@@ -336,14 +516,14 @@ class PropertyListings extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CustomTextWidget(
-                title: '${property.rating?.average ?? '0.0'}/5', //
+                title: '${property.rating?.average ?? '0.0'}/5',
                 fontSize: screenHeight * 0.015,
                 color: AppColors.black,
                 fontWeight: FontWeight.w600,
               ),
               CustomTextWidget(
                 title:
-                    '(${property.rating?.count ?? 0} ${localizationController.translate('review')})', //property.propertyReviews ??
+                    '(${property.rating?.count ?? 0} ${localizationController.translate('review')})',
                 fontSize: screenHeight1,
                 color: AppColors.black,
                 fontWeight: FontWeight.w500,
