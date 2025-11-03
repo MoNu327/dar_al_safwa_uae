@@ -26,6 +26,9 @@ class ProfileController extends GetxController {
   var isEditing = false.obs;
   var isSaving = false.obs;
 
+  // Track current user ID to detect changes
+  var currentUserId = ''.obs;
+
   // Property interests
   var propertyInterests = <PropertyInterestUser>[].obs;
   var isLoadingInterests = false.obs;
@@ -62,6 +65,21 @@ class ProfileController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    // Listen to auth state changes
+    auth.authStateChanges().listen((User? user) {
+      if (user != null) {
+        // Check if user has changed
+        if (currentUserId.value != user.uid) {
+          debugPrint('🔄 User changed from ${currentUserId.value} to ${user.uid}');
+          currentUserId.value = user.uid;
+          _clearAllData();
+          fetchUserCredentials();
+        }
+      } else {
+        _clearAllData();
+      }
+    });
+    
     fetchUserCredentials();
   }
 
@@ -77,6 +95,44 @@ class ProfileController extends GetxController {
     experienceController.dispose();
     citiesController.dispose();
     super.onClose();
+  }
+
+  /// Clear all cached data when user changes
+  void _clearAllData() {
+    debugPrint('🧹 Clearing all cached profile data');
+    
+    // Clear user/agent credentials
+    userCredential.value = null;
+    agentCredential.value = null;
+    
+    // Clear all reactive variables
+    fullName.value = '';
+    phoneNumber.value = '';
+    whatsappNumber.value = '';
+    email.value = '';
+    gender.value = '';
+    dateOfBirth.value = '';
+    location.value = '';
+    profilePicUrl.value = '';
+    userRole.value = '';
+    
+    // Clear agent-specific data
+    agencyName.value = '';
+    licenseNumber.value = '';
+    yearsOfExperience.value = '';
+    workingCities.value = '';
+    agentStatus.value = '';
+    
+    // Clear property interests
+    propertyInterests.clear();
+    interestsError.value = '';
+    
+    // Clear all text controllers
+    _clearControllers();
+    
+    // Reset states
+    isEditing.value = false;
+    isSaving.value = false;
   }
 
   /// Fetch property interests history
@@ -359,12 +415,21 @@ class ProfileController extends GetxController {
       isLoading(true);
       final user = auth.currentUser;
 
-      if (user == null) return;
+      if (user == null) {
+        _clearAllData();
+        return;
+      }
 
-      debugPrint('🔄 ProfileController: Auth state changed - User: ${user.uid}');
-      debugPrint('🔍 Fetching credentials for: ${user.uid}');
+      debugPrint('🔄 ProfileController: Fetching credentials for: ${user.uid}');
       debugPrint('📧 Firebase Auth Email: ${user.email}');
       debugPrint('👤 Firebase Auth Display Name: ${user.displayName}');
+
+      // Check if user changed during fetch
+      if (currentUserId.value.isNotEmpty && currentUserId.value != user.uid) {
+        debugPrint('⚠️ User changed during fetch, clearing data');
+        _clearAllData();
+        currentUserId.value = user.uid;
+      }
 
       final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
 
@@ -373,7 +438,11 @@ class ProfileController extends GetxController {
         final agentData = agentDoc.data()!;
         debugPrint('✅ Agent data found: ${agentData['displayName']}');
         _populateAgentData(agentData);
-        Get.find<AgentController>().currentUser = agentCredential.value;
+        try {
+          Get.find<AgentController>().currentUser = agentCredential.value;
+        } catch (e) {
+          debugPrint('⚠️ AgentController not found: $e');
+        }
       } else {
         userRole.value = 'user';
         final userDoc = await _firestore.collection('users').doc(user.uid).get();
@@ -381,9 +450,14 @@ class ProfileController extends GetxController {
         if (userDoc.exists) {
           final userData = userDoc.data()!;
           debugPrint('✅ User data found: ${userData['displayName']}');
-          debugPrint('📝 User data populated - Name: ${userData['displayName']}, Email: ${userData['email']}');
           _populateUserData(userData);
-          Get.find<UserController>().currentUser = userCredential.value;
+          try {
+            Get.find<UserController>().currentUser = userCredential.value;
+          } catch (e) {
+            debugPrint('⚠️ UserController not found: $e');
+          }
+        } else {
+          debugPrint('⚠️ No user or agent data found for: ${user.uid}');
         }
       }
 
@@ -423,6 +497,8 @@ class ProfileController extends GetxController {
       gender: gender.value,
       location: location.value,
     );
+    
+    debugPrint('✅ Agent data populated: ${fullName.value}');
   }
 
   void _populateUserData(Map<String, dynamic> userData) {
@@ -446,6 +522,8 @@ class ProfileController extends GetxController {
       phoneNumber: phoneNumber.value,
       imageUrl: profilePicUrl.value,
     );
+    
+    debugPrint('✅ User data populated: ${fullName.value}');
   }
 
   /// Date picker

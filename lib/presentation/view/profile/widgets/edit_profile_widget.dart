@@ -29,6 +29,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.initState();
     // Strip +971 prefix from phone numbers when loading
     _preparePhoneNumbers();
+    // Load agent-specific data if user is an agent
+    _loadAgentData();
+  }
+
+  /// Load agent-specific data
+  void _loadAgentData() {
+    if (widget.controller.userRole.value == 'agent') {
+      // If agent data is available, ensure the controller has the agent name
+      if (widget.controller.fullName.value.isNotEmpty) {
+        widget.controller.fullNameController.text = widget.controller.fullName.value;
+      }
+    }
   }
 
   /// Remove +971 prefix from phone numbers for display
@@ -115,10 +127,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               _buildBasicInformation(),
               kHeight(0.03),
               _buildContactDetails(),
-              // if (widget.controller.userRole.value == 'agent') ...[
-              //   kHeight(0.03),
-              //   _buildProfessionalDetails(),
-              // ],
+              if (widget.controller.userRole.value == 'agent') ...[
+                kHeight(0.03),
+                _buildProfessionalDetails(),
+              ],
               kHeight(0.05),
             ],
           ),
@@ -143,6 +155,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     if (whatsapp.isNotEmpty && !whatsapp.startsWith('+971')) {
       widget.controller.whatsappController.text = '+971$whatsapp';
+    }
+    
+    // Update the fullName observable for agents
+    if (widget.controller.userRole.value == 'agent') {
+      widget.controller.fullName.value = widget.controller.fullNameController.text.trim();
     }
     
     // Save profile
@@ -194,12 +211,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         kHeight(0.02),
         _buildTextField(
-          hint: widget.localizationController.translate('enter_full_name') ??
-              'Enter full name',
+          hint: widget.controller.userRole.value == 'agent'
+              ? (widget.localizationController.translate('agent_name') ?? 'Enter agent name')
+              : (widget.localizationController.translate('enter_full_name') ?? 'Enter full name'),
           controller: widget.controller.fullNameController,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Full name is required';
+              return widget.controller.userRole.value == 'agent' 
+                  ? 'Agent name is required' 
+                  : 'Full name is required';
             }
             return null;
           },
