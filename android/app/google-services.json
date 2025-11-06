@@ -103,6 +103,30 @@
       },
       "oauth_client": [
         {
+          "client_id": "961349068661-j9tcmhujhjtnkgn2m3455e90hm0h158r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.majan.app",
+            "certificate_hash": "44c7169487971db4b91cdf7638ccab214ecc8ded"
+          }
+        },
+        {
+          "client_id": "961349068661-t4pcqa3smk179qrnffv3aanclr54u6kl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.majan.app",
+            "certificate_hash": "7ecaafd5948b5fdec83647e13b302ad4c8c70bbe"
+          }
+        },
+        {
+          "client_id": "961349068661-uo59hlbadlfd4r3de1igddj9hp6amk87.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.majan.app",
+            "certificate_hash": "780de27ce8f4ffdae1f1ce8ad3c500780c3b4cb9"
+          }
+        },
+        {
           "client_id": "961349068661-hocj0h0sbp0a3dc838mram47moija8m5.apps.googleusercontent.com",
           "client_type": 3
         }

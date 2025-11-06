@@ -1,22 +1,65 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- ✅ KEEP: Network and notifications -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    
+    <!-- ❌ FORCE REMOVE: Media permissions added by image_picker plugin -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove" />
+    
+    <!-- ❌ FORCE REMOVE: Legacy storage permissions added by plugins -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    
+    <!-- ✅ KEEP: Camera (needed for image_picker camera feature) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- ✅ KEEP: AR features -->
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
-    <uses-feature android:name="android.hardware.camera.ar" android:required="true" />
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+    
+    <!-- ✅ KEEP: Location -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     
     <application
         android:label="majan"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:resizeableActivity="false"
+        android:resizeableActivity="true"
         android:supportsPictureInPicture="false"
-        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="false">
+        
+        <!-- ✅ ARCore configuration -->
+        <meta-data
+            android:name="com.google.ar.core"
+            android:value="optional" />
+
+       <meta-data
+           android:name="com.google.ar.core.min_apk_version"
+           android:value="221600000"
+           tools:replace="android:value" />
+
+
+        <!-- ✅ Edge-to-edge support for Android 15+ -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableEdgeToEdge"
+            android:value="true" />
+        
+        <!-- ✅ Large screen support -->
+        <meta-data
+            android:name="android.allow_multiple_resume"
+            android:value="true" />
+        
+        <meta-data
+            android:name="android.max_aspect"
+            android:value="2.4" />
         
         <activity
             android:name=".MainActivity"
@@ -25,11 +68,10 @@
             android:screenOrientation="fullSensor"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
-            android:usesCleartextTraffic="true"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|fontScale"
-            android:enableOnBackInvokedCallback="true"> <!-- Added portrait lock    android:screenOrientation="portrait"    android:configChanges="orientation|screenSize"-->  
+            android:enableOnBackInvokedCallback="true">
             
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
@@ -45,14 +87,10 @@
                <category android:name="android.intent.category.DEFAULT" />
                <category android:name="android.intent.category.BROWSABLE" />
                <data android:scheme="https" android:host="arvr.google.com" />
-
-</intent-filter>
+            </intent-filter>
         </activity>
-       
 
-       
-
-       <!-- Firebase Messaging Service -->
+        <!-- ✅ Firebase Messaging Service -->
         <service
             android:name=".MyFirebaseMessagingService"
             android:exported="false">
@@ -64,9 +102,6 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="high_importance_channel"/>
-        <meta-data
-            android:name="com.google.ar.core"
-            android:value="required" />
             
         <meta-data
             android:name="flutterEmbedding"
@@ -75,18 +110,31 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version"/>
         <meta-data
-        android:name="io.flutter.embedding.android.EnableImpeller"
-        android:value="false" />
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+            
+        <!-- ✅ FileProvider for PDF downloads and sharing -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
     
+    <!-- ✅ Intent queries for PDF opening -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
-        </intent> 
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/pdf" />
+        </intent>
         <package android:name="com.google.android.gms" />
     </queries>
-   
-       
-  
 </manifest>
