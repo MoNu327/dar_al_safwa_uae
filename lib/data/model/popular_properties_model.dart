@@ -92,8 +92,8 @@ class PopularProperty {
 
 @JsonSerializable()
 class LocalizedText {
-  final String? en;
-  final String? ar;
+  late final String? en;
+  late final String? ar;
 
   LocalizedText({
     this.en,

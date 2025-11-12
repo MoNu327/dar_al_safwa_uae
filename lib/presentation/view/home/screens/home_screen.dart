@@ -362,9 +362,7 @@ GridView.builder(
                 title: isArabic
                     ? property.propertyTitle?.ar ?? ''
                     : property.propertyTitle?.en ?? '',
-                price: isArabic
-                    ? property.propertyPrice?.formatted?.ar ?? ''
-                    : property.propertyPrice?.formatted?.en ?? '',
+               price: getFormattedPriceWithAnnually(property.propertyPrice, isArabic),
                 propertyDeal: isArabic
                     ? property.propertyDeal?.ar ?? ''
                     : property.propertyDeal?.en ?? '',
@@ -457,7 +455,7 @@ Obx(() {
               imageUrl: property.image ?? '',
               title: localizationController.translate('title_price'),
               // ✅ FIXED: Use the helper method instead
-              price: getFormattedPrice(property.price, isArabic),
+              price: getFormattedPriceWithAnnually(property.price, isArabic),
               propertyDeal: isArabic
                   ? property.dealType?.ar ?? ''
                   : property.dealType?.en ?? '',
@@ -545,7 +543,9 @@ bool _isPropertyCommercial(dynamic property) {
   // Default to residential
   return false;
 }
-String getFormattedPrice(dynamic priceData, bool isArabic) {
+// Add this helper method to your HomeScreen class to add "annually" label to prices
+
+String getFormattedPriceWithAnnually(dynamic priceData, bool isArabic) {
   if (priceData == null) return '';
   
   // Try to get the formatted price first
@@ -553,9 +553,11 @@ String getFormattedPrice(dynamic priceData, bool isArabic) {
       ? priceData.formatted?.ar 
       : priceData.formatted?.en;
   
-  // If formatted price exists and is not empty, return it
+  // If formatted price exists and is not empty, add annually label
   if (formattedPrice != null && formattedPrice.isNotEmpty) {
-    return formattedPrice;
+    return isArabic 
+        ? '$formattedPrice / سنوياً' 
+        : '$formattedPrice / annually';
   }
   
   // Fallback to raw price with manual formatting
@@ -567,10 +569,13 @@ String getFormattedPrice(dynamic priceData, bool isArabic) {
       (Match m) => '${m[1]},'
     );
     
-    // Add currency symbol based on language
-    return isArabic ? '$formatted ر.ع' : 'AED $formatted';
+    // Add currency symbol and annually label based on language
+    return isArabic 
+        ? '$formatted ر.ع / سنوياً' 
+        : 'AED $formatted / annually';
   }
   
   return '';
 }
+
 }

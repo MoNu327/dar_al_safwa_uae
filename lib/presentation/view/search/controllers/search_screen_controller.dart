@@ -67,8 +67,8 @@ class SearchScreenController extends GetxController {
           '✅ [fetchSearchDropdown] API call completed. Status: ${response.statusCode}');
       debugPrint('📦 [fetchSearchDropdown] Response data: ${response.data}');
       if (response.data != null && response.data['data'] != null) {
-  debugPrint('🔑 Available keys in data: ${response.data['data'].keys.toList()}');
-}
+        debugPrint('🔑 Available keys in data: ${response.data['data'].keys.toList()}');
+      }
 
       if (response.statusCode == 200) {
         if (response.data == null) {
@@ -372,6 +372,43 @@ class SearchScreenController extends GetxController {
         : (property.type?.en ?? property.type?.ar ?? 'No Type');
   }
 
+  // ✅ UPDATED: Get formatted price with "annually" label
+  String getFormattedPriceWithAnnually(Property property, {bool useArabic = false}) {
+    final priceData = property.price;
+    
+    if (priceData == null) return useArabic ? 'السعر غير متوفر' : 'Price not available';
+    
+    // Try to get the formatted price first
+    String? formattedPrice = useArabic 
+        ? priceData.formatted?.ar 
+        : priceData.formatted?.en;
+    
+    // If formatted price exists and is not empty, add annually label
+    if (formattedPrice != null && formattedPrice.isNotEmpty) {
+      return useArabic 
+          ? '$formattedPrice / سنوياً' 
+          : '$formattedPrice / annually';
+    }
+    
+    // Fallback to raw price with manual formatting
+    if (priceData.raw != null) {
+      final rawPrice = priceData.raw;
+      // Format the number with commas for thousands
+      final formatted = rawPrice!.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},'
+      );
+      
+      // Add currency symbol and annually label based on language
+      return useArabic 
+          ? '$formatted ر.ع / سنوياً' 
+          : 'AED $formatted / annually';
+    }
+    
+    return useArabic ? 'السعر غير متوفر' : 'Price not available';
+  }
+
+  // ✅ KEPT: Original method for backward compatibility (if needed elsewhere)
   String getFormattedPrice(Property property, {bool useArabic = false}) {
     return useArabic
         ? (property.price?.formatted?.ar ?? property.price?.formatted?.en ?? 'Price not available')

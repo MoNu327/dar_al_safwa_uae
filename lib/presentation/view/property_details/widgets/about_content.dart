@@ -197,7 +197,21 @@ class AboutContent extends StatelessWidget {
     });
   }
 
+  // ✅ UPDATED: Price section with "annually" label
   Widget _buildPriceSection(Price price) {
+    // Format the price with commas
+    String formattedPrice = 'N/A';
+    if (price.raw != null) {
+      formattedPrice = price.raw!.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},'
+      );
+    }
+
+    // Add annually label
+    final annuallyLabel = isArabic ? 'سنوياً' : 'Annually';
+    final priceWithAnnually = 'AED $formattedPrice / $annuallyLabel';
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -206,38 +220,41 @@ class AboutContent extends StatelessWidget {
         border: Border.all(color: AppColors.primaryColor),
       ),
       child: Row(
-  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  children: [
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CustomTextWidget(
-          title: "Price",
-          fontSize: Get.height * 0.014,
-          color: AppColors.black600,
-        ),
-        const SizedBox(height: 4),
-        CustomTextWidget(
-          title: "AED ${price.raw?.toStringAsFixed(0) ?? 'N/A'}",
-          fontSize: Get.height * 0.022,
-          fontWeight: FontWeight.bold,
-          color: AppColors.secondaryColor,
-        ),
-      ],
-    ),
-    // Replaced icon with text "AED"
-    CustomTextWidget(
-      title: "AED",
-      fontSize: Get.height * 0.022,
-      fontWeight: FontWeight.bold,
-      color: AppColors.secondaryColor,
-    ),
-  ],
-)
-
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CustomTextWidget(
+                  title: isArabic ? "السعر" : "Price",
+                  fontSize: Get.height * 0.014,
+                  color: AppColors.black600,
+                ),
+                const SizedBox(height: 4),
+                CustomTextWidget(
+                  title: priceWithAnnually,
+                  fontSize: Get.height * 0.020,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.secondaryColor,
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          // Currency indicator
+          CustomTextWidget(
+            title: "AED",
+            fontSize: Get.height * 0.022,
+            fontWeight: FontWeight.bold,
+            color: AppColors.secondaryColor,
+          ),
+        ],
+      ),
     );
   }
 
+  // ✅ UPDATED: Unit Types section with "annually" label
   Widget _buildUnitTypesSection(UnitTypes unitTypes) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,7 +273,19 @@ class AboutContent extends StatelessWidget {
     );
   }
 
+  // ✅ UPDATED: Unit Type card with "annually" label
   Widget _buildUnitTypeCard(UnitTypeData unitType) {
+    // Format unit price with annually label
+    String unitPriceText = '';
+    if (unitType.baseRentAmount?.raw != null) {
+      final formattedPrice = unitType.baseRentAmount!.raw!.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},'
+      );
+      final annuallyLabel = isArabic ? 'سنوياً' : 'annually';
+      unitPriceText = 'AED $formattedPrice / $annuallyLabel';
+    }
+
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(16),
@@ -289,7 +318,7 @@ class AboutContent extends StatelessWidget {
                   color: AppColors.secondaryColor,
                 ),
               ),
-              if (unitType.baseRentAmount?.raw != null)
+              if (unitPriceText.isNotEmpty)
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -297,10 +326,11 @@ class AboutContent extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: CustomTextWidget(
-                    title: "AED ${unitType.baseRentAmount!.raw!.toStringAsFixed(0)}",
-                    fontSize: Get.height * 0.016,
+                    title: unitPriceText,
+                    fontSize: Get.height * 0.014,
                     fontWeight: FontWeight.w600,
                     color: AppColors.secondaryColor,
+                    maxLines: 2,
                   ),
                 ),
             ],
@@ -665,7 +695,6 @@ class AboutContent extends StatelessWidget {
   Widget _buildAgentActions(PropertyDetailsController controller) {
     final property = controller.property.value;
 
-    // ✅ CRITICAL: Use agent's ACTUAL email from property data
     final agentEmail = property?.agent?.email ?? "test@gmail.com";
     final phone = property?.agent?.phone ?? "9544418765";
     final propertyId = property?.id.toString() ?? "";
@@ -681,24 +710,20 @@ class AboutContent extends StatelessWidget {
     return Row(
       spacing: Get.width * 0.02,
       children: [
-        // ========== CHAT BUTTON ==========
+        // Chat Button
         InkWell(
           onTap: () {
             debugPrint('💬 Chat button tapped');
             debugPrint('   - User logged in: ${auth.currentUser != null}');
             debugPrint('   - User email: ${auth.currentUser?.email}');
-            debugPrint(
-                '   - User display name: ${auth.currentUser?.displayName}');
+            debugPrint('   - User display name: ${auth.currentUser?.displayName}');
 
-            // ✅ Check if user is logged in
             if (auth.currentUser == null) {
-              debugPrint(
-                  '❌ User not logged in - redirecting to signup warning');
+              debugPrint('❌ User not logged in - redirecting to signup warning');
               Get.toNamed(AppRoute.signupWarning);
               return;
             }
 
-            // ✅ Validate agent email exists
             if (agentEmail.isEmpty || agentEmail == "test@gmail.com") {
               debugPrint('❌ Invalid agent email');
               CustomSnackbar.show(
@@ -707,13 +732,11 @@ class AboutContent extends StatelessWidget {
               return;
             }
 
-            // ✅ User is logged in - proceed to chat
             debugPrint('✅ User authenticated - proceeding to chat');
-            debugPrint(
-                '   - Opening unit type sheet with agent email: $agentEmail');
+            debugPrint('   - Opening unit type sheet with agent email: $agentEmail');
 
             controller.showUnitTypeBottomSheetForChat(
-                agentEmail, // ✅ Use actual agent email from property
+                agentEmail,
                 propertyId,
                 propertyName);
           },
@@ -724,20 +747,17 @@ class AboutContent extends StatelessWidget {
           ),
         ),
 
-        // ========== CALL BUTTON ==========
+        // Call Button
         InkWell(
           onTap: () {
             debugPrint('📞 Call button tapped');
 
-            // ✅ Check if user is logged in
             if (auth.currentUser == null) {
-              debugPrint(
-                  '❌ User not logged in - redirecting to signup warning');
+              debugPrint('❌ User not logged in - redirecting to signup warning');
               Get.toNamed(AppRoute.signupWarning);
               return;
             }
 
-            // ✅ Validate phone number exists
             if (phone.isEmpty || phone == "9544418765") {
               debugPrint('❌ Invalid agent phone number');
               CustomSnackbar.show(
@@ -746,7 +766,6 @@ class AboutContent extends StatelessWidget {
               return;
             }
 
-            // ✅ User is logged in - proceed to call
             debugPrint('✅ User authenticated - proceeding to call');
             controller.showUnitTypeBottomSheetForCall(phone, propertyId);
           },
@@ -759,7 +778,6 @@ class AboutContent extends StatelessWidget {
       ],
     );
   }
-
 
   Widget _buildFeatures(PropertyFeatures features) {
     if (features.items == null || features.items!.isEmpty) {

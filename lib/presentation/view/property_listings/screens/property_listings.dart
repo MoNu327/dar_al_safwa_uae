@@ -535,26 +535,71 @@ class PropertyListings extends StatelessWidget {
     );
   }
 
+  // ✅ UPDATED: Price section with "annually" label
   Widget _buildPriceSection(Property property, bool isArabic) {
     final price = property.price;
-    final formattedPrice = isArabic
-        ? (price?.formatted?.ar?.isNotEmpty ?? false
-            ? price!.formatted!.ar
-            : '${price?.raw ?? 0} AED')
-        : (price?.formatted?.en?.isNotEmpty ?? false
-            ? price!.formatted!.en
-            : '${price?.raw ?? 0} AED');
+    
+    // Get formatted price
+    String formattedPrice;
+    if (isArabic) {
+      formattedPrice = price?.formatted?.ar?.isNotEmpty ?? false
+          ? price!.formatted!.ar!
+          : '${price?.raw ?? 0} ر.ع';
+    } else {
+      formattedPrice = price?.formatted?.en?.isNotEmpty ?? false
+          ? price!.formatted!.en!
+          : 'AED ${price?.raw ?? 0}';
+    }
+
+    // Add "annually" label
+    final annuallyLabel = isArabic ? 'سنوياً' : 'annually';
+    final priceWithAnnually = '$formattedPrice / $annuallyLabel';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomTextWidget(
-          title:
-              '$formattedPrice/${localizationController.translate('per_section')}',
+          title: priceWithAnnually,
           fontWeight: FontWeight.w700,
           color: AppColors.secondaryColor,
         ),
       ],
     );
+  }
+  
+  // ✅ ALTERNATIVE: Helper method for price formatting (if you want to use it)
+  String _getFormattedPriceWithAnnually(Property property, bool isArabic) {
+    final price = property.price;
+    
+    if (price == null) {
+      return isArabic ? 'السعر غير متوفر' : 'Price not available';
+    }
+    
+    // Get formatted price
+    String? formattedPrice = isArabic 
+        ? price.formatted?.ar 
+        : price.formatted?.en;
+    
+    // If formatted price exists, add annually label
+    if (formattedPrice != null && formattedPrice.isNotEmpty) {
+      return isArabic 
+          ? '$formattedPrice / سنوياً' 
+          : '$formattedPrice / annually';
+    }
+    
+    // Fallback to raw price
+    if (price.raw != null) {
+      final rawPrice = price.raw!;
+      final formatted = rawPrice.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},'
+      );
+      
+      return isArabic 
+          ? '$formatted ر.ع / سنوياً' 
+          : 'AED $formatted / annually';
+    }
+    
+    return isArabic ? 'السعر غير متوفر' : 'Price not available';
   }
 }

@@ -3,11 +3,9 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-        // 👇 Required for Flutter dependencies like flutter_embedding_debug
-        maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.0'
+        classpath "com.android.tools.build:gradle:8.6.0"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath 'com.google.gms:google-services:4.4.3'
     }
@@ -17,8 +15,6 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        // 👇 Also add here for plugins that reference Flutter artifacts
-        maven { url "https://storage.googleapis.com/download.flutter.io" }
     }
 }
 

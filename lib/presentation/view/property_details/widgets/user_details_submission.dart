@@ -68,17 +68,9 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
     }
   }
 
-  // Check if at least one image document exists
-  bool _hasAtLeastOneImage() {
-    return controller.user.value.additionalDocuments.any((doc) {
-      if (doc.file is File) {
-        final path = doc.file.path.toLowerCase();
-        return path.endsWith('.jpg') || 
-               path.endsWith('.jpeg') || 
-               path.endsWith('.png');
-      }
-      return false;
-    });
+  // Check if at least one document exists (image or PDF)
+  bool _hasAtLeastOneDocument() {
+    return controller.user.value.additionalDocuments.isNotEmpty;
   }
 
   // Check if current temp file is an image
@@ -88,6 +80,21 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
     return path.endsWith('.jpg') || 
            path.endsWith('.jpeg') || 
            path.endsWith('.png');
+  }
+
+  // Check if current temp file is a PDF
+  bool _isPdfFile(File? file) {
+    if (file == null) return false;
+    final path = file.path.toLowerCase();
+    return path.endsWith('.pdf');
+  }
+
+  // Get file type description
+  String _getFileTypeDescription(File? file) {
+    if (file == null) return '';
+    if (_isImageFile(file)) return 'Image file (JPG/PNG)';
+    if (_isPdfFile(file)) return 'PDF document';
+    return 'Document';
   }
 
   @override
@@ -346,7 +353,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                         ),
                         kHeight(0.005),
                         Text(
-                          "At least one image document is required",
+                          "At least one document is required (PDF, JPG, or PNG)",
                           style: TextStyle(
                             color: Colors.red.shade700,
                             fontSize: 12,
@@ -508,30 +515,22 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                           ),
                                         ),
                                       ),
-                                    // Show image type indicator if file is selected
+                                    // Show file type indicator if file is selected
                                     if (_tempFile != null)
                                       Padding(
                                         padding: EdgeInsets.only(top: 4),
                                         child: Row(
                                           children: [
                                             Icon(
-                                              _isImageFile(_tempFile)
-                                                  ? Icons.check_circle
-                                                  : Icons.info,
+                                              Icons.check_circle,
                                               size: 16,
-                                              color: _isImageFile(_tempFile)
-                                                  ? Colors.green
-                                                  : Colors.orange,
+                                              color: Colors.green,
                                             ),
                                             SizedBox(width: 4),
                                             Text(
-                                              _isImageFile(_tempFile)
-                                                  ? "Image file (JPG/PNG)"
-                                                  : "PDF file (at least one image required)",
+                                              _getFileTypeDescription(_tempFile),
                                               style: TextStyle(
-                                                color: _isImageFile(_tempFile)
-                                                    ? Colors.green.shade700
-                                                    : Colors.orange.shade700,
+                                                color: Colors.green.shade700,
                                                 fontSize: 12,
                                               ),
                                             ),
@@ -571,7 +570,7 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    "At least one image document is required to submit",
+                                    "At least one document is required to submit",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Colors.red.shade700,
@@ -584,120 +583,86 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                             );
                           }
                           
-                          // Check if at least one image exists
-                          final hasImage = _hasAtLeastOneImage();
-                          
-                          return Column(
-                            children: [
-                              // Warning banner if no image
-                              if (!hasImage)
-                                Container(
-                                  padding: EdgeInsets.all(12),
-                                  margin: EdgeInsets.only(bottom: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.orange.shade300),
-                                  ),
-                                  child: Row(
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemCount: controller
+                                .user.value.additionalDocuments.length,
+                            itemBuilder: (context, index) {
+                              final doc = controller
+                                  .user.value.additionalDocuments[index];
+                              final isImage = _isImageFile(doc.file as File?);
+                              final isPdf = _isPdfFile(doc.file as File?);
+                              
+                              return Card(
+                                margin: EdgeInsets.symmetric(vertical: 5),
+                                color: Color(0xFFFFFDE7),
+                                child: ListTile(
+                                  leading: Stack(
                                     children: [
-                                      Icon(Icons.warning_amber_rounded, 
-                                           color: Colors.orange, size: 24),
-                                      SizedBox(width: 8),
+                                      Icon(
+                                        _getDocumentIcon(doc.file),
+                                        color: Color(0xFFFFA000),
+                                        size: 32,
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        bottom: 0,
+                                        child: Icon(
+                                          Icons.check_circle,
+                                          color: Colors.green,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  title: Row(
+                                    children: [
                                       Expanded(
                                         child: Text(
-                                          "Please add at least one image document (JPG/PNG)",
+                                          doc.title,
                                           style: TextStyle(
-                                            color: Colors.orange.shade900,
-                                            fontSize: 12,
                                             fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: isImage 
+                                              ? Colors.green.shade100
+                                              : Colors.blue.shade100,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          isImage ? "IMAGE" : "PDF",
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isImage 
+                                                ? Colors.green.shade900
+                                                : Colors.blue.shade900,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              
-                              // Document list
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                itemCount: controller
-                                    .user.value.additionalDocuments.length,
-                                itemBuilder: (context, index) {
-                                  final doc = controller
-                                      .user.value.additionalDocuments[index];
-                                  final isImage = _isImageFile(doc.file as File?);
-                                  
-                                  return Card(
-                                    margin: EdgeInsets.symmetric(vertical: 5),
-                                    color: Color(0xFFFFFDE7),
-                                    child: ListTile(
-                                      leading: Stack(
-                                        children: [
-                                          Icon(
-                                            _getDocumentIcon(doc.file),
-                                            color: Color(0xFFFFA000),
-                                            size: 32,
-                                          ),
-                                          if (isImage)
-                                            Positioned(
-                                              right: 0,
-                                              bottom: 0,
-                                              child: Icon(
-                                                Icons.check_circle,
-                                                color: Colors.green,
-                                                size: 16,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      title: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              doc.title,
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                          if (isImage)
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green.shade100,
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                "IMAGE",
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.green.shade900,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      subtitle: Text(
-                                        'Expires: ${doc.expiryDate.toLocal().toString().split(' ')[0]}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[700],
-                                        ),
-                                      ),
-                                      trailing: IconButton(
-                                        icon: Icon(Icons.delete, color: Colors.red),
-                                        onPressed: () => controller
-                                            .removeAdditionalDocument(index),
-                                      ),
+                                  subtitle: Text(
+                                    'Expires: ${doc.expiryDate.toLocal().toString().split(' ')[0]}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
                                     ),
-                                  );
-                                },
-                              ),
-                            ],
+                                  ),
+                                  trailing: IconButton(
+                                    icon: Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => controller
+                                        .removeAdditionalDocument(index),
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         }),
                       ],
@@ -841,11 +806,11 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                               return;
                             }
                             
-                            // Check if at least one image document exists
-                            if (!_hasAtLeastOneImage()) {
+                            // Check if at least one document exists
+                            if (!_hasAtLeastOneDocument()) {
                               Get.snackbar(
                                 "Missing Required Document",
-                                "Please add at least one image document (JPG/PNG) before submitting.",
+                                "Please add at least one document (PDF, JPG, or PNG) before submitting.",
                                 backgroundColor: Colors.red.shade100,
                                 colorText: Colors.black,
                                 snackPosition: SnackPosition.BOTTOM,
