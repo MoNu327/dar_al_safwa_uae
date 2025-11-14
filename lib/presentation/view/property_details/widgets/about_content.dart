@@ -167,30 +167,30 @@ class AboutContent extends StatelessWidget {
             ),
 
             // Bottom Action Sheet
-            if (property.agent != null)
-              SafeArea(
-                child: CustomBottomSheet(
-                  onCallPressed: () {
-                    propertyDetailsController.handleCallOrChat(
-                      isCall: true,
-                      phone: property.agent!.phone ?? "",
-                      propertyId: property.id.toString(),
-                      propertyName: property.title?.en ?? "",
-                      agentEmail: property.agent!.email ?? "",
-                    );
-                  },
-                  onWhatsAppPressed: () {
-                    propertyDetailsController.handleCallOrChat(
-                      isCall: false,
-                      phone: property.agent!.phone ?? "",
-                      propertyId: property.id.toString(),
-                      propertyName: property.title?.en ?? "",
-                      agentEmail: property.agent!.email ?? "",
-                    );
-                  },
-                  height: 80,
-                ),
-              ),
+            // if (property.agent != null)
+            //   SafeArea(
+            //     child: CustomBottomSheet(
+            //       onCallPressed: () {
+            //         propertyDetailsController.handleCallOrChat(
+            //           isCall: true,
+            //           phone: property.agent!.phone ?? "",
+            //           propertyId: property.id.toString(),
+            //           propertyName: property.title?.en ?? "",
+            //           agentEmail: property.agent!.email ?? "",
+            //         );
+            //       },
+            //       onWhatsAppPressed: () {
+            //         propertyDetailsController.handleCallOrChat(
+            //           isCall: false,
+            //           phone: property.agent!.phone ?? "",
+            //           propertyId: property.id.toString(),
+            //           propertyName: property.title?.en ?? "",
+            //           agentEmail: property.agent!.email ?? "",
+            //         );
+            //       },
+            //       height: 80,
+            //     ),
+            //   ),
           ],
         ),
       );

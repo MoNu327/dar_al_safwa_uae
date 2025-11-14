@@ -14,7 +14,7 @@ class ApiClient {
   ApiClient() {
     _dio.options
       ..connectTimeout = const Duration(seconds: 60)
-      ..receiveTimeout = const Duration(seconds: 60)
+      ..receiveTimeout = const Duration(seconds: 60)  
       ..responseType = ResponseType.json;
 
     _dio.interceptors.add(InterceptorsWrapper(

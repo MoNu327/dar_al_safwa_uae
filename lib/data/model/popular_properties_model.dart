@@ -106,9 +106,10 @@ class LocalizedText {
   Map<String, dynamic> toJson() => _$LocalizedTextToJson(this);
 }
 
+// ✅ FIXED: Changed raw from String? to dynamic to handle both int and String
 @JsonSerializable()
 class PropertyPrice {
-  final double? raw;
+  final dynamic raw;  // ✅ Changed from String? to dynamic
   final LocalizedText? formatted;
 
   PropertyPrice({
@@ -120,4 +121,102 @@ class PropertyPrice {
       _$PropertyPriceFromJson(json);
 
   Map<String, dynamic> toJson() => _$PropertyPriceToJson(this);
+
+  // ✅ Helper method to get raw as String
+  String getRawAsString() {
+    if (raw == null) return '';
+    return raw.toString();
+  }
+
+  // ✅ Helper method to get raw as number (for single values)
+  num? getRawAsNumber() {
+    if (raw == null) return null;
+    
+    if (raw is num) return raw;
+    
+    if (raw is String) {
+      // Handle range like "18000.00-20000.00"
+      if (raw.contains('-')) {
+        final parts = raw.split('-');
+        if (parts.isNotEmpty) {
+          return num.tryParse(parts[0].trim());
+        }
+      }
+      return num.tryParse(raw);
+    }
+    
+    return null;
+  }
+
+  // ✅ Check if price is a range
+  bool isRange() {
+    if (raw is String) {
+      return raw.toString().contains('-');
+    }
+    return false;
+  }
+
+  // ✅ Get formatted price with fallback to raw
+  String getFormattedPrice(bool isArabic) {
+    // First try to get formatted price
+    if (formatted != null) {
+      final formattedText = isArabic ? formatted!.ar : formatted!.en;
+      if (formattedText != null && formattedText.isNotEmpty) {
+        return formattedText;
+      }
+    }
+
+    // Fallback to raw price
+    if (raw == null) return '';
+
+    // If raw is already a formatted string (with currency or range)
+    if (raw is String) {
+      final rawStr = raw as String;
+      
+      // If it already has currency, return as is
+      if (rawStr.contains('AED') || rawStr.contains('ر.ع')) {
+        return rawStr;
+      }
+      
+      // If it's a range, add currency
+      if (rawStr.contains('-')) {
+        return isArabic ? '$rawStr ر.ع' : 'AED $rawStr';
+      }
+      
+      // Try to parse and format
+      final numValue = num.tryParse(rawStr);
+      if (numValue != null) {
+        final formatted = numValue.toStringAsFixed(0).replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},'
+        );
+        return isArabic ? '$formatted ر.ع' : 'AED $formatted';
+      }
+      
+      // Return as is if can't parse
+      return rawStr;
+    }
+
+    // If raw is a number, format it
+    if (raw is num) {
+      final formatted = raw.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},'
+      );
+      return isArabic ? '$formatted ر.ع' : 'AED $formatted';
+    }
+
+    return raw.toString();
+  }
+
+  // ✅ Get price with "annually" label
+  String getPriceWithAnnually(bool isArabic) {
+    final price = getFormattedPrice(isArabic);
+    if (price.isEmpty) {
+      return isArabic ? 'السعر غير متاح' : 'Price unavailable';
+    }
+    return isArabic 
+        ? '$price / سنوياً' 
+        : '$price / annually';
+  }
 }

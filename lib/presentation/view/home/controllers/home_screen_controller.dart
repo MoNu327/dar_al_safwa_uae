@@ -25,19 +25,16 @@ class HomeScreenController extends GetxController {
 
   // property banners
   final Rxn<PropertyBannerResponse> banners = Rxn<PropertyBannerResponse>();
-  // final RxBool isLoadingBanners = false.obs;
   final RxString errorMessage = ''.obs;
 
   // featured property
   final Rxn<FeaturedPropertiesResponse> featuredProperties =
       Rxn<FeaturedPropertiesResponse>();
-  // final RxBool isLoadingFeatured = false.obs;
   final RxString featuredErrorMessage = ''.obs;
 
   // popular properties
   final Rxn<PopularPropertiesResponse> popularProperties =
       Rxn<PopularPropertiesResponse>();
-  // final RxBool isLoadingPopular = false.obs;
   final RxString popularErrorMessage = ''.obs;
 
   // common loader
@@ -77,9 +74,6 @@ class HomeScreenController extends GetxController {
         fetchFeaturedProperties(),
         fetchPopularProperties()
       ]);
-
-      // Get.snackbar('Success', 'Data refreshed successfully',
-      //     snackPosition: SnackPosition.BOTTOM);
     } catch (e) {
       Get.offAllNamed(AppRoute.error);
       debugPrint("Refresh failed: $e");
@@ -158,118 +152,79 @@ class HomeScreenController extends GetxController {
     }
   }
 
-  // Fetch Property Banners
-  // Future<void> fetchPropertyBanners() async {
-  //   try {
-  //     debugPrint('🔄 [fetchPropertyBanners] Initiating banner fetch...');
-  //     // isLoadingBanners(true);
-  //     errorMessage('');
-
-  //     final response = await apiService.getPropertyBanner();
-  //     debugPrint(
-  //         '✅ [fetchPropertyBanners] API call completed. Status: ${response.statusCode}');
-
-  //     if (response.statusCode == 200) {
-  //       debugPrint('📦 [fetchPropertyBanners] Parsing response data...');
-  //       banners.value = PropertyBannerResponse.fromJson(response.data);
-  //       debugPrint(
-  //           '📊 [fetchPropertyBanners] Received banners: ${(banners.value)?.toJson()}');
-  //     } else {
-  //       debugPrint('📄 Full banner response: ${response.data}');
-  //       debugPrint(
-  //           '❌ [fetchPropertyBanners] API error: Status ${response.statusCode}');
-  //       debugPrint('📄 Response body: ${response.data}');
-  //       throw DioException(
-  //         requestOptions: response.requestOptions,
-  //         response: response,
-  //         error: 'Failed to load banners: ${response.statusCode}',
-  //       );
-  //     }
-  //   } on DioException catch (e) {
-  //     debugPrint('🚨 [fetchPropertyBanners] DioException caught: ${e.type}');
-  //     debugPrint('📌 Error details: ${e.message}');
-  //     if (e.response != null) {
-  //       debugPrint('⚡ Response status: ${e.response?.statusCode}');
-  //       debugPrint('📄 Response data: ${e.response?.data}');
-  //     }
-  //     errorMessage(parseDioError(e));
-  //     banners.value = null;
-  //     rethrow;
-  //   } catch (e, stackTrace) {
-  //     debugPrint('‼️ [fetchPropertyBanners] Unexpected error: ${e.toString()}');
-  //     debugPrint('📝 Stack trace: $stackTrace');
-  //     errorMessage('Unexpected error: ${e.toString()}');
-  //     banners.value = null;
-  //     rethrow;
-  //   } finally {
-  //     debugPrint(
-  //         '🏁 [fetchPropertyBanners] Fetch completed. Loading state: false');
-  //     // isLoadingBanners(false);
-  //   }
-  // }
-
   Future<void> fetchPropertyBanners() async {
-  try {
-    debugPrint('🔄 [fetchPropertyBanners] Initiating banner fetch...');
-    errorMessage('');
+    try {
+      debugPrint('🔄 [fetchPropertyBanners] Initiating banner fetch...');
+      errorMessage('');
 
-    final response = await apiService.getPropertyBanner();
-    debugPrint(
-        '✅ [fetchPropertyBanners] API call completed. Status: ${response.statusCode}');
+      final response = await apiService.getPropertyBanner();
+      debugPrint(
+          '✅ [fetchPropertyBanners] API call completed. Status: ${response.statusCode}');
 
-    if (response.statusCode == 200) {
-      banners.value = PropertyBannerResponse.fromJson(response.data);
-      debugPrint('📊 [fetchPropertyBanners] Received banners: ${(banners.value)?.toJson()}');
-    } else if (response.statusCode == 404) {
-      // No banners found - handle gracefully
-      banners.value = PropertyBannerResponse(data: []);
-      debugPrint('⚡ No banners found. Showing empty state.');
-    } else {
-      debugPrint('📄 Full banner response: ${response.data}');
-      debugPrint('❌ [fetchPropertyBanners] API error: Status ${response.statusCode}');
-      errorMessage('Failed to load banners: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        banners.value = PropertyBannerResponse.fromJson(response.data);
+        debugPrint('📊 [fetchPropertyBanners] Banner count: ${banners.value?.data?.length ?? 0}');
+        
+        // Print banner details
+        banners.value?.data?.forEach((banner) {
+          debugPrint('  - Banner ID: ${banner.id}, Image: ${banner.imageUrl ?? "N/A"}');
+        });
+      } else if (response.statusCode == 404) {
+        // No banners found - handle gracefully
+        banners.value = PropertyBannerResponse(data: []);
+        debugPrint('⚡ No banners found. Showing empty state.');
+      } else {
+        debugPrint('📄 Full banner response: ${response.data}');
+        debugPrint('❌ [fetchPropertyBanners] API error: Status ${response.statusCode}');
+        errorMessage('Failed to load banners: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      debugPrint('🚨 [fetchPropertyBanners] DioException caught: ${e.type}');
+      debugPrint('📌 Error details: ${e.message}');
+      if (e.response != null) {
+        debugPrint('⚡ Response status: ${e.response?.statusCode}');
+        debugPrint('📄 Response data: ${e.response?.data}');
+      }
+      errorMessage(parseDioError(e));
+      banners.value = null;
+    } catch (e, stackTrace) {
+      debugPrint('‼️ [fetchPropertyBanners] Unexpected error: ${e.toString()}');
+      debugPrint('📝 Stack trace: $stackTrace');
+      errorMessage('Unexpected error: ${e.toString()}');
+      banners.value = null;
+    } finally {
+      debugPrint('🏁 [fetchPropertyBanners] Fetch completed. Loading state: false');
     }
-  } on DioException catch (e) {
-    debugPrint('🚨 [fetchPropertyBanners] DioException caught: ${e.type}');
-    debugPrint('📌 Error details: ${e.message}');
-    if (e.response != null) {
-      debugPrint('⚡ Response status: ${e.response?.statusCode}');
-      debugPrint('📄 Response data: ${e.response?.data}');
-    }
-    errorMessage(parseDioError(e));
-    banners.value = null;
-  } catch (e, stackTrace) {
-    debugPrint('‼️ [fetchPropertyBanners] Unexpected error: ${e.toString()}');
-    debugPrint('📝 Stack trace: $stackTrace');
-    errorMessage('Unexpected error: ${e.toString()}');
-    banners.value = null;
-  } finally {
-    debugPrint('🏁 [fetchPropertyBanners] Fetch completed. Loading state: false');
   }
-}
-
 
   // fetch featured properties
   Future<void> fetchFeaturedProperties() async {
     try {
       debugPrint('🔄 [fetchFeaturedProperties] Initiating fetch...');
-      // isLoadingFeatured(true);
       featuredErrorMessage('');
 
       final response = await apiService.getFeaturedProperties();
       debugPrint(
           '✅ [fetchFeaturedProperties] API call completed. Status: ${response.statusCode}');
-      print(
-          "✅ [fetchFeaturedProperties] API call completed. Status: ${response.statusCode}");
       debugPrint(
           '📦 [fetchFeaturedProperties] Raw response data: ${response.data}');
 
       if (response.statusCode == 200) {
         featuredProperties.value =
             FeaturedPropertiesResponse.fromJson(response.data);
-        debugPrint('Featured properties : ${featuredProperties.value}');
-        debugPrint(
-            '🏠 [fetchFeaturedProperties] Received ${featuredProperties.value?.data?.length ?? 0} properties');
+        
+        debugPrint('🏠 [fetchFeaturedProperties] Properties count: ${featuredProperties.value?.data?.length ?? 0}');
+        
+        // Print individual property details with prices
+        featuredProperties.value?.data?.forEach((property) {
+          debugPrint('  - Property ID: ${property.id}');
+          debugPrint('    Title EN: ${property.title?.en ?? "N/A"}');
+          debugPrint('    Title AR: ${property.title?.ar ?? "N/A"}');
+          debugPrint('    Price Raw: ${property.price?.raw ?? "N/A"}');
+          debugPrint('    Price EN: ${property.price?.formatted?.en ?? "N/A"}');
+          debugPrint('    Price AR: ${property.price?.formatted?.ar ?? "N/A"}');
+          debugPrint('    Deal Type EN: ${property.dealType?.en ?? "N/A"}');
+        });
       } else {
         throw DioException(
           requestOptions: response.requestOptions,
@@ -286,34 +241,39 @@ class HomeScreenController extends GetxController {
       debugPrint('📝 Stack trace: $stackTrace');
       featuredErrorMessage('Unexpected error: ${e.toString()}');
       featuredProperties.value = null;
-    } finally {
-      // isLoadingFeatured(false);
     }
   }
-
-
 
   // fetch popular properties
   Future<void> fetchPopularProperties() async {
     try {
       debugPrint('🔄 [fetchPopularProperties] Initiating fetch...');
-      // isLoadingPopular(true);
       popularErrorMessage('');
 
       final response = await apiService.getPopularProperties();
 
       debugPrint(
           '✅ [fetchPopularProperties] API call completed. Status: ${response.statusCode}');
-
       debugPrint(
           '📦 [fetchPopularProperties] Raw response data: ${response.data}');
 
       if (response.statusCode == 200) {
         popularProperties.value =
             PopularPropertiesResponse.fromJson(response.data);
-        debugPrint('Popular properties : ${popularProperties.value}');
-        debugPrint(
-            '🏠 [fetchPopularProperties] Received ${popularProperties.value?.data?.length ?? "0"} properties');
+        
+        debugPrint('🏠 [fetchPopularProperties] Properties count: ${popularProperties.value?.data?.length ?? 0}');
+        
+        // Print individual property details with prices
+        popularProperties.value?.data?.asMap().forEach((index, property) {
+          debugPrint('  - Property ${index + 1}:');
+          debugPrint('    ID: ${property.id}');
+          debugPrint('    Title EN: ${property.propertyTitle?.en ?? "N/A"}');
+          debugPrint('    Title AR: ${property.propertyTitle?.ar ?? "N/A"}');
+          debugPrint('    Price Raw: ${property.propertyPrice?.raw ?? "N/A"}');
+          debugPrint('    Price EN: ${property.propertyPrice?.formatted?.en ?? "N/A"}');
+          debugPrint('    Price AR: ${property.propertyPrice?.formatted?.ar ?? "N/A"}');
+          debugPrint('    Deal Type EN: ${property.propertyDeal?.en ?? "N/A"}');
+        });
       } else {
         throw DioException(
           requestOptions: response.requestOptions,
@@ -330,8 +290,6 @@ class HomeScreenController extends GetxController {
       debugPrint('📝 Stack trace: $stackTrace');
       popularErrorMessage('Unexpected error: ${e.toString()}');
       popularProperties.value = null;
-    } finally {
-      // isLoadingPopular(false);
     }
   }
 

@@ -107,7 +107,7 @@ Map<String, dynamic> _$LocalizedTextToJson(LocalizedText instance) =>
 FeaturedPropertyPrice _$FeaturedPropertyPriceFromJson(
         Map<String, dynamic> json) =>
     FeaturedPropertyPrice(
-      raw: (json['raw'] as num?)?.toDouble(),
+      raw: json['raw'],
       formatted: json['formatted'] == null
           ? null
           : LocalizedText.fromJson(json['formatted'] as Map<String, dynamic>),
