@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -377,43 +378,24 @@ if (cleanMobile.length < 9) {
       isLoading.value = true;
       errorMessage.value = null;
 
-      // Clean mobile number (should be 8 digits without country code)
+      // Clean mobile number
       String cleanMobile = user.value.mobile.replaceAll(RegExp(r'[^\d]'), '');
 
-      // The mobile stored in user.value should already be 8 digits without country code
-      debugPrint(
-          '📱 Mobile for submission: $cleanMobile (8 digits without country code)');
+      debugPrint('📱 Mobile for submission: $cleanMobile');
 
-      // Create the final user profile with cleaned data
       final cleanedUserData = UserDataSubmissionModel(
         uid: user.value.uid,
         firstName: user.value.firstName,
         lastName: user.value.lastName,
         address: user.value.address,
         email: user.value.email,
-        mobile: cleanMobile, // This should be 8 digits without country code
+        mobile: cleanMobile,
         propertyId: user.value.propertyId,
         unitId: user.value.unitId,
         citizenship: user.value.citizenship,
         additionalDocuments: user.value.additionalDocuments,
       );
 
-      // Debug the data structure before sending
-      debugPrint('🔍 Final data structure:');
-      debugPrint('   First Name: ${user.value.firstName}');
-      debugPrint('   Last Name: ${user.value.lastName}');
-      debugPrint('   Email: ${user.value.email}');
-      debugPrint('   Mobile: $cleanMobile (8 digits)');
-      debugPrint('   Citizenship: ${user.value.citizenship}');
-      debugPrint(
-          '   Additional Documents: ${user.value.additionalDocuments.length}');
-
-      for (int i = 0; i < user.value.additionalDocuments.length; i++) {
-        var doc = user.value.additionalDocuments[i];
-        debugPrint('   Document $i: ${doc.title} - ${doc.expiryDate}');
-      }
-
-      // Use the updated API service method
       final response =
           await apiService.submitUserDetailsAndDoc(cleanedUserData);
 
@@ -422,18 +404,31 @@ if (cleanMobile.length < 9) {
 
         if (responseData['status'] == true) {
           _clearFormAfterSubmission();
+
+          // ✅ iOS FIX: Ensure keyboard is hidden before showing snackbar
+          if (Platform.isIOS) {
+            SystemChannels.textInput.invokeMethod('TextInput.hide');
+            await Future.delayed(
+                Duration(milliseconds: 500)); // Longer delay for iOS
+          }
+
           Get.snackbar(
             'Success',
             'Application submitted successfully!',
             backgroundColor: AppColors.onlineGreen,
             colorText: AppColors.white,
+            duration: Duration(seconds: 2),
           );
+
+          // ✅ Additional delay before navigation for iOS
+          await Future.delayed(Duration(milliseconds: 500));
+
+          // Navigate away
           Get.offAllNamed('/navbar', arguments: {'initialIndex': 0});
         } else {
           throw Exception(responseData['message'] ?? 'Submission failed');
         }
       } else {
-        // Handle API errors with more detail
         String errorMsg = 'HTTP ${response.statusCode}';
         if (response.data != null && response.data is Map) {
           var errorData = response.data as Map;

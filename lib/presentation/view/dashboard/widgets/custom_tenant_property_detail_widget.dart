@@ -300,7 +300,9 @@ Widget _buildActionButtons(TenantPropertyModel property) {
             AppColors.onlineGreen,
             Icons.description_outlined,
             onPressed: () {
-              Get.to(() => PdfViewerScreen());
+              Get.to(() => PdfViewerScreen(
+              uid: property.uid,
+              ));
             },
           ),
         ),

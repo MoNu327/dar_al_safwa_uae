@@ -1,32 +1,29 @@
-import 'dart:io';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:majan/data/model/agreement_response_model.dart';
+import 'package:majan/data/repositories/api_services.dart';
+
 
 class ViewAgreementController extends GetxController {
-  RxString pdfPath = ''.obs;
-  RxBool isLoading = false.obs;
-  void onInit() {
-    super.onInit(); // Don't forget to call super.onInit()
-    loadPdfFromAssets();
-  }
+  var isLoading = false.obs;
+  var agreementList = <AgreementData>[].obs;
+  var hasError = false.obs;
+  var errorMessage = ''.obs;
 
-  Future<void> loadPdfFromAssets() async {
+  final ApiService apiService = ApiService();
+
+  Future<void> fetchAgreement(String uid) async {
     try {
       isLoading(true);
+      hasError(false);
 
-      // Load PDF from assets
-      final ByteData data = await rootBundle.load('assets/pdf/Agreement.pdf');
-      final bytes = data.buffer.asUint8List();
+      final response = await apiService.getPropertyAgreement(uid);
 
-      // Save to temporary file
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/Agreement.pdf');
-      await file.writeAsBytes(bytes);
+      final agreementResponse = AgreementResponse.fromJson(response.data);
 
-      pdfPath(file.path);
+      agreementList.assignAll(agreementResponse.data);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to load PDF: $e');
+      hasError(true);
+      errorMessage(e.toString());
     } finally {
       isLoading(false);
     }

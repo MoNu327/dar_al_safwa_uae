@@ -700,6 +700,21 @@ Future<Response> getpropertyinteresthistory(String uid) async {
     }
   }
 
+   Future<Response> getPropertyAgreement(String uid) async {
+  try {
+    final response = await apiClient.request(
+      "agreements",
+      method: "post",
+      data: {
+        "uid": uid, 
+      }
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+} 
   // get search result
   Future<Response> getPropertySearchResult(
       PropertySearchResultRequest propertySearchResultRequest) async {
