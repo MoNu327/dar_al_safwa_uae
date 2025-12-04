@@ -42,17 +42,23 @@ android {
         
         // ✅ Support all Android device architectures (32-bit + 64-bit)
         ndk {
-            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            abiFilters 'armeabi-v7a', 'arm64-v8a','x86_64'
         }
     }
     
+
+     packagingOptions {
+        jniLibs {
+            useLegacyPackaging false  // ✅ Required for uncompressed .so (16 KB alignment)
+        }
+    }
 
     // ✅ Generate optimized APKs for each architecture
     splits {
         abi {
             enable true
             reset()
-            include 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+            include 'armeabi-v7a', 'arm64-v8a','x86_64'
             universalApk true  // Also generate a universal APK
         }
     }

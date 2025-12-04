@@ -14,6 +14,7 @@ class UserDataSubmissionModel {
   final String unitId;
   final bool citizenship;
   final List<AdditionalDocument> additionalDocuments;
+  final String? rentalPref; // <-- New optional field
 
   UserDataSubmissionModel({
     required this.uid,
@@ -26,46 +27,38 @@ class UserDataSubmissionModel {
     required this.unitId,
     required this.citizenship,
     required this.additionalDocuments,
+    this.rentalPref, // <-- optional
   });
 
   factory UserDataSubmissionModel.fromMap(Map<String, dynamic> data) {
-    // Parse additional documents
     List<AdditionalDocument> documents = [];
-    
-    // Find all document keys and group them
+
     Map<int, Map<String, dynamic>> docMap = {};
-    
+
     data.forEach((key, value) {
       if (key.startsWith('additional_document_titles[')) {
         final index = int.parse(key.replaceAll(RegExp(r'[^0-9]'), ''));
-        if (!docMap.containsKey(index)) {
-          docMap[index] = {};
-        }
+        docMap[index] ??= {};
         docMap[index]!['title'] = value;
       } else if (key.startsWith('additional_document_expiry_dates[')) {
         final index = int.parse(key.replaceAll(RegExp(r'[^0-9]'), ''));
-        if (!docMap.containsKey(index)) {
-          docMap[index] = {};
-        }
+        docMap[index] ??= {};
         docMap[index]!['expiryDate'] = value;
       } else if (key.startsWith('additional_documents[')) {
         final index = int.parse(key.replaceAll(RegExp(r'[^0-9]'), ''));
-        if (!docMap.containsKey(index)) {
-          docMap[index] = {};
-        }
+        docMap[index] ??= {};
         docMap[index]!['file'] = value;
       }
     });
-    
-    // Convert to list of AdditionalDocument objects
+
     docMap.forEach((index, docData) {
       documents.add(AdditionalDocument(
         title: docData['title'] ?? '',
         expiryDate: DateTime.parse(docData['expiryDate']),
-        file: docData['file'], // This could be a File, String path, or Uint8List
+        file: docData['file'],
       ));
     });
-    
+
     return UserDataSubmissionModel(
       uid: data['uid'] ?? '',
       firstName: data['first_name'] ?? '',
@@ -77,6 +70,7 @@ class UserDataSubmissionModel {
       unitId: data['unitid'] ?? '',
       citizenship: data['citizenship'] == '1',
       additionalDocuments: documents,
+      rentalPref: data['rentalpref'], // <-- added
     );
   }
 
@@ -92,22 +86,24 @@ class UserDataSubmissionModel {
       'unitid': unitId,
       'citizenship': citizenship ? '1' : '0',
     };
-    
-    // Add additional documents with indexed keys
+
+    if (rentalPref != null) {
+      map['rentalpref'] = rentalPref; // <-- added
+    }
+
     for (var i = 0; i < additionalDocuments.length; i++) {
       final doc = additionalDocuments[i];
       map['additional_document_titles[$i]'] = doc.title;
-      map['additional_document_expiry_dates[$i]'] = 
-          doc.expiryDate.toIso8601String().split('T')[0]; // Format as YYYY-MM-DD
+      map['additional_document_expiry_dates[$i]'] =
+          doc.expiryDate.toIso8601String().split('T')[0];
       if (doc.file != null) {
         map['additional_documents[$i]'] = doc.file;
       }
     }
-    
+
     return map;
   }
 
-  // Method to prepare form data for multipart request
   Future<Map<String, dynamic>> toFormData() async {
     final formData = <String, dynamic>{
       'uid': uid,
@@ -120,36 +116,40 @@ class UserDataSubmissionModel {
       'unitid': unitId,
       'citizenship': citizenship ? '1' : '0',
     };
-    
-    // Add additional documents with indexed keys
+
+    if (rentalPref != null) {
+      formData['rentalpref'] = rentalPref; // <-- added
+    }
+
     for (var i = 0; i < additionalDocuments.length; i++) {
       final doc = additionalDocuments[i];
       formData['additional_document_titles[$i]'] = doc.title;
-      formData['additional_document_expiry_dates[$i]'] = 
+      formData['additional_document_expiry_dates[$i]'] =
           doc.expiryDate.toIso8601String().split('T')[0];
-      
-      // Handle file upload - this depends on how you're handling files
+
       if (doc.file != null) {
         if (doc.file is File) {
-          // For multipart requests, you might need to convert to MultipartFile
-          formData['additional_documents[$i]'] = await http.MultipartFile.fromPath(
+          formData['additional_documents[$i]'] =
+              await http.MultipartFile.fromPath(
             'additional_documents[$i]',
             doc.file.path,
-            filename: 'document_${i}_${doc.title.replaceAll(' ', '_')}.${doc.file.path.split('.').last}');
+            filename:
+                'document_${i}_${doc.title.replaceAll(' ', '_')}.${doc.file.path.split('.').last}',
+          );
         } else if (doc.file is Uint8List) {
-          formData['additional_documents[$i]'] = http.MultipartFile.fromBytes(
+          formData['additional_documents[$i]'] =
+              http.MultipartFile.fromBytes(
             'additional_documents[$i]',
             doc.file,
-            filename: 'document_${i}_${doc.title.replaceAll(' ', '_')}.pdf', // Adjust extension as needed
+            filename:
+                'document_${i}_${doc.title.replaceAll(' ', '_')}.pdf',
           );
-
         } else {
-          // Assume it's a string path
           formData['additional_documents[$i]'] = doc.file;
         }
       }
     }
-    
+
     return formData;
   }
 
@@ -164,6 +164,7 @@ class UserDataSubmissionModel {
     String? unitId,
     bool? citizenship,
     List<AdditionalDocument>? additionalDocuments,
+    String? rentalPref, // <-- added
   }) {
     return UserDataSubmissionModel(
       uid: uid ?? this.uid,
@@ -176,6 +177,7 @@ class UserDataSubmissionModel {
       unitId: unitId ?? this.unitId,
       citizenship: citizenship ?? this.citizenship,
       additionalDocuments: additionalDocuments ?? this.additionalDocuments,
+      rentalPref: rentalPref ?? this.rentalPref, // <-- added
     );
   }
 }
@@ -183,7 +185,7 @@ class UserDataSubmissionModel {
 class AdditionalDocument {
   final String title;
   final DateTime expiryDate;
-  final dynamic file; // This could be a File, String path, or Uint8List
+  final dynamic file;
 
   AdditionalDocument({
     required this.title,

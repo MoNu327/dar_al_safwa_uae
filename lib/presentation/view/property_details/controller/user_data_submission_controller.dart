@@ -26,12 +26,12 @@ class UserDataSubmissionController extends GetxController {
     unitId: '0',
     citizenship: true,
     additionalDocuments: [],
+    rentalPref: null, // Added
   ).obs;
 
   final ApiService apiService = ApiService();
   final isLoading = false.obs;
-  final isFetchingUserData =
-      false.obs; // New loading state for fetching user data
+  final isFetchingUserData = false.obs;
   final errorMessage = Rx<String?>(null);
 
   // Form controllers
@@ -40,12 +40,13 @@ class UserDataSubmissionController extends GetxController {
   final addressCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
   final mobileCtrl = TextEditingController();
+  final rentalPrefCtrl = TextEditingController(); // Added
 
   // Citizenship selection
   RxInt selectedCitizenship = 1.obs;
 
   // File handling
-  var selectedFiles = <File>[].obs; // Stores multiple uploaded files
+  var selectedFiles = <File>[].obs;
 
   @override
   void onInit() {
@@ -53,33 +54,34 @@ class UserDataSubmissionController extends GetxController {
     _initializeUserData();
   }
 
-  // Method to extract only the last 8 digits (remove country code)
+  // Method to extract only the last 9 digits (remove country code)
   String _extractPhoneNumber(String fullNumber) {
-  if (fullNumber.isEmpty) return '';
-  
-  String cleanNumber = fullNumber.replaceAll(RegExp(r'[^\d]'), '');
-  
-  // If number is longer than 9 digits, take the last 9 digits
-  if (cleanNumber.length > 9) {
-    return cleanNumber.substring(cleanNumber.length - 9);
+    if (fullNumber.isEmpty) return '';
+    
+    String cleanNumber = fullNumber.replaceAll(RegExp(r'[^\d]'), '');
+    
+    // If number is longer than 9 digits, take the last 9 digits
+    if (cleanNumber.length > 9) {
+      return cleanNumber.substring(cleanNumber.length - 9);
+    }
+    
+    return cleanNumber;
   }
-  
-  return cleanNumber;
-}
 
   // Method to format phone number for display (without country code)
   String _formatPhoneNumberForDisplay(String phoneNumber) {
-  String extracted = _extractPhoneNumber(phoneNumber);
-  
-  if (extracted.isEmpty) return '';
-  
-  // Format as XXX XXX XXX if we have 9 digits
-  if (extracted.length == 9) {
-    return '${extracted.substring(0, 3)} ${extracted.substring(3, 6)} ${extracted.substring(6)}';
+    String extracted = _extractPhoneNumber(phoneNumber);
+    
+    if (extracted.isEmpty) return '';
+    
+    // Format as XXX XXX XXX if we have 9 digits
+    if (extracted.length == 9) {
+      return '${extracted.substring(0, 3)} ${extracted.substring(3, 6)} ${extracted.substring(6)}';
+    }
+    
+    return extracted;
   }
-  
-  return extracted;
-}
+
   // New method to fetch user data from Firestore
   Future<Map<String, String>> _fetchUserDataFromFirestore() async {
     try {
@@ -108,28 +110,28 @@ class UserDataSubmissionController extends GetxController {
         final firstName = data?['firstName']?.toString() ?? '';
         final lastName = data?['lastName']?.toString() ?? '';
         final address = data?['address']?.toString() ?? '';
+        final rentalPref = data?['rentalPref']?.toString() ?? ''; // Added
 
         // Determine which email to use (prioritize Firebase auth email)
-        final finalEmail =
-            firebaseEmail.isNotEmpty ? firebaseEmail : firestoreEmail;
+        final finalEmail = firebaseEmail.isNotEmpty ? firebaseEmail : firestoreEmail;
 
         // Determine which mobile number to use (prioritize phoneNumber field)
         final finalMobile = phoneNumber.isNotEmpty ? phoneNumber : phone;
 
-        // Extract only the last 8 digits for display
+        // Extract only the last 9 digits for display
         final displayMobile = _extractPhoneNumber(finalMobile);
 
-        debugPrint(
-            '📧 Email - Firebase: $firebaseEmail, Firestore: $firestoreEmail, Final: $finalEmail');
+        debugPrint('📧 Email - Firebase: $firebaseEmail, Firestore: $firestoreEmail, Final: $finalEmail');
         debugPrint('📱 Mobile - Raw: $finalMobile, Extracted: $displayMobile');
 
         return {
           'email': finalEmail,
-          'mobile': displayMobile, // Use extracted 8 digits for display
-          'mobileFull': finalMobile, // Keep full number for submission
+          'mobile': displayMobile,
+          'mobileFull': finalMobile,
           'firstName': firstName,
           'lastName': lastName,
           'address': address,
+          'rentalPref': rentalPref, // Added
         };
       } else {
         debugPrint('📭 No user document found in Firestore');
@@ -159,8 +161,7 @@ class UserDataSubmissionController extends GetxController {
         if (args.containsKey('passportNo') &&
             args['passportNo']?.toString().isNotEmpty == true) {
           citizenship = false;
-          debugPrint(
-              '🔍 Found passport data, setting citizenship to Foreign (false)');
+          debugPrint('🔍 Found passport data, setting citizenship to Foreign (false)');
         }
 
         selectedCitizenship.value = citizenship ? 1 : 0;
@@ -170,11 +171,9 @@ class UserDataSubmissionController extends GetxController {
         final displayArgumentMobile = _extractPhoneNumber(argumentMobile);
 
         // Create user model using the new UserProfile
-        // Use existing user data as fallback for empty argument values
         user.value = UserDataSubmissionModel(
           uid: FirebaseAuth.instance.currentUser?.uid ?? '',
-          firstName:
-              args['firstName']?.toString() ?? userData['firstName'] ?? '',
+          firstName: args['firstName']?.toString() ?? userData['firstName'] ?? '',
           lastName: args['lastName']?.toString() ?? userData['lastName'] ?? '',
           address: args['address']?.toString() ?? userData['address'] ?? '',
           email: args['email']?.toString() ?? userData['email'] ?? '',
@@ -185,6 +184,7 @@ class UserDataSubmissionController extends GetxController {
           unitId: args['unitId']?.toString() ?? '0',
           citizenship: citizenship,
           additionalDocuments: [],
+          rentalPref: args['rentalPref']?.toString() ?? userData['rentalPref'], // Added
         );
 
         _populateControllers();
@@ -195,6 +195,7 @@ class UserDataSubmissionController extends GetxController {
         debugPrint('   Address: ${user.value.address}');
         debugPrint('   Email: ${user.value.email}');
         debugPrint('   Mobile (display): ${user.value.mobile}');
+        debugPrint('   Rental Preference: ${user.value.rentalPref}');
       } else {
         // No arguments, use only Firestore data
         debugPrint('📭 No arguments provided, using Firestore data only');
@@ -205,12 +206,12 @@ class UserDataSubmissionController extends GetxController {
           lastName: userData['lastName'] ?? '',
           address: userData['address'] ?? '',
           email: userData['email'] ?? '',
-          mobile:
-              userData['mobile'] ?? '', // This is already extracted 8 digits
+          mobile: userData['mobile'] ?? '',
           propertyId: '0',
           unitId: '0',
           citizenship: true,
           additionalDocuments: [],
+          rentalPref: userData['rentalPref'], // Added
         );
 
         _populateControllers();
@@ -225,19 +226,19 @@ class UserDataSubmissionController extends GetxController {
     lastNameCtrl.text = user.value.lastName;
     addressCtrl.text = user.value.address;
     emailCtrl.text = user.value.email;
-
-    // Format mobile number for display (XXXX XXXX format)
     mobileCtrl.text = _formatPhoneNumberForDisplay(user.value.mobile);
+    rentalPrefCtrl.text = user.value.rentalPref ?? ''; // Added
 
     debugPrint('🎯 Controllers populated:');
     debugPrint('   First Name Ctrl: ${firstNameCtrl.text}');
     debugPrint('   Last Name Ctrl: ${lastNameCtrl.text}');
     debugPrint('   Email Ctrl: ${emailCtrl.text}');
     debugPrint('   Mobile Ctrl: ${mobileCtrl.text}');
+    debugPrint('   Rental Pref Ctrl: ${rentalPrefCtrl.text}');
   }
 
   void updateUserFromControllers() {
-    // For mobile, we only store the 8 digits (country code will be added during submission)
+    // For mobile, we only store the 9 digits (country code will be added during submission)
     String cleanMobile = mobileCtrl.text.replaceAll(RegExp(r'[^\d]'), '');
 
     user.value = UserDataSubmissionModel(
@@ -251,6 +252,7 @@ class UserDataSubmissionController extends GetxController {
       unitId: user.value.unitId,
       citizenship: selectedCitizenship.value == 1,
       additionalDocuments: user.value.additionalDocuments,
+      rentalPref: rentalPrefCtrl.text.trim().isNotEmpty ? rentalPrefCtrl.text.trim() : null, // Added
     );
   }
 
@@ -277,10 +279,10 @@ class UserDataSubmissionController extends GetxController {
     }
 
     String cleanMobile = user.value.mobile.replaceAll(RegExp(r'[^\d]'), '');
-if (cleanMobile.length < 9) {
-  errorMessage.value = 'Please enter a valid mobile number (minimum 9 digits)';
-  return false;
-}
+    if (cleanMobile.length < 9) {
+      errorMessage.value = 'Please enter a valid mobile number (minimum 9 digits)';
+      return false;
+    }
 
     // Format the mobile number for display
     mobileCtrl.text = _formatPhoneNumberForDisplay(cleanMobile);
@@ -288,8 +290,7 @@ if (cleanMobile.length < 9) {
     return true;
   }
 
-  void addAdditionalDocument(String title, DateTime expiryDate,
-      [dynamic file]) {
+  void addAdditionalDocument(String title, DateTime expiryDate, [dynamic file]) {
     final newDocument = AdditionalDocument(
       title: title,
       expiryDate: expiryDate,
@@ -307,12 +308,12 @@ if (cleanMobile.length < 9) {
       unitId: user.value.unitId,
       citizenship: user.value.citizenship,
       additionalDocuments: [...user.value.additionalDocuments, newDocument],
+      rentalPref: user.value.rentalPref, // Added
     );
   }
 
   void removeAdditionalDocument(int index) {
-    final updatedDocuments =
-        List<AdditionalDocument>.from(user.value.additionalDocuments);
+    final updatedDocuments = List<AdditionalDocument>.from(user.value.additionalDocuments);
     if (index < updatedDocuments.length) {
       updatedDocuments.removeAt(index);
     }
@@ -328,6 +329,7 @@ if (cleanMobile.length < 9) {
       unitId: user.value.unitId,
       citizenship: user.value.citizenship,
       additionalDocuments: updatedDocuments,
+      rentalPref: user.value.rentalPref, // Added
     );
   }
 
@@ -382,6 +384,7 @@ if (cleanMobile.length < 9) {
       String cleanMobile = user.value.mobile.replaceAll(RegExp(r'[^\d]'), '');
 
       debugPrint('📱 Mobile for submission: $cleanMobile');
+      debugPrint('📝 Rental Preference for submission: ${user.value.rentalPref}');
 
       final cleanedUserData = UserDataSubmissionModel(
         uid: user.value.uid,
@@ -394,10 +397,10 @@ if (cleanMobile.length < 9) {
         unitId: user.value.unitId,
         citizenship: user.value.citizenship,
         additionalDocuments: user.value.additionalDocuments,
+        rentalPref: user.value.rentalPref, // Added
       );
 
-      final response =
-          await apiService.submitUserDetailsAndDoc(cleanedUserData);
+      final response = await apiService.submitUserDetailsAndDoc(cleanedUserData);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = response.data;
@@ -408,8 +411,7 @@ if (cleanMobile.length < 9) {
           // ✅ iOS FIX: Ensure keyboard is hidden before showing snackbar
           if (Platform.isIOS) {
             SystemChannels.textInput.invokeMethod('TextInput.hide');
-            await Future.delayed(
-                Duration(milliseconds: 500)); // Longer delay for iOS
+            await Future.delayed(Duration(milliseconds: 500));
           }
 
           Get.snackbar(
@@ -420,7 +422,6 @@ if (cleanMobile.length < 9) {
             duration: Duration(seconds: 2),
           );
 
-          // ✅ Additional delay before navigation for iOS
           await Future.delayed(Duration(milliseconds: 500));
 
           // Navigate away
@@ -460,6 +461,7 @@ if (cleanMobile.length < 9) {
     addressCtrl.clear();
     emailCtrl.clear();
     mobileCtrl.clear();
+    rentalPrefCtrl.clear(); // Added
     selectedFiles.clear();
 
     user.value = UserDataSubmissionModel(
@@ -473,6 +475,7 @@ if (cleanMobile.length < 9) {
       unitId: '0',
       citizenship: true,
       additionalDocuments: [],
+      rentalPref: null, // Added
     );
 
     isEditMode.value = true;
@@ -495,6 +498,7 @@ if (cleanMobile.length < 9) {
     addressCtrl.dispose();
     emailCtrl.dispose();
     mobileCtrl.dispose();
+    rentalPrefCtrl.dispose(); // Added
     super.onClose();
   }
 }

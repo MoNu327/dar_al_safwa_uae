@@ -6,7 +6,7 @@ import 'package:majan/presentation/view/dashboard/widgets/tenants_document_card.
 import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -730,7 +730,7 @@ class TenantDocumentsView extends StatelessWidget {
     );
   }
 
-  /// View Document In-App (Original Dialog Viewer)
+  /// View Document In-App with Syncfusion PDF Viewer
   void _viewDocumentInApp(DocumentItem documentItem, String documentUrl, bool isPdf) {
     Get.dialog(
       Dialog(
@@ -811,7 +811,7 @@ class TenantDocumentsView extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.all(screenWidth4),
                   child: isPdf 
-                      ? PdfViewerWidget(pdfUrl: documentUrl)
+                      ? SyncfusionPdfViewerWidget(pdfUrl: documentUrl)
                       : ZoomableImageWidget(imageUrl: documentUrl),
                 ),
               ),
@@ -1147,161 +1147,75 @@ class _ZoomableImageWidgetState extends State<ZoomableImageWidget> {
   }
 }
 
-/// PDF Viewer Widget
-class PdfViewerWidget extends StatefulWidget {
+/// Syncfusion PDF Viewer Widget - Network PDF with built-in features
+class SyncfusionPdfViewerWidget extends StatefulWidget {
   final String pdfUrl;
 
-  const PdfViewerWidget({
+  const SyncfusionPdfViewerWidget({
     Key? key,
     required this.pdfUrl,
   }) : super(key: key);
 
   @override
-  State<PdfViewerWidget> createState() => _PdfViewerWidgetState();
+  State<SyncfusionPdfViewerWidget> createState() => _SyncfusionPdfViewerWidgetState();
 }
 
-class _PdfViewerWidgetState extends State<PdfViewerWidget> {
-  String? localPath;
-  bool isLoading = true;
-  String? errorMessage;
-  int totalPages = 0;
-  int currentPage = 0;
+class _SyncfusionPdfViewerWidgetState extends State<SyncfusionPdfViewerWidget> {
+  final PdfViewerController _pdfViewerController = PdfViewerController();
+  final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
+  
+  int _currentPageNumber = 0;
+  int _totalPages = 0;
+  bool _canShowPageNumber = false;
 
   @override
-  void initState() {
-    super.initState();
-    _downloadAndLoadPdf();
-  }
-
-  Future<void> _downloadAndLoadPdf() async {
-    try {
-      setState(() {
-        isLoading = true;
-        errorMessage = null;
-      });
-
-      // Get temporary directory
-      final tempDir = await getTemporaryDirectory();
-      final fileName = 'temp_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final filePath = '${tempDir.path}/$fileName';
-
-      // Download PDF
-      final dio = Dio();
-      await dio.download(widget.pdfUrl, filePath);
-
-      setState(() {
-        localPath = filePath;
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-        errorMessage = 'Failed to load PDF: ${e.toString()}';
-      });
-    }
+  void dispose() {
+    _pdfViewerController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: AppColors.blueColor),
-            kHeight(0.02),
-            CustomTextWidget(
-              title: 'Loading PDF...',
-              color: AppColors.darkGrey,
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 50,
-              color: AppColors.redColor,
-            ),
-            kHeight(0.02),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: screenWidth4),
-              child: CustomTextWidget(
-                title: errorMessage!,
-                color: AppColors.darkGrey,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-              ),
-            ),
-            kHeight(0.02),
-            ElevatedButton(
-              onPressed: _downloadAndLoadPdf,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.blueColor,
-              ),
-              child: CustomTextWidget(
-                title: 'Retry',
-                color: AppColors.white,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (localPath == null) {
-      return Center(
-        child: CustomTextWidget(
-          title: 'No PDF to display',
-          color: AppColors.darkGrey,
-        ),
-      );
-    }
-
     return Stack(
       children: [
-        PDFView(
-          filePath: localPath!,
-          enableSwipe: true,
-          swipeHorizontal: false,
-          autoSpacing: true,
-          pageFling: true,
-          pageSnap: true,
-          defaultPage: currentPage,
-          fitPolicy: FitPolicy.BOTH,
-          preventLinkNavigation: false,
-          onRender: (pages) {
-            setState(() {
-              totalPages = pages ?? 0;
-            });
-          },
-          onError: (error) {
-            setState(() {
-              errorMessage = error.toString();
-            });
-          },
-          onPageError: (page, error) {
-            print('Error on page $page: $error');
-          },
-          onViewCreated: (PDFViewController pdfViewController) {
-            // You can save this controller if you want to control the PDF programmatically
-          },
-          onPageChanged: (int? page, int? total) {
-            setState(() {
-              currentPage = page ?? 0;
-              totalPages = total ?? 0;
-            });
-          },
+        // Syncfusion PDF Viewer - directly loads from network URL
+        ClipRRect(
+          borderRadius: BorderRadius.circular(screenWidth2),
+          child: SfPdfViewer.network(
+            widget.pdfUrl,
+            key: _pdfViewerKey,
+            controller: _pdfViewerController,
+            canShowScrollHead: true,
+            canShowScrollStatus: true,
+            canShowPaginationDialog: true,
+            enableDoubleTapZooming: true,
+            enableTextSelection: true,
+            onDocumentLoaded: (PdfDocumentLoadedDetails details) {
+              setState(() {
+                _totalPages = details.document.pages.count;
+                _canShowPageNumber = true;
+              });
+            },
+            onPageChanged: (PdfPageChangedDetails details) {
+              setState(() {
+                _currentPageNumber = details.newPageNumber;
+              });
+            },
+            onDocumentLoadFailed: (PdfDocumentLoadFailedDetails details) {
+              print('PDF Load Failed: ${details.error}');
+              Get.snackbar(
+                'Error',
+                'Failed to load PDF: ${details.description}',
+                backgroundColor: AppColors.redColor,
+                colorText: AppColors.white,
+                snackPosition: SnackPosition.BOTTOM,
+              );
+            },
+          ),
         ),
         
-        // Page indicator
-        if (totalPages > 0)
+        // Custom Page Navigation Controls
+        if (_canShowPageNumber && _totalPages > 0)
           Positioned(
             bottom: 10,
             left: 0,
@@ -1313,31 +1227,131 @@ class _PdfViewerWidgetState extends State<PdfViewerWidget> {
                   vertical: screenHeight05,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.black.withValues(alpha: 0.7),
+                  color: AppColors.black.withValues(alpha: 0.75),
                   borderRadius: BorderRadius.circular(screenWidth5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.black.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: CustomTextWidget(
-                  title: 'Page ${currentPage + 1} of $totalPages',
-                  color: AppColors.white,
-                  fontSize: expandedContentTitle,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Previous Page Button
+                    IconButton(
+                      icon: Icon(
+                        Icons.chevron_left,
+                        color: AppColors.white,
+                        size: 24,
+                      ),
+                      onPressed: _currentPageNumber > 1
+                          ? () {
+                              _pdfViewerController.previousPage();
+                            }
+                          : null,
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                    
+                    kWidth(0.02),
+                    
+                    // Page Number Display
+                    CustomTextWidget(
+                      title: 'Page $_currentPageNumber of $_totalPages',
+                      color: AppColors.white,
+                      fontSize: expandedContentTitle,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    
+                    kWidth(0.02),
+                    
+                    // Next Page Button
+                    IconButton(
+                      icon: Icon(
+                        Icons.chevron_right,
+                        color: AppColors.white,
+                        size: 24,
+                      ),
+                      onPressed: _currentPageNumber < _totalPages
+                          ? () {
+                              _pdfViewerController.nextPage();
+                            }
+                          : null,
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+        
+        // Zoom Controls (Optional)
+        Positioned(
+          top: 10,
+          right: 10,
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.white.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(screenWidth2),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.black.withValues(alpha: 0.1),
+                  blurRadius: 4,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Zoom In
+                IconButton(
+                  icon: Icon(
+                    Icons.zoom_in,
+                    color: AppColors.blueColor,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel + 0.25;
+                  },
+                  tooltip: 'Zoom In',
+                ),
+                
+                // Zoom Out
+                IconButton(
+                  icon: Icon(
+                    Icons.zoom_out,
+                    color: AppColors.blueColor,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    if (_pdfViewerController.zoomLevel > 1) {
+                      _pdfViewerController.zoomLevel = _pdfViewerController.zoomLevel - 0.25;
+                    }
+                  },
+                  tooltip: 'Zoom Out',
+                ),
+                
+                // Reset Zoom
+                IconButton(
+                  icon: Icon(
+                    Icons.fit_screen,
+                    color: AppColors.blueColor,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    _pdfViewerController.zoomLevel = 1;
+                  },
+                  tooltip: 'Fit to Screen',
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
-  }
-
-  @override
-  void dispose() {
-    // Clean up temporary file
-    if (localPath != null) {
-      try {
-        File(localPath!).delete();
-      } catch (e) {
-        print('Error deleting temp PDF: $e');
-      }
-    }
-    super.dispose();
   }
 }

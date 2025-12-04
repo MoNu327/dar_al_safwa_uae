@@ -771,6 +771,7 @@ Future<Response> submitUserDetailsAndDoc(UserDataSubmissionModel userData) async
 }
 
 // Helper method to add basic user fields
+
 void _addBasicUserFields(FormData formData, UserDataSubmissionModel userData) {
   final basicFields = [
     if (userData.uid.isNotEmpty)
@@ -790,10 +791,20 @@ void _addBasicUserFields(FormData formData, UserDataSubmissionModel userData) {
     if (userData.unitId.isNotEmpty)
       MapEntry('unitid', userData.unitId),
     MapEntry('citizenship', userData.citizenship ? '1' : '0'),
+    // ✅ ADD THIS LINE - Include rentalPref if it's not null and not empty
+    if (userData.rentalPref != null && userData.rentalPref!.isNotEmpty)
+      MapEntry('rentalpref', userData.rentalPref!),
   ];
 
   formData.fields.addAll(basicFields);
   debugPrint('📋 Added basic user fields');
+  
+  // Add debug print to verify rentalPref is included
+  if (userData.rentalPref != null && userData.rentalPref!.isNotEmpty) {
+    debugPrint('   ✅ Rental Preference: ${userData.rentalPref}');
+  } else {
+    debugPrint('   ℹ️ No rental preference provided');
+  }
 }
 
 // Helper method to add additional document fields

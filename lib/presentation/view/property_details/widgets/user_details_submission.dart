@@ -316,6 +316,27 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                       ),
                     ),
                   ),
+                  
+                  kHeight(0.02),
+
+                  CustomRichTextWidget(
+  title: "Flat Preference",
+  subTitle: " (Optional)",
+  color: AppColors.black,
+  subTextColor: Colors.grey,
+),
+kHeight(0.005),
+CustomTextFieldWidget(
+  hintText: 'Flat Number You Prefers',
+  controller: controller.rentalPrefCtrl,
+  readOnly: !controller.isEditMode.value,
+  keyboardType: TextInputType.text,
+  maxLines: 2,
+),
+
+kHeight(0.02),
+
+
 
                   /// Additional Documents Section with Yellowish Background
                   Container(
@@ -724,6 +745,12 @@ class _UserDetailsSubmissionState extends State<UserDetailsSubmission> {
                               controller.mobileCtrl.text.isNotEmpty
                                   ? "$uaecountrycode ${controller.mobileCtrl.text}"
                                   : "Not provided"),
+                                  _buildInfoRow(
+                            "Flat Preference",
+                            controller.rentalPrefCtrl.text.isNotEmpty
+                             ? controller.rentalPrefCtrl.text
+                            : "Not specified"
+                        ),
                           _buildInfoRow(
                               "Citizenship",
                               controller.selectedCitizenship.value == 1

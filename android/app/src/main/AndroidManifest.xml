@@ -29,12 +29,14 @@
     
     <application
         android:label="majan"
-        android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon"
-        android:resizeableActivity="true"
-        android:supportsPictureInPicture="false"
-        android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="false">
+    android:name="${applicationName}"
+    android:icon="@mipmap/launcher_icon"
+    android:resizeableActivity="true"
+    android:supportsPictureInPicture="false"
+    android:usesCleartextTraffic="true"
+    android:requestLegacyExternalStorage="false"
+    android:allowBackup="false"
+    android:fullBackupContent="false">
         
         <!-- ✅ ARCore configuration -->
         <meta-data
