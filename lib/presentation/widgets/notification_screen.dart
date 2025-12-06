@@ -29,6 +29,33 @@ class NotificationsScreen extends StatelessWidget {
           color: AppColors.secondaryColor,
         ),
         actions: [
+          // Unread count badge
+          Obx(() {
+            if (notificationController.unreadCount.value > 0) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${notificationController.unreadCount.value}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+          
           Obx(() {
             if (notificationController.notifications.isNotEmpty) {
               return PopupMenuButton<String>(
@@ -302,41 +329,116 @@ class NotificationsScreen extends StatelessWidget {
     Color iconColor;
 
     switch (type) {
+      // ✅ Chat/Messages
       case 'chat':
       case 'message':
-        iconData = Icons.chat;
+        iconData = Icons.chat_bubble;
         iconColor = Colors.blue;
         break;
-      case 'technician_assignment':
-      case 'technician_ticket':
-      case 'technician_rectify':
-        iconData = Icons.build;
+      
+      // ✅ Support Tickets (ALL VARIANTS)
+      case 'ticket':
+      case 'complaint':
+      case 'tenant_ticket':
+      case 'complaint_reply':
+      case 'ticket_reply':
+      case 'ticket_update':
+      case 'complaint_status_update':
+      case 'new_complaint':  // ✅ NEW
+      case 'new_ticket':     // ✅ NEW
+        iconData = Icons.support_agent;
+        iconColor = Colors.green;
+        break;
+      
+      // ✅ Follow-ups/Site Visits
+      case 'follow_up':
+      case 'followup':
+      case 'site_visit':
+      case 'property_visit_scheduled':
+      case 'property_visit_pending':
+      case 'property_visited':
+      case 'property_agreed':
+        iconData = Icons.event_note;
         iconColor = Colors.orange;
         break;
+      
+      // ✅ Bookings
+      case 'booking':
+      case 'property_booking':
+      case 'new_booking':
+      case 'booking_confirmed':
+        iconData = Icons.event_available;
+        iconColor = Colors.green;
+        break;
+      
+      // ✅ Property Interest
+      case 'property_interest':
+      case 'customer_interest':
+      case 'property_enquiry':
+        iconData = Icons.notification_important;
+        iconColor = Colors.orange;
+        break;
+      
+      // ✅ Technician
+      case 'technician_assignment':
+      case 'technician_ticket':
+      case 'job_update':
+      case 'technician_rectify':
+        iconData = Icons.engineering;
+        iconColor = Colors.orange;
+        break;
+      
+      // ✅ Property
       case 'property':
       case 'property_update':
       case 'tenant_property':
         iconData = Icons.home;
-        iconColor = Colors.green;
-        break;
-      case 'ticket':
-      case 'complaint':
-      case 'tenant_ticket':
-        iconData = Icons.support;
-        iconColor = Colors.red;
-        break;
-      case 'enquiry':
-        iconData = Icons.help;
         iconColor = Colors.purple;
         break;
-      case 'approval_pending':
-        iconData = Icons.pending;
-        iconColor = Colors.amber;
-        break;
+      
+      // ✅ Documents
       case 'tenant_documents':
+      case 'document':
+      case 'letter':
+      case 'lease_renewal':
         iconData = Icons.description;
+        iconColor = Colors.teal;
+        break;
+      
+      // ✅ Complaints
+      case 'tenant_complaint':
+        iconData = Icons.report_problem;
+        iconColor = Colors.red;
+        break;
+      
+      // ✅ Enquiries
+      case 'enquiry':
+      case 'customer_enquiry':
+        iconData = Icons.question_answer;
         iconColor = Colors.indigo;
         break;
+      
+      // ✅ Approvals
+      case 'approval_pending':
+        iconData = Icons.pending_actions;
+        iconColor = Colors.amber;
+        break;
+      
+      // ✅ Other
+      case 'profile':
+      case 'technician_profile':
+        iconData = Icons.person;
+        iconColor = Colors.blue;
+        break;
+
+        case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  iconData = Icons.notification_important;
+  iconColor = Colors.red;
+  break;
+      
       default:
         iconData = Icons.notifications;
         iconColor = AppColors.primaryColor;
@@ -382,32 +484,95 @@ class NotificationsScreen extends StatelessWidget {
 
   String _getDisplayType(String type) {
     switch (type) {
+      // Chat
       case 'chat':
       case 'message':
         return 'Chat';
+      
+      // Tickets (ALL VARIANTS)
+      case 'ticket':
+      case 'complaint':
+      case 'tenant_ticket':
+        return 'Ticket';
+      case 'complaint_reply':
+      case 'ticket_reply':
+        return 'Reply';
+      case 'ticket_update':
+      case 'complaint_status_update':
+        return 'Update';
+      case 'new_complaint':  // ✅ NEW
+        return 'New Ticket';
+      case 'new_ticket':     // ✅ NEW
+        return 'New Ticket';
+      
+      // Follow-ups
+      case 'follow_up':
+      case 'followup':
+        return 'Follow-up';
+      case 'site_visit':
+      case 'property_visit_scheduled':
+      case 'property_visit_pending':
+      case 'property_visited':
+      case 'property_agreed':
+        return 'Site Visit';
+      
+      // Bookings
+      case 'booking':
+      case 'property_booking':
+      case 'new_booking':
+        return 'Booking';
+      case 'booking_confirmed':
+        return 'Confirmed';
+      
+      // Property Interest
+      case 'property_interest':
+      case 'customer_interest':
+        return 'Interest';
+      case 'property_enquiry':
+        return 'Enquiry';
+      
+      // Technician
       case 'technician_assignment':
         return 'Assignment';
       case 'technician_ticket':
         return 'Ticket';
-      case 'technician_rectify':
-        return 'Rectify';
       case 'job_update':
         return 'Job Update';
+      case 'technician_rectify':
+        return 'Rectify';
+      
+      // Property
       case 'property':
       case 'property_update':
-        return 'Property';
       case 'tenant_property':
         return 'Property';
-      case 'ticket':
-      case 'complaint':
-      case 'tenant_ticket':
-        return 'Support';
+      
+      // Documents
+      case 'tenant_documents':
+      case 'document':
+      case 'letter':
+      case 'lease_renewal':
+        return 'Document';
+      
+      // Complaints
+      case 'tenant_complaint':
+        return 'Complaint';
+      
+      // Enquiries
       case 'enquiry':
+      case 'customer_enquiry':
         return 'Enquiry';
+      
+      // Approval
       case 'approval_pending':
         return 'Approval';
-      case 'tenant_documents':
-        return 'Documents';
+
+        case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  return 'Notice';
+      
       default:
         return 'General';
     }
@@ -415,28 +580,86 @@ class NotificationsScreen extends StatelessWidget {
 
   Color _getChipColor(String type) {
     switch (type) {
+      // Chat - Blue
       case 'chat':
       case 'message':
         return Colors.blue;
-      case 'technician_assignment':
-      case 'technician_ticket':
-      case 'technician_rectify':
-      case 'job_update':
-        return Colors.orange;
-      case 'property':
-      case 'property_update':
-      case 'tenant_property':
-        return Colors.green;
+      
+      // Tickets - Green
       case 'ticket':
       case 'complaint':
       case 'tenant_ticket':
-        return Colors.red;
-      case 'enquiry':
+      case 'complaint_reply':
+      case 'ticket_reply':
+      case 'ticket_update':
+      case 'complaint_status_update':
+      case 'new_complaint':  // ✅ NEW
+      case 'new_ticket':     // ✅ NEW
+        return Colors.green;
+      
+      // Follow-ups - Orange
+      case 'follow_up':
+      case 'followup':
+      case 'site_visit':
+      case 'property_visit_scheduled':
+      case 'property_visit_pending':
+      case 'property_visited':
+      case 'property_agreed':
+        return Colors.orange;
+      
+      // Bookings - Green
+      case 'booking':
+      case 'property_booking':
+      case 'new_booking':
+      case 'booking_confirmed':
+        return Colors.green;
+      
+      // Property Interest - Orange
+      case 'property_interest':
+      case 'customer_interest':
+      case 'property_enquiry':
+        return Colors.orange;
+      
+      // Technician - Orange
+      case 'technician_assignment':
+      case 'technician_ticket':
+      case 'job_update':
+      case 'technician_rectify':
+        return Colors.orange;
+      
+      // Property - Purple
+      case 'property':
+      case 'property_update':
+      case 'tenant_property':
         return Colors.purple;
+      
+      // Documents - Teal
+      case 'tenant_documents':
+      case 'document':
+      case 'letter':
+      case 'lease_renewal':
+        return Colors.teal;
+      
+      // Complaints - Red
+      case 'tenant_complaint':
+        return Colors.red;
+      
+      // Enquiries - Indigo
+      case 'enquiry':
+      case 'customer_enquiry':
+        return Colors.indigo;
+      
+      // Approval - Amber
       case 'approval_pending':
         return Colors.amber;
-      case 'tenant_documents':
-        return Colors.indigo;
+
+        case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  return Colors.red;
+
+      
       default:
         return AppColors.primaryColor;
     }
@@ -493,39 +716,8 @@ class NotificationsScreen extends StatelessWidget {
   }
 
   void _handleNotificationTap(NotificationModel notification) {
-    final data = notification.data ?? {};
-    
-    switch (notification.type) {
-      case 'chat':
-      case 'message':
-        if (notification.chatId != null) {
-          Get.toNamed('/agent', arguments: data);
-        }
-        break;
-      case 'property':
-      case 'property_update':
-        if (notification.propertyId != null) {
-          Get.toNamed('/propertyDetails', arguments: {
-            'propertyId': notification.propertyId,
-            ...data
-          });
-        }
-        break;
-      case 'technician_assignment':
-      case 'technician_ticket':
-        if (notification.ticketId != null) {
-          Get.toNamed('/technician-tickets', arguments: data);
-        }
-        break;
-      case 'ticket':
-      case 'complaint':
-      case 'tenant_ticket':
-        Get.toNamed('/navbar');
-        break;
-      default:
-        // Default action - could navigate to a specific screen or show details
-        break;
-    }
+    // Use the controller method that handles all notification types
+    notificationController.handleNotificationTap(notification);
   }
 
   void _showDeleteDialog(NotificationModel notification) {

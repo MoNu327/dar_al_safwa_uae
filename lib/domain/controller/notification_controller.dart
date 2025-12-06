@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:majan/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart';
+import 'package:majan/presentation/widgets/pdf_viewer_widgets.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
@@ -1755,12 +1756,34 @@ void _handlePropertyInterestNavigation(
   
   // Phone Number
   if (customerPhone != null && customerPhone.isNotEmpty) {
-    contentWidgets.add(
-      Container(
+  contentWidgets.add(
+    InkWell(
+      onTap: () async {
+        try {
+          final uri = Uri.parse('tel:$customerPhone');
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri);
+            debugPrint('✅ Opened call dialer for: $customerPhone');
+          } else {
+            throw Exception('Cannot launch phone dialer');
+          }
+        } catch (e) {
+          debugPrint('❌ Error opening call dialer: $e');
+          Get.snackbar(
+            'Error',
+            'Cannot open phone dialer',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+      },
+      child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: Colors.green[50],
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.green[300]!, width: 1.5),
         ),
         child: Row(
           children: [
@@ -1771,26 +1794,29 @@ void _handlePropertyInterestNavigation(
                 customerPhone,
                 style: const TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green,
+                  decoration: TextDecoration.underline,
                 ),
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.call, color: Colors.green),
-              onPressed: () async {
-                final uri = Uri.parse('tel:$customerPhone');
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri);
-                }
-              },
-              tooltip: 'Call Now',
+            const Icon(Icons.call, color: Colors.green, size: 20),
+            const SizedBox(width: 4),
+            Text(
+              'Tap to call',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.green[700],
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ],
         ),
       ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
-  }
+    ),
+  );
+  contentWidgets.add(const SizedBox(height: 12));
+}
   
   // Property Name
   if (propertyName != null && propertyName.isNotEmpty) {
@@ -2039,7 +2065,32 @@ Future<void> _copyLocation(String location) async {
   }
 }
 
-// ✅ UPDATED: Follow-up navigation with improved location handling
+// ✅ UPDATED: Extract phone number from notes
+String? _extractPhoneNumber(String notes) {
+  // Pattern to match phone numbers in various formats
+  // Supports: +971501234567, 971501234567, 0501234567, 050-123-4567, 050 123 4567
+  final phonePatterns = [
+    RegExp(r'(?:Phone|Mobile|Contact|Tel|Call):\s*(\+?\d[\d\s\-\(\)]{7,})', caseSensitive: false, multiLine: true),
+    RegExp(r'(\+971\s?\d{1,2}\s?\d{3}\s?\d{4})', multiLine: true),
+    RegExp(r'(971\s?\d{1,2}\s?\d{3}\s?\d{4})', multiLine: true),
+    RegExp(r'(05\d\s?\d{3}\s?\d{4})', multiLine: true),
+  ];
+  
+  for (var pattern in phonePatterns) {
+    final match = pattern.firstMatch(notes);
+    if (match != null && match.group(1) != null) {
+      // Clean up the phone number - remove spaces, dashes, parentheses
+      final phone = match.group(1)!.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      debugPrint('✅ Found phone number: $phone');
+      return phone;
+    }
+  }
+  
+  debugPrint('⚠️ No phone number found in notes');
+  return null;
+}
+
+// ✅ UPDATED: Follow-up navigation with location AND phone actions
 void _handleFollowUpNavigation(
   Map<String, dynamic> data, {
   bool hasLink = false,
@@ -2053,15 +2104,70 @@ void _handleFollowUpNavigation(
   if (notes != null && notes.isNotEmpty) {
     // Extract location URL from notes
     final location = _extractLocation(notes);
+    // ✅ NEW: Extract phone number from notes
+    final phoneNumber = _extractPhoneNumber(notes);
     
     debugPrint('   Location found: ${location != null}');
+    debugPrint('   Phone number found: ${phoneNumber != null}');
     if (location != null) {
       debugPrint('   Location value: $location');
+    }
+    if (phoneNumber != null) {
+      debugPrint('   Phone value: $phoneNumber');
+    }
+    
+    // Split notes into parts
+    String mainNotes = notes;
+    String? closingText;
+    
+    // Find "Best regards" or similar closing FIRST
+    final closingPatterns = [
+      'Best regards',
+      'Regards',
+      'Thank you',
+      'Thanks',
+      'Sincerely',
+    ];
+    
+    for (var pattern in closingPatterns) {
+      final closingIndex = notes.indexOf(pattern);
+      if (closingIndex != -1) {
+        closingText = notes.substring(closingIndex).trim();
+        break;
+      }
+    }
+    
+    // Remove location and phone lines from main notes
+    mainNotes = notes;
+    
+    if (location != null) {
+      final locationLinePattern = RegExp(
+        r'Location:\s*[^\n]*',
+        multiLine: true,
+      );
+      mainNotes = mainNotes.replaceAll(locationLinePattern, '').trim();
+    }
+    
+    if (phoneNumber != null) {
+      final phoneLinePattern = RegExp(
+        r'(?:Phone|Mobile|Contact|Tel|Call):\s*[^\n]*',
+        caseSensitive: false,
+        multiLine: true,
+      );
+      mainNotes = mainNotes.replaceAll(phoneLinePattern, '').trim();
+    }
+    
+    // Remove closing text from mainNotes
+    if (closingText != null) {
+      final closingIndex = mainNotes.indexOf(closingText);
+      if (closingIndex != -1) {
+        mainNotes = mainNotes.substring(0, closingIndex).trim();
+      }
     }
     
     Get.dialog(
       AlertDialog(
-        backgroundColor:  AppColors.splashBackgroundColor,
+        backgroundColor: AppColors.splashBackgroundColor,
         title: const Row(
           children: [
             Icon(Icons.event_note, color: Colors.blue, size: 24),
@@ -2076,9 +2182,9 @@ void _handleFollowUpNavigation(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Notes text
+                // Main notes text
                 Text(
-                  notes,
+                  mainNotes,
                   style: const TextStyle(
                     fontSize: 16, 
                     height: 1.6,
@@ -2086,7 +2192,83 @@ void _handleFollowUpNavigation(
                   ),
                 ),
                 
-                // ✅ Location section (only if location URL exists)
+                // ✅ Phone number section (if exists)
+                if (phoneNumber != null) ...[
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () async {
+                      try {
+                        final uri = Uri.parse('tel:$phoneNumber');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                          debugPrint('✅ Opened call dialer for: $phoneNumber');
+                        } else {
+                          throw Exception('Cannot launch phone dialer');
+                        }
+                      } catch (e) {
+                        debugPrint('❌ Error opening call dialer: $e');
+                        Get.snackbar(
+                          'Error',
+                          'Cannot open phone dialer',
+                          snackPosition: SnackPosition.BOTTOM,
+                          backgroundColor: Colors.red,
+                          colorText: Colors.white,
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue[300]!, width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.phone, size: 20, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Contact Number',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue[700],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  phoneNumber,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.call, color: Colors.blue, size: 20),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Tap to call',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[700],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                
+                // ✅ Location section (if exists)
                 if (location != null) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -2114,7 +2296,6 @@ void _handleFollowUpNavigation(
                           ],
                         ),
                         const SizedBox(height: 8),
-                        // Show URL preview or coordinates
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           decoration: BoxDecoration(
@@ -2135,11 +2316,9 @@ void _handleFollowUpNavigation(
                           ),
                         ),
                         const SizedBox(height: 10),
-                        // Action buttons
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            // Copy button
                             TextButton.icon(
                               onPressed: () => _copyLocation(location),
                               style: TextButton.styleFrom(
@@ -2150,7 +2329,6 @@ void _handleFollowUpNavigation(
                               label: const Text('Copy', style: TextStyle(fontSize: 13)),
                             ),
                             const SizedBox(width: 8),
-                            // Open in Maps button
                             ElevatedButton.icon(
                               onPressed: () => _openLocationInMaps(location),
                               style: ElevatedButton.styleFrom(
@@ -2169,8 +2347,21 @@ void _handleFollowUpNavigation(
                   ),
                 ],
                 
+                // ✅ Closing text (Best regards, etc.)
+                if (closingText != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    closingText,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+                
                 // ✅ Additional link if present (separate from location)
-                if (hasLink && link != null) ...[
+                if (hasLink && link != null && link != location) ...[
                   const SizedBox(height: 12),
                   _buildLinkActions(link),
                 ],
@@ -2200,6 +2391,7 @@ void _handleFollowUpNavigation(
     );
   }
 }
+
 // Booking details handler
 void _handleBookingNavigation(Map<String, dynamic> data) {
   
@@ -2243,21 +2435,69 @@ void _handleBookingNavigation(Map<String, dynamic> data) {
   }
   
   // Phone Number
-  if (customerPhone != null && customerPhone.isNotEmpty) {
-    contentWidgets.add(
-      Row(
-        children: [
-          const Icon(Icons.phone, size: 20, color: Colors.grey),
-          const SizedBox(width: 8),
-          Text(
-            customerPhone,
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        ],
+ // Phone Number - Make it clickable in _handleBookingNavigation
+if (customerPhone != null && customerPhone.isNotEmpty) {
+  contentWidgets.add(
+    InkWell(
+      onTap: () async {
+        try {
+          final uri = Uri.parse('tel:$customerPhone');
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri);
+            debugPrint('✅ Opened call dialer for: $customerPhone');
+          } else {
+            throw Exception('Cannot launch phone dialer');
+          }
+        } catch (e) {
+          debugPrint('❌ Error opening call dialer: $e');
+          Get.snackbar(
+            'Error',
+            'Cannot open phone dialer',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.green[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.green[300]!, width: 1.5),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.phone, size: 20, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                customerPhone,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.green,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+            const Icon(Icons.call, color: Colors.green, size: 20),
+            const SizedBox(width: 4),
+            Text(
+              'Tap to call',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.green[700],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
-  }
+    ),
+  );
+  contentWidgets.add(const SizedBox(height: 12));
+}
   
   // Property Name
   if (propertyName != null && propertyName.isNotEmpty) {
@@ -2389,6 +2629,238 @@ void _handleBookingNavigation(Map<String, dynamic> data) {
     barrierDismissible: true,
   );
 }
+
+// ============================================
+// Handle Custom PDF Notice Notification
+// ============================================
+void _handleCustomPdfNotice(Map<String, dynamic> data) {
+  final subject = data['subject'] as String?;
+  final message = data['message'] as String?;
+  final pdfUrl = (data['pdfUrl'] ?? data['pdf_url'] ?? data['link']) as String?;
+  final fileName = (data['fileName'] ?? data['file_name']) as String?;
+  
+  debugPrint('📄 Custom PDF notice notification tapped');
+  debugPrint('   Subject: $subject');
+  debugPrint('   PDF URL: $pdfUrl');
+  
+  if (pdfUrl == null || pdfUrl.isEmpty) {
+    Get.snackbar(
+      'No PDF Found',
+      'This notification does not contain a PDF file',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+      icon: const Icon(Icons.warning, color: Colors.white),
+    );
+    return;
+  }
+  
+  // Build content widgets
+  List<Widget> contentWidgets = [];
+  
+  // Subject
+  if (subject != null && subject.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue[200]!, width: 1),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.subject, size: 18, color: Colors.blue[700]),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                subject,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue[900],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 12));
+  }
+  
+  // Message
+  if (message != null && message.isNotEmpty) {
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          message,
+          style: const TextStyle(
+            fontSize: 15,
+            height: 1.5,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+    );
+    contentWidgets.add(const SizedBox(height: 16));
+  }
+  
+  // PDF Info Card
+  contentWidgets.add(
+    Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.red[50]!, Colors.red[100]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.red[300]!, width: 2),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red[700],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.picture_as_pdf,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PDF Document',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.red[900],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  fileName ?? 'Official Notice.pdf',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[800],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+  
+  // Show dialog
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: AppColors.splashBackgroundColor,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.red[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.notification_important, color: Colors.red, size: 24),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Official Notice',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      content: Container(
+        constraints: const BoxConstraints(maxHeight: 400, maxWidth: 500),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: contentWidgets,
+          ),
+        ),
+      ),
+      actions: [
+        // View PDF button
+        ElevatedButton.icon(
+          onPressed: () {
+            Get.back(); // Close notification dialog
+            
+            // ✅ Show inline PDF viewer
+            _showInlinePdfViewer(
+              pdfUrl, 
+              subject ?? fileName ?? 'Official Notice'
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[700],
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            elevation: 2,
+          ),
+          icon: const Icon(Icons.visibility, size: 18),
+          label: const Text('View PDF', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        ),
+        
+        // Download button
+        TextButton.icon(
+          onPressed: () async {
+            Get.back(); // Close dialog
+            await _downloadAndOpenPdf(pdfUrl, fileName ?? 'notice.pdf');
+          },
+          style: TextButton.styleFrom(foregroundColor: Colors.blue[700]),
+          icon: const Icon(Icons.download, size: 18),
+          label: const Text('Download', style: TextStyle(fontSize: 16)),
+        ),
+        
+        // Close button
+        TextButton(
+          onPressed: () => Get.back(),
+          style: TextButton.styleFrom(foregroundColor: Colors.grey),
+          child: const Text('Close', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+}
+
+// ============================================
+// Show Inline PDF Viewer
+// ============================================
+void _showInlinePdfViewer(String pdfUrl, String title) {
+  Get.dialog(
+    InlinePdfViewer(
+      pdfUrl: pdfUrl,
+      title: title,
+    ),
+    barrierDismissible: false,
+  );
+}
+
 
 // Add this method to NotificationController
 

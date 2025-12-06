@@ -16,6 +16,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:majan/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart';
+import 'package:majan/presentation/widgets/pdf_viewer_widgets.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
@@ -849,161 +850,263 @@ case 'message':
     break;
 
         // ✅ FOLLOW-UP - Show notes dialog (KEEP AS IS - WORKING)
-     case 'follow_up':
-        case 'followup':
-        case 'site_visit':
-        case 'property_visit_scheduled':
-        case 'property_visit_pending':
-        case 'property_visited':
-        case 'property_agreed':
-          debugPrint('🎯 Follow-up notification - showing notes with location');
-          final notes = data['notes'] as String?;
-          
-          if (notes != null && notes.isNotEmpty) {
-            // Extract location from notes
-            final location = _extractLocation(notes);
-            
-            debugPrint('   Notes available: true');
-            debugPrint('   Location found: ${location != null}');
-            if (location != null) {
-              debugPrint('   Location value: $location');
-            }
-            
-            Get.dialog(
-              AlertDialog(
-                backgroundColor: AppColors.splashBackgroundColor,
-                title: const Row(
-                  children: [
-                    Icon(Icons.event_note, color: Colors.blue, size: 24),
-                    SizedBox(width: 8),
-                    Text('Visit Notes', style: TextStyle(fontSize: 18)),
-                  ],
+     // Replace the follow-up case in _navigateUsingGetX method (around line 950)
+
+case 'follow_up':
+case 'followup':
+case 'site_visit':
+case 'property_visit_scheduled':
+case 'property_visit_pending':
+case 'property_visited':
+case 'property_agreed':
+  debugPrint('🎯 Follow-up notification - showing notes with location');
+  final notes = data['notes'] as String?;
+  
+  if (notes != null && notes.isNotEmpty) {
+    // Extract location AND phone number from notes
+    final location = _extractLocation(notes);
+    final phoneNumber = _extractPhoneNumber(notes);  // ✅ ADD THIS
+    
+    debugPrint('   Notes available: true');
+    debugPrint('   Location found: ${location != null}');
+    debugPrint('   Phone number found: ${phoneNumber != null}');  // ✅ ADD THIS
+    
+    if (location != null) {
+      debugPrint('   Location value: $location');
+    }
+    if (phoneNumber != null) {  // ✅ ADD THIS
+      debugPrint('   Phone value: $phoneNumber');
+    }
+    
+    // Split notes into parts
+    String mainNotes = notes;
+    
+    // Remove location line
+    if (location != null) {
+      final locationLinePattern = RegExp(
+        r'Location:\s*[^\n]*',
+        multiLine: true,
+      );
+      mainNotes = mainNotes.replaceAll(locationLinePattern, '').trim();
+    }
+    
+    // ✅ NEW: Remove phone line
+    if (phoneNumber != null) {
+      final phoneLinePattern = RegExp(
+        r'(?:Phone|Mobile|Contact|Tel|Call):\s*[^\n]*',
+        caseSensitive: false,
+        multiLine: true,
+      );
+      mainNotes = mainNotes.replaceAll(phoneLinePattern, '').trim();
+    }
+    
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.splashBackgroundColor,
+        title: const Row(
+          children: [
+            Icon(Icons.event_note, color: Colors.blue, size: 24),
+            SizedBox(width: 8),
+            Text('Visit Notes', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+        content: Container(
+          constraints: const BoxConstraints(maxHeight: 500),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Main notes text
+                Text(
+                  mainNotes,
+                  style: const TextStyle(
+                    fontSize: 16, 
+                    height: 1.6,
+                    color: Colors.black87,
+                  ),
                 ),
-                content: Container(
-                  constraints: const BoxConstraints(maxHeight: 500),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Notes text
-                        Text(
-                          notes,
-                          style: const TextStyle(
-                            fontSize: 16, 
-                            height: 1.6,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        
-                        // ✅ Location section (only if location exists)
-                        if (location != null) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.green[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green[200]!, width: 1),
-                            ),
+                
+                // ✅ NEW: Phone number section (if exists)
+                if (phoneNumber != null) ...[
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () async {
+                      try {
+                        final uri = Uri.parse('tel:$phoneNumber');
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                          debugPrint('✅ Opened call dialer for: $phoneNumber');
+                        } else {
+                          throw Exception('Cannot launch phone dialer');
+                        }
+                      } catch (e) {
+                        debugPrint('❌ Error opening call dialer: $e');
+                        Get.snackbar(
+                          'Error',
+                          'Cannot open phone dialer',
+                          snackPosition: SnackPosition.BOTTOM,
+                          backgroundColor: Colors.red,
+                          colorText: Colors.white,
+                        );
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue[300]!, width: 1.5),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.phone, size: 20, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.location_on, size: 18, color: Colors.green[700]),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Site Visit Location',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green[700],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                // Show URL preview or coordinates
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    location.startsWith('http') 
-                                      ? 'Google Maps Link'
-                                      : location,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                Text(
+                                  'Contact Number',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue[700],
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-                                // Action buttons
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    // Copy button
-                                    TextButton.icon(
-                                      onPressed: () => _copyLocation(location),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: Colors.green[700],
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      ),
-                                      icon: const Icon(Icons.copy, size: 16),
-                                      label: const Text('Copy', style: TextStyle(fontSize: 13)),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    // Open in Maps button
-                                    ElevatedButton.icon(
-                                      onPressed: () => _openLocationInMaps(location),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green[700],
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        elevation: 0,
-                                      ),
-                                      icon: const Icon(Icons.map, size: 16),
-                                      label: const Text('Open Map', style: TextStyle(fontSize: 13)),
-                                    ),
-                                  ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  phoneNumber,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue,
+                                    decoration: TextDecoration.underline,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
+                          const Icon(Icons.call, color: Colors.blue, size: 20),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Tap to call',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue[700],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
                         ],
+                      ),
+                    ),
+                  ),
+                ],
+                
+                // ✅ Location section (only if location exists)
+                if (location != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green[200]!, width: 1),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.location_on, size: 18, color: Colors.green[700]),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Site Visit Location',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            location.startsWith('http') 
+                              ? 'Google Maps Link'
+                              : location,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () => _copyLocation(location),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.green[700],
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              ),
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('Copy', style: TextStyle(fontSize: 13)),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () => _openLocationInMaps(location),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[700],
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                elevation: 0,
+                              ),
+                              icon: const Icon(Icons.map, size: 16),
+                              label: const Text('Open Map', style: TextStyle(fontSize: 13)),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Get.back(),
-                    style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                    child: const Text('Close', style: TextStyle(fontSize: 16)),
-                  ),
                 ],
-              ),
-              barrierDismissible: true,
-            );
-          } else {
-            Get.snackbar(
-              'No Notes',
-              'No visit notes available for this notification',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 3),
-              icon: const Icon(Icons.info_outline, color: Colors.white),
-            );
-          }
-          break;
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+            child: const Text('Close', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+  } else {
+    Get.snackbar(
+      'No Notes',
+      'No visit notes available for this notification',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 3),
+      icon: const Icon(Icons.info_outline, color: Colors.white),
+    );
+  }
+  break;
 
         // ✅ TECHNICIAN ASSIGNMENT - Show details dialog
         case 'technician_assignment':
@@ -1621,6 +1724,225 @@ case 'property_enquiry':
     barrierDismissible: true,
   );
   break;
+  
+
+  case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  debugPrint('📄 Custom PDF notice notification detected');
+  final subject = data['subject'] as String?;
+  final message = data['message'] as String?;
+  final pdfUrl = (data['pdfUrl'] ?? data['pdf_url'] ?? data['link']) as String?;
+  final fileName = (data['fileName'] ?? data['file_name']) as String?;
+  
+  if (pdfUrl != null && pdfUrl.isNotEmpty) {
+    // Build content widgets
+    List<Widget> contentWidgets = [];
+    
+    // Subject
+    if (subject != null && subject.isNotEmpty) {
+      contentWidgets.add(
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue[200]!, width: 1),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.subject, size: 18, color: Colors.blue[700]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  subject,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue[900],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      contentWidgets.add(const SizedBox(height: 12));
+    }
+    
+    // Message
+    if (message != null && message.isNotEmpty) {
+      contentWidgets.add(
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 15,
+              height: 1.5,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      );
+      contentWidgets.add(const SizedBox(height: 16));
+    }
+    
+    // PDF Info Card
+    contentWidgets.add(
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.red[50]!, Colors.red[100]!],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.red[300]!, width: 2),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red[700],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.picture_as_pdf,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PDF Document',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.red[900],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    fileName ?? 'Official Notice.pdf',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[800],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    
+    // Show dialog with PDF viewer option
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: AppColors.splashBackgroundColor,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.notification_important, color: Colors.red, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Official Notice',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          constraints: const BoxConstraints(maxHeight: 400, maxWidth: 500),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: contentWidgets,
+            ),
+          ),
+        ),
+        actions: [
+          // View PDF inline button
+          ElevatedButton.icon(
+            onPressed: () {
+              Get.back(); // Close notification dialog
+              
+              // Show inline PDF viewer
+              Get.dialog(
+                InlinePdfViewer(
+                  pdfUrl: pdfUrl,
+                  title: subject ?? fileName ?? 'Official Notice',
+                ),
+                barrierDismissible: false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[700],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              elevation: 2,
+            ),
+            icon: const Icon(Icons.visibility, size: 18),
+            label: const Text('View PDF', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          ),
+          
+          // Download button
+          TextButton.icon(
+            onPressed: () async {
+              Get.back();
+              await _downloadAndOpenPdf(pdfUrl, fileName ?? 'notice.pdf');
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.blue[700]),
+            icon: const Icon(Icons.download, size: 18),
+            label: const Text('Download', style: TextStyle(fontSize: 16)),
+          ),
+          
+          // Close button
+          TextButton(
+            onPressed: () => Get.back(),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+            child: const Text('Close', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+  } else {
+    Get.snackbar(
+      'No PDF Found',
+      'This notification does not contain a PDF file',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+      icon: const Icon(Icons.warning, color: Colors.white),
+    );
+  }
+  break;
+
 
 
         // ✅ UNKNOWN - Show generic notification
@@ -1673,7 +1995,28 @@ case 'property_enquiry':
     }
   }
 
+  // ✅ NEW: Extract phone number from notes
+String? _extractPhoneNumber(String notes) {
+  // Pattern to match phone numbers in various formats
+  final phonePatterns = [
+    RegExp(r'(?:Phone|Mobile|Contact|Tel|Call):\s*(\+?\d[\d\s\-\(\)]{7,})', caseSensitive: false, multiLine: true),
+    RegExp(r'(\+971\s?\d{1,2}\s?\d{3}\s?\d{4})', multiLine: true),
+    RegExp(r'(971\s?\d{1,2}\s?\d{3}\s?\d{4})', multiLine: true),
+    RegExp(r'(05\d\s?\d{3}\s?\d{4})', multiLine: true),
+  ];
   
+  for (var pattern in phonePatterns) {
+    final match = pattern.firstMatch(notes);
+    if (match != null && match.group(1) != null) {
+      final phone = match.group(1)!.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      debugPrint('✅ Found phone number: $phone');
+      return phone;
+    }
+  }
+  
+  debugPrint('⚠️ No phone number found in notes');
+  return null;
+}
 
   // ============================================
   // 2. Update _navigateUsingNavigatorKey method
@@ -2889,6 +3232,13 @@ Future<void> _copyLocation(String location) async {
   case 'new_booking':
   case 'booking_confirmed':
    return _orderChannelId;
+
+
+   case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  return _orderChannelId;
    
    case 'property_interest':
 case 'customer_interest':
@@ -2932,6 +3282,12 @@ case 'customer_interest':
   return 'Property Interest';
 case 'property_enquiry':
   return 'Property Enquiry';
+  case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  return 'Official Notices';
+
         default:
           return 'Chat Notifications';
       }
@@ -3014,6 +3370,12 @@ case 'customer_interest':
   return 'New Property Interest';
 case 'property_enquiry':
   return 'Property Enquiry';
+
+  case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  return 'Official Notice';
   
       default:
         return 'New Notification';
@@ -3099,6 +3461,13 @@ case 'customer_interest':
   
 case 'property_enquiry':
   return data['message'] ?? 'New enquiry received for your property';
+
+  case 'custom_notice':
+case 'pdf_notice':
+case 'notice_pdf':
+case 'tenant_notice':
+  final subject = data['subject'] as String?;
+  return subject ?? data['message'] ?? 'You have received an official notice. Tap to view PDF.';
 
       default:
         return data['message'] ?? 'You have a new notification';
