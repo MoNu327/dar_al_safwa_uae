@@ -979,7 +979,7 @@ String _getContentType(String fileName) {
       rethrow;
     }
   }
-   Future<Response> getMyProperties([String? uid]) async {
+   Future<Response>  getMyProperties([String? uid]) async {
   try {
     // Fetch UID dynamically if not provided
     uid ??= FirebaseAuth.instance.currentUser?.uid ?? '';
