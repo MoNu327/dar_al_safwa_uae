@@ -302,6 +302,7 @@ Widget _buildActionButtons(TenantPropertyModel property) {
             onPressed: () {
               Get.to(() => PdfViewerScreen(
               uid: property.uid,
+              unitAddressId: property.unitAddressId.toString(),
               ));
             },
           ),

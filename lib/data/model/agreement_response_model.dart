@@ -26,7 +26,8 @@ class Message {
 
   Message({required this.en, required this.ar});
 
-  factory Message.fromJson(Map<String, dynamic> json) => _$MessageFromJson(json);
+  factory Message.fromJson(Map<String, dynamic> json) =>
+      _$MessageFromJson(json);
   Map<String, dynamic> toJson() => _$MessageToJson(this);
 }
 
@@ -35,34 +36,36 @@ class AgreementData {
   final String id;
   final String uid;
   final String property_id;
-  final String unit_id;
   final String unit_address_id;
-  final String notification_title;
-  final String notification_body;
+  final String from_date;
+  final String to_date;
+  final String pdf_path;
+  final String status;
   final String created_at;
   final String updated_at;
   final String property_title;
-  final String unit_type_title;
   final String unit_number;
   final String created_at_formatted;
   final String updated_at_formatted;
+  final String pdf_url;
   final String user_display_name;
 
   AgreementData({
     required this.id,
     required this.uid,
     required this.property_id,
-    required this.unit_id,
     required this.unit_address_id,
-    required this.notification_title,
-    required this.notification_body,
+    required this.from_date,
+    required this.to_date,
+    required this.pdf_path,
+    required this.status,
     required this.created_at,
     required this.updated_at,
     required this.property_title,
-    required this.unit_type_title,
     required this.unit_number,
     required this.created_at_formatted,
     required this.updated_at_formatted,
+    required this.pdf_url,
     required this.user_display_name,
   });
 
