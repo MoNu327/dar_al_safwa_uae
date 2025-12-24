@@ -64,11 +64,9 @@ class PropertyListings extends StatelessWidget {
                       color: Colors.grey,
                     ),
                     kHeight(0.04),
-                    // Action buttons row
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Back button
                         ElevatedButton.icon(
                           onPressed: () => Get.back(),
                           icon: const Icon(Icons.arrow_back, size: 20),
@@ -90,7 +88,6 @@ class PropertyListings extends StatelessWidget {
                           ),
                         ),
                         SizedBox(width: screenWidth * 0.04),
-                        // Retry button
                         ElevatedButton.icon(
                           onPressed: controller.fetchSearchResult,
                           icon: const Icon(Icons.refresh, size: 20),
@@ -119,7 +116,7 @@ class PropertyListings extends StatelessWidget {
             );
           }
 
-          // Empty results state with back button
+          // Empty results state
           final properties = controller.searchResults.value?.data ?? [];
           if (properties.isEmpty) {
             return Padding(
@@ -129,7 +126,7 @@ class PropertyListings extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _buildHeaderWithoutProperty(isArabic),
+                  _buildHeaderWithoutProperty(isArabic, controller),
                   Expanded(
                     child: Center(
                       child: Padding(
@@ -163,11 +160,9 @@ class PropertyListings extends StatelessWidget {
                               color: Colors.grey,
                             ),
                             kHeight(0.04),
-                            // Action buttons row
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                // Back to Search button
                                 ElevatedButton.icon(
                                   onPressed: () => Get.back(),
                                   icon: const Icon(Icons.arrow_back, size: 20),
@@ -189,7 +184,6 @@ class PropertyListings extends StatelessWidget {
                                   ),
                                 ),
                                 SizedBox(width: screenWidth * 0.04),
-                                // New Search button
                                 ElevatedButton.icon(
                                   onPressed: () => Get.back(),
                                   icon: const Icon(Icons.search, size: 20),
@@ -230,9 +224,17 @@ class PropertyListings extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _buildHeader(properties.first, isArabic),
+                _buildHeader(properties.first, isArabic, controller),
                 SizedBox(height: Get.height * 0.02),
-                _buildPropertyList(properties, isArabic),
+                
+                // Pagination Info
+                _buildPaginationInfo(controller, isArabic),
+                SizedBox(height: Get.height * 0.02),
+                
+                _buildPropertyList(properties, isArabic, controller),
+                
+                // Page Navigation (Previous/Next)
+                _buildPageNavigation(controller, isArabic),
               ],
             ),
           );
@@ -241,9 +243,188 @@ class PropertyListings extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(Property property, bool isArabic) {
-    final controller = Get.find<PropertyListingController>();
+  // NEW: Pagination info widget
+  Widget _buildPaginationInfo(PropertyListingController controller, bool isArabic) {
+    return Obx(() {
+      if (controller.totalResults.value == 0) return const SizedBox.shrink();
+      
+      return Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Get.width * 0.04,
+          vertical: Get.height * 0.015,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.primaryColor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: CustomTextWidget(
+                title: isArabic
+                    ? 'تم العثور على ${controller.totalResults.value} عقار'
+                    : '${controller.totalResults.value} Properties Found',
+                fontSize: Get.height * 0.018,
+                fontWeight: FontWeight.w600,
+                color: AppColors.secondaryColor,
+              ),
+            ),
+            SizedBox(width: Get.width * 0.02),
+            CustomTextWidget(
+              title: isArabic
+                  ? 'صفحة ${controller.currentPage.value} من ${controller.totalPages.value}'
+                  : 'Page ${controller.currentPage.value} of ${controller.totalPages.value}',
+              fontSize: Get.height * 0.016,
+              color: AppColors.primaryColor,
+            ),
+          ],
+        ),
+      );
+    });
+  }
 
+  // NEW: Page navigation widget (Previous/Next buttons) - FIXED OVERFLOW
+  Widget _buildPageNavigation(PropertyListingController controller, bool isArabic) {
+    return Obx(() {
+      // Only show pagination if there are multiple pages
+      if (controller.totalPages.value <= 1) {
+        return const SizedBox.shrink();
+      }
+
+      // Show loading indicator while fetching new page
+      if (controller.isLoadingMoreResults.value) {
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: Get.height * 0.03),
+          child: Column(
+            children: [
+              const CustomLoaderWidget(),
+              kHeight(0.02),
+              CustomTextWidget(
+                title: isArabic ? 'جاري التحميل...' : 'Loading...',
+                color: Colors.grey,
+                fontSize: Get.height * 0.016,
+              ),
+            ],
+          ),
+        );
+      }
+
+      final currentPage = controller.currentPage.value;
+      final totalPages = controller.totalPages.value;
+      final hasPrevious = currentPage > 1;
+      final hasNext = currentPage < totalPages;
+
+      return Padding(
+        padding: EdgeInsets.symmetric(
+          vertical: Get.height * 0.03,
+          horizontal: Get.width * 0.02, // Add horizontal padding
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Previous Button - More compact
+            Flexible(
+              child: ElevatedButton.icon(
+                onPressed: hasPrevious 
+                    ? () => controller.goToPage(currentPage - 1)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasPrevious 
+                      ? AppColors.secondaryColor 
+                      : Colors.grey[300],
+                  foregroundColor: hasPrevious 
+                      ? Colors.white 
+                      : Colors.grey[500],
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Get.width * 0.04,
+                    vertical: Get.height * 0.015,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: hasPrevious ? 2 : 0,
+                ),
+                icon: Icon(
+                  isArabic ? Icons.arrow_forward : Icons.arrow_back,
+                  size: 18,
+                ),
+                label: CustomTextWidget(
+                  title: isArabic ? 'السابق' : 'Previous',
+                  color: hasPrevious ? Colors.white : Colors.grey[500]!,
+                  fontSize: Get.height * 0.016,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            
+            SizedBox(width: Get.width * 0.03),
+            
+            // Page indicator - More compact
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: Get.width * 0.04,
+                vertical: Get.height * 0.012,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primaryColor,
+                  width: 1.5,
+                ),
+              ),
+              child: CustomTextWidget(
+                title: '$currentPage / $totalPages',
+                fontSize: Get.height * 0.016,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryColor,
+              ),
+            ),
+            
+            SizedBox(width: Get.width * 0.03),
+            
+            // Next Button - More compact
+            Flexible(
+              child: ElevatedButton.icon(
+                onPressed: hasNext 
+                    ? () => controller.goToPage(currentPage + 1)
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasNext 
+                      ? AppColors.primaryColor 
+                      : Colors.grey[300],
+                  foregroundColor: hasNext 
+                      ? Colors.white 
+                      : Colors.grey[500],
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Get.width * 0.04,
+                    vertical: Get.height * 0.015,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: hasNext ? 2 : 0,
+                ),
+                icon: Icon(
+                  isArabic ? Icons.arrow_back : Icons.arrow_forward,
+                  size: 18,
+                ),
+                label: CustomTextWidget(
+                  title: isArabic ? 'التالي' : 'Next',
+                  color: hasNext ? Colors.white : Colors.grey[500]!,
+                  fontSize: Get.height * 0.016,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildHeader(Property property, bool isArabic, PropertyListingController controller) {
     return Container(
       padding: EdgeInsets.symmetric(
         vertical: Get.height * 0.005,
@@ -286,9 +467,7 @@ class PropertyListings extends StatelessWidget {
     );
   }
 
-  Widget _buildHeaderWithoutProperty(bool isArabic) {
-    final controller = Get.find<PropertyListingController>();
-
+  Widget _buildHeaderWithoutProperty(bool isArabic, PropertyListingController controller) {
     return Container(
       padding: EdgeInsets.symmetric(
         vertical: Get.height * 0.005,
@@ -331,21 +510,19 @@ class PropertyListings extends StatelessWidget {
     );
   }
 
-  Widget _buildPropertyList(List<Property> properties, bool isArabic) {
+  Widget _buildPropertyList(List<Property> properties, bool isArabic, PropertyListingController controller) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: properties.length,
       itemBuilder: (context, index) {
         final property = properties[index];
-        return _buildPropertyItem(property, isArabic);
+        return _buildPropertyItem(property, isArabic, controller);
       },
     );
   }
 
-  Widget _buildPropertyItem(Property property, bool isArabic) {
-    final controller = Get.find<PropertyListingController>();
-
+  Widget _buildPropertyItem(Property property, bool isArabic, PropertyListingController controller) {
     return GestureDetector(
       onTap: () => controller.navigateToPropertyDetails(property),
       child: Container(
@@ -366,7 +543,6 @@ class PropertyListings extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Property Image
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: CachedNetworkImage(
@@ -535,71 +711,26 @@ class PropertyListings extends StatelessWidget {
     );
   }
 
-  // ✅ UPDATED: Price section with "annually" label
   Widget _buildPriceSection(Property property, bool isArabic) {
     final price = property.price;
-    
-    // Get formatted price
-    String formattedPrice;
-    if (isArabic) {
-      formattedPrice = price?.formatted?.ar?.isNotEmpty ?? false
-          ? price!.formatted!.ar!
-          : '${price?.raw ?? 0} ر.ع';
-    } else {
-      formattedPrice = price?.formatted?.en?.isNotEmpty ?? false
-          ? price!.formatted!.en!
-          : 'AED ${price?.raw ?? 0}';
-    }
-
-    // Add "annually" label
-    final annuallyLabel = isArabic ? 'سنوياً' : 'annually';
-    final priceWithAnnually = '$formattedPrice / $annuallyLabel';
+    final formattedPrice = isArabic
+        ? (price?.formatted?.ar?.isNotEmpty ?? false
+            ? price!.formatted!.ar
+            : '${price?.raw ?? 0} AED')
+        : (price?.formatted?.en?.isNotEmpty ?? false
+            ? price!.formatted!.en
+            : '${price?.raw ?? 0} AED');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomTextWidget(
-          title: priceWithAnnually,
+          title:
+              '$formattedPrice/${localizationController.translate('per_section')}',
           fontWeight: FontWeight.w700,
           color: AppColors.secondaryColor,
         ),
       ],
     );
-  }
-  
-  // ✅ ALTERNATIVE: Helper method for price formatting (if you want to use it)
-  String _getFormattedPriceWithAnnually(Property property, bool isArabic) {
-    final price = property.price;
-    
-    if (price == null) {
-      return isArabic ? 'السعر غير متوفر' : 'Price not available';
-    }
-    
-    // Get formatted price
-    String? formattedPrice = isArabic 
-        ? price.formatted?.ar 
-        : price.formatted?.en;
-    
-    // If formatted price exists, add annually label
-    if (formattedPrice != null && formattedPrice.isNotEmpty) {
-      return isArabic 
-          ? '$formattedPrice / سنوياً' 
-          : '$formattedPrice / annually';
-    }
-    
-    // Fallback to raw price
-    if (price.raw != null) {
-      final rawPrice = price.raw!;
-      final formatted = rawPrice.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (Match m) => '${m[1]},'
-      );
-      
-      return isArabic 
-          ? '$formatted ر.ع / سنوياً' 
-          : 'AED $formatted / annually';
-    }
-    
-    return isArabic ? 'السعر غير متوفر' : 'Price not available';
   }
 }

@@ -14,6 +14,7 @@ PropertySearchResultRequest _$PropertySearchResultRequestFromJson(
       propertyLocations: (json['property_locations'] as num).toInt(),
       propertyBedsBath: (json['property_beds_bath'] as num).toInt(),
       propertyPriceForSearch: (json['property_price_range_id'] as num).toInt(),
+      page: (json['page'] as num?)?.toInt() ?? 1,
     );
 
 Map<String, dynamic> _$PropertySearchResultRequestToJson(
@@ -24,6 +25,7 @@ Map<String, dynamic> _$PropertySearchResultRequestToJson(
       'property_locations': instance.propertyLocations,
       'property_beds_bath': instance.propertyBedsBath,
       'property_price_range_id': instance.propertyPriceForSearch,
+      'page': instance.page,
     };
 
 SearchPropertyResponse _$SearchPropertyResponseFromJson(
@@ -33,6 +35,9 @@ SearchPropertyResponse _$SearchPropertyResponseFromJson(
       data: (json['data'] as List<dynamic>?)
           ?.map((e) => Property.fromJson(e as Map<String, dynamic>))
           .toList(),
+      pagination: json['pagination'] == null
+          ? null
+          : Pagination.fromJson(json['pagination'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$SearchPropertyResponseToJson(
@@ -40,6 +45,7 @@ Map<String, dynamic> _$SearchPropertyResponseToJson(
     <String, dynamic>{
       'success': instance.success,
       'data': instance.data,
+      'pagination': instance.pagination,
     };
 
 Property _$PropertyFromJson(Map<String, dynamic> json) => Property(
@@ -162,4 +168,19 @@ Map<String, dynamic> _$RatingToJson(Rating instance) => <String, dynamic>{
       'average': instance.average,
       'average_arabic': instance.averageArabic,
       'count': instance.count,
+    };
+
+Pagination _$PaginationFromJson(Map<String, dynamic> json) => Pagination(
+      currentPage: (json['current_page'] as num?)?.toInt(),
+      perPage: (json['per_page'] as num?)?.toInt(),
+      total: (json['total'] as num?)?.toInt(),
+      lastPage: (json['last_page'] as num?)?.toInt(),
+    );
+
+Map<String, dynamic> _$PaginationToJson(Pagination instance) =>
+    <String, dynamic>{
+      'current_page': instance.currentPage,
+      'per_page': instance.perPage,
+      'total': instance.total,
+      'last_page': instance.lastPage,
     };

@@ -272,7 +272,7 @@ class NotificationsScreen extends StatelessWidget {
                           fontSize: Get.height * 0.014,
                           color: Colors.grey[500]!,
                         ),
-                        _buildNotificationTypeChip(notification.type),
+                        _buildNotificationTypeChip(notification),
                       ],
                     ),
                   ],
@@ -370,6 +370,22 @@ class NotificationsScreen extends StatelessWidget {
         iconData = Icons.event_available;
         iconColor = Colors.green;
         break;
+
+        case 'contract_expiry':
+  iconData = Icons.assignment_late;
+  iconColor = Colors.orange;
+  break;
+
+case 'document_expiry':
+  iconData = Icons.description;
+  iconColor = Colors.blue;
+  break;
+
+case 'payment_reminder':
+case 'upcoming_payment':
+  iconData = Icons.payment;
+  iconColor = Colors.green;
+  break;
       
       // ✅ Property Interest
       case 'property_interest':
@@ -460,211 +476,275 @@ case 'tenant_notice':
     );
   }
 
-  Widget _buildNotificationTypeChip(String type) {
-    String displayType = _getDisplayType(type);
-    Color chipColor = _getChipColor(type);
+  Widget _buildNotificationTypeChip(NotificationModel notification) {
+  String displayType = _getDisplayType(notification);
+  Color chipColor = _getChipColor(notification);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: chipColor.withOpacity(0.3)),
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: chipColor.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: chipColor.withOpacity(0.3)),
+    ),
+    child: Text(
+      displayType,
+      style: TextStyle(
+        color: chipColor,
+        fontSize: 10,
+        fontWeight: FontWeight.w500,
       ),
-      child: Text(
-        displayType,
-        style: TextStyle(
-          color: chipColor,
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
+    ),
+  );
+}
+
+  String _getDisplayType(NotificationModel notification) {
+  final type = notification.type;
+  
+  switch (type) {
+    case 'contract_expiry':
+      final urgency = notification.data?['urgency'] as String? ?? 
+                      notification.data?['subType'] as String? ?? 'normal';
+      if (urgency == 'critical' || urgency == 'expired') return 'EXPIRED';
+      return 'Contract';
+
+    case 'document_expiry':
+      final docUrgency = notification.data?['urgency'] as String? ?? 
+                         notification.data?['subType'] as String? ?? 'normal';
+      if (docUrgency == 'critical' || docUrgency == 'expired') return 'EXPIRED';
+      return 'Document';
+
+    case 'payment_reminder':
+    case 'upcoming_payment':
+      final payUrgency = notification.data?['urgency'] as String? ?? 
+                         notification.data?['subType'] as String? ?? 'normal';
+      if (payUrgency == 'critical' || payUrgency == 'overdue') return 'OVERDUE';
+      return 'Payment';
+      
+    // Chat
+    case 'chat':
+    case 'message':
+      return 'Chat';
+    
+    // Tickets (ALL VARIANTS)
+    case 'ticket':
+    case 'complaint':
+    case 'tenant_ticket':
+      return 'Ticket';
+    case 'complaint_reply':
+    case 'ticket_reply':
+      return 'Reply';
+    case 'ticket_update':
+    case 'complaint_status_update':
+      return 'Update';
+    case 'new_complaint':
+      return 'New Ticket';
+    case 'new_ticket':
+      return 'New Ticket';
+    
+    // Follow-ups
+    case 'follow_up':
+    case 'followup':
+      return 'Follow-up';
+    case 'site_visit':
+    case 'property_visit_scheduled':
+    case 'property_visit_pending':
+    case 'property_visited':
+    case 'property_agreed':
+      return 'Site Visit';
+    
+    // Bookings
+    case 'booking':
+    case 'property_booking':
+    case 'new_booking':
+      return 'Booking';
+    case 'booking_confirmed':
+      return 'Confirmed';
+    
+    // Property Interest
+    case 'property_interest':
+    case 'customer_interest':
+      return 'Interest';
+    case 'property_enquiry':
+      return 'Enquiry';
+    
+    // Technician
+    case 'technician_assignment':
+      return 'Assignment';
+    case 'technician_ticket':
+      return 'Ticket';
+    case 'job_update':
+      return 'Job Update';
+    case 'technician_rectify':
+      return 'Rectify';
+    
+    // Property
+    case 'property':
+    case 'property_update':
+    case 'tenant_property':
+      return 'Property';
+    
+    // Documents
+    case 'tenant_documents':
+    case 'document':
+    case 'letter':
+    case 'lease_renewal':
+      return 'Document';
+    
+    // Complaints
+    case 'tenant_complaint':
+      return 'Complaint';
+    
+    // Enquiries
+    case 'enquiry':
+    case 'customer_enquiry':
+      return 'Enquiry';
+    
+    // Approval
+    case 'approval_pending':
+      return 'Approval';
+
+    case 'custom_notice':
+    case 'pdf_notice':
+    case 'notice_pdf':
+    case 'tenant_notice':
+      return 'Notice';
+    
+    default:
+      return 'General';
   }
+}
 
-  String _getDisplayType(String type) {
-    switch (type) {
-      // Chat
-      case 'chat':
-      case 'message':
-        return 'Chat';
-      
-      // Tickets (ALL VARIANTS)
-      case 'ticket':
-      case 'complaint':
-      case 'tenant_ticket':
-        return 'Ticket';
-      case 'complaint_reply':
-      case 'ticket_reply':
-        return 'Reply';
-      case 'ticket_update':
-      case 'complaint_status_update':
-        return 'Update';
-      case 'new_complaint':  // ✅ NEW
-        return 'New Ticket';
-      case 'new_ticket':     // ✅ NEW
-        return 'New Ticket';
-      
-      // Follow-ups
-      case 'follow_up':
-      case 'followup':
-        return 'Follow-up';
-      case 'site_visit':
-      case 'property_visit_scheduled':
-      case 'property_visit_pending':
-      case 'property_visited':
-      case 'property_agreed':
-        return 'Site Visit';
-      
-      // Bookings
-      case 'booking':
-      case 'property_booking':
-      case 'new_booking':
-        return 'Booking';
-      case 'booking_confirmed':
-        return 'Confirmed';
-      
-      // Property Interest
-      case 'property_interest':
-      case 'customer_interest':
-        return 'Interest';
-      case 'property_enquiry':
-        return 'Enquiry';
-      
-      // Technician
-      case 'technician_assignment':
-        return 'Assignment';
-      case 'technician_ticket':
-        return 'Ticket';
-      case 'job_update':
-        return 'Job Update';
-      case 'technician_rectify':
-        return 'Rectify';
-      
-      // Property
-      case 'property':
-      case 'property_update':
-      case 'tenant_property':
-        return 'Property';
-      
-      // Documents
-      case 'tenant_documents':
-      case 'document':
-      case 'letter':
-      case 'lease_renewal':
-        return 'Document';
-      
-      // Complaints
-      case 'tenant_complaint':
-        return 'Complaint';
-      
-      // Enquiries
-      case 'enquiry':
-      case 'customer_enquiry':
-        return 'Enquiry';
-      
-      // Approval
-      case 'approval_pending':
-        return 'Approval';
+  Color _getChipColor(NotificationModel notification) {
+  final type = notification.type;
+  
+  switch (type) {
+    case 'contract_expiry':
+      final urgency = notification.data?['urgency'] as String? ?? 
+                      notification.data?['subType'] as String? ?? 'normal';
+      switch (urgency.toLowerCase()) {
+        case 'critical':
+        case 'expired':
+          return Colors.red;
+        case 'urgent':
+        case 'high':
+          return Colors.orange;
+        default:
+          return Colors.orange;
+      }
 
-        case 'custom_notice':
-case 'pdf_notice':
-case 'notice_pdf':
-case 'tenant_notice':
-  return 'Notice';
-      
-      default:
-        return 'General';
-    }
+    case 'document_expiry':
+      final docUrgency = notification.data?['urgency'] as String? ?? 
+                         notification.data?['subType'] as String? ?? 'normal';
+      switch (docUrgency.toLowerCase()) {
+        case 'critical':
+        case 'expired':
+          return Colors.red;
+        case 'urgent':
+        case 'high':
+          return Colors.orange;
+        default:
+          return Colors.blue;
+      }
+
+    case 'payment_reminder':
+    case 'upcoming_payment':
+      final payUrgency = notification.data?['urgency'] as String? ?? 
+                         notification.data?['subType'] as String? ?? 'normal';
+      switch (payUrgency.toLowerCase()) {
+        case 'critical':
+        case 'overdue':
+          return Colors.red;
+        case 'urgent':
+        case 'high':
+          return Colors.orange;
+        default:
+          return Colors.green;
+      }
+    
+    // Chat - Blue
+    case 'chat':
+    case 'message':
+      return Colors.blue;
+    
+    // Tickets - Green
+    case 'ticket':
+    case 'complaint':
+    case 'tenant_ticket':
+    case 'complaint_reply':
+    case 'ticket_reply':
+    case 'ticket_update':
+    case 'complaint_status_update':
+    case 'new_complaint':
+    case 'new_ticket':
+      return Colors.green;
+    
+    // Follow-ups - Orange
+    case 'follow_up':
+    case 'followup':
+    case 'site_visit':
+    case 'property_visit_scheduled':
+    case 'property_visit_pending':
+    case 'property_visited':
+    case 'property_agreed':
+      return Colors.orange;
+    
+    // Bookings - Green
+    case 'booking':
+    case 'property_booking':
+    case 'new_booking':
+    case 'booking_confirmed':
+      return Colors.green;
+    
+    // Property Interest - Orange
+    case 'property_interest':
+    case 'customer_interest':
+    case 'property_enquiry':
+      return Colors.orange;
+    
+    // Technician - Orange
+    case 'technician_assignment':
+    case 'technician_ticket':
+    case 'job_update':
+    case 'technician_rectify':
+      return Colors.orange;
+    
+    // Property - Purple
+    case 'property':
+    case 'property_update':
+    case 'tenant_property':
+      return Colors.purple;
+    
+    // Documents - Teal
+    case 'tenant_documents':
+    case 'document':
+    case 'letter':
+    case 'lease_renewal':
+      return Colors.teal;
+    
+    // Complaints - Red
+    case 'tenant_complaint':
+      return Colors.red;
+    
+    // Enquiries - Indigo
+    case 'enquiry':
+    case 'customer_enquiry':
+      return Colors.indigo;
+    
+    // Approval - Amber
+    case 'approval_pending':
+      return Colors.amber;
+
+    case 'custom_notice':
+    case 'pdf_notice':
+    case 'notice_pdf':
+    case 'tenant_notice':
+      return Colors.red;
+    
+    default:
+      return AppColors.primaryColor;
   }
-
-  Color _getChipColor(String type) {
-    switch (type) {
-      // Chat - Blue
-      case 'chat':
-      case 'message':
-        return Colors.blue;
-      
-      // Tickets - Green
-      case 'ticket':
-      case 'complaint':
-      case 'tenant_ticket':
-      case 'complaint_reply':
-      case 'ticket_reply':
-      case 'ticket_update':
-      case 'complaint_status_update':
-      case 'new_complaint':  // ✅ NEW
-      case 'new_ticket':     // ✅ NEW
-        return Colors.green;
-      
-      // Follow-ups - Orange
-      case 'follow_up':
-      case 'followup':
-      case 'site_visit':
-      case 'property_visit_scheduled':
-      case 'property_visit_pending':
-      case 'property_visited':
-      case 'property_agreed':
-        return Colors.orange;
-      
-      // Bookings - Green
-      case 'booking':
-      case 'property_booking':
-      case 'new_booking':
-      case 'booking_confirmed':
-        return Colors.green;
-      
-      // Property Interest - Orange
-      case 'property_interest':
-      case 'customer_interest':
-      case 'property_enquiry':
-        return Colors.orange;
-      
-      // Technician - Orange
-      case 'technician_assignment':
-      case 'technician_ticket':
-      case 'job_update':
-      case 'technician_rectify':
-        return Colors.orange;
-      
-      // Property - Purple
-      case 'property':
-      case 'property_update':
-      case 'tenant_property':
-        return Colors.purple;
-      
-      // Documents - Teal
-      case 'tenant_documents':
-      case 'document':
-      case 'letter':
-      case 'lease_renewal':
-        return Colors.teal;
-      
-      // Complaints - Red
-      case 'tenant_complaint':
-        return Colors.red;
-      
-      // Enquiries - Indigo
-      case 'enquiry':
-      case 'customer_enquiry':
-        return Colors.indigo;
-      
-      // Approval - Amber
-      case 'approval_pending':
-        return Colors.amber;
-
-        case 'custom_notice':
-case 'pdf_notice':
-case 'notice_pdf':
-case 'tenant_notice':
-  return Colors.red;
-
-      
-      default:
-        return AppColors.primaryColor;
-    }
-  }
-
+}
   String _formatTime(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);

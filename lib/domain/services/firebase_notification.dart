@@ -223,162 +223,26 @@ class FirebaseNotificationService {
    // ✅ OPTIMIZED: Fast PDF download - WORKS ON BOTH iOS & ANDROID
 Future<void> _downloadAndOpenPdf(String url, String fileName) async {
   try {
-    debugPrint('Starting PDF download for: $url');
-    debugPrint('Platform: ${Platform.isAndroid ? "Android" : "iOS"}');
+    debugPrint('Opening PDF viewer for: $url');
     
-    // ✅ ANDROID ONLY: Check permissions BEFORE showing snackbar
-    if (Platform.isAndroid) {
-      final androidInfo = await DeviceInfoPlugin().androidInfo;
-      final sdkInt = androidInfo.version.sdkInt;
-      
-      PermissionStatus status;
-      
-      if (sdkInt >= 33) {
-        status = PermissionStatus.granted;
-      } else if (sdkInt >= 30) {
-        status = await Permission.storage.request();
-        if (!status.isGranted) {
-          status = await Permission.manageExternalStorage.request();
-        }
-      } else {
-        status = await Permission.storage.request();
-      }
-      
-      if (!status.isGranted && sdkInt < 33) {
-        Get.snackbar(
-          'Permission Required',
-          'Storage permission is needed to download files',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-        return;
-      }
-    }
-
-    // ✅ OPTIMIZATION 2: Determine file path BEFORE download
-    String finalFileName = fileName;
-    if (!finalFileName.endsWith('.pdf')) {
-      finalFileName = '$finalFileName.pdf';
-    }
-    
-    String filePath;
-    
-    // ✅ ANDROID: Determine Android file path
-    if (Platform.isAndroid) {
-      final downloadsDir = Directory('/storage/emulated/0/Download');
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
-      }
-      filePath = '${downloadsDir.path}/$finalFileName';
-      debugPrint('Android path: $filePath');
-    } 
-    // ✅ iOS: Use app's Documents directory (no permissions needed)
-    else {
-      final directory = await getApplicationDocumentsDirectory();
-      filePath = '${directory.path}/$finalFileName';
-      debugPrint('iOS path: $filePath');
-    }
-
-    // ✅ OPTIMIZATION 3: Show downloading snackbar RIGHT BEFORE HTTP request
-    Get.snackbar(
-      'Downloading',
-      'Starting download...',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.blue,
-      colorText: Colors.white,
-      showProgressIndicator: true,
-      isDismissible: false,
-      duration: null,
+    // ✅ Show inline PDF viewer with download option
+    Get.dialog(
+      InlinePdfViewer(
+        pdfUrl: url,
+        title: fileName.replaceAll('.pdf', ''),
+        showDownloadButton: true,
+        onDownload: () async {
+          await _downloadToDevice(url, fileName);
+        },
+      ),
+      barrierDismissible: false,
     );
 
-    debugPrint('Fetching URL: $url');
-    
-    // ✅ OPTIMIZATION 4: Use StreamedResponse for faster processing
-    final client = http.Client();
-    final request = http.Request('GET', Uri.parse(url));
-    final response = await client.send(request).timeout(
-      const Duration(seconds: 30),
-      onTimeout: () {
-        throw TimeoutException('Download timed out after 30 seconds');
-      },
-    );
-    
-    debugPrint('Response status: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      // ✅ OPTIMIZATION 5: Stream directly to file (faster than loading in memory)
-      final file = File(filePath);
-      final sink = file.openWrite();
-      
-      try {
-        await response.stream.pipe(sink);
-        await sink.flush();
-        await sink.close();
-        
-        debugPrint('PDF saved successfully to: $filePath');
-
-        if (Platform.isAndroid) {
-          await _notifyMediaScanner(filePath);
-        }
-
-        // ✅ Close downloading snackbar
-        Get.closeAllSnackbars();
-
-        Get.snackbar(
-          'Download Complete',
-          Platform.isAndroid 
-            ? 'File saved to Downloads\n$finalFileName'
-            : 'File saved successfully\n$finalFileName',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 3),
-        );
-
-        // ✅ OPTIMIZATION 6: Open file immediately (no delay)
-        try {
-          final result = await OpenFilex.open(filePath);
-          
-          if (result.type != ResultType.done) {
-            debugPrint('Could not open PDF: ${result.message}');
-            Get.snackbar(
-              'File Saved',
-              Platform.isAndroid
-                ? 'PDF saved to Downloads. Open from file manager.'
-                : 'PDF saved. Open from Files app.',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.orange,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 4),
-            );
-          }
-        } catch (e) {
-          debugPrint('Error opening PDF: $e');
-        }
-      } finally {
-        client.close();
-      }
-    } else {
-      Get.closeAllSnackbars();
-      throw Exception('Failed to download file: ${response.statusCode}');
-    }
-  } on TimeoutException catch (e) {
-    debugPrint('Download timeout: $e');
-    Get.closeAllSnackbars();
-    Get.snackbar(
-      'Download Timeout',
-      'Download took too long. Please check your connection.',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
   } catch (e) {
-    debugPrint('Error downloading PDF: $e');
-    Get.closeAllSnackbars();
+    debugPrint('Error opening PDF viewer: $e');
     Get.snackbar(
-      'Download Failed',
-      'Could not download the file. Please try again.',
+      'Error',
+      'Could not open PDF viewer',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: Colors.red,
       colorText: Colors.white,
@@ -386,6 +250,76 @@ Future<void> _downloadAndOpenPdf(String url, String fileName) async {
   }
 }
 
+// ✅ NEW: Separate method for downloading to device storage
+Future<void> _downloadToDevice(String url, String fileName) async {
+  try {
+    Get.snackbar(
+      'Downloading',
+      'Saving PDF to Downloads...',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.blue,
+      colorText: Colors.white,
+      showProgressIndicator: true,
+      isDismissible: false,
+      duration: const Duration(seconds: 2),
+    );
+
+    debugPrint('Downloading to device: $url');
+    final response = await http.get(Uri.parse(url));
+
+    if (response.statusCode == 200) {
+      String finalFileName = fileName;
+      if (!finalFileName.endsWith('.pdf')) {
+        finalFileName = '$finalFileName.pdf';
+      }
+
+      String filePath;
+
+      if (Platform.isAndroid) {
+        final downloadsDir = Directory('/storage/emulated/0/Download');
+        if (!await downloadsDir.exists()) {
+          await downloadsDir.create(recursive: true);
+        }
+        filePath = '${downloadsDir.path}/$finalFileName';
+      } else {
+        final directory = await getApplicationDocumentsDirectory();
+        filePath = '${directory.path}/$finalFileName';
+      }
+
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      
+      if (Platform.isAndroid) {
+        await _notifyMediaScanner(filePath);
+      }
+
+      debugPrint('PDF saved to: $filePath');
+
+      Get.snackbar(
+        'Download Complete',
+        Platform.isAndroid
+            ? 'File saved to Downloads\n$finalFileName'
+            : 'File saved\n$finalFileName',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
+        icon: const Icon(Icons.check_circle, color: Colors.white),
+      );
+    } else {
+      throw Exception('Failed to download: ${response.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('Error downloading to device: $e');
+    Get.snackbar(
+      'Download Failed',
+      'Could not save file to device',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
+  }
+}
 // ✅ ALTERNATIVE: Download with progress percentage (even faster feedback)
 Future<void> _downloadAndOpenPdfWithProgress(String url, String fileName) async {
   try {
@@ -848,6 +782,568 @@ case 'message':
       barrierDismissible: true,
     );
     break;
+
+    case 'contract_expiry':
+  debugPrint('📋 Contract expiry notification detected');
+  final contractId = data['contractId'] as String?;
+  final propertyName = data['propertyName'] as String?;
+  final expiryDate = data['expiryDate'] as String?;
+  final daysUntilExpiry = data['daysUntilExpiry'];
+  final urgency = data['urgency'] as String? ?? data['subType'] as String? ?? 'normal';
+  
+  // Parse days until expiry
+  int? days;
+  if (daysUntilExpiry != null) {
+    if (daysUntilExpiry is int) {
+      days = daysUntilExpiry;
+    } else if (daysUntilExpiry is String) {
+      days = int.tryParse(daysUntilExpiry);
+    }
+  }
+  
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: AppColors.splashBackgroundColor,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getUrgencyColor(urgency),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.assignment_late,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Contract Expiry Notice',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      content: Container(
+        constraints: const BoxConstraints(maxHeight: 500),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Urgency badge
+              if (days != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getUrgencyColor(urgency),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.warning, color: Colors.white, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        days <= 0
+                            ? 'EXPIRED'
+                            : days == 1
+                                ? 'EXPIRES TOMORROW'
+                                : 'EXPIRES IN $days DAYS',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 16),
+              
+              // Property name
+              if (propertyName != null && propertyName.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.home, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        propertyName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Expiry date
+              if (expiryDate != null && expiryDate.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Expires: ${_formatDate(expiryDate)}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Message
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  data['message'] as String? ?? 
+                  'Your contract is expiring soon. Please contact management to renew.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    height: 1.6,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        if (contractId != null && contractId.isNotEmpty)
+          TextButton.icon(
+            onPressed: () {
+              Get.back();
+              // Navigate to contract details (update route as needed)
+              Get.toNamed('/contractDetails', arguments: {'contractId': contractId});
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            icon: const Icon(Icons.visibility, size: 18),
+            label: const Text('View Contract', style: TextStyle(fontSize: 16)),
+          ),
+        TextButton(
+          onPressed: () => Get.back(),
+          style: TextButton.styleFrom(foregroundColor: Colors.grey),
+          child: const Text('Close', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+  break;
+
+case 'document_expiry':
+  debugPrint('📄 Document expiry notification detected');
+  final documentId = data['documentId'] as String?;
+  final documentName = data['documentName'] as String?;
+  final documentType = data['documentType'] as String?;
+  final expiryDate = data['expiryDate'] as String?;
+  final daysUntilExpiry = data['daysUntilExpiry'];
+  final urgency = data['urgency'] as String? ?? data['subType'] as String? ?? 'normal';
+  
+  // Parse days until expiry
+  int? days;
+  if (daysUntilExpiry != null) {
+    if (daysUntilExpiry is int) {
+      days = daysUntilExpiry;
+    } else if (daysUntilExpiry is String) {
+      days = int.tryParse(daysUntilExpiry);
+    }
+  }
+  
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: AppColors.splashBackgroundColor,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getUrgencyColor(urgency),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.description,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Document Expiry Notice',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      content: Container(
+        constraints: const BoxConstraints(maxHeight: 500),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Urgency badge
+              if (days != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getUrgencyColor(urgency),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.warning, color: Colors.white, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        days <= 0
+                            ? 'EXPIRED'
+                            : days == 1
+                                ? 'EXPIRES TOMORROW'
+                                : 'EXPIRES IN $days DAYS',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 16),
+              
+              // Document info
+              if (documentName != null && documentName.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.insert_drive_file, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        documentName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Document type
+              if (documentType != null && documentType.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.category, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Type: $documentType',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Expiry date
+              if (expiryDate != null && expiryDate.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Expires: ${_formatDate(expiryDate)}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Message
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  data['message'] as String? ??
+                  'Your document is expiring soon. Please renew to avoid any issues.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    height: 1.6,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        if (documentId != null && documentId.isNotEmpty)
+          TextButton.icon(
+            onPressed: () {
+              Get.back();
+              // Navigate to document details (update route as needed)
+              Get.toNamed('/documentDetails', arguments: {'documentId': documentId});
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+            icon: const Icon(Icons.visibility, size: 18),
+            label: const Text('View Document', style: TextStyle(fontSize: 16)),
+          ),
+        TextButton(
+          onPressed: () => Get.back(),
+          style: TextButton.styleFrom(foregroundColor: Colors.grey),
+          child: const Text('Close', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+  break;
+
+case 'payment_reminder':
+case 'upcoming_payment':
+  debugPrint('💰 Payment reminder notification detected');
+  final paymentId = data['paymentId'] as String?;
+  final amount = data['amount'];
+  final propertyName = data['propertyName'] as String?;
+  final paymentType = data['paymentType'] as String? ?? data['type'] as String? ?? 'rent';
+  final dueDate = data['dueDate'] as String?;
+  final daysUntilDue = data['daysUntilDue'];
+  final urgency = data['urgency'] as String? ?? data['subType'] as String? ?? 'normal';
+  
+  // Parse amount
+  double? parsedAmount;
+  if (amount != null) {
+    if (amount is num) {
+      parsedAmount = amount.toDouble();
+    } else if (amount is String) {
+      parsedAmount = double.tryParse(amount);
+    }
+  }
+  
+  // Parse days until due
+  int? days;
+  if (daysUntilDue != null) {
+    if (daysUntilDue is int) {
+      days = daysUntilDue;
+    } else if (daysUntilDue is String) {
+      days = int.tryParse(daysUntilDue);
+    }
+  }
+  
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: AppColors.splashBackgroundColor,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getUrgencyColor(urgency),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.payment,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Payment Reminder',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      content: Container(
+        constraints: const BoxConstraints(maxHeight: 500),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Urgency badge
+              if (days != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getUrgencyColor(urgency),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.warning, color: Colors.white, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        days <= 0
+                            ? 'OVERDUE'
+                            : days == 1
+                                ? 'DUE TOMORROW'
+                                : 'DUE IN $days DAYS',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 16),
+              
+              // Amount
+              if (parsedAmount != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green[50]!, Colors.green[100]!],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Amount Due',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'AED ${parsedAmount.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[900],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 16),
+              
+              // Property name
+              if (propertyName != null && propertyName.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.home, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        propertyName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Payment type
+              Row(
+                children: [
+                  const Icon(Icons.category, size: 20, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Type: ${paymentType.toUpperCase()}',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              
+              // Due date
+              if (dueDate != null && dueDate.isNotEmpty) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Due: ${_formatDate(dueDate)}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Message
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  data['message'] as String? ??
+                  'Please make the payment before the due date to avoid any penalties.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    height: 1.6,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        if (paymentId != null && paymentId.isNotEmpty)
+          ElevatedButton.icon(
+            onPressed: () {
+              Get.back();
+              // Navigate to payment screen (update route as needed)
+              Get.toNamed('/makePayment', arguments: {'paymentId': paymentId});
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[700],
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            icon: const Icon(Icons.payment, size: 18),
+            label: const Text('Pay Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          ),
+        TextButton(
+          onPressed: () => Get.back(),
+          style: TextButton.styleFrom(foregroundColor: Colors.grey),
+          child: const Text('Later', style: TextStyle(fontSize: 16)),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+  break;
 
         // ✅ FOLLOW-UP - Show notes dialog (KEEP AS IS - WORKING)
      // Replace the follow-up case in _navigateUsingGetX method (around line 950)
@@ -3249,6 +3745,35 @@ case 'property_enquiry':
       }
     }
 
+    Color _getUrgencyColor(String urgency) {
+  switch (urgency.toLowerCase()) {
+    case 'critical':
+    case 'overdue':
+    case 'expired':
+      return Colors.red[700]!;
+    case 'urgent':
+    case 'high':
+      return Colors.orange[700]!;
+    case 'medium':
+      return Colors.orange[500]!;
+    case 'normal':
+    case 'low':
+      return Colors.blue[500]!;
+    default:
+      return Colors.grey[500]!;
+  }
+}
+
+String _formatDate(String dateString) {
+  try {
+    final date = DateTime.parse(dateString);
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  } catch (e) {
+    return dateString;
+  }
+}
+
     String _getChannelName(String? type) {
       switch (type) {
         case 'technician_assignment':
@@ -3478,6 +4003,7 @@ case 'tenant_notice':
       _tokenRefreshSubscription?.cancel();
     }
   }
+  
 
   @pragma('vm:entry-point')
   Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {

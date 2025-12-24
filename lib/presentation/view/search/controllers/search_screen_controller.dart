@@ -7,6 +7,439 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
+// class SearchScreenController extends GetxController {
+//   final ApiService apiService = ApiService();
+//   final GetStorage storage = GetStorage();
+
+//   // search dropdown data
+//   final Rxn<SearchDropdownResponse> searchDropdownResponse =
+//       Rxn<SearchDropdownResponse>();
+//   final RxBool isLoadingSearchDropdown = false.obs;
+//   final RxString searchDropdownErrorMessage = ''.obs;
+
+//   // property search results
+//   final RxBool isLoadingSearchResults = false.obs;
+//   final RxString searchResultsErrorMessage = ''.obs;
+//   final Rxn<SearchPropertyResponse> searchResponse = Rxn<SearchPropertyResponse>();
+//   final RxList<Property> searchResults = <Property>[].obs;
+  
+//   // selected options
+//   final Rx<PropertyOption?> selectedPropertyOption = Rx<PropertyOption?>(null);
+//   final Rx<PropertyType?> selectedPropertyType = Rx<PropertyType?>(null);
+//   final Rx<PropertyLocation?> selectedPropertyLocation =
+//       Rx<PropertyLocation?>(null);
+//   final Rx<PropertyBedsBath?> selectedBedsBath = Rx<PropertyBedsBath?>(null);
+//   final Rx<PropertyRangePrice?> selectedPriceRange = Rx<PropertyRangePrice?>(null);
+
+//   // Getters with null safety
+//   List<PropertyOption> get propertyOptions => 
+//       searchDropdownResponse.value?.data?.propertyOptions ?? [];
+  
+//   List<PropertyType> get propertyTypes => 
+//       searchDropdownResponse.value?.data?.propertyTypes ?? [];
+  
+//   List<PropertyLocation> get propertyLocations => 
+//       searchDropdownResponse.value?.data?.propertyLocations ?? [];
+  
+//   List<PropertyBedsBath> get propertyBedsBaths => 
+//       searchDropdownResponse.value?.data?.propertyBedsBaths ?? [];
+  
+//   List<PropertyRangePrice> get propertyPrices => 
+//       searchDropdownResponse.value?.data?.propertyPrices ?? [];
+
+//   @override
+//   void onInit() {
+//     super.onInit();
+//     fetchSearchDropdown();
+//   }
+
+//   // Fetch search dropdown data
+//   Future<void> fetchSearchDropdown() async {
+//     try {
+//       debugPrint(
+//           '🔄 [fetchSearchDropdown] Initiating search dropdown fetch...');
+//       isLoadingSearchDropdown(true);
+//       searchDropdownErrorMessage('');
+
+//       final response = await apiService.getSearchDropDown();
+
+//       debugPrint(
+//           '✅ [fetchSearchDropdown] API call completed. Status: ${response.statusCode}');
+//       debugPrint('📦 [fetchSearchDropdown] Response data: ${response.data}');
+//       if (response.data != null && response.data['data'] != null) {
+//         debugPrint('🔑 Available keys in data: ${response.data['data'].keys.toList()}');
+//       }
+
+//       if (response.statusCode == 200) {
+//         if (response.data == null) {
+//           debugPrint('❌ Response data is null');
+//           searchDropdownErrorMessage('No data received from server');
+//           handleSearchDropdownError();
+//           return;
+//         }
+
+//         debugPrint('📥 [fetchSearchDropdown] Parsing response data...');
+        
+//         try {
+//           final dropdownData = SearchDropdownResponse.fromJson(response.data);
+//           searchDropdownResponse.value = dropdownData;
+          
+//           debugPrint('✅ Successfully parsed dropdown data');
+//           debugPrint('📊 Dropdown counts:');
+//           debugPrint('  Property Options: ${propertyOptions.length}');
+//           debugPrint('  Property Types: ${propertyTypes.length}');
+//           debugPrint('  Property Locations: ${propertyLocations.length}');
+//           debugPrint('  Beds/Bath: ${propertyBedsBaths.length}');
+//           debugPrint('  Price Range: ${propertyPrices.length}');
+
+//           // Set initial selections only if we have data
+//           if (dropdownData.data != null) {
+//             setInitialSelections();
+//           }
+//         } catch (parseError, stackTrace) {
+//           debugPrint('❌ Error parsing response: $parseError');
+//           debugPrint('📝 Stack trace: $stackTrace');
+//           searchDropdownErrorMessage('Error parsing server response');
+//           handleSearchDropdownError();
+//         }
+//       } else {
+//         throw DioException(
+//           requestOptions: response.requestOptions,
+//           response: response,
+//           error: 'Failed to load search dropdown: ${response.statusCode}',
+//         );
+//       }
+//     } on DioException catch (e) {
+//       debugPrint('❌ [fetchSearchDropdown] DioException: ${e.message}');
+//       searchDropdownErrorMessage(parseDioError(e));
+//       handleSearchDropdownError();
+//     } catch (e, stackTrace) {
+//       debugPrint('‼️ [fetchSearchDropdown] Unexpected error: $e');
+//       debugPrint('📝 Stack trace: $stackTrace');
+//       searchDropdownErrorMessage('Unexpected error: ${e.toString()}');
+//       handleSearchDropdownError();
+//     } finally {
+//       isLoadingSearchDropdown(false);
+//     }
+//   }
+
+//   // Search for properties
+//   Future<void> searchProperties() async {
+//     if (!isFormComplete) {
+//       debugPrint('❌ [searchProperties] Form is not complete');
+//       Get.snackbar(
+//         'Incomplete Form',
+//         'Please select all required fields before searching',
+//         snackPosition: SnackPosition.BOTTOM,
+//         backgroundColor: Colors.orange,
+//         colorText: Colors.white,
+//       );
+//       return;
+//     }
+
+//     try {
+//       debugPrint('🔍 [searchProperties] Initiating property search...');
+//       isLoadingSearchResults(true);
+//       searchResultsErrorMessage('');
+      
+//       // Create the search request using the correct field names
+//       final searchRequest = PropertySearchResultRequest(
+//         propertyOptions: selectedPropertyOption.value?.id ?? 0,
+//         propertyTypes: selectedPropertyType.value?.id ?? 0,
+//         propertyLocations: selectedPropertyLocation.value?.id ?? 0,
+//         propertyBedsBath: selectedBedsBath.value?.id ?? 0,
+//         propertyPriceForSearch: selectedPriceRange.value?.id ?? 0,
+//       );
+
+//       debugPrint('📤 [searchProperties] Search request: ${searchRequest.toJson()}');
+
+//       final response = await apiService.getPropertySearchResult(searchRequest);
+
+//       debugPrint(
+//           '✅ [searchProperties] API call completed. Status: ${response.statusCode}');
+
+//       if (response.statusCode == 200) {
+//         if (response.data == null) {
+//           debugPrint('❌ Response data is null');
+//           searchResultsErrorMessage('No data received from server');
+//           handleSearchResultsError('No data received from server');
+//           return;
+//         }
+
+//         debugPrint('📥 [searchProperties] Parsing search results...');
+        
+//         try {
+//           final searchResultsData = SearchPropertyResponse.fromJson(response.data);
+//           searchResponse.value = searchResultsData;
+          
+//           // Update the search results list
+//           if (searchResultsData.data != null && searchResultsData.data!.isNotEmpty) {
+//             searchResults.value = searchResultsData.data!;
+//             debugPrint('🏠 [searchProperties] Found ${searchResults.length} properties');
+            
+//             Get.snackbar(
+//               'Search Complete',
+//               'Found ${searchResults.length} properties',
+//               snackPosition: SnackPosition.BOTTOM,
+//               backgroundColor: Colors.green,
+//               colorText: Colors.white,
+//               duration: const Duration(seconds: 2),
+//             );
+//           } else {
+//             searchResults.clear();
+//             debugPrint('📭 No properties found');
+//             Get.snackbar(
+//               'No Results',
+//               'No properties found matching your criteria',
+//               snackPosition: SnackPosition.BOTTOM,
+//               backgroundColor: Colors.blue,
+//               colorText: Colors.white,
+//               duration: const Duration(seconds: 2),
+//             );
+//           }
+//         } catch (parseError, stackTrace) {
+//           debugPrint('❌ Error parsing search results: $parseError');
+//           debugPrint('📝 Stack trace: $stackTrace');
+//           searchResultsErrorMessage('Error parsing search results');
+//           handleSearchResultsError('Error parsing search results');
+//         }
+//       } else {
+//         throw DioException(
+//           requestOptions: response.requestOptions,
+//           response: response,
+//           error: 'Failed to search properties: ${response.statusCode}',
+//         );
+//       }
+//     } on DioException catch (e) {
+//       debugPrint('❌ [searchProperties] DioException: ${e.message}');
+//       final errorMessage = parseDioError(e);
+//       searchResultsErrorMessage(errorMessage);
+//       handleSearchResultsError(errorMessage);
+//     } catch (e, stackTrace) {
+//       debugPrint('‼️ [searchProperties] Unexpected error: $e');
+//       debugPrint('📝 Stack trace: $stackTrace');
+//       final errorMessage = 'Unexpected error: ${e.toString()}';
+//       searchResultsErrorMessage(errorMessage);
+//       handleSearchResultsError(errorMessage);
+//     } finally {
+//       isLoadingSearchResults(false);
+//     }
+//   }
+
+//   void handleSearchResultsError(String errorMessage) {
+//     searchResults.clear();
+//     Get.snackbar(
+//       'Search Error',
+//       errorMessage,
+//       snackPosition: SnackPosition.BOTTOM,
+//       backgroundColor: Colors.red,
+//       colorText: Colors.white,
+//       duration: const Duration(seconds: 3),
+//     );
+//   }
+
+//   void setInitialSelections() {
+//     final data = searchDropdownResponse.value?.data;
+//     if (data == null) {
+//       debugPrint('⚠️ Cannot set initial selections - data is null');
+//       return;
+//     }
+
+//     // Only set initial values if they haven't been set before
+//     if (selectedPropertyOption.value == null && propertyOptions.isNotEmpty) {
+//       selectedPropertyOption.value = propertyOptions.first;
+//       debugPrint('📌 Set initial property option: ${propertyOptions.first.name.en}');
+//     }
+//     if (selectedPropertyType.value == null && propertyTypes.isNotEmpty) {
+//       selectedPropertyType.value = propertyTypes.first;
+//       debugPrint('📌 Set initial property type: ${propertyTypes.first.name.en}');
+//     }
+//     if (selectedPropertyLocation.value == null && propertyLocations.isNotEmpty) {
+//       selectedPropertyLocation.value = propertyLocations.first;
+//       debugPrint('📌 Set initial property location: ${propertyLocations.first.name.en}');
+//     }
+    
+//     // Optional fields - only set if available
+//     if (selectedBedsBath.value == null && propertyBedsBaths.isNotEmpty) {
+//       selectedBedsBath.value = propertyBedsBaths.first;
+//       debugPrint('📌 Set initial beds/bath: ${propertyBedsBaths.first.name.en}');
+//     } else if (propertyBedsBaths.isEmpty) {
+//       debugPrint('ℹ️ Beds/Bath options not available - will be optional');
+//     }
+    
+//     if (selectedPriceRange.value == null && propertyPrices.isNotEmpty) {
+//       selectedPriceRange.value = propertyPrices.first;
+//       debugPrint('📌 Set initial price range: ${propertyPrices.first.name.en}');
+//     } else if (propertyPrices.isEmpty) {
+//       debugPrint('ℹ️ Price range options not available - will be optional');
+//     }
+//   }
+
+//   void handleSearchDropdownError() {
+//     searchDropdownResponse.value = null;
+//     clearSelections();
+//   }
+
+//   void clearSelections() {
+//     selectedPropertyOption.value = null;
+//     selectedPropertyType.value = null;
+//     selectedPropertyLocation.value = null;
+//     selectedBedsBath.value = null;
+//     selectedPriceRange.value = null;
+//     searchResults.clear();
+//     searchResponse.value = null;
+//     searchResultsErrorMessage('');
+//     debugPrint('🧹 All selections and results cleared');
+//   }
+
+//   // Selection methods
+//   void selectPropertyOption(PropertyOption? option) {
+//     debugPrint(
+//         '✅ Selected property option: ${option?.name.en} (ID: ${option?.id})');
+//     selectedPropertyOption.value = option;
+//   }
+
+//   void selectPropertyType(PropertyType? type) {
+//     debugPrint('✅ Selected property type: ${type?.name.en} (ID: ${type?.id})');
+//     selectedPropertyType.value = type;
+//   }
+
+//   void selectPropertyLocation(PropertyLocation? location) {
+//     debugPrint(
+//         '✅ Selected property location: ${location?.name.en} (ID: ${location?.id})');
+//     selectedPropertyLocation.value = location;
+//   }
+
+//   void selectBedsBath(PropertyBedsBath? bedsBath) {
+//     debugPrint(
+//         '✅ Selected beds/bath: ${bedsBath?.name.en} (ID: ${bedsBath?.id})');
+//     selectedBedsBath.value = bedsBath;
+//   }
+
+//   void selectPriceRange(PropertyRangePrice? priceRange) {
+//     debugPrint(
+//         '✅ Selected price range: ${priceRange?.name.en} (ID: ${priceRange?.id})');
+//     selectedPriceRange.value = priceRange;
+//   }
+
+//   // Check if all required fields are selected
+//   // Only property option, type, and location are required
+//   // Beds/bath and price range are optional
+//   bool get isFormComplete {
+//     final complete = selectedPropertyOption.value != null &&
+//         selectedPropertyType.value != null &&
+//         selectedPropertyLocation.value != null;
+    
+//     if (!complete) {
+//       debugPrint('⚠️ Form incomplete:');
+//       debugPrint('  Property Option: ${selectedPropertyOption.value != null}');
+//       debugPrint('  Property Type: ${selectedPropertyType.value != null}');
+//       debugPrint('  Property Location: ${selectedPropertyLocation.value != null}');
+//     } else {
+//       debugPrint('✅ Form is complete');
+//       debugPrint('  Beds/Bath (optional): ${selectedBedsBath.value != null}');
+//       debugPrint('  Price Range (optional): ${selectedPriceRange.value != null}');
+//     }
+    
+//     return complete;
+//   }
+
+//   // Check if search results are available
+//   bool get hasSearchResults => searchResults.isNotEmpty;
+
+//   // Get search results count
+//   int get searchResultsCount => searchResults.length;
+
+//   // Get search success status
+//   bool get searchSuccess => searchResponse.value?.success ?? false;
+
+//   // Helper methods to get property details
+//   String getPropertyTitle(Property property, {bool useArabic = false}) {
+//     return useArabic 
+//         ? (property.title?.ar ?? property.title?.en ?? 'No Title')
+//         : (property.title?.en ?? property.title?.ar ?? 'No Title');
+//   }
+
+//   String getPropertyLocation(Property property, {bool useArabic = false}) {
+//     return useArabic
+//         ? (property.location?.ar ?? property.location?.en ?? 'No Location')
+//         : (property.location?.en ?? property.location?.ar ?? 'No Location');
+//   }
+
+//   String getPropertyType(Property property, {bool useArabic = false}) {
+//     return useArabic
+//         ? (property.type?.ar ?? property.type?.en ?? 'No Type')
+//         : (property.type?.en ?? property.type?.ar ?? 'No Type');
+//   }
+
+//   // ✅ UPDATED: Get formatted price with "annually" label
+//   String getFormattedPriceWithAnnually(Property property, {bool useArabic = false}) {
+//     final priceData = property.price;
+    
+//     if (priceData == null) return useArabic ? 'السعر غير متوفر' : 'Price not available';
+    
+//     // Try to get the formatted price first
+//     String? formattedPrice = useArabic 
+//         ? priceData.formatted?.ar 
+//         : priceData.formatted?.en;
+    
+//     // If formatted price exists and is not empty, add annually label
+//     if (formattedPrice != null && formattedPrice.isNotEmpty) {
+//       return useArabic 
+//           ? '$formattedPrice / سنوياً' 
+//           : '$formattedPrice / annually';
+//     }
+    
+//     // Fallback to raw price with manual formatting
+//     if (priceData.raw != null) {
+//       final rawPrice = priceData.raw;
+//       // Format the number with commas for thousands
+//       final formatted = rawPrice!.toStringAsFixed(0).replaceAllMapped(
+//         RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+//         (Match m) => '${m[1]},'
+//       );
+      
+//       // Add currency symbol and annually label based on language
+//       return useArabic 
+//           ? '$formatted ر.ع / سنوياً' 
+//           : 'AED $formatted / annually';
+//     }
+    
+//     return useArabic ? 'السعر غير متوفر' : 'Price not available';
+//   }
+
+//   // ✅ KEPT: Original method for backward compatibility (if needed elsewhere)
+//   String getFormattedPrice(Property property, {bool useArabic = false}) {
+//     return useArabic
+//         ? (property.price?.formatted?.ar ?? property.price?.formatted?.en ?? 'Price not available')
+//         : (property.price?.formatted?.en ?? property.price?.formatted?.ar ?? 'Price not available');
+//   }
+
+//   String getPropertyArea(Property property, {bool useArabic = false}) {
+//     return useArabic
+//         ? (property.specs?.area?.ar ?? property.specs?.area?.en ?? 'Area not specified')
+//         : (property.specs?.area?.en ?? property.specs?.area?.ar ?? 'Area not specified');
+//   }
+
+//   // refresh data
+//   Future<void> refreshSearchDropdown() async {
+//     await fetchSearchDropdown();
+//   }
+
+//   // Clear search results
+//   void clearSearchResults() {
+//     searchResults.clear();
+//     searchResponse.value = null;
+//     searchResultsErrorMessage('');
+//     debugPrint('🧹 Search results cleared');
+//   }
+
+//   // Retry search
+//   Future<void> retrySearch() async {
+//     await searchProperties();
+//   }
+// }
+
 class SearchScreenController extends GetxController {
   final ApiService apiService = ApiService();
   final GetStorage storage = GetStorage();
@@ -19,9 +452,16 @@ class SearchScreenController extends GetxController {
 
   // property search results
   final RxBool isLoadingSearchResults = false.obs;
+  final RxBool isLoadingMoreResults = false.obs; // For pagination loading
   final RxString searchResultsErrorMessage = ''.obs;
   final Rxn<SearchPropertyResponse> searchResponse = Rxn<SearchPropertyResponse>();
   final RxList<Property> searchResults = <Property>[].obs;
+  
+  // Pagination tracking
+  final RxInt currentPage = 1.obs;
+  final RxInt totalPages = 1.obs;
+  final RxInt totalResults = 0.obs;
+  final RxBool hasMorePages = false.obs;
   
   // selected options
   final Rx<PropertyOption?> selectedPropertyOption = Rx<PropertyOption?>(null);
@@ -123,7 +563,7 @@ class SearchScreenController extends GetxController {
     }
   }
 
-  // Search for properties
+  // Search for properties (always resets to page 1)
   Future<void> searchProperties() async {
     if (!isFormComplete) {
       debugPrint('❌ [searchProperties] Form is not complete');
@@ -137,26 +577,53 @@ class SearchScreenController extends GetxController {
       return;
     }
 
+    // Reset pagination for new search
+    currentPage.value = 1;
+    searchResults.clear();
+    
+    await _fetchProperties(page: 1, isNewSearch: true);
+  }
+
+  // Load more properties (next page)
+  Future<void> loadMoreProperties() async {
+    if (!hasMorePages.value || isLoadingMoreResults.value) {
+      debugPrint('⚠️ No more pages to load or already loading');
+      return;
+    }
+
+    final nextPage = currentPage.value + 1;
+    await _fetchProperties(page: nextPage, isNewSearch: false);
+  }
+
+  // Internal method to fetch properties with pagination
+  Future<void> _fetchProperties({required int page, required bool isNewSearch}) async {
     try {
-      debugPrint('🔍 [searchProperties] Initiating property search...');
-      isLoadingSearchResults(true);
+      debugPrint('🔍 [_fetchProperties] Fetching page $page...');
+      
+      if (isNewSearch) {
+        isLoadingSearchResults(true);
+      } else {
+        isLoadingMoreResults(true);
+      }
+      
       searchResultsErrorMessage('');
       
-      // Create the search request using the correct field names
+      // Create the search request with page number
       final searchRequest = PropertySearchResultRequest(
         propertyOptions: selectedPropertyOption.value?.id ?? 0,
         propertyTypes: selectedPropertyType.value?.id ?? 0,
         propertyLocations: selectedPropertyLocation.value?.id ?? 0,
         propertyBedsBath: selectedBedsBath.value?.id ?? 0,
         propertyPriceForSearch: selectedPriceRange.value?.id ?? 0,
+        page: page,
       );
 
-      debugPrint('📤 [searchProperties] Search request: ${searchRequest.toJson()}');
+      debugPrint('📤 [_fetchProperties] Search request: ${searchRequest.toJson()}');
 
       final response = await apiService.getPropertySearchResult(searchRequest);
 
       debugPrint(
-          '✅ [searchProperties] API call completed. Status: ${response.statusCode}');
+          '✅ [_fetchProperties] API call completed. Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         if (response.data == null) {
@@ -166,36 +633,71 @@ class SearchScreenController extends GetxController {
           return;
         }
 
-        debugPrint('📥 [searchProperties] Parsing search results...');
+        debugPrint('📥 [_fetchProperties] Parsing search results...');
         
         try {
           final searchResultsData = SearchPropertyResponse.fromJson(response.data);
           searchResponse.value = searchResultsData;
           
+          // Update pagination info
+          if (searchResultsData.pagination != null) {
+            final pagination = searchResultsData.pagination!;
+            currentPage.value = pagination.currentPage ?? 1;
+            totalPages.value = pagination.lastPage ?? 1;
+            totalResults.value = pagination.total ?? 0;
+            hasMorePages.value = currentPage.value < totalPages.value;
+            
+            debugPrint('📊 Pagination Info:');
+            debugPrint('  Current Page: ${currentPage.value}');
+            debugPrint('  Total Pages: ${totalPages.value}');
+            debugPrint('  Total Results: ${totalResults.value}');
+            debugPrint('  Has More: ${hasMorePages.value}');
+          }
+          
           // Update the search results list
           if (searchResultsData.data != null && searchResultsData.data!.isNotEmpty) {
-            searchResults.value = searchResultsData.data!;
-            debugPrint('🏠 [searchProperties] Found ${searchResults.length} properties');
+            if (isNewSearch) {
+              // Replace results for new search
+              searchResults.value = searchResultsData.data!;
+              debugPrint('🏠 [_fetchProperties] Loaded ${searchResults.length} properties (new search)');
+            } else {
+              // Append results for pagination
+              searchResults.addAll(searchResultsData.data!);
+              debugPrint('🏠 [_fetchProperties] Total properties: ${searchResults.length}');
+            }
             
-            Get.snackbar(
-              'Search Complete',
-              'Found ${searchResults.length} properties',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 2),
-            );
+            if (isNewSearch) {
+              Get.snackbar(
+                'Search Complete',
+                'Found ${totalResults.value} properties',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 2),
+              );
+            } else {
+              Get.snackbar(
+                'Loaded More',
+                'Page ${currentPage.value} of ${totalPages.value}',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.blue,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 1),
+              );
+            }
           } else {
-            searchResults.clear();
-            debugPrint('📭 No properties found');
-            Get.snackbar(
-              'No Results',
-              'No properties found matching your criteria',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.blue,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 2),
-            );
+            if (isNewSearch) {
+              searchResults.clear();
+              debugPrint('📭 No properties found');
+              Get.snackbar(
+                'No Results',
+                'No properties found matching your criteria',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.blue,
+                colorText: Colors.white,
+                duration: const Duration(seconds: 2),
+              );
+            }
           }
         } catch (parseError, stackTrace) {
           debugPrint('❌ Error parsing search results: $parseError');
@@ -211,23 +713,29 @@ class SearchScreenController extends GetxController {
         );
       }
     } on DioException catch (e) {
-      debugPrint('❌ [searchProperties] DioException: ${e.message}');
+      debugPrint('❌ [_fetchProperties] DioException: ${e.message}');
       final errorMessage = parseDioError(e);
       searchResultsErrorMessage(errorMessage);
       handleSearchResultsError(errorMessage);
     } catch (e, stackTrace) {
-      debugPrint('‼️ [searchProperties] Unexpected error: $e');
+      debugPrint('‼️ [_fetchProperties] Unexpected error: $e');
       debugPrint('📝 Stack trace: $stackTrace');
       final errorMessage = 'Unexpected error: ${e.toString()}';
       searchResultsErrorMessage(errorMessage);
       handleSearchResultsError(errorMessage);
     } finally {
-      isLoadingSearchResults(false);
+      if (isNewSearch) {
+        isLoadingSearchResults(false);
+      } else {
+        isLoadingMoreResults(false);
+      }
     }
   }
 
   void handleSearchResultsError(String errorMessage) {
-    searchResults.clear();
+    if (currentPage.value == 1) {
+      searchResults.clear();
+    }
     Get.snackbar(
       'Search Error',
       errorMessage,
@@ -289,7 +797,15 @@ class SearchScreenController extends GetxController {
     searchResults.clear();
     searchResponse.value = null;
     searchResultsErrorMessage('');
+    resetPagination();
     debugPrint('🧹 All selections and results cleared');
+  }
+
+  void resetPagination() {
+    currentPage.value = 1;
+    totalPages.value = 1;
+    totalResults.value = 0;
+    hasMorePages.value = false;
   }
 
   // Selection methods
@@ -323,8 +839,6 @@ class SearchScreenController extends GetxController {
   }
 
   // Check if all required fields are selected
-  // Only property option, type, and location are required
-  // Beds/bath and price range are optional
   bool get isFormComplete {
     final complete = selectedPropertyOption.value != null &&
         selectedPropertyType.value != null &&
@@ -372,43 +886,6 @@ class SearchScreenController extends GetxController {
         : (property.type?.en ?? property.type?.ar ?? 'No Type');
   }
 
-  // ✅ UPDATED: Get formatted price with "annually" label
-  String getFormattedPriceWithAnnually(Property property, {bool useArabic = false}) {
-    final priceData = property.price;
-    
-    if (priceData == null) return useArabic ? 'السعر غير متوفر' : 'Price not available';
-    
-    // Try to get the formatted price first
-    String? formattedPrice = useArabic 
-        ? priceData.formatted?.ar 
-        : priceData.formatted?.en;
-    
-    // If formatted price exists and is not empty, add annually label
-    if (formattedPrice != null && formattedPrice.isNotEmpty) {
-      return useArabic 
-          ? '$formattedPrice / سنوياً' 
-          : '$formattedPrice / annually';
-    }
-    
-    // Fallback to raw price with manual formatting
-    if (priceData.raw != null) {
-      final rawPrice = priceData.raw;
-      // Format the number with commas for thousands
-      final formatted = rawPrice!.toStringAsFixed(0).replaceAllMapped(
-        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-        (Match m) => '${m[1]},'
-      );
-      
-      // Add currency symbol and annually label based on language
-      return useArabic 
-          ? '$formatted ر.ع / سنوياً' 
-          : 'AED $formatted / annually';
-    }
-    
-    return useArabic ? 'السعر غير متوفر' : 'Price not available';
-  }
-
-  // ✅ KEPT: Original method for backward compatibility (if needed elsewhere)
   String getFormattedPrice(Property property, {bool useArabic = false}) {
     return useArabic
         ? (property.price?.formatted?.ar ?? property.price?.formatted?.en ?? 'Price not available')
@@ -421,7 +898,7 @@ class SearchScreenController extends GetxController {
         : (property.specs?.area?.en ?? property.specs?.area?.ar ?? 'Area not specified');
   }
 
-  // refresh data
+  // Refresh data
   Future<void> refreshSearchDropdown() async {
     await fetchSearchDropdown();
   }
@@ -431,6 +908,7 @@ class SearchScreenController extends GetxController {
     searchResults.clear();
     searchResponse.value = null;
     searchResultsErrorMessage('');
+    resetPagination();
     debugPrint('🧹 Search results cleared');
   }
 

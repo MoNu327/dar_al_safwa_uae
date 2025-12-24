@@ -17,7 +17,10 @@ class PropertySearchResultRequest {
   final int propertyBedsBath;
 
   @JsonKey(name: 'property_price_range_id')
-  final int  propertyPriceForSearch;
+  final int propertyPriceForSearch;
+
+  @JsonKey(name: 'page')
+  final int page; // New page field
 
   PropertySearchResultRequest({
     required this.propertyOptions,
@@ -25,6 +28,7 @@ class PropertySearchResultRequest {
     required this.propertyLocations,
     required this.propertyBedsBath,
     required this.propertyPriceForSearch,
+    this.page = 1, // default to page 1
   });
 
   factory PropertySearchResultRequest.fromJson(Map<String, dynamic> json) =>
@@ -33,14 +37,19 @@ class PropertySearchResultRequest {
   Map<String, dynamic> toJson() => _$PropertySearchResultRequestToJson(this);
 }
 
+/// ===============================
+/// RESPONSE MODEL WITH PAGINATION
+/// ===============================
 @JsonSerializable()
 class SearchPropertyResponse {
   final bool success;
   final List<Property>? data;
+  final Pagination? pagination; // Added pagination
 
   SearchPropertyResponse({
     required this.success,
     this.data,
+    this.pagination,
   });
 
   factory SearchPropertyResponse.fromJson(Map<String, dynamic> json) =>
@@ -49,6 +58,9 @@ class SearchPropertyResponse {
   Map<String, dynamic> toJson() => _$SearchPropertyResponseToJson(this);
 }
 
+/// ===============================
+/// PROPERTY MODEL
+/// ===============================
 @JsonSerializable()
 class Property {
   final int? id;
@@ -61,7 +73,7 @@ class Property {
   final LocalizedText? location;
   final Specs? specs;
   final String? image;
-  final Rating? rating; 
+  final Rating? rating;
 
   Property({
     this.id,
@@ -73,7 +85,7 @@ class Property {
     this.location,
     this.specs,
     this.image,
-    this.rating
+    this.rating,
   });
 
   factory Property.fromJson(Map<String, dynamic> json) =>
@@ -134,12 +146,13 @@ class Features {
   @JsonKey(name: 'furnished')
   final bool? furnished;
 
-  Features(
-      {this.balcony,
-      this.maidRoom,
-      this.parking,
-      this.seaView,
-      this.furnished});
+  Features({
+    this.balcony,
+    this.maidRoom,
+    this.parking,
+    this.seaView,
+    this.furnished,
+  });
 
   factory Features.fromJson(Map<String, dynamic> json) =>
       _$FeaturesFromJson(json);
@@ -160,7 +173,6 @@ class Specs {
   Map<String, dynamic> toJson() => _$SpecsToJson(this);
 }
 
-
 @JsonSerializable()
 class Rating {
   final double? average;
@@ -180,4 +192,33 @@ class Rating {
       _$RatingFromJson(json);
 
   Map<String, dynamic> toJson() => _$RatingToJson(this);
+}
+
+/// ===============================
+/// PAGINATION MODEL
+/// ===============================
+@JsonSerializable()
+class Pagination {
+  @JsonKey(name: 'current_page')
+  final int? currentPage;
+
+  @JsonKey(name: 'per_page')
+  final int? perPage;
+
+  final int? total;
+
+  @JsonKey(name: 'last_page')
+  final int? lastPage;
+
+  Pagination({
+    this.currentPage,
+    this.perPage,
+    this.total,
+    this.lastPage,
+  });
+
+  factory Pagination.fromJson(Map<String, dynamic> json) =>
+      _$PaginationFromJson(json);
+
+  Map<String, dynamic> toJson() => _$PaginationToJson(this);
 }
