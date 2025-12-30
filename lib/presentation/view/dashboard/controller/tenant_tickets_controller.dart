@@ -1,89 +1,3 @@
-// import 'dart:io';
-// import 'package:majan/data/repositories/api_services.dart';
-// import 'package:get/get.dart';
-// import 'package:majan/data/model/tenant_ticket.dart';
-
-// class TenantTicketController extends GetxController {
-//   final ApiService _apiService = ApiService();
-
-//   // Reactive variables
-//   var isLoading = false.obs;
-//   var categories = <String>[].obs;
-//   var subcategories = <String>[].obs;
-//   var tickets = <TenantTicket>[].obs;
-
-//   var selectedCategory = ''.obs;
-//   var selectedSubcategory = ''.obs;
-
-//   /// Fetch categories
-//   Future<void> fetchCategories() async {
-//     try {
-//       isLoading.value = true;
-//       final response = await ApiService.getComplaintCategories();
-//       categories.value = List<String>.from(response.data['categories'] ?? []);
-//     } catch (e) {
-//       Get.snackbar('Error', 'Failed to load categories: $e');
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-
-//   /// Fetch subcategories
-//   Future<void> fetchSubcategories(String categoryId) async {
-//     try {
-//       isLoading.value = true;
-//       final request = TenantTicketSubCategoriesRequest(categoryId: categoryId);
-//       final response = await _apiService.getTenantTicketSubcategories(request);
-//       subcategories.value = List<String>.from(response.data['subcategories'] ?? []);
-//     } catch (e) {
-//       Get.snackbar('Error', 'Failed to load subcategories: $e');
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-
-//   /// Create ticket
-//   Future<void> createTicket({
-//     required String property,
-//     required String category,
-//     String? subcategory,
-//     required String issue,
-//     List<File>? imageFiles,
-//   }) async {
-//     try {
-//       isLoading.value = true;
-
-//       final ticket = TenantTicket(
-//         property: property,
-//         category: category,
-//         subcategory: subcategory,
-//         issue: issue,
-//         images: imageFiles?.map((e) => e.path).toList() ?? [],
-//       );
-
-//       final response = await _apiService.createTenantTicket(ticket);
-//       Get.snackbar('Success', response.data['message'] ?? 'Ticket created successfully');
-//     } catch (e) {
-//       Get.snackbar('Error', 'Failed to create ticket: $e');
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-
-//   /// Fetch user's tickets (optional)
-//   Future<void> fetchUserTickets(String uid) async {
-//     try {
-//       isLoading.value = true;
-//       final response = await _apiService.getTenantTickets(uid);
-//       final List data = response.data['tickets'] ?? [];
-//       tickets.value = data.map((e) => TenantTicket.fromJson(e)).toList();
-//     } catch (e) {
-//       Get.snackbar('Error', 'Failed to fetch tickets: $e');
-//     } finally {
-//       isLoading.value = false;
-//     }
-//   }
-// }
 import 'dart:convert';
 import 'package:majan/data/datasources/api_client.dart';
 import 'package:majan/data/model/full_complaint_model.dart';
@@ -167,34 +81,41 @@ class TenantsTicketsController extends GetxController {
 
   
 
-  /// Fetch tenant complaints
-  Future<void> fetchTenantComplaints() async {
-    isComplaintLoading.value = true;
-    complaintErrorMessage.value = '';
-    hasComplaints.value = false;
+  /// Fetch tenant complaints - returns the list directly
+Future<List<Complaint>> fetchTenantComplaints() async {
+  isComplaintLoading.value = true;
+  complaintErrorMessage.value = '';
+  hasComplaints.value = false;
 
-    try {
-      final response = await apiService.getTenantComplaints();
-      debugPrint("API Response: ${response.toJson()}");
-      debugPrint("API  : ${response.data}");
+  try {
+    final response = await apiService.getTenantComplaints();
+    debugPrint("API Response: ${response.toJson()}");
+    debugPrint("API  : ${response.data}");
 
-      if (response.status) {
-        if (response.data.isEmpty) {
-          complaintErrorMessage.value = response.message;
-        } else {
-          hasComplaints.value = true;
-          complaints.value = response.data;
-        }
-      } else {
+    if (response.status) {
+      if (response.data.isEmpty) {
         complaintErrorMessage.value = response.message;
+        complaints.value = []; // **ADD THIS**
+        return []; // **ADD THIS**
+      } else {
+        hasComplaints.value = true;
+        complaints.value = response.data;
+        return response.data; // **ADD THIS**
       }
-    } catch (e, stackTrace) {
-      complaintErrorMessage.value = "Failed to load complaints";
-      debugPrint("Error: $e\n$stackTrace");
-    } finally {
-      isComplaintLoading.value = false;
+    } else {
+      complaintErrorMessage.value = response.message;
+      complaints.value = []; // **ADD THIS**
+      return []; // **ADD THIS**
     }
+  } catch (e, stackTrace) {
+    complaintErrorMessage.value = "Failed to load complaints";
+    debugPrint("Error: $e\n$stackTrace");
+    complaints.value = []; // **ADD THIS**
+    return []; // **ADD THIS**
+  } finally {
+    isComplaintLoading.value = false;
   }
+}
 
   /// Fetch complaint details by ID
   Future<void> fetchComplaintDetails(String complaintId) async {
@@ -308,45 +229,97 @@ Future<void> getSummaryForTenant(String userId) async {
     
     if (response.statusCode == 200 && response.data['success'] == true) {
       try {
-        // Extract the data from the 'data' key in the response
         final responseData = response.data['data'] as Map<String, dynamic>? ?? {};
         
-        // Create TenantSummary from the response data
+        // **EXTRACT total_properties from API**
+        final totalProperties = responseData['total_properties']?.toString() ?? '0';
+        final location = responseData['location']?.toString() ?? '';
+        final userIdFromApi = responseData['user_id']?.toString() ?? '';
+        
         final summary = TenantSummary.fromJson(responseData);
         
-        // Check if API returned meaningful data
         if (summary.propertyStats.isNotEmpty) {
           technicianStats.value = summary;
           debugPrint('[getSummaryForTenant] Successfully loaded ${summary.propertyStats.length} properties from API');
         } else {
-          debugPrint('[getSummaryForTenant] API returned empty stats, using fallback calculation');
-          calculateStatsFromComplaints();
+          debugPrint('[getSummaryForTenant] API returned empty propertyStats but total_properties=$totalProperties');
+          
+          // **IF API says there are properties but no stats, create a placeholder**
+          if (int.tryParse(totalProperties) != null && int.parse(totalProperties) > 0) {
+            // Fetch complaints to get property name if available
+            if (complaints.isEmpty) {
+              debugPrint('[getSummaryForTenant] Fetching complaints for property info...');
+              await fetchTenantComplaints();
+              await Future.delayed(Duration(milliseconds: 100));
+            }
+            
+            // If we have complaints, calculate from them
+            if (complaints.isNotEmpty) {
+              calculateStatsFromComplaints();
+            } else {
+              // No complaints, create placeholder property with API data
+              debugPrint('[getSummaryForTenant] Creating placeholder property stats');
+              technicianStats.value = TenantSummary(
+                propertyStats: [
+                  PropertyStats(
+                    propertyId: userIdFromApi,
+                    propertyName: 'My Property', // Default name
+                    totalComplaints: '0',
+                    startedWorking: '0',
+                    inProgress: '0',
+                    resolved: '0',
+                  )
+                ],
+                location: location,
+                userId: userIdFromApi,
+                totalProperties: totalProperties,
+              );
+            }
+          } else {
+            // No properties at all
+            debugPrint('[getSummaryForTenant] No properties found');
+            technicianStats.value = TenantSummary(
+              propertyStats: [],
+              location: location,
+              userId: userIdFromApi,
+              totalProperties: '0',
+            );
+          }
         }
         
       } catch (e, stackTrace) {
         debugPrint('[getSummaryForTenant] Parse error: $e');
         debugPrint('[getSummaryForTenant] Stack trace: $stackTrace');
-        debugPrint('[getSummaryForTenant] Using fallback calculation due to parse error');
+        
+        if (complaints.isEmpty) {
+          await fetchTenantComplaints();
+          await Future.delayed(Duration(milliseconds: 100));
+        }
+        
         calculateStatsFromComplaints();
       }
     } else {
-      final errorMsg = response.data['message'] is Map 
-          ? response.data['message']['en'] ?? 'Request failed'
-          : response.data['message']?.toString() ?? 'Request failed';
+      if (complaints.isEmpty) {
+        await fetchTenantComplaints();
+        await Future.delayed(Duration(milliseconds: 100));
+      }
       
-      debugPrint('[getSummaryForTenant] API Error: $errorMsg, using fallback');
       calculateStatsFromComplaints();
     }
   } catch (e, stackTrace) {
     debugPrint('[getSummaryForTenant] Exception: $e, using fallback');
-    debugPrint('[getSummaryForTenant] Stack trace: $stackTrace');
+    
+    if (complaints.isEmpty) {
+      await fetchTenantComplaints();
+      await Future.delayed(Duration(milliseconds: 100));
+    }
+    
     calculateStatsFromComplaints();
   } finally {
     isStatsLoading.value = false;
     technicianStats.refresh();
   }
 }
-
 // Helper function to show beautiful error dialog
 void _showCreativeErrorDialog({
   required String title,
@@ -459,14 +432,21 @@ IconData _getErrorIcon(String errorMsg) {
 }
 
 // Add this helper method to calculate stats from existing complaints
-void calculateStatsFromComplaints() {
-  if (complaints.isEmpty) {
+void calculateStatsFromComplaints([List<Complaint>? complaintsToUse]) {
+  final complaintsData = complaintsToUse ?? complaints;
+  
+  if (complaintsData.isEmpty) {
     debugPrint('[calculateStatsFromComplaints] No complaints available');
-    technicianStats.value = TenantSummary(propertyStats: [], location: '', userId: '', totalProperties: '');
+    technicianStats.value = TenantSummary(
+      propertyStats: [], 
+      location: '', 
+      userId: '', 
+      totalProperties: ''
+    );
     return;
   }
   
-  debugPrint('[calculateStatsFromComplaints] Calculating from ${complaints.length} complaints');
+  debugPrint('[calculateStatsFromComplaints] Calculating from ${complaintsData.length} complaints');
   
   // Group complaints by property
   final Map<String, List<Complaint>> complaintsByProperty = {};

@@ -757,7 +757,7 @@ Future<void> _loadTenantSummary() async {
                     width: Get.width * 0.9,
                     child: CustomButtonWidget(
                       buttonColor: AppColors.secondaryColor,
-                      buttonTitle: "Create Ticket",
+                      buttonTitle: "Create Maintenance",
                       buttonTextColor: AppColors.white,
                       onPressed: () async {
                         try {

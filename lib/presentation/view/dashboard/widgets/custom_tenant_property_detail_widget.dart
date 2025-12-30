@@ -301,8 +301,8 @@ Widget _buildActionButtons(TenantPropertyModel property) {
             Icons.description_outlined,
             onPressed: () {
               Get.to(() => PdfViewerScreen(
-              uid: property.uid,
-              unitAddressId: property.unitAddressId.toString(),
+                uid: property.uid,
+                unitAddressId: property.unitAddressId.toString(),
               ));
             },
           ),
@@ -310,7 +310,7 @@ Widget _buildActionButtons(TenantPropertyModel property) {
         kWidth(0.03),
         Expanded(
           child: _buildActionButton(
-            'Register Complaint',
+            'Report Issue',  // Changed from 'Register Complaint'
             Colors.red,
             Icons.report_problem_outlined,
             onPressed: () {
@@ -330,7 +330,7 @@ Widget _buildActionButtons(TenantPropertyModel property) {
   );
 }
 
-/// Action Button Widget (unchanged)
+/// Action Button Widget - Updated to handle text overflow better
 Widget _buildActionButton(
   String text,
   Color color,
@@ -345,7 +345,7 @@ Widget _buildActionButton(
         side: BorderSide(color: color.withOpacity(.3), width: 1),
       ),
       padding: EdgeInsets.symmetric(
-        horizontal: Get.width * 0.02, 
+        horizontal: Get.width * 0.015,  // Reduced padding slightly
         vertical: Get.height * 0.015,
       ),
     ),
@@ -354,13 +354,16 @@ Widget _buildActionButton(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(icon, size: Get.height * 0.02, color: AppColors.white),
-        kWidth(0.01),
+        SizedBox(width: Get.width * 0.01),  // Changed from kWidth for consistency
         Flexible(
-          child: CustomTextWidget(
-            title: text,
-            fontSize: Get.height * 0.016,
-            fontWeight: FontWeight.w600,
-            color: AppColors.white,
+          child: FittedBox(  // Added FittedBox to scale down text if needed
+            fit: BoxFit.scaleDown,
+            child: CustomTextWidget(
+              title: text,
+              fontSize: Get.height * 0.015,  // Slightly reduced from 0.016
+              fontWeight: FontWeight.w600,
+              color: AppColors.white,
+            ),
           ),
         ),
       ],

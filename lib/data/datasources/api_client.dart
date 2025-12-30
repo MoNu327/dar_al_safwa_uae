@@ -56,15 +56,17 @@ class ApiClient {
 Future<Response> request(
   String endpoint, {
   dynamic data,
+  Map<String, dynamic>? queryParameters, // ✅ Add this parameter
   String? method,
   Map<String, String>? headers,
   bool isFormData = false,
-  Options? options,  // ✅ Change from required to optional
+  Options? options,
 }) async {
   try {
     final response = await _dio.request(
       '$baseUrl$endpoint',
       data: (method == 'get') ? null : data,
+      queryParameters: queryParameters, // ✅ Add this
       options: options ??
           Options(
             method: method ?? 'post',
@@ -94,7 +96,6 @@ Future<Response> request(
     return _handleUnexpectedError(e);
   }
 }
-
 
   Future<bool> refreshToken() async {
     debugPrint("🚀 Calling refresh token API...");

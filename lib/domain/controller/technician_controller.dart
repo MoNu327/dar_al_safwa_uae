@@ -56,7 +56,8 @@ class TechnicianController extends GetxController {
       final response = await apiClient.request(
         "technician/details",
         method: "post",
-        data: {"uid": uid}, // Send uid dynamically
+        data: {"uid": uid},
+         // Send uid dynamically
       );
       debugPrint("⬅️ [API] Response received: ${response.data}");
       return response;

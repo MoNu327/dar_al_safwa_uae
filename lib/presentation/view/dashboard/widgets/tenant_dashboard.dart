@@ -4,6 +4,7 @@ import 'package:majan/core/routes/app_route.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/presentation/controllers/bottom_navbar_controller.dart';
 import 'package:majan/presentation/view/dashboard/controller/tenant_property_controller.dart';
+import 'package:majan/presentation/view/dashboard/screens/payments_history_screen.dart';
 import 'package:majan/presentation/view/dashboard/widgets/custom_tenant_property_detail_widget.dart';
 import 'package:majan/presentation/view/dashboard/widgets/custom_tenant_property_list_widget.dart';
 import 'package:majan/presentation/view/dashboard/widgets/dashboard_tile_widget.dart';
@@ -164,11 +165,17 @@ class TenantDashboard extends StatelessWidget {
                         navBarController.selectedIndex(2);
                       },
                     ),
+                    buildMenuTile(
+                      leading: Icon(Icons.payment, color: AppColors.secondaryColor),
+                      title: 'Payments',
+                      onTap: () {
+                        Get.to(() => PaymentDetailsPage(), arguments: {'uid': auth.currentUser?.uid});
+
+                      },
+                    ),
                   ],
                 ),
               ),
-
-              kHeight(0.05),
 
               // Sign Out Button
               commonSignOutButton(loginController),

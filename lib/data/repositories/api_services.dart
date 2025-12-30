@@ -571,6 +571,20 @@ Future<Response> updateTechnicianComplaint({
   }
 
 
+Future<Response> getpaymentsHistory(String uid) async {
+  try {
+    final response = await apiClient.request(
+      "confirmations/latest",
+      method: "get",
+      queryParameters: {"uid": uid}, // ✅ Use queryParameters instead of data
+    );
+
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
 
   Future<Response> getSummaryForTenant(String user_id) async {
     try {

@@ -167,6 +167,113 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     }
   }
 
+  Widget _buildNoAgreementState() {
+    return Stack(
+      children: [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Animated container with shadow
+                Container(
+                  padding: const EdgeInsets.all(40),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.2),
+                        spreadRadius: 5,
+                        blurRadius: 20,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.description_outlined,
+                    size: 80,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                const SizedBox(height: 32),
+                
+                // Title
+                Text(
+                  "No Agreement Found",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                // Description
+                Text(
+                  "We couldn't find any agreement\nassociated with this account.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                
+                // Action button
+                // ElevatedButton(
+                //   onPressed: () => Navigator.pop(context),
+                //   style: ElevatedButton.styleFrom(
+                //     backgroundColor: AppColors.primaryColor ?? Colors.blue,
+                //     foregroundColor: Colors.white,
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 40,
+                //       vertical: 16,
+                //     ),
+                //     shape: RoundedRectangleBorder(
+                //       borderRadius: BorderRadius.circular(12),
+                //     ),
+                //     elevation: 2,
+                //   ),
+                //   child: Row(
+                //     mainAxisSize: MainAxisSize.min,
+                //     children: const [
+                //       Icon(Icons.arrow_back, size: 20),
+                //       SizedBox(width: 8),
+                //       Text(
+                //         "Go Back",
+                //         style: TextStyle(
+                //           fontSize: 16,
+                //           fontWeight: FontWeight.w600,
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Back button at top
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 10,
+          left: 10,
+          child: Material(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(25),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<ViewAgreementController>();
@@ -188,57 +295,105 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         }
 
         if (controller.hasError.value) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 60),
-                  const SizedBox(height: 16),
-                  const Text(
-                    "Error Loading PDF",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
+          return Stack(
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(40),
+                        decoration: BoxDecoration(
+                          color: Colors.red[50],
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.1),
+                              spreadRadius: 5,
+                              blurRadius: 20,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 80,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text(
+                        "Error Loading PDF",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        controller.errorMessage.value,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      // ElevatedButton(
+                      //   onPressed: () => Navigator.pop(context),
+                      //   style: ElevatedButton.styleFrom(
+                      //     backgroundColor: Colors.red,
+                      //     foregroundColor: Colors.white,
+                      //     padding: const EdgeInsets.symmetric(
+                      //       horizontal: 40,
+                      //       vertical: 16,
+                      //     ),
+                      //     shape: RoundedRectangleBorder(
+                      //       borderRadius: BorderRadius.circular(12),
+                      //     ),
+                      //     elevation: 2,
+                      //   ),
+                      //   child: Row(
+                      //     mainAxisSize: MainAxisSize.min,
+                      //     children: const [
+                      //       Icon(Icons.arrow_back, size: 20),
+                      //       SizedBox(width: 8),
+                      //       Text(
+                      //         "Go Back",
+                      //         style: TextStyle(
+                      //           fontSize: 16,
+                      //           fontWeight: FontWeight.w600,
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    controller.errorMessage.value,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text("Go Back"),
-                  ),
-                ],
+                ),
               ),
-            ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10,
+                left: 10,
+                child: Material(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(25),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+            ],
           );
         }
 
         if (controller.agreementList.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.description_outlined, size: 60, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text("No agreement data found."),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text("Go Back"),
-                ),
-              ],
-            ),
-          );
+          return _buildNoAgreementState();
         }
 
         final agreement = controller.agreementList.first;
@@ -247,21 +402,100 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         print("📄 PDF URL: $currentPdfUrl");
 
         if (currentPdfUrl.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.link_off, size: 60, color: Colors.orange),
-                const SizedBox(height: 16),
-                const Text("PDF URL not available."),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text("Go Back"),
+          return Stack(
+            children: [
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(40),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.orange.withOpacity(0.1),
+                              spreadRadius: 5,
+                              blurRadius: 20,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.link_off,
+                          size: 80,
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Text(
+                        "PDF Not Available",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[800],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "The PDF URL is not available\nfor this agreement.",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 40,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.arrow_back, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              "Go Back",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10,
+                left: 10,
+                child: Material(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(25),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ),
+            ],
           );
         }
 

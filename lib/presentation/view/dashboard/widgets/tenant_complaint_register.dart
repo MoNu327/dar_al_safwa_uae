@@ -161,14 +161,14 @@ class TenantComplaintRegister extends StatelessWidget {
 
                 /// ✅ Submit Button
                 CustomButtonWidget(
-                  childWidgetLoader: tenantComplaintRegisterController
-                      .isLoadingSubmitCompliant.value,
-                  buttonTitle: 'REGISTER COMPLAINT',
-                  buttonShape: "rect",
-                  fontSize: tagTitle,
-                  buttonColor: AppColors.secondaryColor,
-                  onPressed: _onSubmit,
-                ),
+  childWidgetLoader: tenantComplaintRegisterController
+      .isLoadingSubmitCompliant.value,
+  buttonTitle: 'REPORT MAINTENANCE\nISSUE',  // Line break
+  buttonShape: "rect",
+  fontSize: tagTitle * 0.85,
+  buttonColor: AppColors.secondaryColor,
+  onPressed: _onSubmit,
+),
               ],
             );
           }),
