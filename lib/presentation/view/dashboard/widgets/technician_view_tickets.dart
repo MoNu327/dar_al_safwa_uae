@@ -307,7 +307,7 @@ DateTime? _parseTicketDateForFilter(String? dateString) {
           onPressed: () => Get.back(),
         ),
         title: const CustomTextWidget(
-          title: 'View Tickets',
+          title: 'View Maintenance',
           fontSize: 18,
           color: AppColors.black,
           fontWeight: FontWeight.w600,
@@ -410,7 +410,7 @@ Widget _buildStatisticsSection() {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const CustomTextWidget(
-            title: 'Your Performance Summary',
+            title: 'Your Maintenance Summary',
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: AppColors.secondaryColor,

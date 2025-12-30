@@ -32,16 +32,23 @@ class _EditTenantProfileScreenState extends State<EditTenantProfileScreen> {
   bool _isNewPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Populate controllers for editing (without toggling isEditing)
-      _profileController.populateControllersForEdit();
-      _preparePhoneNumber();
-    });
-  }
+@override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    debugPrint('📱 Edit Screen: isLoading = ${_profileController.isLoading.value}');
+    debugPrint('📱 Edit Screen: phoneNumber.value = "${_profileController.phoneNumber.value}"');
+    
+    // Populate controllers for editing
+    _profileController.populateControllersForEdit();
+    
+    debugPrint('📱 Edit Screen: phoneController.text = "${_profileController.phoneController.text}"');
+    
+    _preparePhoneNumber();
+    
+    debugPrint('📱 Edit Screen: After prepare = "${_profileController.phoneController.text}"');
+  });
+}
 
   /// Remove +971 prefix from phone number for display
   void _preparePhoneNumber() {

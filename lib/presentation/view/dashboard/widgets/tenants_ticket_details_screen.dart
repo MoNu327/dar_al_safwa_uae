@@ -52,7 +52,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: CustomTextWidget(
-          title: "Ticket Details",
+          title: "Maintenance Details",
           fontSize: Get.height * 0.022,
           fontWeight: FontWeight.w600,
           color: AppColors.black,

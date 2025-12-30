@@ -152,7 +152,7 @@ class TenantDashboard extends StatelessWidget {
                     ),
                     buildMenuTile(
                       leading: Image.asset("assets/images/Tickets.png"),
-                      title: 'Tickets',
+                      title: 'Maintenance',
                       onTap: () {
                         Get.to(TenantsTicketsListWidget());
                       },

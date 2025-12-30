@@ -241,7 +241,7 @@ DateTime? _parseComplaintDate(String? dateString) {
           onPressed: () => Navigator.pop(context),
         ),
         title: CustomTextWidget(
-          title: "Tickets",
+          title: "Maintenance",
           fontSize: Get.height * 0.022,
           fontWeight: FontWeight.w600,
           color: AppColors.black,
@@ -279,7 +279,7 @@ DateTime? _parseComplaintDate(String? dateString) {
                     // Use filteredComplaints
                     if (filteredComplaints.isEmpty) {
                       return _buildEmptyState(
-                        message: "No tickets found",
+                        message: "No Complaints found",
                         showSearchHint: true
                       );
                     }
@@ -689,7 +689,7 @@ DateTime? _parseComplaintDate(String? dateString) {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const CustomTextWidget(
-                title: 'Your Tickets Summary',
+                title: 'Your Maintenance Summary',
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppColors.secondaryColor,
@@ -720,7 +720,7 @@ DateTime? _parseComplaintDate(String? dateString) {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 2,
-            childAspectRatio: 2.5,
+            childAspectRatio: 2.2,
             mainAxisSpacing: 8,
             crossAxisSpacing: 8,
             children: [
@@ -733,13 +733,13 @@ DateTime? _parseComplaintDate(String? dateString) {
               _buildStatItem(
                 icon: Icons.list_alt,
                 value: totalTickets.toString(),
-                label: 'Total Tickets',
+                label: 'Total Complaints',
                 color: AppColors.warning,
               ),
               _buildStatItem(
                 icon: Icons.pending_actions,
                 value: totalActive.toString(),
-                label: 'Active Tickets',
+                label: 'Active Complaints',
                 color: AppColors.warning,
               ),
               _buildStatItem(
@@ -790,62 +790,72 @@ DateTime? _parseComplaintDate(String? dateString) {
   });
 }
 
-  Widget _buildStatItem({
-    required IconData icon,
-    required String value,
-    required String label,
-    Color color = AppColors.primaryColor,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+Widget _buildStatItem({
+  required IconData icon,
+  required String value,
+  required String label,
+  Color color = AppColors.primaryColor,
+}) {
+  return Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.grey.withOpacity(0.1),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),  // Reduced padding
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
           ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(width: 8),
-          Column(
+          child: Icon(icon, size: 18, color: color),  // Slightly smaller icon
+        ),
+        const SizedBox(width: 6),  // Reduced spacing
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,  // Important: don't expand unnecessarily
             children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              FittedBox(  // Ensures value text scales down if needed
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 16,  // Reduced from 18
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
               ),
+              const SizedBox(height: 2),  // Small spacing between value and label
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,  // Reduced from 12
                   color: Colors.black,
+                  height: 1.2,  // Tighter line height
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
+        ),
+      ],
+    ),
+  );
+}
   /// Builds a single ticket card
   Widget _buildComplaintCard(Complaint complaint) {
     return InkWell(

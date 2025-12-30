@@ -276,7 +276,7 @@ class PropertyListings extends StatelessWidget {
                   ? 'صفحة ${controller.currentPage.value} من ${controller.totalPages.value}'
                   : 'Page ${controller.currentPage.value} of ${controller.totalPages.value}',
               fontSize: Get.height * 0.016,
-              color: AppColors.primaryColor,
+              color: AppColors.secondaryColor,
             ),
           ],
         ),
@@ -378,7 +378,7 @@ class PropertyListings extends StatelessWidget {
                 title: '$currentPage / $totalPages',
                 fontSize: Get.height * 0.016,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryColor,
+                color: AppColors.secondaryColor,
               ),
             ),
             
@@ -392,7 +392,7 @@ class PropertyListings extends StatelessWidget {
                     : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: hasNext 
-                      ? AppColors.primaryColor 
+                      ? AppColors.secondaryColor 
                       : Colors.grey[300],
                   foregroundColor: hasNext 
                       ? Colors.white 
