@@ -8,11 +8,11 @@ import 'package:get/get.dart';
 enum PaymentMethod { cash, cheque, bank, other }
 
 class PaymentDetailsController extends GetxController {
-  // Inject your API service here
   final ApiService _apiService = Get.find<ApiService>();
   
   var isLoading = false.obs;
-  var leaseData = Rxn<LeaseDataModel>();
+  var leaseData = Rxn<LeaseDataModel>(); // Currently selected lease
+  var allLeases = RxList<LeaseDataModel>([]); // All user's leases
   var selectedPaymentMethod = PaymentMethod.cash.obs;
   var errorMessage = ''.obs;
 
@@ -22,7 +22,6 @@ class PaymentDetailsController extends GetxController {
     loadLeaseData();
   }
 
-  // ✅ Add this method
   String? _getUserId() {
     // Try to get from arguments
     if (Get.arguments != null && Get.arguments is Map<String, dynamic>) {
@@ -45,88 +44,130 @@ class PaymentDetailsController extends GetxController {
     return null;
   }
 
-  Future<void> loadLeaseData() async {
-    try {
-      isLoading.value = true;
-      errorMessage.value = '';
+   Future<void> loadLeaseData() async {
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+    
+    final uid = _getUserId();
+    
+    if (uid == null || uid.isEmpty) {
+      errorMessage.value = 'User ID not found. Please log in again.';
+      Get.snackbar(
+        'Authentication Error',
+        'Unable to retrieve user information',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return;
+    }
+    
+    print('📡 Fetching payment history for UID: $uid');
+    
+    final response = await _apiService.getpaymentsHistory(uid);
+    
+    // Handle 404 - No data found
+    if (response.statusCode == 404) {
+      errorMessage.value = 'no_data_404'; // Special flag for 404
+      print('📭 404: No lease data found for user');
+      return;
+    }
+    
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      print('📦 API Response Data: ${response.data}');
       
-      final uid = _getUserId();
+      final leaseResponse = LeaseResponseModel.fromJson(response.data);
       
-      if (uid == null || uid.isEmpty) {
-        errorMessage.value = 'User ID not found. Please log in again.';
-        Get.snackbar(
-          'Authentication Error',
-          'Unable to retrieve user information',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
-          colorText: Colors.white,
-        );
-        return;
-      }
-      
-      print('📡 Fetching payment history for UID: $uid');
-      
-      final response = await _apiService.getpaymentsHistory(uid);
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Debug print to see response
-        print('📦 API Response Data: ${response.data}');
+      if (leaseResponse.success && leaseResponse.data.isNotEmpty) {
+        allLeases.value = leaseResponse.data;
+        leaseData.value = allLeases.first;
         
-        // Parse the response
-        final leaseResponse = LeaseResponseModel.fromJson(response.data);
+        print('✅ Loaded ${allLeases.length} lease(s) successfully');
         
-        if (leaseResponse.success && leaseResponse.data.isNotEmpty) {
-          leaseData.value = leaseResponse.data.first;
-          print('✅ Lease data loaded successfully');
-        } else {
-          errorMessage.value = 'No lease data found';
+        if (allLeases.length > 1) {
           Get.snackbar(
-            'Info',
-            'No lease data available',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.orange.withOpacity(0.8),
+            'Properties Loaded',
+            'You have ${allLeases.length} properties. Use the dropdown to switch between them.',
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.blue.withOpacity(0.8),
             colorText: Colors.white,
+            duration: Duration(seconds: 3),
           );
         }
       } else {
-        errorMessage.value = 'Failed to load data: ${response.statusMessage}';
-        Get.snackbar(
-          'Error',
-          'Failed to load lease data',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
-          colorText: Colors.white,
-        );
+        errorMessage.value = 'no_data_404';
       }
-    } on TypeError catch (e) {
-      errorMessage.value = 'Data parsing error';
-      print('❌ Type Error: $e');
-      print('❌ Stack trace: ${StackTrace.current}');
-      Get.snackbar(
-        'Data Error',
-        'Failed to parse server response. Please check the data format.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-      );
-    } catch (e, stackTrace) {
-      errorMessage.value = e.toString();
-      print('❌ Error: $e');
-      print('❌ Stack trace: $stackTrace');
+    } else {
+      errorMessage.value = 'Failed to load data: ${response.statusMessage}';
       Get.snackbar(
         'Error',
-        'An error occurred: ${e.toString()}',
+        'Failed to load lease data',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red.withOpacity(0.8),
         colorText: Colors.white,
-        duration: Duration(seconds: 3),
       );
-    } finally {
-      isLoading.value = false;
+    }
+  } on TypeError catch (e) {
+    errorMessage.value = 'Data parsing error';
+    print('❌ Type Error: $e');
+    print('❌ Stack trace: ${StackTrace.current}');
+    Get.snackbar(
+      'Data Error',
+      'Failed to parse server response. Please check the data format.',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red.withOpacity(0.8),
+      colorText: Colors.white,
+    );
+  } catch (e, stackTrace) {
+    errorMessage.value = e.toString();
+    print('❌ Error: $e');
+    print('❌ Stack trace: $stackTrace');
+    Get.snackbar(
+      'Error',
+      'An error occurred: ${e.toString()}',
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: Colors.red.withOpacity(0.8),
+      colorText: Colors.white,
+      duration: Duration(seconds: 3),
+    );
+  } finally {
+    isLoading.value = false;
+  }
+}
+  // NEW: Method to switch between properties
+  void selectLeaseById(String leaseId) {
+    final selectedLease = allLeases.firstWhereOrNull((lease) => lease.id == leaseId);
+    if (selectedLease != null) {
+      leaseData.value = selectedLease;
+      print('🏠 Switched to property: ${selectedLease.property_title}');
+      
+      Get.snackbar(
+        'Property Selected',
+        selectedLease.property_title ?? 'Property',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.green.withOpacity(0.8),
+        colorText: Colors.white,
+        duration: Duration(seconds: 2),
+      );
     }
   }
 
-  // Retry loading data
+  // NEW: Get property display name
+  String getPropertyDisplayName(LeaseDataModel lease) {
+    final parts = <String>[];
+    
+    if (lease.property_title != null && lease.property_title!.isNotEmpty) {
+      parts.add(lease.property_title!);
+    }
+    
+    if (lease.unit_title != null && lease.unit_title!.isNotEmpty) {
+      parts.add('Unit ${lease.unit_title}');
+    }
+    
+    return parts.isEmpty ? 'Property' : parts.join(' - ');
+  }
+
   void retryLoadData() {
     loadLeaseData();
   }
@@ -135,7 +176,6 @@ class PaymentDetailsController extends GetxController {
     selectedPaymentMethod.value = method;
   }
 
-  // Determine payment method from installment data
   PaymentMethod getPaymentMethodForInstallment(PaymentInstallmentModel installment) {
     if (installment.cheque_number != null || 
         installment.cheque_date != null || 
@@ -152,10 +192,9 @@ class PaymentDetailsController extends GetxController {
                installment.otherpaymentdate != null) {
       return PaymentMethod.other;
     }
-    return PaymentMethod.cash; // Default
+    return PaymentMethod.cash;
   }
 
-  // Check if installment has payment details
   bool hasPaymentDetails(PaymentInstallmentModel installment) {
     return installment.cheque_number != null ||
         installment.transaction_reference != null ||
@@ -189,99 +228,98 @@ class PaymentDetailsController extends GetxController {
     }
   }
 
- Map<String, dynamic> getPaymentSummary() {
-  if (leaseData.value == null || leaseData.value!.payment_groups == null) {
+  Map<String, dynamic> getPaymentSummary() {
+    if (leaseData.value == null || leaseData.value!.payment_groups == null) {
+      return {
+        'total': 0,
+        'paid': 0,
+        'pending': 0,
+        'totalAmount': 0.0,
+        'paidAmount': 0.0,
+        'remainingAmount': 0.0,
+      };
+    }
+    
+    final groups = leaseData.value!.payment_groups!;
+    final allInstallments = [
+      ...groups.cash,
+      ...groups.cheque,
+      ...groups.bank,
+      ...groups.other,
+    ];
+    
+    if (allInstallments.isEmpty) {
+      return {
+        'total': 0,
+        'paid': 0,
+        'pending': 0,
+        'totalAmount': 0.0,
+        'paidAmount': 0.0,
+        'remainingAmount': 0.0,
+      };
+    }
+    
+    int totalInstallments = allInstallments.length;
+    int paidInstallments = allInstallments.where((i) => 
+      (i.payment_status ?? '').toLowerCase() == 'paid'
+    ).length;
+    int pendingInstallments = allInstallments.where((i) => 
+      (i.payment_status ?? '').toLowerCase() == 'pending'
+    ).length;
+    
+    double totalAmount = allInstallments.fold(0.0, (sum, i) {
+      return sum + (double.tryParse(i.amount ?? '0') ?? 0.0);
+    });
+    
+    double paidAmount = allInstallments
+        .where((i) => (i.payment_status ?? '').toLowerCase() == 'paid')
+        .fold(0.0, (sum, i) {
+          return sum + (double.tryParse(i.received_amount ?? '0') ?? 0.0);
+        });
+    
     return {
-      'total': 0,
-      'paid': 0,
-      'pending': 0,
-      'totalAmount': 0.0,
-      'paidAmount': 0.0,
-      'remainingAmount': 0.0,
+      'total': totalInstallments,
+      'paid': paidInstallments,
+      'pending': pendingInstallments,
+      'totalAmount': totalAmount,
+      'paidAmount': paidAmount,
+      'remainingAmount': totalAmount - paidAmount,
     };
   }
-  
-  // Combine all installments from all payment groups
-  final groups = leaseData.value!.payment_groups!;
-  final allInstallments = [
-    ...groups.cash,
-    ...groups.cheque,
-    ...groups.bank,
-    ...groups.other,
-  ];
-  
-  if (allInstallments.isEmpty) {
-    return {
-      'total': 0,
-      'paid': 0,
-      'pending': 0,
-      'totalAmount': 0.0,
-      'paidAmount': 0.0,
-      'remainingAmount': 0.0,
-    };
-  }
-  
-  int totalInstallments = allInstallments.length;
-  int paidInstallments = allInstallments.where((i) => 
-    (i.payment_status ?? '').toLowerCase() == 'paid'
-  ).length;
-  int pendingInstallments = allInstallments.where((i) => 
-    (i.payment_status ?? '').toLowerCase() == 'pending'
-  ).length;
-  
-  double totalAmount = allInstallments.fold(0.0, (sum, i) {
-    return sum + (double.tryParse(i.amount ?? '0') ?? 0.0);
-  });
-  
-  double paidAmount = allInstallments
-      .where((i) => (i.payment_status ?? '').toLowerCase() == 'paid')
-      .fold(0.0, (sum, i) {
-        return sum + (double.tryParse(i.received_amount ?? '0') ?? 0.0);
-      });
-  
-  return {
-    'total': totalInstallments,
-    'paid': paidInstallments,
-    'pending': pendingInstallments,
-    'totalAmount': totalAmount,
-    'paidAmount': paidAmount,
-    'remainingAmount': totalAmount - paidAmount,
-  };
-}
 
-List<PaymentInstallmentModel> getUpcomingPayments() {
-  if (leaseData.value == null || leaseData.value!.payment_groups == null) {
-    return [];
+  List<PaymentInstallmentModel> getUpcomingPayments() {
+    if (leaseData.value == null || leaseData.value!.payment_groups == null) {
+      return [];
+    }
+    
+    final groups = leaseData.value!.payment_groups!;
+    final allInstallments = [
+      ...groups.cash,
+      ...groups.cheque,
+      ...groups.bank,
+      ...groups.other,
+    ];
+    
+    return allInstallments
+        .where((i) => (i.upcoming ?? false) && (i.payment_status ?? '').toLowerCase() == 'pending')
+        .toList();
   }
-  
-  final groups = leaseData.value!.payment_groups!;
-  final allInstallments = [
-    ...groups.cash,
-    ...groups.cheque,
-    ...groups.bank,
-    ...groups.other,
-  ];
-  
-  return allInstallments
-      .where((i) => (i.upcoming ?? false) && (i.payment_status ?? '').toLowerCase() == 'pending')
-      .toList();
-}
 
-List<PaymentInstallmentModel> getOverduePayments() {
-  if (leaseData.value == null || leaseData.value!.payment_groups == null) {
-    return [];
+  List<PaymentInstallmentModel> getOverduePayments() {
+    if (leaseData.value == null || leaseData.value!.payment_groups == null) {
+      return [];
+    }
+    
+    final groups = leaseData.value!.payment_groups!;
+    final allInstallments = [
+      ...groups.cash,
+      ...groups.cheque,
+      ...groups.bank,
+      ...groups.other,
+    ];
+    
+    return allInstallments
+        .where((i) => !(i.upcoming ?? false) && (i.payment_status ?? '').toLowerCase() == 'pending')
+        .toList();
   }
-  
-  final groups = leaseData.value!.payment_groups!;
-  final allInstallments = [
-    ...groups.cash,
-    ...groups.cheque,
-    ...groups.bank,
-    ...groups.other,
-  ];
-  
-  return allInstallments
-      .where((i) => !(i.upcoming ?? false) && (i.payment_status ?? '').toLowerCase() == 'pending')
-      .toList();
-}
 }
