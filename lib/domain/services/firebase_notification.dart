@@ -210,13 +210,13 @@ class FirebaseNotificationService {
         }
       } else {
         debugPrint('No valid URL found in notification data');
-        Get.snackbar(
-          'Error',
-          'No link or file found in this notification',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-        );
+        // Get.snackbar(
+        //   'Error',
+        //   'No link or file found in this notification',
+        //   snackPosition: SnackPosition.BOTTOM,
+        //   backgroundColor: Colors.orange,
+        //   colorText: Colors.white,
+        // );
       }
     }
 
