@@ -39,6 +39,10 @@ class ComplaintData {
   final Property property;
   final List<Payment> payments;
   final List<ComplaintImage> images;
+
+  @JsonKey(name: "user_comments_history")
+  final List<UserCommentHistory> userCommentsHistory;
+
   final List<TimelineEvent> timeline;
 
   ComplaintData({
@@ -46,40 +50,36 @@ class ComplaintData {
     required this.property,
     List<Payment>? payments,
     List<ComplaintImage>? images,
+    List<UserCommentHistory>? userCommentsHistory,
     List<TimelineEvent>? timeline,
   })  : payments = payments ?? [],
         images = images ?? [],
+        userCommentsHistory = userCommentsHistory ?? [],
         timeline = timeline ?? [];
 
-  factory ComplaintData.fromJson(Map<String, dynamic> json) {
-    return ComplaintData(
-      complaint: Complaint.fromJson(json['complaint'] as Map<String, dynamic>),
-      property: Property.fromJson(json['property'] as Map<String, dynamic>),
-      payments: (json['payments'] as List<dynamic>?)
-          ?.map((e) => Payment.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      images: (json['images'] as List<dynamic>?)
-          ?.map((e) => ComplaintImage.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      timeline: (json['timeline'] as List<dynamic>?)
-          ?.map((e) => TimelineEvent.fromJson(e as Map<String, dynamic>))
-          .toList(),
-    );
-  }
+  factory ComplaintData.fromJson(Map<String, dynamic> json) =>
+      _$ComplaintDataFromJson(json);
 
   Map<String, dynamic> toJson() => _$ComplaintDataToJson(this);
 }
-@JsonSerializable()
+
+@JsonSerializable(explicitToJson: true)
 class Complaint {
   final String id;
+
   @JsonKey(name: 'complaint_number')
   final String complaintNumber;
+
   final String category;
   final String subcategory;
   final String description;
   final String status;
+
   @JsonKey(name: 'created_at')
   final String createdAt;
+
+  @JsonKey(name: 'created_by')
+  final UserBy? createdBy;
 
   Complaint({
     required this.id,
@@ -89,6 +89,7 @@ class Complaint {
     required this.description,
     required this.status,
     required this.createdAt,
+    this.createdBy,
   });
 
   factory Complaint.fromJson(Map<String, dynamic> json) =>
@@ -118,8 +119,10 @@ class Property {
 @JsonSerializable()
 class Unit {
   final String number;
+
   @JsonKey(name: 'address_format')
   final String addressFormat;
+
   final String type;
 
   Unit({
@@ -159,8 +162,8 @@ class ComplaintImage {
   @JsonKey(name: 'image_path')
   final String imagePath;
   final String timestamp;
-  final String? type;  // Add this
-  final Map<String, dynamic>? by;  // Add this
+  final String? type;
+  final UserBy? by;
 
   ComplaintImage({
     required this.imagePath,
@@ -174,15 +177,81 @@ class ComplaintImage {
 
   Map<String, dynamic> toJson() => _$ComplaintImageToJson(this);
 }
+
+@JsonSerializable(explicitToJson: true)
+class UserCommentHistory {
+  final String timestamp;
+  final String message;
+  final String type;
+  final UserBy by;
+
+  UserCommentHistory({
+    required this.timestamp,
+    required this.message,
+    required this.type,
+    required this.by,
+  });
+
+  factory UserCommentHistory.fromJson(Map<String, dynamic> json) =>
+      _$UserCommentHistoryFromJson(json);
+
+  Map<String, dynamic> toJson() => _$UserCommentHistoryToJson(this);
+}
+
+// ✅ FIXED: Make critical fields nullable to prevent crashes
 @JsonSerializable()
+class UserBy {
+  final String? type;   // ← changed to nullable
+  final String? uid;    // ← changed to nullable
+  final String? name;   // ← changed to nullable
+  final String? email;
+  final String? phone;
+  final String? photo;
+  final String? role;
+
+  UserBy({
+    this.type,
+    this.uid,
+    this.name,
+    this.email,
+    this.phone,
+    this.photo,
+    this.role,
+  });
+
+  factory UserBy.fromJson(Map<String, dynamic> json) =>
+      _$UserByFromJson(json);
+
+  Map<String, dynamic> toJson() => _$UserByToJson(this);
+
+  // Optional helper for UI
+  String get getDisplayName => (name?.trim().isNotEmpty == true) ? name! : 'Unknown';
+  
+  String getTypeDisplay() {
+    if (type == null) return 'Unknown';
+    switch (type!.toLowerCase()) {
+      case 'tenant': return 'Tenant';
+      case 'technician': return 'Technician';
+      case 'admin': return 'Admin';
+      default: return type!;
+    }
+  }
+}
+
+@JsonSerializable(explicitToJson: true)
 class TimelineEvent {
   final String type;
   final String timestamp;
   final String? message;
+
+  @JsonKey(name: 'old_status')
   final String? oldStatus;
+
+  @JsonKey(name: 'new_status')
   final String? newStatus;
-  final Map<String, dynamic>? by;
-  final Map<String, dynamic>? technician;
+
+  final UserBy? by;
+  final UserBy? technician;
 
   TimelineEvent({
     required this.type,

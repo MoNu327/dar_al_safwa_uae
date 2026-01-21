@@ -134,6 +134,74 @@ class FirebaseNotificationService {
       }
     }
 
+
+    // ✅ NEW: Parse payment details from notification body text
+Map<String, dynamic> _parsePaymentDetailsFromBody(String body) {
+  debugPrint('🔍 === PARSING PAYMENT BODY ===');
+  debugPrint('Body text: $body');
+  
+  final Map<String, dynamic> parsedData = {};
+  
+  try {
+    // Extract tenant name (after "Hi " and before newline)
+    final tenantMatch = RegExp(r'Hi\s+([^\n]+)').firstMatch(body);
+    if (tenantMatch != null) {
+      parsedData['tenantName'] = tenantMatch.group(1)?.trim();
+    }
+    
+    // Extract property name (after "Property: " and before newline)
+    final propertyMatch = RegExp(r'Property:\s+([^\n]+)').firstMatch(body);
+    if (propertyMatch != null) {
+      parsedData['property_title'] = propertyMatch.group(1)?.trim();
+    }
+    
+    // Extract unit number (after "Unit Number: " and before newline)
+    final unitMatch = RegExp(r'Unit Number:\s+([^\n]+)').firstMatch(body);
+    if (unitMatch != null) {
+      parsedData['unit_number'] = unitMatch.group(1)?.trim();
+    }
+    
+    // Extract amount (after "Amount: OMR " and before newline)
+    final amountMatch = RegExp(r'Amount:\s*OMR\s+([\d,.]+)').firstMatch(body);
+    if (amountMatch != null) {
+      final amountStr = amountMatch.group(1)?.replaceAll(',', '');
+      parsedData['amount'] = double.tryParse(amountStr ?? '0') ?? 0.0;
+    }
+    
+    // Extract due date
+    final dueDateMatch = RegExp(r'Due Date:\s+([^\n]+?)(?:\n|Payment Method|$)').firstMatch(body);
+    if (dueDateMatch != null) {
+      parsedData['expected_date'] = dueDateMatch.group(1)?.trim();
+    }
+    
+    // Extract payment method and details
+    final methodMatch = RegExp(r'Payment Method:\s+([^\n]+)').firstMatch(body);
+    if (methodMatch != null) {
+      final method = methodMatch.group(1)?.trim() ?? '';
+      parsedData['payment_method'] = method;
+      
+      // Extract method-specific details
+      if (method.toLowerCase() == 'cheque') {
+        final chequeNumMatch = RegExp(r'Cheque Number:\s+([^\n]+)').firstMatch(body);
+        if (chequeNumMatch != null) parsedData['cheque_number'] = chequeNumMatch.group(1)?.trim();
+        
+        final chequeDateMatch = RegExp(r'Cheque Date:\s+([^\n]+)').firstMatch(body);
+        if (chequeDateMatch != null) parsedData['cheque_date'] = chequeDateMatch.group(1)?.trim();
+        
+        final bankMatch = RegExp(r'Bank:\s+([^\n]+)').firstMatch(body);
+        if (bankMatch != null) parsedData['cheque_bank_name'] = bankMatch.group(1)?.trim();
+      }
+      // Add similar extractors for cash and transfer...
+    }
+    
+    debugPrint('✅ Parsed payment data: $parsedData');
+  } catch (e) {
+    debugPrint('❌ Error parsing payment body: $e');
+  }
+  
+  return parsedData;
+}
+
     // NEW: Setup token refresh listener (independent of auth)
     Future<void> _setupTokenRefreshListener() async {
       _firebaseMessaging.onTokenRefresh.listen((newToken) async {
@@ -538,55 +606,57 @@ Future<void> _downloadAndOpenPdfWithProgress(String url, String fileName) async 
       }
     }
 
-    void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 0}) {
-      debugPrint('=== NOTIFICATION TAP DETECTED ===');
-      debugPrint('Attempting navigation with data: $data');
-      
-      // Check for both snake_case and camelCase variations
-      final link = data['link'] as String?;
-      final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
-      final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
-      final notificationType = data['type'] as String?;
-      
-      final hasLink = link != null || pdfUrl != null || fileUrl != null;
-      final isDocumentType = notificationType == 'letter' || 
-                            notificationType == 'document' || 
-                            notificationType == 'lease_renewal';
-      
-      debugPrint('Has link: $hasLink');
-      debugPrint('Link: $link, PdfUrl: $pdfUrl, FileUrl: $fileUrl');
-      debugPrint('Notification type: $notificationType');
-      
-      // PRIORITY: Handle PDF/document downloads first
-      if (hasLink || isDocumentType) {
-        debugPrint('Link/PDF detected, handling download/open');
-        Future.delayed(Duration.zero, () {
-          _handleLinkOrPdfAction(data);
-        });
-        return;
-      }
-      
-      // Add retry limit for other navigation types
-      if (retryCount > 3) {
-        debugPrint('Max retries reached, giving up navigation');
-        return;
-      }
-      
-      if (Get.context != null) {
-        _navigateUsingGetX(data);
-      } else if (navigatorKey.currentContext != null) {
-        _navigateUsingNavigatorKey(data);
-      } else {
-        debugPrint('No navigation context available, retrying in 2 seconds... (attempt $retryCount)');
-        Future.delayed(const Duration(seconds: 2), () {
-          _handleNotificationNavigation(data, retryCount: retryCount + 1);
-        });
-      }
-    }
+    void _handleNotificationNavigation(Map<String, dynamic> data, {int retryCount = 0, String? body}) {
+  debugPrint('=== NOTIFICATION TAP DETECTED ===');
+  debugPrint('Attempting navigation with data: $data');
+  debugPrint('Body available: ${body != null}');
+  
+  // Check for both snake_case and camelCase variations
+  final link = data['link'] as String?;
+  final pdfUrl = (data['pdfUrl'] ?? data['pdf_url']) as String?;
+  final fileUrl = (data['fileUrl'] ?? data['file_url']) as String?;
+  final notificationType = data['type'] as String?;
+  
+  final hasLink = link != null || pdfUrl != null || fileUrl != null;
+  final isDocumentType = notificationType == 'letter' || 
+                        notificationType == 'document' || 
+                        notificationType == 'lease_renewal';
+  
+  debugPrint('Has link: $hasLink');
+  debugPrint('Link: $link, PdfUrl: $pdfUrl, FileUrl: $fileUrl');
+  debugPrint('Notification type: $notificationType');
+  
+  // PRIORITY: Handle PDF/document downloads first
+  if (hasLink || isDocumentType) {
+    debugPrint('Link/PDF detected, handling download/open');
+    Future.delayed(Duration.zero, () {
+      _handleLinkOrPdfAction(data);
+    });
+    return;
+  }
+  
+  // Add retry limit for other navigation types
+  if (retryCount > 3) {
+    debugPrint('Max retries reached, giving up navigation');
+    return;
+  }
+  
+  if (Get.context != null) {
+    _navigateUsingGetX(data, body: body); // ✅ PASS BODY HERE
+  } else if (navigatorKey.currentContext != null) {
+    _navigateUsingNavigatorKey(data);
+  } else {
+    debugPrint('No navigation context available, retrying in 2 seconds... (attempt $retryCount)');
+    Future.delayed(const Duration(seconds: 2), () {
+      _handleNotificationNavigation(data, retryCount: retryCount + 1, body: body); // ✅ PASS BODY IN RETRY
+    });
+  }
+}
 
-  void _navigateUsingGetX(Map<String, dynamic> data) {
-    final notificationType = data['type'] as String?;
-    debugPrint('Navigating using GetX for type: $notificationType');
+  void _navigateUsingGetX(Map<String, dynamic> data, {String? body}) {  // ✅ ADD body PARAMETER
+  final notificationType = data['type'] as String?;
+  debugPrint('Navigating using GetX for type: $notificationType');
+  debugPrint('Body parameter: $body');
     
     try {
       switch (notificationType) {
@@ -1119,16 +1189,81 @@ case 'document_expiry':
   );
   break;
 
+// In _navigateUsingGetX method, add this case:
+// ✅ REPLACE THE ENTIRE payment_reminder CASE IN firebase_notification_service.dart
+// Location: Inside _navigateUsingGetX method, around line 650
+
 case 'payment_reminder':
 case 'upcoming_payment':
   debugPrint('💰 Payment reminder notification detected');
-  final paymentId = data['paymentId'] as String?;
-  final amount = data['amount'];
-  final propertyName = data['propertyName'] as String?;
-  final paymentType = data['paymentType'] as String? ?? data['type'] as String? ?? 'rent';
-  final dueDate = data['dueDate'] as String?;
-  final daysUntilDue = data['daysUntilDue'];
-  final urgency = data['urgency'] as String? ?? data['subType'] as String? ?? 'normal';
+  
+  // ✅ SMART DETECTION: Check if data is empty or body has payment info
+  Map<String, dynamic> paymentData = Map.from(data);
+  
+  // If data is mostly empty but body has payment info, parse the body
+  if (body != null && body.contains('Amount: OMR') && 
+      (data['amount'] == null || data['property_title'] == null)) {
+    debugPrint('   ✅ Data incomplete - parsing from body text');
+    final parsedFromBody = _parsePaymentDetailsFromBody(body);
+    // Merge parsed data with existing data (existing data takes priority)
+    parsedFromBody.forEach((key, value) {
+      if (!paymentData.containsKey(key) || paymentData[key] == null) {
+        paymentData[key] = value;
+      }
+    });
+  }
+  
+  // Extract data EXACTLY as Laravel sends it (or as parsed from body)
+  final paymentId = paymentData['paymentId'] as String?;
+  final amount = paymentData['amount']; // Can be string or number
+  final propertyName = paymentData['property_title'] as String?;
+  final unitNumber = paymentData['unit_number'] as String?;
+  final tenantName = paymentData['tenantName'] as String?; // ✅ From body parsing
+  final installmentNumber = paymentData['installment_number'];
+  final paymentMethod = paymentData['payment_method'] as String?;
+  
+  // Payment method specific dates
+  final cashPaymentDate = paymentData['cash_payment_date'] as String?;
+  final chequeDate = paymentData['cheque_date'] as String?;
+  final transferDate = paymentData['transfer_date'] as String?;
+  final otherpaymentdate = paymentData['otherpaymentdate'] as String?;
+  final expectedDate = paymentData['expected_date'] as String?;
+  
+  // Additional payment details
+  final chequeNumber = paymentData['cheque_number'] as String?;
+  final chequeBankName = paymentData['cheque_bank_name'] as String?;
+  final receiptNumber = paymentData['receipt_number'] as String?;
+  final transactionReference = paymentData['transaction_reference'] as String?;
+  final transferBankName = paymentData['transfer_bank_name'] as String?;
+  final paymentReference = paymentData['payment_reference'] as String?;
+  final paymentDescription = paymentData['payment_description'] as String?;
+  
+  // Calculate effective due date - SAME PRIORITY AS LARAVEL
+  final dueDate = expectedDate ?? chequeDate ?? transferDate ?? cashPaymentDate ?? otherpaymentdate;
+  
+  // Calculate days until due
+  int? daysUntilDue;
+  String urgency = 'normal';
+  if (dueDate != null) {
+    try {
+      final due = DateTime.parse(dueDate);
+      final now = DateTime.now();
+      daysUntilDue = due.difference(now).inDays;
+      
+      // Calculate urgency SAME AS LARAVEL
+      if (daysUntilDue < 0) {
+        urgency = 'overdue';
+      } else if (daysUntilDue <= 1) {
+        urgency = 'critical';
+      } else if (daysUntilDue <= 3) {
+        urgency = 'urgent';
+      } else if (daysUntilDue <= 7) {
+        urgency = 'high';
+      }
+    } catch (e) {
+      debugPrint('Error parsing due date: $e');
+    }
+  }
   
   // Parse amount
   double? parsedAmount;
@@ -1140,15 +1275,14 @@ case 'upcoming_payment':
     }
   }
   
-  // Parse days until due
-  int? days;
-  if (daysUntilDue != null) {
-    if (daysUntilDue is int) {
-      days = daysUntilDue;
-    } else if (daysUntilDue is String) {
-      days = int.tryParse(daysUntilDue);
-    }
-  }
+  debugPrint('   Final payment data summary:');
+  debugPrint('      Tenant: $tenantName');
+  debugPrint('      Amount: $parsedAmount');
+  debugPrint('      Property: $propertyName');
+  debugPrint('      Unit: $unitNumber');
+  debugPrint('      Method: $paymentMethod');
+  debugPrint('      Due: $dueDate');
+  debugPrint('      Urgency: $urgency');
   
   Get.dialog(
     AlertDialog(
@@ -1177,14 +1311,42 @@ case 'upcoming_payment':
         ],
       ),
       content: Container(
-        constraints: const BoxConstraints(maxHeight: 500),
+        constraints: const BoxConstraints(maxHeight: 600),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // ✅ Tenant greeting (from body parsing)
+              if (tenantName != null && tenantName.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person, size: 20, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Hi $tenantName',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              
               // Urgency badge
-              if (days != null)
+              if (daysUntilDue != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -1197,11 +1359,13 @@ case 'upcoming_payment':
                       const Icon(Icons.warning, color: Colors.white, size: 16),
                       const SizedBox(width: 6),
                       Text(
-                        days <= 0
+                        daysUntilDue < 0
                             ? 'OVERDUE'
-                            : days == 1
-                                ? 'DUE TOMORROW'
-                                : 'DUE IN $days DAYS',
+                            : daysUntilDue == 0
+                                ? 'DUE TODAY'
+                                : daysUntilDue == 1
+                                    ? 'DUE TOMORROW'
+                                    : 'DUE IN $daysUntilDue DAYS',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -1213,7 +1377,7 @@ case 'upcoming_payment':
                 ),
               const SizedBox(height: 16),
               
-              // Amount
+              // Amount Due
               if (parsedAmount != null)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -1237,7 +1401,7 @@ case 'upcoming_payment':
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'AED ${parsedAmount.toStringAsFixed(2)}',
+                        'OMR ${parsedAmount.toStringAsFixed(3)}',
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -1249,71 +1413,260 @@ case 'upcoming_payment':
                 ),
               const SizedBox(height: 16),
               
-              // Property name
-              if (propertyName != null && propertyName.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.home, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        propertyName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+              // Property info
+              if (propertyName != null || unitNumber != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (propertyName != null && propertyName.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.home, size: 18, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                propertyName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (unitNumber != null && unitNumber.toString().isNotEmpty) ...[
+                        if (propertyName != null) const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.apartment, size: 18, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Unit Number: $unitNumber',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Installment number
+              if (installmentNumber != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.numbers, size: 18, color: Colors.blue[700]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Installment: $installmentNumber',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue[700],
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
               
-              // Payment type
-              Row(
-                children: [
-                  const Icon(Icons.category, size: 20, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Type: ${paymentType.toUpperCase()}',
-                    style: const TextStyle(fontSize: 14),
+              // Payment Method Details - EXACTLY AS LARAVEL FORMATS IT
+              if (paymentMethod != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.payment, size: 18, color: Colors.orange[700]),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Payment Method: ${paymentMethod.toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange[900],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      
+                      // CHEQUE DETAILS
+                      if (paymentMethod.toLowerCase() == 'cheque') ...[
+                        if (chequeNumber != null && chequeNumber.isNotEmpty) ...[
+                          Text(
+                            'Cheque #: $chequeNumber',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        if (chequeDate != null && chequeDate.isNotEmpty) ...[
+                          Text(
+                            'Cheque Date: ${_formatDate(chequeDate)}',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        if (chequeBankName != null && chequeBankName.isNotEmpty) ...[
+                          Text(
+                            'Bank: $chequeBankName',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ],
+                      
+                      // CASH DETAILS
+                      if (paymentMethod.toLowerCase() == 'cash') ...[
+                        if (cashPaymentDate != null && cashPaymentDate.isNotEmpty) ...[
+                          Text(
+                            'Cash Date: ${_formatDate(cashPaymentDate)}',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        if (receiptNumber != null && receiptNumber.isNotEmpty) ...[
+                          Text(
+                            'Receipt #: $receiptNumber',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ],
+                      
+                      // BANK TRANSFER DETAILS
+                      if (paymentMethod.toLowerCase() == 'bank transfer') ...[
+                        if (transactionReference != null && transactionReference.isNotEmpty) ...[
+                          Text(
+                            'Reference: $transactionReference',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        if (transferDate != null && transferDate.isNotEmpty) ...[
+                          Text(
+                            'Transfer Date: ${_formatDate(transferDate)}',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        if (transferBankName != null && transferBankName.isNotEmpty) ...[
+                          Text(
+                            'Bank: $transferBankName',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ],
+                      
+                      // OTHER PAYMENT DETAILS
+                      if (paymentMethod.toLowerCase() == 'other') ...[
+                        if (paymentReference != null && paymentReference.isNotEmpty) ...[
+                          Text(
+                            'Reference: $paymentReference',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        if (otherpaymentdate != null && otherpaymentdate.isNotEmpty) ...[
+                          Text(
+                            'Payment Date: ${_formatDate(otherpaymentdate)}',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               
-              // Due date
+              // Due date (effective date - SAME PRIORITY AS LARAVEL)
               if (dueDate != null && dueDate.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Due: ${_formatDate(dueDate)}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today, size: 18, color: Colors.red[700]),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Due: ${_formatDate(dueDate)}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red[900],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
               
-              // Message
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  data['message'] as String? ??
-                  'Please make the payment before the due date to avoid any penalties.',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    height: 1.6,
-                    color: Colors.black87,
+              // Payment description if available
+              if (paymentDescription != null && paymentDescription.isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    paymentDescription,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
-              ),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Please ensure timely payment to avoid any late fees or administrative holds.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1323,8 +1676,8 @@ case 'upcoming_payment':
           ElevatedButton.icon(
             onPressed: () {
               Get.back();
-              // Navigate to payment screen (update route as needed)
-              Get.toNamed('/makePayment', arguments: {'paymentId': paymentId});
+              // Navigate to payment screen if you have one
+              // Get.toNamed('/makePayment', arguments: {'paymentId': paymentId});
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green[700],
@@ -1344,6 +1697,7 @@ case 'upcoming_payment':
     barrierDismissible: true,
   );
   break;
+ 
 
         // ✅ FOLLOW-UP - Show notes dialog (KEEP AS IS - WORKING)
      // Replace the follow-up case in _navigateUsingGetX method (around line 950)

@@ -20,6 +20,7 @@ import '../../../widgets/custom_text_widget.dart';
 import 'tenants_create_ticket_screen.dart';
 import 'tenants_ticket_details_screen.dart';
 
+
 class TenantsTicketsListWidget extends StatefulWidget {
   const TenantsTicketsListWidget({super.key});
 
@@ -1190,4 +1191,5 @@ void _createNewComplaint(String category, String description) {
   //   filteredComplaints = complaints;
   // });
 }
+
 

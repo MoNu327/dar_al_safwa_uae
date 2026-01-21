@@ -586,6 +586,24 @@ Future<Response> getpaymentsHistory(String uid) async {
 }
 
 
+ Future<Response> addComplaintComment(String uid, int complaintId, String comments) async {
+  try {
+    final response = await apiClient.request(
+      "complaint/view-and-comment",  
+      method: "post",
+      data: {
+        'uid': uid,
+        'complaint_id': complaintId,
+        'comments': comments,
+      },
+    );
+    return response;
+  } catch (e) {
+    rethrow;
+  }
+}
+
+
   Future<Response> getSummaryForTenant(String user_id) async {
     try {
       final response = await apiClient.request(

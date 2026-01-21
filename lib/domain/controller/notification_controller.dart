@@ -133,89 +133,193 @@ String? _getLink(Map<String, dynamic> data) {
   }
 
   // ✅ UPDATED: Load notifications for current user
-  void loadStoredNotifications() {
-    try {
-      isLoading.value = true;
+ void loadStoredNotifications() {
+  try {
+    isLoading.value = true;
 
-      // Ensure we have a user ID
-      if (_currentUserId == null) {
-        _currentUserId = _storage.read(_currentUserKey);
-      }
+    debugPrint('📥 === LOADING STORED NOTIFICATIONS ===');
 
-      if (_currentUserId == null) {
-        debugPrint('⚠️ No user ID available, cannot load notifications');
-        notifications.clear();
-        _updateUnreadCount();
-        return;
-      }
-
-      debugPrint('📥 Loading notifications for user: $_currentUserId');
-
-      final storedData = _storage.read(_storageKey);
-
-      if (storedData != null && storedData.toString().isNotEmpty) {
-        try {
-          final List<dynamic> jsonList = json.decode(storedData);
-          final List<NotificationModel> loadedNotifications =
-              jsonList.map((json) => NotificationModel.fromJson(json)).toList();
-
-          // Sort by timestamp (newest first)
-          loadedNotifications
-              .sort((a, b) => b.timestamp.compareTo(a.timestamp));
-          notifications.value = loadedNotifications;
-          _updateUnreadCount();
-
-          debugPrint(
-              '✅ Loaded ${notifications.length} notifications for user $_currentUserId');
-        } catch (e) {
-          debugPrint('❌ Error parsing stored notifications: $e');
-          notifications.clear();
-        }
-      } else {
-        debugPrint('ℹ️ No stored notifications found for user $_currentUserId');
-        notifications.clear();
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading notifications: $e');
-      notifications.clear();
-    } finally {
-      isLoading.value = false;
+    // Ensure we have a user ID
+    if (_currentUserId == null) {
+      _currentUserId = _storage.read(_currentUserKey);
     }
+
+    if (_currentUserId == null) {
+      debugPrint('⚠️ No user ID available, cannot load notifications');
+      notifications.clear();
+      _updateUnreadCount();
+      return;
+    }
+
+    debugPrint('👤 Loading for user: $_currentUserId');
+
+    final storedData = _storage.read(_storageKey);
+
+    if (storedData != null && storedData.toString().isNotEmpty) {
+      debugPrint('📦 Found stored data');
+      debugPrint('📏 Data length: ${storedData.toString().length} characters');
+      
+      try {
+        final List<dynamic> jsonList = json.decode(storedData);
+        debugPrint('✅ Parsed JSON array with ${jsonList.length} items');
+        
+        // Show first notification for debugging
+        if (jsonList.isNotEmpty) {
+          final firstJson = jsonList.first as Map<String, dynamic>;
+          debugPrint('🔍 First notification JSON:');
+          debugPrint('   Type: ${firstJson['type']}');
+          debugPrint('   Data: ${firstJson['data']}');
+          debugPrint('   Data type: ${firstJson['data']?.runtimeType}');
+          debugPrint('   Data keys: ${firstJson['data']?.keys?.toList()}');
+        }
+        
+        final List<NotificationModel> loadedNotifications =
+            jsonList.map((json) {
+              debugPrint('📄 Converting JSON to NotificationModel...');
+              final model = NotificationModel.fromJson(json);
+              debugPrint('   Loaded: ID=${model.id}, Type=${model.type}, Data keys=${model.data?.keys.toList()}');
+              return model;
+            }).toList();
+
+        // Sort by timestamp (newest first)
+        loadedNotifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        notifications.value = loadedNotifications;
+        _updateUnreadCount();
+
+        debugPrint('✅ Loaded ${notifications.length} notifications for user $_currentUserId');
+        
+        // Show details of first few notifications
+        for (int i = 0; i < (notifications.length > 3 ? 3 : notifications.length); i++) {
+          final notif = notifications[i];
+          debugPrint('   Notification $i: Type=${notif.type}, Data keys=${notif.data?.keys.toList()}');
+        }
+        
+      } catch (e, stackTrace) {
+        debugPrint('❌ Error parsing stored notifications: $e');
+        debugPrint('Stack trace: $stackTrace');
+        notifications.clear();
+      }
+    } else {
+      debugPrint('ℹ️ No stored notifications found for user $_currentUserId');
+      notifications.clear();
+    }
+    
+    debugPrint('===================================');
+  } catch (e, stackTrace) {
+    debugPrint('❌ Error loading notifications: $e');
+    debugPrint('Stack trace: $stackTrace');
+    notifications.clear();
+  } finally {
+    isLoading.value = false;
   }
+}
 
   // ✅ UPDATED: Save notifications with user-specific key
   void _saveNotifications() {
-    try {
-      // ✅ FIX: Try multiple sources to get user ID
-      String? userId = _currentUserId;
+  try {
+    debugPrint('💾 === SAVING NOTIFICATIONS ===');
+    
+    // ✅ FIX: Try multiple sources to get user ID
+    String? userId = _currentUserId;
 
-      if (userId == null) {
-        userId = _storage.read(_currentUserKey);
-        debugPrint('⚠️ User ID was null, retrieved from storage: $userId');
-      }
+    if (userId == null) {
+      userId = _storage.read(_currentUserKey);
+      debugPrint('⚠️ User ID was null, retrieved from storage: $userId');
+    }
 
-      if (userId == null) {
-        // ✅ FIX: Store in temporary buffer for when user logs in
-        debugPrint(
-            '⚠️ No user ID available - storing notifications in temporary buffer');
-        _savePendingNotifications();
-        return;
-      }
+    if (userId == null) {
+      // ✅ FIX: Store in temporary buffer for when user logs in
+      debugPrint('⚠️ No user ID available - storing notifications in temporary buffer');
+      _savePendingNotifications();
+      return;
+    }
 
-      // Keep only last 100 notifications per user
-      if (notifications.length > 100) {
-        notifications.value = notifications.take(100).toList();
-      }
+    debugPrint('👤 Saving for user: $userId');
+    debugPrint('📊 Total notifications to save: ${notifications.length}');
 
+    // Keep only last 100 notifications per user
+    if (notifications.length > 100) {
+      notifications.value = notifications.take(100).toList();
+    }
+
+    // ✅ CRITICAL: Check data BEFORE converting to JSON
+    debugPrint('🔍 Checking notifications BEFORE toJson:');
+    for (int i = 0; i < (notifications.length > 3 ? 3 : notifications.length); i++) {
+      final notif = notifications[i];
+      debugPrint('   Notification $i:');
+      debugPrint('      ID: ${notif.id}');
+      debugPrint('      Type: ${notif.type}');
+      debugPrint('      Data is null: ${notif.data == null}');
+      debugPrint('      Data keys: ${notif.data?.keys.toList()}');
+      debugPrint('      Data: ${notif.data}');
+    }
+
+    // Convert to JSON
+    debugPrint('🔄 Converting to JSON...');
     final List<Map<String, dynamic>> jsonList = 
-        notifications.map((notification) => notification.toJson()).toList();
+        notifications.map((notification) {
+          debugPrint('   Converting notification ${notification.id}...');
+          final json = notification.toJson();
+          debugPrint('      JSON type: ${json['type']}');
+          debugPrint('      JSON data: ${json['data']}');
+          debugPrint('      JSON data keys: ${json['data']?.keys?.toList()}');
+          return json;
+        }).toList();
+    
+    debugPrint('✅ Converted ${jsonList.length} notifications to JSON');
+    
+    // Encode to string
+    debugPrint('📝 Encoding to JSON string...');
+    final jsonString = json.encode(jsonList);
+    debugPrint('📏 JSON string length: ${jsonString.length} characters');
+    
+    // Show first 500 characters of JSON
+    if (jsonString.length > 0) {
+      final preview = jsonString.length > 500 
+          ? jsonString.substring(0, 500) + '...' 
+          : jsonString;
+      debugPrint('📄 JSON preview: $preview');
+    }
     
     final storageKey = '$_storageKeyPrefix$userId';
-    _storage.write(storageKey, json.encode(jsonList));
+    debugPrint('🔑 Storage key: $storageKey');
+    
+    // Save to storage
+    debugPrint('💾 Writing to storage...');
+    _storage.write(storageKey, jsonString);
+    
+    // Verify it was saved
+    debugPrint('✅ Verifying save...');
+    final savedData = _storage.read(storageKey);
+    if (savedData != null) {
+      debugPrint('✅ Verified: Data exists in storage');
+      debugPrint('📏 Saved data length: ${savedData.toString().length} characters');
+      
+      // Try to parse it back
+      try {
+        final List<dynamic> parsedList = json.decode(savedData);
+        debugPrint('✅ Verified: Data is valid JSON');
+        debugPrint('📊 Verified: Contains ${parsedList.length} notifications');
+        
+        if (parsedList.isNotEmpty) {
+          final firstNotif = parsedList.first as Map<String, dynamic>;
+          debugPrint('🔍 First notification in storage:');
+          debugPrint('   Type: ${firstNotif['type']}');
+          debugPrint('   Data: ${firstNotif['data']}');
+          debugPrint('   Data type: ${firstNotif['data']?.runtimeType}');
+        }
+      } catch (e) {
+        debugPrint('❌ Error parsing saved data: $e');
+      }
+    } else {
+      debugPrint('❌ ERROR: Data not found in storage after save!');
+    }
     
     debugPrint('💾 Saved ${notifications.length} notifications for user $userId');
-  } catch (e) {
+    debugPrint('================================');
+  } catch (e, stackTrace) {
     debugPrint('❌ Error saving notifications: $e');
+    debugPrint('Stack trace: $stackTrace');
     // Try to save to pending buffer as fallback
     try {
       _savePendingNotifications();
@@ -460,37 +564,74 @@ Widget _buildLinkActions(String link) {
   }
 
   void addNotificationFromRemoteMessage(RemoteMessage message) {
-    final notification = NotificationModel.fromRemoteMessage(message);
-    addNotification(notification);
+  debugPrint('📨 === ADD NOTIFICATION FROM REMOTE MESSAGE ===');
+  debugPrint('   Message ID: ${message.messageId}');
+  debugPrint('   Message data: ${message.data}');
+  
+  final notification = NotificationModel.fromRemoteMessage(message);
+  
+  debugPrint('🎯 Created notification model:');
+  debugPrint('   Model ID: ${notification.id}');
+  debugPrint('   Model type: ${notification.type}');
+  debugPrint('   Model data is null: ${notification.data == null}');
+  debugPrint('   Model data keys: ${notification.data?.keys.toList()}');
+  debugPrint('   Model data: ${notification.data}');
+  
+  addNotification(notification);
 
-    // Also add to stream for real-time processing
-    _notificationStreamController.add(message.data);
-  }
+  // Also add to stream for real-time processing
+  _notificationStreamController.add(message.data);
+  
+  debugPrint('===============================================');
+}
 
-  void addNotification(NotificationModel notification) {
-    final existingIndex =
-        notifications.indexWhere((n) => n.id == notification.id);
+void addNotification(NotificationModel notification) {
+  debugPrint('🔔 === ADDING NOTIFICATION TO CONTROLLER ===');
+  debugPrint('   ID: ${notification.id}');
+  debugPrint('   Type: ${notification.type}');
+  debugPrint('   Data is null: ${notification.data == null}');
+  debugPrint('   Data keys: ${notification.data?.keys.toList()}');
+  debugPrint('   Data["type"]: ${notification.data?['type']}');
+  debugPrint('   Data["paymentId"]: ${notification.data?['paymentId']}');
+  debugPrint('   Full data: ${notification.data}');
+  
+  final existingIndex = notifications.indexWhere((n) => n.id == notification.id);
 
-    if (existingIndex != -1) {
-      notifications[existingIndex] = notification;
-      debugPrint('📝 Updated existing notification: ${notification.id}');
-    } else {
-      notifications.insert(0, notification);
-      debugPrint('➕ Added new notification: ${notification.id}');
+  if (existingIndex != -1) {
+    notifications[existingIndex] = notification;
+    debugPrint('📝 Updated existing notification at index $existingIndex');
+  } else {
+    notifications.insert(0, notification);
+    debugPrint('➕ Added new notification at index 0');
 
-      // Keep only last 100 notifications
-      if (notifications.length > 100) {
-        notifications.removeRange(100, notifications.length);
-      }
+    // Keep only last 100 notifications
+    if (notifications.length > 100) {
+      notifications.removeRange(100, notifications.length);
     }
-
-    _saveNotifications();
-    _updateUnreadCount();
-
-    // Also notify stream for real-time processing
-    _notificationStreamController.add(notification.data ?? {});
   }
 
+  debugPrint('📊 Total notifications in memory: ${notifications.length}');
+  debugPrint('🔍 Verifying notification in list:');
+  final addedNotif = notifications.first;
+  debugPrint('   Type in list: ${addedNotif.type}');
+  debugPrint('   Data in list: ${addedNotif.data}');
+  debugPrint('   Data keys in list: ${addedNotif.data?.keys.toList()}');
+
+  debugPrint('💾 About to save notifications...');
+  _saveNotifications();
+  
+  debugPrint('🔄 About to update unread count...');
+  _updateUnreadCount();
+
+  // Also notify stream for real-time processing
+  if (notification.data != null) {
+    _notificationStreamController.add(notification.data!);
+    debugPrint('📤 Added to stream controller');
+  }
+  
+  debugPrint('✅ addNotification complete');
+  debugPrint('============================================');
+}
   // Direct method to add data to stream (for TenantsTicketsController)
   void addNotificationData(Map<String, dynamic> data) {
     _notificationStreamController.add(data);
@@ -505,6 +646,8 @@ Widget _buildLinkActions(String link) {
       debugPrint('✓ Marked notification as read: $notificationId');
     }
   }
+
+  
 
   void markAllAsRead() {
     bool hasChanges = false;
@@ -809,19 +952,95 @@ Future<void> _downloadToDevice(String url, String fileName) async {
     }
   }
 
- void _handleRegularNavigation(NotificationModel notification) {
-  final data = notification.data ?? {};
-  final notificationType = data['type'] as String?;
-   final hasLink = _hasLink(data);
-  final link = hasLink ? _getLink(data) : null;
-    debugPrint('🎯 Handling navigation for type: ${notification.type}');
-
-  debugPrint('🎯 Navigating using GetX for type: $notificationType');
-  debugPrint('🎯 Handling navigation for type: ${notification.type}');
-  debugPrint('🎯 Ticket ID: ${notification.ticketId}');
+  Map<String, dynamic> _parsePaymentDetailsFromBody(String body) {
+  debugPrint('🔍 === PARSING PAYMENT BODY ===');
+  debugPrint('Body text: $body');
   
-  switch (notification.type) {
-   case 'chat':
+  final Map<String, dynamic> parsedData = {};
+  
+  try {
+    // Extract tenant name
+    final tenantMatch = RegExp(r'Hi\s+([^\n,]+)').firstMatch(body);
+    if (tenantMatch != null) {
+      parsedData['tenantName'] = tenantMatch.group(1)?.trim();
+    }
+    
+    // Extract property and unit from "Payment due for CBD Building (Unit CBD 15):"
+    final propertyMatch = RegExp(r'Payment due for\s+([^\(]+)\s*\(Unit\s+([^\)]+)\)').firstMatch(body);
+    if (propertyMatch != null) {
+      parsedData['property_title'] = propertyMatch.group(1)?.trim();
+      parsedData['unit_number'] = propertyMatch.group(2)?.trim();
+    }
+    
+    // Extract amount
+    final amountMatch = RegExp(r'Amount:\s*OMR\s+([\d,.]+)').firstMatch(body);
+    if (amountMatch != null) {
+      final amountStr = amountMatch.group(1)?.replaceAll(',', '');
+      parsedData['amount'] = double.tryParse(amountStr ?? '0') ?? 0.0;
+    }
+    
+    // Extract due date
+    final dueDateMatch = RegExp(r'Due Date:\s+([^\n]+)').firstMatch(body);
+    if (dueDateMatch != null) {
+      parsedData['expected_date'] = dueDateMatch.group(1)?.trim();
+    }
+    
+    // Extract payment method
+    final methodMatch = RegExp(r'Payment Method:\s+([^\n]+)').firstMatch(body);
+    if (methodMatch != null) {
+      parsedData['payment_method'] = methodMatch.group(1)?.trim();
+    }
+    
+    // Extract cheque details
+    final chequeNumMatch = RegExp(r'Cheque #:\s+([^\n]+)').firstMatch(body);
+    if (chequeNumMatch != null) {
+      parsedData['cheque_number'] = chequeNumMatch.group(1)?.trim();
+    }
+    
+    final chequeDateMatch = RegExp(r'Cheque Date:\s+([^\n]+)').firstMatch(body);
+    if (chequeDateMatch != null) {
+      parsedData['cheque_date'] = chequeDateMatch.group(1)?.trim();
+    }
+    
+    debugPrint('✅ Parsed payment data: $parsedData');
+  } catch (e) {
+    debugPrint('❌ Error parsing payment body: $e');
+  }
+  
+  return parsedData;
+}
+
+void _handleRegularNavigation(NotificationModel notification) {
+  final data = notification.data ?? {};
+  final notificationType = notification.type;
+  final hasLink = _hasLink(data);
+  final link = hasLink ? _getLink(data) : null;
+  
+  // ✅ CRITICAL: Debug logging to see what's happening
+  debugPrint('🔍 === NAVIGATION DEBUG ===');
+  debugPrint('   notification.type = "${notification.type}"');
+  debugPrint('   data["type"] = "$notificationType"');
+  debugPrint('   notification.data = $data');
+  debugPrint('========================');
+  
+  // ✅ IMPORTANT: Check BOTH notification.type AND data['type']
+  final typeToCheck = notification.type;
+  
+  switch (typeToCheck) {
+    case 'payment_reminder':
+    case 'upcoming_payment':
+      debugPrint('✅ MATCHED PAYMENT CASE');
+       Map<String, dynamic> paymentData = Map.from(data);
+      
+      if (data.isEmpty && notification.body.contains('Amount: OMR')) {
+        debugPrint('   ✅ Data empty - parsing from body');
+        paymentData = _parsePaymentDetailsFromBody(notification.body);
+      }
+      
+      handlePaymentReminderNavigation(paymentData);
+      return; // ✅ Add return to prevent fallthrough
+    
+  case 'chat':
 case 'message':
   debugPrint('💬 Stored chat notification tapped');
   
@@ -838,63 +1057,8 @@ case 'message':
   debugPrint('   Has link: $hasLink');
   
   if (displayMessage != null && displayMessage.isNotEmpty) {
-    // ✅ Ensure GetX context is ready
-    if (Get.context == null) {
-      debugPrint('⚠️ GetX context not ready, retrying...');
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _handleRegularNavigation(notification);
-      });
-      return;
-    }
-    
-    Get.dialog(
-      AlertDialog(
-        backgroundColor: AppColors.splashBackgroundColor,
-        title: Row(
-          children: [
-            const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Message from $userName',
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-          ],
-        ),
-        content: Container(
-          constraints: const BoxConstraints(maxHeight: 400),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Message content
-                Text(
-                  displayMessage,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    height: 1.6,
-                    color: Colors.black87,
-                  ),
-                ),
-                
-                // ✅ Link actions if link exists
-                if (hasLink && link != null) _buildLinkActions(link),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-            child: const Text('Close', style: TextStyle(fontSize: 16)),
-          ),
-        ],
-      ),
-      barrierDismissible: true,
-    );
+    // ✅ Call unified dialog method
+    _handleChatMessageDialog(userName, displayMessage, link: link);
   } else {
     debugPrint('⚠️ No message content in stored notification');
     Get.snackbar(
@@ -936,11 +1100,7 @@ case 'document_expiry':
   _handleDocumentExpiryNavigation(data);
   break;
 
-case 'payment_reminder':
-case 'upcoming_payment':
-  debugPrint('💰 Payment reminder notification from stored');
-  _handlePaymentReminderNavigation(data);
-  break;
+
       
     // Handle follow-up notifications - SHOW NOTES
    case 'follow_up':
@@ -1000,80 +1160,118 @@ void _handleContractExpiryNavigation(Map<String, dynamic> data) {
     }
   }
   
+  // Calculate urgency
+  Color urgencyColor = Colors.grey[700]!;
+  String urgencyText = '';
+  
+  if (days != null) {
+    if (days <= 0) {
+      urgencyColor = Colors.red[700]!;
+      urgencyText = 'EXPIRED';
+    } else if (days == 1) {
+      urgencyColor = Colors.orange[700]!;
+      urgencyText = 'EXPIRES TOMORROW';
+    } else if (days <= 7) {
+      urgencyColor = Colors.orange[600]!;
+      urgencyText = 'EXPIRES IN $days DAYS';
+    } else if (days <= 30) {
+      urgencyColor = Colors.blue[700]!;
+      urgencyText = 'EXPIRES IN $days DAYS';
+    }
+  }
+  
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _getUrgencyColor(urgency),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.assignment_late, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text('Contract Expiry Notice', style: TextStyle(fontSize: 18)),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: EdgeInsets.zero,
       content: Container(
-        constraints: const BoxConstraints(maxHeight: 500),
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxHeight: 600),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (days != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getUrgencyColor(urgency),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.warning, color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        days <= 0 ? 'EXPIRED' : days == 1 ? 'EXPIRES TOMORROW' : 'EXPIRES IN $days DAYS',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ],
-                  ),
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-              const SizedBox(height: 16),
-              if (propertyName != null && propertyName.isNotEmpty) ...[
-                Row(
+                child: Column(
                   children: [
-                    const Icon(Icons.home, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(propertyName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Icon(Icons.assignment_late, size: 40, color: Colors.orange[800]),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Contract Expiry Notice',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-              ],
-              if (expiryDate != null && expiryDate.isNotEmpty) ...[
-                Row(
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Expires: ${_formatDate(expiryDate)}', style: const TextStyle(fontSize: 14)),
+                    // Urgency badge
+                    if (urgencyText.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: urgencyColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: urgencyColor, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.warning_amber_rounded, size: 16, color: urgencyColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              urgencyText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: urgencyColor,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    
+                    // Property Details
+                    if (propertyName != null && propertyName.isNotEmpty)
+                      _buildCleanInfoRow('Property', propertyName, Icons.home_outlined),
+                    
+                    if (expiryDate != null && expiryDate.isNotEmpty)
+                      _buildCleanInfoRow('Expiry Date', _formatDate(expiryDate), Icons.calendar_today_outlined),
+                    
+                    const SizedBox(height: 20),
+                    Divider(height: 1, color: Colors.grey[300]),
+                    const SizedBox(height: 16),
+                    
+                    // Footer message
+                    Text(
+                      'Please contact management to renew your contract and avoid any disruption.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8)),
-                child: Text(
-                  data['message'] as String? ?? 'Your contract is expiring soon. Please contact management to renew.',
-                  style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
                 ),
               ),
             ],
@@ -1082,19 +1280,39 @@ void _handleContractExpiryNavigation(Map<String, dynamic> data) {
       ),
       actions: [
         if (contractId != null && contractId.isNotEmpty)
-          TextButton.icon(
+          TextButton(
             onPressed: () {
               Get.back();
               Get.toNamed('/contractDetails', arguments: {'contractId': contractId});
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.orange),
-            icon: const Icon(Icons.visibility, size: 18),
-            label: const Text('View Contract', style: TextStyle(fontSize: 16)),
+            child: Text(
+              'View Contract',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-        TextButton(
+        const SizedBox(width: 8),
+        ElevatedButton(
           onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Close', style: TextStyle(fontSize: 16)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     ),
@@ -1120,90 +1338,121 @@ void _handleDocumentExpiryNavigation(Map<String, dynamic> data) {
     }
   }
   
+  // Calculate urgency
+  Color urgencyColor = Colors.grey[700]!;
+  String urgencyText = '';
+  
+  if (days != null) {
+    if (days <= 0) {
+      urgencyColor = Colors.red[700]!;
+      urgencyText = 'EXPIRED';
+    } else if (days == 1) {
+      urgencyColor = Colors.orange[700]!;
+      urgencyText = 'EXPIRES TOMORROW';
+    } else if (days <= 7) {
+      urgencyColor = Colors.orange[600]!;
+      urgencyText = 'EXPIRES IN $days DAYS';
+    } else if (days <= 30) {
+      urgencyColor = Colors.blue[700]!;
+      urgencyText = 'EXPIRES IN $days DAYS';
+    }
+  }
+  
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _getUrgencyColor(urgency),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.description, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text('Document Expiry Notice', style: TextStyle(fontSize: 18)),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: EdgeInsets.zero,
       content: Container(
-        constraints: const BoxConstraints(maxHeight: 500),
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxHeight: 600),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (days != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getUrgencyColor(urgency),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.warning, color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        days <= 0 ? 'EXPIRED' : days == 1 ? 'EXPIRES TOMORROW' : 'EXPIRES IN $days DAYS',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ],
-                  ),
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-              const SizedBox(height: 16),
-              if (documentName != null && documentName.isNotEmpty) ...[
-                Row(
+                child: Column(
                   children: [
-                    const Icon(Icons.insert_drive_file, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(documentName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Icon(Icons.description, size: 40, color: Colors.blue[800]),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Document Expiry Notice',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-              ],
-              if (documentType != null && documentType.isNotEmpty) ...[
-                Row(
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.category, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Type: $documentType', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                    // Urgency badge
+                    if (urgencyText.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: urgencyColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: urgencyColor, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.warning_amber_rounded, size: 16, color: urgencyColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              urgencyText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: urgencyColor,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    
+                    // Document Details
+                    if (documentName != null && documentName.isNotEmpty)
+                      _buildCleanInfoRow('Document', documentName, Icons.insert_drive_file_outlined),
+                    
+                    if (documentType != null && documentType.isNotEmpty)
+                      _buildCleanInfoRow('Type', documentType, Icons.category_outlined),
+                    
+                    if (expiryDate != null && expiryDate.isNotEmpty)
+                      _buildCleanInfoRow('Expiry Date', _formatDate(expiryDate), Icons.calendar_today_outlined),
+                    
+                    const SizedBox(height: 20),
+                    Divider(height: 1, color: Colors.grey[300]),
+                    const SizedBox(height: 16),
+                    
+                    // Footer message
+                    Text(
+                      'Please renew this document to avoid any issues with your records.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              if (expiryDate != null && expiryDate.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Expires: ${_formatDate(expiryDate)}', style: const TextStyle(fontSize: 14)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
-                child: Text(
-                  data['message'] as String? ?? 'Your document is expiring soon. Please renew to avoid any issues.',
-                  style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
                 ),
               ),
             ],
@@ -1212,19 +1461,39 @@ void _handleDocumentExpiryNavigation(Map<String, dynamic> data) {
       ),
       actions: [
         if (documentId != null && documentId.isNotEmpty)
-          TextButton.icon(
+          TextButton(
             onPressed: () {
               Get.back();
               Get.toNamed('/documentDetails', arguments: {'documentId': documentId});
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-            icon: const Icon(Icons.visibility, size: 18),
-            label: const Text('View Document', style: TextStyle(fontSize: 16)),
+            child: Text(
+              'View Document',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-        TextButton(
+        const SizedBox(width: 8),
+        ElevatedButton(
           onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Close', style: TextStyle(fontSize: 16)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     ),
@@ -1232,14 +1501,843 @@ void _handleDocumentExpiryNavigation(Map<String, dynamic> data) {
   );
 }
 
-void _handlePaymentReminderNavigation(Map<String, dynamic> data) {
-  final paymentId = data['paymentId'] as String?;
+void _handleChatMessageDialog(String userName, String message, {String? link}) {
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: EdgeInsets.zero,
+      content: Container(
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxHeight: 600),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.chat_bubble, size: 40, color: Colors.blue[800]),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Message from $userName',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Message content
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        message,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
+                          height: 1.6,
+                        ),
+                      ),
+                    ),
+                    
+                    // Link section
+                    if (link != null && link.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.link, size: 16, color: Colors.grey[700]),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Attached Link',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[700],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              link,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () => _copyLinkToClipboard(link),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.blue[700],
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  ),
+                                  icon: const Icon(Icons.copy, size: 16),
+                                  label: const Text('Copy', style: TextStyle(fontSize: 13)),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton.icon(
+                                  onPressed: () => _openLinkInBrowser(link),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue[700],
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    elevation: 0,
+                                  ),
+                                  icon: const Icon(Icons.open_in_new, size: 16),
+                                  label: const Text('Open', style: TextStyle(fontSize: 13)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Get.back(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+}
+
+// ============================================
+// 4. FOLLOW-UP/SITE VISIT DIALOG
+// ============================================
+void _handleFollowUpDialog(String notes, {String? location, String? phoneNumber}) {
+  // Clean up notes text
+  String cleanNotes = notes;
+  
+  // Remove location line
+  if (location != null) {
+    cleanNotes = cleanNotes.replaceAll(RegExp(r'Location:\s*[^\n]*', multiLine: true), '').trim();
+  }
+  
+  // Remove phone line
+  if (phoneNumber != null) {
+    cleanNotes = cleanNotes.replaceAll(RegExp(r'(?:Phone|Mobile|Contact|Tel|Call):\s*[^\n]*', caseSensitive: false, multiLine: true), '').trim();
+  }
+  
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: EdgeInsets.zero,
+      content: Container(
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxHeight: 600),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.event_note, size: 40, color: Colors.purple[800]),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Site Visit Notes',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Notes
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.purple[50],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        cleanNotes,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.black87,
+                          height: 1.6,
+                        ),
+                      ),
+                    ),
+                    
+                    // Phone Number Section
+                    if (phoneNumber != null) ...[
+                      const SizedBox(height: 16),
+                      _buildPhoneCard(phoneNumber),
+                    ],
+                    
+                    // Location Section
+                    if (location != null) ...[
+                      const SizedBox(height: 16),
+                      _buildLocationCard(location),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Get.back(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+}
+
+
+
+// ============================================
+// 5. PROPERTY INTEREST DIALOG
+// ============================================
+void _handlePropertyInterestDialog({
+  String? customerName,
+  String? customerPhone,
+  String? propertyName,
+  String? propertyId,
+  String? interestType,
+  String? message,
+}) {
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: EdgeInsets.zero,
+      content: Container(
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxHeight: 600),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.person_add, size: 40, color: Colors.green[800]),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'New Property Interest',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    if (interestType != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: interestType == 'call' ? Colors.green[100] : Colors.blue[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          interestType == 'call' ? 'Call Request' : 'Chat Request',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: interestType == 'call' ? Colors.green[800] : Colors.blue[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Customer Info
+                    if (customerName != null && customerName.isNotEmpty)
+                      _buildCleanInfoRow('Customer', customerName, Icons.person_outline),
+                    
+                    // Property Info
+                    if (propertyName != null && propertyName.isNotEmpty)
+                      _buildCleanInfoRow('Property', propertyName, Icons.home_outlined),
+                    
+                    // Phone Number
+                    if (customerPhone != null && customerPhone.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildPhoneCard(customerPhone),
+                    ],
+                    
+                    // Message
+                    if (message != null && message.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          message,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            height: 1.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        if (propertyId != null && propertyId.isNotEmpty)
+          TextButton(
+            onPressed: () {
+              Get.back();
+              Get.toNamed('/propertyDetails', arguments: {'propertyId': propertyId});
+            },
+            child: Text(
+              'View Property',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () => Get.back(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+}
+
+
+// ============================================
+// 6. BOOKING DIALOG
+// ============================================
+void _handleBookingDialog({
+  String? customerName,
+  String? customerPhone,
+  String? propertyName,
+  String? propertyId,
+  String? bookingDate,
+  String? bookingId,
+  String? notes,
+}) {
+  Get.dialog(
+    AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: EdgeInsets.zero,
+      content: Container(
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxHeight: 600),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.event_available, size: 40, color: Colors.teal[800]),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Property Booking',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Booking ID
+                    if (bookingId != null && bookingId.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.teal[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.teal[200]!),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.confirmation_number, size: 18, color: Colors.teal[700]),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Booking ID',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    bookingId,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.teal[800],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    
+                    // Customer Info
+                    if (customerName != null && customerName.isNotEmpty)
+                      _buildCleanInfoRow('Customer', customerName, Icons.person_outline),
+                    
+                    // Property Info
+                    if (propertyName != null && propertyName.isNotEmpty)
+                      _buildCleanInfoRow('Property', propertyName, Icons.home_outlined),
+                    
+                    // Booking Date
+                    if (bookingDate != null && bookingDate.isNotEmpty)
+                      _buildCleanInfoRow('Booking Date', bookingDate, Icons.calendar_today_outlined),
+                    
+                    // Phone Number
+                    if (customerPhone != null && customerPhone.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildPhoneCard(customerPhone),
+                    ],
+                    
+                    // Notes
+                    if (notes != null && notes.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Divider(height: 1, color: Colors.grey[300]),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.teal[50],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          notes,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            height: 1.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        if (propertyId != null && propertyId.isNotEmpty)
+          TextButton(
+            onPressed: () {
+              Get.back();
+              Get.toNamed('/propertyDetails', arguments: {'propertyId': propertyId});
+            },
+            child: Text(
+              'View Property',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () => Get.back(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+    barrierDismissible: true,
+  );
+}
+
+// ============================================
+// HELPER WIDGETS
+// ============================================
+
+// Clean info row widget
+Widget _buildCleanInfoRow(String label, String value, IconData? icon, {bool isSubItem = false}) {
+  return Padding(
+    padding: EdgeInsets.only(
+      bottom: 12,
+      left: isSubItem ? 24 : 0,
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 18, color: Colors.grey[600]),
+          const SizedBox(width: 12),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Phone card widget with tap-to-call
+Widget _buildPhoneCard(String phoneNumber) {
+  return InkWell(
+    onTap: () async {
+      try {
+        final uri = Uri.parse('tel:$phoneNumber');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri);
+        }
+      } catch (e) {
+        Get.snackbar(
+          'Error',
+          'Cannot open phone dialer',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    },
+    child: Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.green[200]!, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.phone, size: 20, color: Colors.green[700]),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Contact Number',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  phoneNumber,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.call, color: Colors.green[700], size: 20),
+          const SizedBox(width: 4),
+          Text(
+            'Tap to call',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.green[600],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// Location card widget
+Widget _buildLocationCard(String location) {
+  return Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.blue[50],
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: Colors.blue[200]!, width: 1),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.location_on, size: 18, color: Colors.blue[700]),
+            const SizedBox(width: 6),
+            Text(
+              'Site Visit Location',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.blue[700],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            location.startsWith('http') ? 'Google Maps Link' : location,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton.icon(
+              onPressed: () => _copyLocation(location),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blue[700],
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              ),
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Copy', style: TextStyle(fontSize: 13)),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () => _openLocationInMaps(location),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[700],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.map, size: 16),
+              label: const Text('Open Map', style: TextStyle(fontSize: 13)),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+// Helper method to format date
+String _formatDate(String dateString) {
+  try {
+    final date = DateTime.parse(dateString);
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  } catch (e) {
+    return dateString;
+  }
+}
+
+// ============================================
+// PAYMENT REMINDER - CLEAN PROFESSIONAL STYLE
+// ============================================
+void handlePaymentReminderNavigation(Map<String, dynamic> data) {
+  debugPrint('💰 === HANDLING PAYMENT REMINDER ===');
+  debugPrint('Payment data: $data');
+  
+  // Extract data
+  final tenantName = data['tenantName'] as String?;
   final amount = data['amount'];
-  final propertyName = data['propertyName'] as String?;
-  final paymentType = data['paymentType'] as String? ?? 'rent';
-  final dueDate = data['dueDate'] as String?;
-  final daysUntilDue = data['daysUntilDue'];
-  final urgency = data['urgency'] as String? ?? data['subType'] as String? ?? 'normal';
+  final propertyName = data['property_title'] as String?;
+  final unitNumber = data['unit_number'] as String?;
+  final dueDate = data['expected_date'] as String?;
+  final paymentMethod = data['payment_method'] as String?;
+  final chequeNumber = data['cheque_number'] as String?;
+  final chequeDate = data['cheque_date'] as String?;
   
   // Parse amount
   double? parsedAmount;
@@ -1251,120 +2349,183 @@ void _handlePaymentReminderNavigation(Map<String, dynamic> data) {
     }
   }
   
-  // Parse days
-  int? days;
-  if (daysUntilDue != null) {
-    if (daysUntilDue is int) {
-      days = daysUntilDue;
-    } else if (daysUntilDue is String) {
-      days = int.tryParse(daysUntilDue);
+  // Calculate urgency
+  int? daysUntilDue;
+  Color urgencyColor = Colors.grey[700]!;
+  String urgencyText = '';
+  
+  if (dueDate != null) {
+    try {
+      final due = DateTime.parse(dueDate);
+      daysUntilDue = due.difference(DateTime.now()).inDays;
+      
+      if (daysUntilDue < 0) {
+        urgencyColor = Colors.red[700]!;
+        urgencyText = 'OVERDUE';
+      } else if (daysUntilDue == 0) {
+        urgencyColor = Colors.orange[700]!;
+        urgencyText = 'DUE TODAY';
+      } else if (daysUntilDue == 1) {
+        urgencyColor = Colors.orange[600]!;
+        urgencyText = 'DUE TOMORROW';
+      } else if (daysUntilDue <= 7) {
+        urgencyColor = Colors.blue[700]!;
+        urgencyText = 'DUE IN $daysUntilDue DAYS';
+      }
+    } catch (e) {
+      debugPrint('Error parsing due date: $e');
     }
   }
   
+  debugPrint('   Amount: $parsedAmount');
+  debugPrint('   Due Date: $dueDate');
+  debugPrint('   Urgency: $urgencyText');
+  debugPrint('========================');
+  
+  // Show clean, professional dialog
   Get.dialog(
     AlertDialog(
-      backgroundColor: AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _getUrgencyColor(urgency),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.payment, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(child: Text('Payment Reminder', style: TextStyle(fontSize: 18))),
-        ],
-      ),
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      contentPadding: EdgeInsets.zero,
       content: Container(
-        constraints: const BoxConstraints(maxHeight: 500),
+        width: double.maxFinite,
+        constraints: const BoxConstraints(maxHeight: 600),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (days != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getUrgencyColor(urgency),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.warning, color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.payment, size: 40, color: Colors.grey[800]),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Payment Reminder',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    if (tenantName != null && tenantName.isNotEmpty) ...[
+                      const SizedBox(height: 8),
                       Text(
-                        days <= 0 ? 'OVERDUE' : days == 1 ? 'DUE TOMORROW' : 'DUE IN $days DAYS',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                        'Hi $tenantName',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Colors.grey[700],
+                        ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
-              const SizedBox(height: 16),
-              if (parsedAmount != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green[50]!, Colors.green[100]!],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Amount Due', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ),
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Urgency badge (if urgent)
+                    if (urgencyText.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: urgencyColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: urgencyColor, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.warning_amber_rounded, size: 16, color: urgencyColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              urgencyText,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: urgencyColor,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                    
+                    // Amount - BIG and CLEAR
+                    if (parsedAmount != null) ...[
+                      const Text(
+                        'Amount Due',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
-                        'AED ${parsedAmount.toStringAsFixed(2)}',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.green[900]),
+                        'OMR ${parsedAmount.toStringAsFixed(3)}',
+                        style: const TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                          letterSpacing: -0.5,
+                        ),
                       ),
+                      const SizedBox(height: 24),
+                      Divider(height: 1, color: Colors.grey[300]),
+                      const SizedBox(height: 20),
                     ],
-                  ),
-                ),
-              const SizedBox(height: 16),
-              if (propertyName != null && propertyName.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.home, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(propertyName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    
+                    // Property Details - Clean rows
+                    if (propertyName != null && propertyName.isNotEmpty)
+                      _buildCleanInfoRow('Property', propertyName, Icons.home_outlined),
+                    
+                    if (unitNumber != null && unitNumber.isNotEmpty)
+                      _buildCleanInfoRow('Unit', unitNumber, Icons.meeting_room_outlined),
+                    
+                    if (dueDate != null && dueDate.isNotEmpty)
+                      _buildCleanInfoRow('Due Date', _formatDate(dueDate), Icons.calendar_today_outlined),
+                    
+                    if (paymentMethod != null && paymentMethod.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildCleanInfoRow('Payment Method', paymentMethod.toUpperCase(), Icons.payment_outlined),
+                      
+                      // Method-specific details (indented)
+                      if (paymentMethod.toLowerCase() == 'cheque') ...[
+                        if (chequeNumber != null && chequeNumber.isNotEmpty)
+                          _buildCleanInfoRow('  Cheque Number', chequeNumber, null, isSubItem: true),
+                        if (chequeDate != null && chequeDate.isNotEmpty)
+                          _buildCleanInfoRow('  Cheque Date', _formatDate(chequeDate), null, isSubItem: true),
+                      ],
+                    ],
+                    
+                    const SizedBox(height: 20),
+                    Divider(height: 1, color: Colors.grey[300]),
+                    const SizedBox(height: 16),
+                    
+                    // Footer message
+                    Text(
+                      'Please ensure timely payment to avoid any late fees.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              Row(
-                children: [
-                  const Icon(Icons.category, size: 20, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Text('Type: ${paymentType.toUpperCase()}', style: const TextStyle(fontSize: 14)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (dueDate != null && dueDate.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text('Due: ${_formatDate(dueDate)}', style: const TextStyle(fontSize: 14)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
-                child: Text(
-                  data['message'] as String? ?? 'Please make the payment before the due date to avoid any penalties.',
-                  style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
                 ),
               ),
             ],
@@ -1372,28 +2533,122 @@ void _handlePaymentReminderNavigation(Map<String, dynamic> data) {
         ),
       ),
       actions: [
-        if (paymentId != null && paymentId.isNotEmpty)
-          ElevatedButton.icon(
-            onPressed: () {
-              Get.back();
-              Get.toNamed('/makePayment', arguments: {'paymentId': paymentId});
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[700],
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-            icon: const Icon(Icons.payment, size: 18),
-            label: const Text('Pay Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          ),
         TextButton(
           onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Later', style: TextStyle(fontSize: 16)),
+          child: Text(
+            'Later',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        ElevatedButton(
+          onPressed: () {
+            Get.back();
+            // Navigate to payment if needed
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.black87,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: const Text(
+            'Pay Now',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     ),
     barrierDismissible: true,
+  );
+}
+
+// Helper method for clean info rows
+// Widget _buildCleanInfoRow(String label, String value, IconData? icon, {bool isSubItem = false}) {
+//   return Padding(
+//     padding: EdgeInsets.only(
+//       bottom: 12,
+//       left: isSubItem ? 24 : 0,
+//     ),
+//     child: Row(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         if (icon != null) ...[
+//           Icon(icon, size: 18, color: Colors.grey[600]),
+//           const SizedBox(width: 12),
+//         ],
+//         Expanded(
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               Text(
+//                 label,
+//                 style: TextStyle(
+//                   fontSize: 12,
+//                   color: Colors.grey[600],
+//                   fontWeight: FontWeight.w500,
+//                 ),
+//               ),
+//               const SizedBox(height: 2),
+//               Text(
+//                 value,
+//                 style: const TextStyle(
+//                   fontSize: 15,
+//                   color: Colors.black87,
+//                   fontWeight: FontWeight.w600,
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     ),
+//   );
+// }
+// ✅ HELPER: Build detail row for payment method details
+Widget _buildDetailRow(String label, String value) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Row(
+      children: [
+        Icon(
+          label.contains('Date') ? Icons.date_range : 
+          label.contains('Bank') ? Icons.account_balance :
+          label.contains('Receipt') ? Icons.receipt :
+          Icons.tag,
+          size: 14,
+          color: Colors.grey,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[800],
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -1416,15 +2671,15 @@ Color _getUrgencyColor(String urgency) {
   }
 }
 
-String _formatDate(String dateString) {
-  try {
-    final date = DateTime.parse(dateString);
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  } catch (e) {
-    return dateString;
-  }
-}
+// String _formatDate(String dateString) {
+//   try {
+//     final date = DateTime.parse(dateString);
+//     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+//     return '${date.day} ${months[date.month - 1]} ${date.year}';
+//   } catch (e) {
+//     return dateString;
+//   }
+// }
 
 // ✅ NEW: Handle ticket navigation with complete details
 // ✅ UPDATED: Handle ticket navigation with image preview support
@@ -3357,4 +4612,3 @@ void _showInlinePdfViewer(String pdfUrl, String title) {
     return 1;
   }
 }
-
