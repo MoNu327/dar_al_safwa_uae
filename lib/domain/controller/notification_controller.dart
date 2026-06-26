@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/core/utils/timezonehelper.dart';
 import 'package:majan/data/model/full_complaint_model.dart';
 import 'package:majan/data/model/notification_model.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -18,7 +19,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
-
 class NotificationController extends GetxController {
   // ✅ UPDATED: Use user-specific storage key
   static const String _storageKeyPrefix = 'stored_notifications_';
@@ -1255,7 +1255,8 @@ void _handleContractExpiryNavigation(Map<String, dynamic> data) {
                       _buildCleanInfoRow('Property', propertyName, Icons.home_outlined),
                     
                     if (expiryDate != null && expiryDate.isNotEmpty)
-                      _buildCleanInfoRow('Expiry Date', _formatDate(expiryDate), Icons.calendar_today_outlined),
+  _buildCleanInfoRow('Expiry Date', TimezoneHelper.formatDateOnly(expiryDate), Icons.calendar_today_outlined), // ✅ CHANGED
+
                     
                     const SizedBox(height: 20),
                     Divider(height: 1, color: Colors.grey[300]),
@@ -1435,8 +1436,9 @@ void _handleDocumentExpiryNavigation(Map<String, dynamic> data) {
                     if (documentType != null && documentType.isNotEmpty)
                       _buildCleanInfoRow('Type', documentType, Icons.category_outlined),
                     
-                    if (expiryDate != null && expiryDate.isNotEmpty)
-                      _buildCleanInfoRow('Expiry Date', _formatDate(expiryDate), Icons.calendar_today_outlined),
+                   if (expiryDate != null && expiryDate.isNotEmpty)
+  _buildCleanInfoRow('Expiry Date', TimezoneHelper.formatDateOnly(expiryDate), Icons.calendar_today_outlined), // ✅ CHANGED
+
                     
                     const SizedBox(height: 20),
                     Divider(height: 1, color: Colors.grey[300]),
@@ -2314,10 +2316,10 @@ Widget _buildLocationCard(String location) {
 // Helper method to format date
 String _formatDate(String dateString) {
   try {
-    final date = DateTime.parse(dateString);
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    // Use TimezoneHelper to format date
+    return TimezoneHelper.formatDateOnly(dateString);
   } catch (e) {
+    debugPrint('Error formatting date: $e');
     return dateString;
   }
 }
@@ -2495,8 +2497,9 @@ void handlePaymentReminderNavigation(Map<String, dynamic> data) {
                     if (unitNumber != null && unitNumber.isNotEmpty)
                       _buildCleanInfoRow('Unit', unitNumber, Icons.meeting_room_outlined),
                     
-                    if (dueDate != null && dueDate.isNotEmpty)
-                      _buildCleanInfoRow('Due Date', _formatDate(dueDate), Icons.calendar_today_outlined),
+                   if (dueDate != null && dueDate.isNotEmpty)
+  _buildCleanInfoRow('Due Date', TimezoneHelper.formatDateOnly(dueDate), Icons.calendar_today_outlined), // ✅ CHANGED
+
                     
                     if (paymentMethod != null && paymentMethod.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -2671,20 +2674,10 @@ Color _getUrgencyColor(String urgency) {
   }
 }
 
-// String _formatDate(String dateString) {
-//   try {
-//     final date = DateTime.parse(dateString);
-//     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-//     return '${date.day} ${months[date.month - 1]} ${date.year}';
-//   } catch (e) {
-//     return dateString;
-//   }
-// }
 
-// ✅ NEW: Handle ticket navigation with complete details
-// ✅ UPDATED: Handle ticket navigation with image preview support
+
 void _handleTicketNavigation(Map<String, dynamic> data, String notificationType) {
-  // Extract ticket ID
+  // Extract all data
   final ticketId = data['ticketId'] as String?;
   final complaintId = data['complaintId'] as String?;
   final complaintIdFromData = data['complaint_id']?.toString();
@@ -2693,13 +2686,11 @@ void _handleTicketNavigation(Map<String, dynamic> data, String notificationType)
   final finalTicketId = complaintIdFromData ?? ticketId ?? complaintId;
   final displayTicketId = complaintNumber ?? finalTicketId;
   
-  // ✅ NEW: Extract image data from notification
   final imageUrl = _extractPreviewImage(data);
   final timestamp = data['timestamp'] as String?;
   final createdAt = data['createdAt'] as String?;
   final finalTimestamp = timestamp ?? createdAt;
   
-  // Extract other data for dialog display
   final message = data['message'] as String?;
   final reply = data['reply'] as String?;
   final category = data['category'] as String?;
@@ -2718,496 +2709,332 @@ void _handleTicketNavigation(Map<String, dynamic> data, String notificationType)
   final finalCreatedAt = timestamp ?? createdAt;
   final finalCategory = subCategory ?? category;
   
-  debugPrint('🎯 Ticket notification - showing complete details');
-  debugPrint('   Ticket ID: $finalTicketId');
-  debugPrint('   Display ID: $displayTicketId');
-  debugPrint('   Image URL: $imageUrl');
-  debugPrint('   Type: $notificationType');
+  debugPrint('🎯 Ticket notification - showing beautiful message dialog');
   
-  // Build content widgets for dialog
-  List<Widget> contentWidgets = [];
+  // Build message content as TextSpans for rich formatting
+  final List<TextSpan> messageSpans = [];
   
-  // Ticket ID/Number
+  // Ticket number
   if (displayTicketId != null && displayTicketId.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.blue[50],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.blue[200]!, width: 1),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.confirmation_number, size: 18, color: Colors.blue[700]),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ticket Number',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    displayTicketId,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[700],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(text: '🎫 '));
+    messageSpans.add(TextSpan(
+      text: 'Ticket $displayTicketId',
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+    ));
+    messageSpans.add(const TextSpan(text: '\n\n'));
   }
   
-  // Status and Category row
+  // Status and Category
   if (status != null || finalCategory != null) {
-    contentWidgets.add(
-      Row(
-        children: [
-          if (status != null) ...[
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(status),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Status',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      status,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          if (status != null && finalCategory != null) const SizedBox(width: 8),
-          if (finalCategory != null) ...[
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.purple[50],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Category',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      finalCategory,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    if (status != null) {
+      messageSpans.add(const TextSpan(text: '📊 Status: '));
+      messageSpans.add(TextSpan(
+        text: status,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ));
+      messageSpans.add(const TextSpan(text: '\n'));
+    }
+    if (finalCategory != null) {
+      messageSpans.add(const TextSpan(text: '📂 Category: '));
+      messageSpans.add(TextSpan(
+        text: finalCategory,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ));
+      messageSpans.add(const TextSpan(text: '\n'));
+    }
+    messageSpans.add(const TextSpan(text: '\n'));
   }
   
   // Priority
   if (priority != null && priority.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: _getPriorityColor(priority),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.flag, size: 14, color: _getPriorityIconColor(priority)),
-            const SizedBox(width: 6),
-            Text(
-              'Priority: $priority',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: _getPriorityIconColor(priority),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    String priorityEmoji = priority.toLowerCase() == 'high' || priority.toLowerCase() == 'urgent' 
+        ? '🔴' : priority.toLowerCase() == 'medium' ? '🟡' : '🟢';
+    messageSpans.add(TextSpan(text: '$priorityEmoji Priority: '));
+    messageSpans.add(TextSpan(
+      text: priority,
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ));
+    messageSpans.add(const TextSpan(text: '\n\n'));
   }
   
-  // Complainant Name
-  if (complainant != null && complainant.isNotEmpty) {
-    contentWidgets.add(
-      Row(
-        children: [
-          const Icon(Icons.person_outline, size: 18, color: Colors.grey),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Complainant: $complainant',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+  // Property details
+  if (finalPropertyName != null) {
+    messageSpans.add(const TextSpan(text: '🏠 '));
+    messageSpans.add(TextSpan(
+      text: finalPropertyName,
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ));
+    messageSpans.add(const TextSpan(text: '\n'));
   }
-  
-  // Property Name and Unit Address
+  if (unitAddress != null) {
+    messageSpans.add(TextSpan(text: '📍 $unitAddress\n'));
+  }
   if (finalPropertyName != null || unitAddress != null) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (finalPropertyName != null) ...[
-              Row(
-                children: [
-                  const Icon(Icons.home, size: 18, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      finalPropertyName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (unitAddress != null) ...[
-              if (finalPropertyName != null) const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      unitAddress,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(text: '\n'));
   }
   
-  // Technician Name
-  if (technicianName != null && technicianName.isNotEmpty) {
-    contentWidgets.add(
-      Row(
-        children: [
-          const Icon(Icons.engineering, size: 18, color: Colors.grey),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Assigned to: $technicianName',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+  // Complainant
+  if (complainant != null && complainant.isNotEmpty) {
+    messageSpans.add(TextSpan(text: '👤 Reported by: $complainant\n\n'));
   }
   
   // Description
   if (description != null && description.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.description, size: 16, color: Colors.grey[700]),
-                const SizedBox(width: 6),
-                Text(
-                  'Description',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(
+      text: '📝 Issue Description:\n',
+      style: TextStyle(fontWeight: FontWeight.bold),
+    ));
+    messageSpans.add(TextSpan(text: '$description\n\n'));
   }
   
-  // Reply
+  // Technician reply
   if (reply != null && reply.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.green[50],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.green[200]!, width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.reply, size: 16, color: Colors.green[700]),
-                const SizedBox(width: 6),
-                Text(
-                  'Technician Reply',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              reply,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(
+      text: '💬 Technician Reply:\n',
+      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+    ));
+    messageSpans.add(TextSpan(text: '$reply\n\n'));
   }
   
-  // Message
+  // Technician assigned
+  if (technicianName != null && technicianName.isNotEmpty) {
+    messageSpans.add(TextSpan(text: '👨‍🔧 Assigned to: $technicianName\n\n'));
+  }
+  
+  // Additional message
   if (message != null && message.isNotEmpty && message != reply && message != description) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blue[50],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          message,
-          style: const TextStyle(
-            fontSize: 14,
-            height: 1.5,
-            color: Colors.black87,
-          ),
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(TextSpan(text: '📢 $message\n\n'));
   }
   
   // Timestamps
-  if (finalCreatedAt != null || updatedAt != null) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(10),
+  if (finalCreatedAt != null) {
+    messageSpans.add(const TextSpan(text: '🕐 Created: '));
+    messageSpans.add(TextSpan(
+      text: TimezoneHelper.formatNotificationTime(finalCreatedAt),
+      style: TextStyle(color: Colors.grey[700]),
+    ));
+  }
+  if (updatedAt != null && updatedAt != finalCreatedAt) {
+    if (finalCreatedAt != null) messageSpans.add(const TextSpan(text: '\n'));
+    messageSpans.add(const TextSpan(text: '🔄 Updated: '));
+    messageSpans.add(TextSpan(
+      text: TimezoneHelper.formatNotificationTime(updatedAt),
+      style: TextStyle(color: Colors.grey[700]),
+    ));
+  }
+  
+  // ✅ Show dialog with WHITE BACKGROUND
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(6),
+          color: Colors.white,  // ✅ WHITE BACKGROUND
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (finalCreatedAt != null) ...[
-              Row(
+            // ✅ WHITE header with green icon
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,  // ✅ WHITE HEADER
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
                 children: [
-                  Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,  // ✅ Light green circle
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.support_agent,
+                      color: Colors.green.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Text(
-                    'Created: ${_formatTimestamp(finalCreatedAt)}',
+                    _getTicketTitle(notificationType),
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                      letterSpacing: 0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            
+            // ✅ Message bubble with light gray background
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],  // ✅ Very light gray for content
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: messageSpans.isNotEmpty
+                      ? SelectableText.rich(
+                          TextSpan(
+                            style: const TextStyle(
+                              fontSize: 15,
+                              height: 1.7,
+                              color: Colors.black87,
+                            ),
+                            children: messageSpans,
+                          ),
+                        )
+                      : const SelectableText(
+                          '📬 Your ticket has been updated',
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.7,
+                            color: Colors.black87,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            
+            // Action buttons
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  // View Full Ticket button
+                  if (finalTicketId != null && finalTicketId.isNotEmpty)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.back();
+                          Get.to(() => TicketDetailsScreen(
+                            complaintId: finalTicketId,
+                            previewImageUrl: imageUrl,
+                            previewImageTimestamp: finalTimestamp,
+                          ));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.visibility_rounded, size: 20),
+                        label: const Text(
+                          'View Ticket',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  if (finalTicketId != null && finalTicketId.isNotEmpty)
+                    const SizedBox(width: 12),
+                  
+                  // Close button
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
-            if (updatedAt != null && updatedAt != finalCreatedAt) ...[
-              if (finalCreatedAt != null) const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.update, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Updated: ${_formatTimestamp(updatedAt)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ],
         ),
       ),
-    );
-  }
-  
-  // Show dialog
-  Get.dialog(
-    AlertDialog(
-      backgroundColor:  AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.green[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.support_agent, color: Colors.green, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _getTicketTitle(notificationType),
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
-        ],
-      ),
-      content: Container(
-        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 400),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: contentWidgets.isNotEmpty
-                ? contentWidgets
-                : [
-                    const Text(
-                      'Your ticket has been updated',
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.6,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-          ),
-        ),
-      ),
-      actions: [
-        // ✅ UPDATED: View Full Ticket button with image and timestamp
-        if (finalTicketId != null && finalTicketId.isNotEmpty)
-          TextButton.icon(
-            onPressed: () {
-              Get.back(); // Close the dialog first
-              
-              // ✅ Navigate with all parameters like in buildTicketCard
-              Get.to(() => TicketDetailsScreen(
-                complaintId: finalTicketId,
-                previewImageUrl: imageUrl, // Pass the extracted image
-                previewImageTimestamp: finalTimestamp, // Pass the timestamp
-              ));
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.green),
-            icon: const Icon(Icons.visibility, size: 18),
-            label: const Text('View Full Ticket', style: TextStyle(fontSize: 16)),
-          ),
-        // Close button
-        TextButton(
-          onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Close', style: TextStyle(fontSize: 16)),
-        ),
-      ],
     ),
     barrierDismissible: true,
   );
 }
 
+
+
+
+
+
+// Helper to make bold text work in the message
+Widget _buildRichMessage(String messageText) {
+  final parts = <TextSpan>[];
+  final regex = RegExp(r'\*([^*]+)\*');
+  int lastIndex = 0;
+  
+  for (final match in regex.allMatches(messageText)) {
+    // Add text before match
+    if (match.start > lastIndex) {
+      parts.add(TextSpan(
+        text: messageText.substring(lastIndex, match.start),
+      ));
+    }
+    
+    // Add bold text
+    parts.add(TextSpan(
+      text: match.group(1),
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ));
+    
+    lastIndex = match.end;
+  }
+  
+  // Add remaining text
+  if (lastIndex < messageText.length) {
+    parts.add(TextSpan(
+      text: messageText.substring(lastIndex),
+    ));
+  }
+  
+  return RichText(
+    text: TextSpan(
+      style: const TextStyle(
+        fontSize: 15,
+        height: 1.6,
+        color: Colors.black87,
+      ),
+      children: parts,
+    ),
+  );
+}
 // ✅ NEW: Helper method to extract preview image from notification data
 String? _extractPreviewImage(Map<String, dynamic> data) {
   // Try different possible image field names from notification data
@@ -3255,18 +3082,10 @@ String? _extractPreviewImage(Map<String, dynamic> data) {
 // ✅ NEW: Format timestamp helper
 String _formatTimestamp(String timestamp) {
   try {
-    final dateTime = DateTime.parse(timestamp);
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-    
-    if (difference.inDays == 0) {
-      return 'Today at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else {
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    }
+    // Use TimezoneHelper to convert and format
+    return TimezoneHelper.formatNotificationTime(timestamp);
   } catch (e) {
+    debugPrint('Error formatting notification time: $e');
     return timestamp;
   }
 }
@@ -4612,3 +4431,4 @@ void _showInlinePdfViewer(String pdfUrl, String title) {
     return 1;
   }
 }
+

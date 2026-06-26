@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:majan/core/theme/app_colors.dart';
+import 'package:majan/core/utils/timezonehelper.dart';
 import 'package:majan/data/repositories/api_services.dart';
 import 'package:majan/domain/controller/notification_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -662,13 +663,13 @@ Future<void> _downloadAndOpenPdfWithProgress(String url, String fileName) async 
       switch (notificationType) {
         
         // ✅ CHAT - Show message dialog
-       case 'chat':
+      case 'chat':
 case 'message':
   debugPrint('💬 Chat notification detected');
   
   final message = data['message'] as String?;
   final userName = data['userName'] as String? ?? data['user_name'] as String? ?? 'User';
-  final chatMessage = data['chatMessage'] as String?;  // Alternative field
+  final chatMessage = data['chatMessage'] as String?;
   
   final displayMessage = message ?? chatMessage;
   
@@ -676,44 +677,116 @@ case 'message':
   debugPrint('   Message: $displayMessage');
   
   if (displayMessage != null && displayMessage.isNotEmpty) {
-    // ✅ Use Future.delayed to ensure dialog shows after navigation is complete
     Future.delayed(const Duration(milliseconds: 300), () {
-      if (Get.isDialogOpen != true) {  // ✅ Check if dialog is already open
+      if (Get.isDialogOpen != true) {
         Get.dialog(
-          AlertDialog(
-            backgroundColor: AppColors.splashBackgroundColor,
-            title: Row(
-              children: [
-                const Icon(Icons.chat_bubble, color: Colors.blue, size: 24),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Message from $userName',
-                    style: const TextStyle(fontSize: 18),
+          Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 420),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
                   ),
-                ),
-              ],
-            ),
-            content: Container(
-              constraints: const BoxConstraints(maxHeight: 400),
-              child: SingleChildScrollView(
-                child: Text(
-                  displayMessage,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    height: 1.6,
-                    color: Colors.black87,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.chat_bubble,
+                            color: Colors.blue.shade700,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Message from $userName',
+                          style: TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade800,
+                            letterSpacing: 0.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  
+                  // Content
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 480),
+                    padding: const EdgeInsets.all(24),
+                    child: SingleChildScrollView(
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                        ),
+                        child: Text(
+                          displayMessage,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            height: 1.6,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  // Button
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Get.back(),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey.shade700,
+                              side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'Close',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(),
-                style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                child: const Text('Close', style: TextStyle(fontSize: 16)),
-              ),
-            ],
           ),
           barrierDismissible: true,
         );
@@ -733,127 +806,212 @@ case 'message':
   }
   break;
 
-          case 'booking':
-  case 'property_booking':
-  case 'new_booking':
-  case 'booking_confirmed':
-    final message = data['message'] as String?;
-    final customerName = data['customerName'] as String?;
-    final propertyName = data['propertyName'] as String?;
-    final bookingDate = data['bookingDate'] as String?;
-    final propertyId = data['propertyId'] as String?;
-    
-    Get.dialog(
-      AlertDialog(
-        backgroundColor:  AppColors.splashBackgroundColor,
-        title: const Row(
-          children: [
-            Icon(Icons.event_available, color: Colors.green, size: 24),
-            SizedBox(width: 8),
-            Text('New Property Booking', style: TextStyle(fontSize: 18)),
+         case 'booking':
+case 'property_booking':
+case 'new_booking':
+case 'booking_confirmed':
+  final message = data['message'] as String?;
+  final customerName = data['customerName'] as String?;
+  final propertyName = data['propertyName'] as String?;
+  final bookingDate = data['bookingDate'] as String?;
+  final propertyId = data['propertyId'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
           ],
         ),
-        content: Container(
-          constraints: const BoxConstraints(maxHeight: 400),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (customerName != null) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.person, size: 20, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          customerName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.event_available,
+                      color: Colors.teal.shade700,
+                      size: 36,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                ],
-                if (propertyName != null) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.home, size: 20, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          propertyName,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (bookingDate != null) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Date: $bookingDate',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (message != null)
+                  const SizedBox(height: 14),
                   Text(
-                    message,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: Colors.black87,
-                    ),
-                  )
-                else
-                  const Text(
-                    'You have a new property booking',
+                    'New Property Booking',
                     style: TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: Colors.black87,
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                      letterSpacing: 0.3,
                     ),
                   ),
-              ],
+                ],
+              ),
             ),
-          ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (customerName != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.person, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                customerName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (propertyName != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.home, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                propertyName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (bookingDate != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Date: $bookingDate',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (message != null)
+                        Text(
+                          message,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Colors.black87,
+                          ),
+                        )
+                      else
+                        const Text(
+                          'You have a new property booking',
+                          style: TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Colors.black87,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  if (propertyId != null)
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Get.back();
+                          Get.toNamed('/propertyDetails', arguments: {'propertyId': propertyId});
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'View Property',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  if (propertyId != null) const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        actions: [
-          if (propertyId != null)
-            TextButton(
-              onPressed: () {
-                Get.back();
-                // Navigate to booking details or property details
-                Get.toNamed('/propertyDetails', arguments: {'propertyId': propertyId});
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.green),
-              child: const Text('View Property', style: TextStyle(fontSize: 16)),
-            ),
-          TextButton(
-            onPressed: () => Get.back(),
-            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-            child: const Text('Close', style: TextStyle(fontSize: 16)),
-          ),
-        ],
       ),
-      barrierDismissible: true,
-    );
-    break;
+    ),
+    barrierDismissible: true,
+  );
+  break;
 
-    case 'contract_expiry':
+   case 'contract_expiry':
   debugPrint('📋 Contract expiry notification detected');
   final contractId = data['contractId'] as String?;
   final propertyName = data['propertyName'] as String?;
@@ -861,7 +1019,6 @@ case 'message':
   final daysUntilExpiry = data['daysUntilExpiry'];
   final urgency = data['urgency'] as String? ?? data['subType'] as String? ?? 'normal';
   
-  // Parse days until expiry
   int? days;
   if (daysUntilExpiry != null) {
     if (daysUntilExpiry is int) {
@@ -872,147 +1029,204 @@ case 'message':
   }
   
   Get.dialog(
-    AlertDialog(
-      backgroundColor: AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _getUrgencyColor(urgency),
-              borderRadius: BorderRadius.circular(8),
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-            child: const Icon(
-              Icons.assignment_late,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Contract Expiry Notice',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-      content: Container(
-        constraints: const BoxConstraints(maxHeight: 500),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Urgency badge
-              if (days != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getUrgencyColor(urgency),
-                    borderRadius: BorderRadius.circular(20),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.assignment_late,
+                      color: Colors.orange.shade700,
+                      size: 36,
+                    ),
                   ),
-                  child: Row(
+                  const SizedBox(height: 14),
+                  Text(
+                    'Contract Expiry Notice',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.warning, color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        days <= 0
-                            ? 'EXPIRED'
-                            : days == 1
-                                ? 'EXPIRES TOMORROW'
-                                : 'EXPIRES IN $days DAYS',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      if (days != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: days <= 0 ? Colors.red : days <= 7 ? Colors.orange : Colors.amber,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.warning, color: Colors.white, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                days <= 0 ? 'EXPIRED' : days == 1 ? 'EXPIRES TOMORROW' : 'EXPIRES IN $days DAYS',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (days != null) const SizedBox(height: 16),
+                      if (propertyName != null && propertyName.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.home, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                propertyName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (expiryDate != null && expiryDate.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Expires: ${TimezoneHelper.formatDateOnly(expiryDate)}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          data['message'] as String? ?? 
+                          'Your contract is expiring soon. Please contact management to renew.',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 16),
-              
-              // Property name
-              if (propertyName != null && propertyName.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.home, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  if (contractId != null && contractId.isNotEmpty)
                     Expanded(
-                      child: Text(
-                        propertyName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.back();
+                          Get.toNamed('/contractDetails', arguments: {'contractId': contractId});
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.visibility, size: 18),
+                        label: const Text(
+                          'View Contract',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              // Expiry date
-              if (expiryDate != null && expiryDate.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Expires: ${_formatDate(expiryDate)}',
-                      style: const TextStyle(fontSize: 14),
+                  if (contractId != null && contractId.isNotEmpty) const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              // Message
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  data['message'] as String? ?? 
-                  'Your contract is expiring soon. Please contact management to renew.',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    height: 1.6,
-                    color: Colors.black87,
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        if (contractId != null && contractId.isNotEmpty)
-          TextButton.icon(
-            onPressed: () {
-              Get.back();
-              // Navigate to contract details (update route as needed)
-              Get.toNamed('/contractDetails', arguments: {'contractId': contractId});
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.orange),
-            icon: const Icon(Icons.visibility, size: 18),
-            label: const Text('View Contract', style: TextStyle(fontSize: 16)),
-          ),
-        TextButton(
-          onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Close', style: TextStyle(fontSize: 16)),
-        ),
-      ],
     ),
     barrierDismissible: true,
   );
   break;
-
 case 'document_expiry':
   debugPrint('📄 Document expiry notification detected');
   final documentId = data['documentId'] as String?;
@@ -1022,7 +1236,6 @@ case 'document_expiry':
   final daysUntilExpiry = data['daysUntilExpiry'];
   final urgency = data['urgency'] as String? ?? data['subType'] as String? ?? 'normal';
   
-  // Parse days until expiry
   int? days;
   if (daysUntilExpiry != null) {
     if (daysUntilExpiry is int) {
@@ -1033,157 +1246,213 @@ case 'document_expiry':
   }
   
   Get.dialog(
-    AlertDialog(
-      backgroundColor: AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _getUrgencyColor(urgency),
-              borderRadius: BorderRadius.circular(8),
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
             ),
-            child: const Icon(
-              Icons.description,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Document Expiry Notice',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ),
-      content: Container(
-        constraints: const BoxConstraints(maxHeight: 500),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Urgency badge
-              if (days != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getUrgencyColor(urgency),
-                    borderRadius: BorderRadius.circular(20),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.description,
+                      color: Colors.blue.shade700,
+                      size: 36,
+                    ),
                   ),
-                  child: Row(
+                  const SizedBox(height: 14),
+                  Text(
+                    'Document Expiry Notice',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.warning, color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        days <= 0
-                            ? 'EXPIRED'
-                            : days == 1
-                                ? 'EXPIRES TOMORROW'
-                                : 'EXPIRES IN $days DAYS',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      if (days != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: days <= 0 ? Colors.red : days <= 7 ? Colors.orange : Colors.amber,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.warning, color: Colors.white, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                days <= 0 ? 'EXPIRED' : days == 1 ? 'EXPIRES TOMORROW' : 'EXPIRES IN $days DAYS',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (days != null) const SizedBox(height: 16),
+                      if (documentName != null && documentName.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.insert_drive_file, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                documentName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (documentType != null && documentType.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.category, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Type: $documentType',
+                              style: const TextStyle(fontSize: 14, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (expiryDate != null && expiryDate.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Expires: ${TimezoneHelper.formatDateOnly(expiryDate)}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          data['message'] as String? ??
+                          'Your document is expiring soon. Please renew to avoid any issues.',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Colors.black87,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              const SizedBox(height: 16),
-              
-              // Document info
-              if (documentName != null && documentName.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.insert_drive_file, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  if (documentId != null && documentId.isNotEmpty)
                     Expanded(
-                      child: Text(
-                        documentName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.back();
+                          Get.toNamed('/documentDetails', arguments: {'documentId': documentId});
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.visibility, size: 18),
+                        label: const Text(
+                          'View Document',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              // Document type
-              if (documentType != null && documentType.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.category, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Type: $documentType',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  if (documentId != null && documentId.isNotEmpty) const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              // Expiry date
-              if (expiryDate != null && expiryDate.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Expires: ${_formatDate(expiryDate)}',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              // Message
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  data['message'] as String? ??
-                  'Your document is expiring soon. Please renew to avoid any issues.',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    height: 1.6,
-                    color: Colors.black87,
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        if (documentId != null && documentId.isNotEmpty)
-          TextButton.icon(
-            onPressed: () {
-              Get.back();
-              // Navigate to document details (update route as needed)
-              Get.toNamed('/documentDetails', arguments: {'documentId': documentId});
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-            icon: const Icon(Icons.visibility, size: 18),
-            label: const Text('View Document', style: TextStyle(fontSize: 16)),
-          ),
-        TextButton(
-          onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Close', style: TextStyle(fontSize: 16)),
-        ),
-      ],
     ),
     barrierDismissible: true,
   );
@@ -1608,30 +1877,30 @@ case 'upcoming_payment':
               ],
               
               // Due date (effective date - SAME PRIORITY AS LARAVEL)
-              if (dueDate != null && dueDate.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_today, size: 18, color: Colors.red[700]),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Due: ${_formatDate(dueDate)}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.red[900],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
+             if (dueDate != null && dueDate.isNotEmpty) ...[
+  Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.red[50],
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      children: [
+        Icon(Icons.calendar_today, size: 18, color: Colors.red[700]),
+        const SizedBox(width: 8),
+        Text(
+          'Due: ${TimezoneHelper.formatDateOnly(dueDate)}', // ✅ CHANGED
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.red[900],
+          ),
+        ),
+      ],
+    ),
+  ),
+  const SizedBox(height: 12),
+],
               
               // Payment description if available
               if (paymentDescription != null && paymentDescription.isNotEmpty) ...[
@@ -1960,53 +2229,144 @@ case 'property_agreed':
 
         // ✅ TECHNICIAN ASSIGNMENT - Show details dialog
         case 'technician_assignment':
-        case 'technician_ticket':
-        case 'job_update':
-          final message = data['message'] as String?;
-          final ticketId = data['ticketId'] as String?;
-          final jobDetails = data['jobDetails'] as String?;
-          
-          final content = message ?? jobDetails ?? 'You have a new assignment';
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
+case 'technician_ticket':
+case 'job_update':
+  final message = data['message'] as String?;
+  final ticketId = data['ticketId'] as String?;
+  final jobDetails = data['jobDetails'] as String?;
+  final assignedBy = data['assignedBy'] as String?;
+  
+  final content = message ?? jobDetails ?? 'You have a new assignment';
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
                 children: [
-                  Icon(Icons.work, color: Colors.orange, size: 24),
-                  SizedBox(width: 8),
-                  Text('Assignment Details', style: TextStyle(fontSize: 18)),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.work,
+                      color: Colors.orange.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'New Assignment',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
                 ],
               ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (ticketId != null) ...[
-                        Text('Ticket ID: $ticketId', 
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(
+                          'Ticket ID: $ticketId',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                       ],
-                      Text(content, 
-                        style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87)),
+                      if (assignedBy != null) ...[
+                        Text(
+                          'Assigned by: $assignedBy',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Text(
+                        content,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
             ),
-            barrierDismissible: true,
-          );
-          break;
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
 
         // ✅ TICKET/COMPLAINT - Show reply/update (KEEP AS IS - WORKING)
      case 'ticket':
@@ -2023,277 +2383,824 @@ case 'new_ticket':     // ✅ ADD THIS LINE
   break;
 
         // ✅ PROPERTY - Show property details dialog
-        case 'property':
-        case 'property_update':
-        case 'tenant_property':
-          final message = data['message'] as String?;
-          final propertyName = data['propertyName'] as String?;
-          final propertyId = data['propertyId'] as String?;
-          
-          final content = message ?? 'Property information has been updated';
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
+case 'property':
+case 'property_update':
+case 'tenant_property':
+  final message = data['message'] as String?;
+  final propertyName = data['propertyName'] as String?;
+  final propertyId = data['propertyId'] as String?;
+  final updateType = data['updateType'] as String?;
+  
+  final content = message ?? 'Property information has been updated';
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
                 children: [
-                  Icon(Icons.home, color: Colors.purple, size: 24),
-                  SizedBox(width: 8),
-                  Text('Property Update', style: TextStyle(fontSize: 18)),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.home,
+                      color: Colors.purple.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Property Update',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
                 ],
               ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (propertyName != null) ...[
-                        Text(propertyName, 
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        Text(
+                          propertyName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                       ],
                       if (propertyId != null) ...[
-                        Text('Property ID: $propertyId', 
-                          style: const TextStyle(color: Colors.grey)),
+                        Text(
+                          'Property ID: $propertyId',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                       ],
-                      Text(content, 
-                        style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87)),
-                    ],
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
-            ),
-            barrierDismissible: true,
-          );
-          break;
-
-        // ✅ DOCUMENTS - Show document notification dialog
-        case 'tenant_documents':
-          final message = data['message'] as String?;
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
-                children: [
-                  Icon(Icons.description, color: Colors.teal, size: 24),
-                  SizedBox(width: 8),
-                  Text('Documents Update', style: TextStyle(fontSize: 18)),
-                ],
-              ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
-                  child: Text(
-                    message ?? 'Your documents have been updated',
-                    style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
-            ),
-            barrierDismissible: true,
-          );
-          break;
-
-        // ✅ COMPLAINT REGISTRATION - Show dialog
-        case 'tenant_complaint':
-          final message = data['message'] as String?;
-          final propertyName = data['propertyName'] as String?;
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
-                children: [
-                  Icon(Icons.report_problem, color: Colors.red, size: 24),
-                  SizedBox(width: 8),
-                  Text('Complaint Notice', style: TextStyle(fontSize: 18)),
-                ],
-              ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (propertyName != null) ...[
-                        Text('Property: $propertyName', 
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      if (updateType != null) ...[
+                        Text(
+                          'Update Type: $updateType',
+                          style: const TextStyle(fontSize: 14),
+                        ),
                         const SizedBox(height: 12),
                       ],
                       Text(
-                        message ?? 'A complaint has been registered',
-                        style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+                        content,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
             ),
-            barrierDismissible: true,
-          );
-          break;
-
-        // ✅ TECHNICIAN RECTIFY - Show details dialog
-        case 'technician_rectify':
-          final message = data['message'] as String?;
-          final complaintId = data['complaintId'] as String?;
-          final category = data['category'] as String?;
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
                 children: [
-                  Icon(Icons.build, color: Colors.orange, size: 24),
-                  SizedBox(width: 8),
-                  Text('Rectification Required', style: TextStyle(fontSize: 18)),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
+
+        // ✅ DOCUMENTS - Show document notification dialog
+       case 'tenant_documents':
+  final message = data['message'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.description,
+                      color: Colors.teal.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Documents Update',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Text(
+                    message ?? 'Your documents have been updated',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
+
+
+        // ✅ COMPLAINT REGISTRATION - Show dialog
+       case 'tenant_complaint':
+case 'complaint':
+  final message = data['message'] as String?;
+  final complaintId = data['complaintId'] as String?;
+  final category = data['category'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.report_problem,
+                      color: Colors.red.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Complaint Received',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (complaintId != null) ...[
-                        Text('Complaint ID: $complaintId', 
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
+                        Text(
+                          'Complaint ID: $complaintId',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                       ],
                       if (category != null) ...[
-                        Text('Category: $category', 
-                          style: const TextStyle(color: Colors.grey)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red.shade700,
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 12),
                       ],
                       Text(
-                        message ?? 'This ticket requires rectification',
-                        style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+                        message ?? 'A new complaint has been received',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
             ),
-            barrierDismissible: true,
-          );
-          break;
-
-        // ✅ ENQUIRY - Show enquiry dialog
-        case 'enquiry':
-        case 'customer_enquiry':
-          final message = data['message'] as String?;
-          final customerName = data['customerName'] as String?;
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
                 children: [
-                  Icon(Icons.question_answer, color: Colors.indigo, size: 24),
-                  SizedBox(width: 8),
-                  Text('Customer Enquiry', style: TextStyle(fontSize: 18)),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
+        // ✅ TECHNICIAN RECTIFY - Show details dialog
+        case 'technician_rectify':
+  final message = data['message'] as String?;
+  final ticketId = data['ticketId'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.build,
+                      color: Colors.orange.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Rectification Required',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (ticketId != null) ...[
+                        Text(
+                          'Ticket ID: $ticketId',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Text(
+                        message ?? 'Rectification work has been assigned to you',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
+
+        // ✅ ENQUIRY - Show enquiry dialog
+       case 'enquiry':
+case 'customer_enquiry':
+  final message = data['message'] as String?;
+  final customerName = data['customerName'] as String?;
+  final contactNumber = data['contactNumber'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.question_answer,
+                      color: Colors.indigo.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'New Enquiry',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (customerName != null) ...[
-                        Text('From: $customerName', 
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Row(
+                          children: [
+                            const Icon(Icons.person, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              customerName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (contactNumber != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.phone, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              contactNumber,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                       ],
                       Text(
-                        message ?? 'You have a new customer enquiry',
-                        style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+                        message ?? 'You have received a new enquiry',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
             ),
-            barrierDismissible: true,
-          );
-          break;
-
-        // ✅ APPROVAL PENDING - Show dialog
-        case 'approval_pending':
-          final message = data['message'] as String?;
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
                 children: [
-                  Icon(Icons.pending_actions, color: Colors.amber, size: 24),
-                  SizedBox(width: 8),
-                  Text('Approval Pending', style: TextStyle(fontSize: 18)),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
-                  child: Text(
-                    message ?? 'Your request is pending approval',
-                    style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
+
+
+        // ✅ APPROVAL PENDING - Show dialog
+      case 'approval_pending':
+  final message = data['message'] as String?;
+  final itemType = data['itemType'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.pending_actions,
+                      color: Colors.amber.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Approval Pending',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (itemType != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber[50],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            itemType,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Text(
+                        message ?? 'An item is pending your approval',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
             ),
-            barrierDismissible: true,
-          );
-          break;
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
 
         // ✅ PDF/DOCUMENT DOWNLOADS - KEEP AS IS (WORKING)
         case 'lease_renewal':
@@ -2342,238 +3249,175 @@ case 'new_ticket':     // ✅ ADD THIS LINE
             barrierDismissible: true,
           );
           break;
-          case 'property_interest':
+         case 'property_interest':
 case 'customer_interest':
 case 'property_enquiry':
   final message = data['message'] as String?;
   final customerName = data['customerName'] as String?;
-  final customerPhone = data['customerPhone'] as String?;
   final propertyName = data['propertyName'] as String?;
-  final propertyId = data['propertyId'] as String?;
-  final interestType = data['interestType'] as String?; // 'chat' or 'call'
+  final contactNumber = data['contactNumber'] as String?;
   
-  // Build content widgets
-  List<Widget> contentWidgets = [];
-  
-  // Interest Type Badge
-  if (interestType != null) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
         decoration: BoxDecoration(
-          color: interestType == 'call' ? Colors.green[100] : Colors.blue[100],
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              interestType == 'call' ? Icons.phone : Icons.chat,
-              size: 16,
-              color: interestType == 'call' ? Colors.green[700] : Colors.blue[700],
-            ),
-            const SizedBox(width: 4),
-            Text(
-              interestType == 'call' ? 'Call Interest' : 'Chat Interest',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: interestType == 'call' ? Colors.green[700] : Colors.blue[700],
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 16));
-  }
-  
-  // Customer Name
-  if (customerName != null && customerName.isNotEmpty) {
-    contentWidgets.add(
-      Row(
-        children: [
-          const Icon(Icons.person, size: 20, color: Colors.grey),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              customerName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
-  }
-  
-  // Phone Number (with call button)
-  if (customerPhone != null && customerPhone.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.phone, size: 20, color: Colors.green),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                customerPhone,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.call, color: Colors.green),
-              onPressed: () async {
-                final uri = Uri.parse('tel:$customerPhone');
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri);
-                }
-              },
-              tooltip: 'Call Now',
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
-  }
-  
-  // Property Name
-  if (propertyName != null && propertyName.isNotEmpty) {
-    contentWidgets.add(
-      Row(
-        children: [
-          const Icon(Icons.home, size: 20, color: Colors.grey),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              propertyName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
-  }
-  
-  // Message
-  if (message != null && message.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blue[50],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          message,
-          style: const TextStyle(
-            fontSize: 16,
-            height: 1.6,
-            color: Colors.black87,
-          ),
-        ),
-      ),
-    );
-  }
-  
-  // Show dialog
-  Get.dialog(
-    AlertDialog(
-      backgroundColor:  AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.orange[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.notification_important, color: Colors.orange, size: 24),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'New Property Interest',
-              style: TextStyle(fontSize: 18),
-            ),
-          ),
-        ],
-      ),
-      content: Container(
-        constraints: const BoxConstraints(maxHeight: 500),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: contentWidgets.isNotEmpty 
-              ? contentWidgets 
-              : [
-                  const Text(
-                    'A customer is interested in your property',
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.person_add,
+                      color: Colors.green.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'New Property Interest',
                     style: TextStyle(
-                      fontSize: 16,
-                      height: 1.6,
-                      color: Colors.black87,
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
                     ),
                   ),
                 ],
-          ),
+              ),
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (customerName != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.person, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                customerName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (propertyName != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.home, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                propertyName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (contactNumber != null) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.phone, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              contactNumber,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Text(
+                        message ?? 'A customer has shown interest in your property',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          height: 1.6,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        // Call button if phone available
-        if (customerPhone != null && customerPhone.isNotEmpty)
-          TextButton.icon(
-            onPressed: () async {
-              final uri = Uri.parse('tel:$customerPhone');
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.green),
-            icon: const Icon(Icons.phone, size: 18),
-            label: const Text('Call', style: TextStyle(fontSize: 16)),
-          ),
-        
-        // View property button
-        if (propertyId != null && propertyId.isNotEmpty)
-          TextButton.icon(
-            onPressed: () {
-              Get.back();
-              Get.toNamed('/propertyDetails', arguments: {'propertyId': propertyId});
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.blue),
-            icon: const Icon(Icons.home, size: 18),
-            label: const Text('View Property', style: TextStyle(fontSize: 16)),
-          ),
-        
-        // Close button
-        TextButton(
-          onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Close', style: TextStyle(fontSize: 16)),
-        ),
-      ],
     ),
     barrierDismissible: true,
   );
   break;
+
   
 
   case 'custom_notice':
@@ -2796,40 +3640,115 @@ case 'tenant_notice':
 
 
         // ✅ UNKNOWN - Show generic notification
-        default:
-          debugPrint('Unknown notification type: $notificationType');
-          final message = data['message'] as String?;
-          
-          Get.dialog(
-            AlertDialog(
-              backgroundColor:  AppColors.splashBackgroundColor,
-              title: const Row(
+       default:
+  debugPrint('Unknown notification type: $notificationType');
+  final message = data['message'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
                 children: [
-                  Icon(Icons.info, color: Colors.grey, size: 24),
-                  SizedBox(width: 8),
-                  Text('Notification', style: TextStyle(fontSize: 18)),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.info,
+                      color: Colors.grey.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Notification',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
                 ],
               ),
-              content: Container(
-                constraints: const BoxConstraints(maxHeight: 400),
-                child: SingleChildScrollView(
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
                   child: Text(
                     message ?? 'You have a new notification',
-                    style: const TextStyle(fontSize: 16, height: 1.6, color: Colors.black87),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Get.back(),
-                  style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                  child: const Text('Close', style: TextStyle(fontSize: 16)),
-                ),
-              ],
             ),
-            barrierDismissible: true,
-          );
-          break;
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
 
           
       }
@@ -2845,7 +3764,7 @@ case 'tenant_notice':
     }
   }
 
-  // ✅ NEW: Extract phone number from notes
+// ✅ NEW: Extract phone number from notes
 String? _extractPhoneNumber(String notes) {
   // Pattern to match phone numbers in various formats
   final phonePatterns = [
@@ -2868,6 +3787,20 @@ String? _extractPhoneNumber(String notes) {
   return null;
 }
 
+  // ✅ NEW: Extract preview image URL from notification data
+  String? _extractPreviewImage(Map<String, dynamic> data) {
+    // Check for image in various field names
+    final imageUrl = (data['imageUrl'] ?? data['image_url'] ?? data['image'] ?? data['preview']) as String?;
+    
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      debugPrint('✅ Preview image found: $imageUrl');
+      return imageUrl;
+    }
+    
+    debugPrint('⚠️ No preview image found in notification data');
+    return null;
+  }
+
   // ============================================
   // 2. Update _navigateUsingNavigatorKey method
   // ============================================
@@ -2889,54 +3822,208 @@ String? _extractPhoneNumber(String notes) {
           break;
 
         // ✅ NEW: Handle follow-up notifications
-        case 'follow_up':
-        case 'followup':
-        case 'site_visit':
-        case 'property_visit_scheduled':
-        case 'property_visit_pending':
-        case 'property_visited':
-        case 'property_agreed':
-          final notes = data['notes'] as String?;
-          
-          if (notes != null && notes.isNotEmpty) {
-            showDialog(
-              context: context,
-              barrierDismissible: true,
-              builder: (BuildContext context) => AlertDialog(
-                backgroundColor:  AppColors.splashBackgroundColor,
-                title: const Row(
-                  children: [
-                    Icon(Icons.event_note, color: Colors.blue, size: 24),
-                    SizedBox(width: 8),
-                    Text('Visit Notes', style: TextStyle(fontSize: 18)),
-                  ],
-                ),
-                content: Container(
-                  constraints: const BoxConstraints(maxHeight: 400),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      notes,
-                      style: const TextStyle(
-                        fontSize: 16, 
-                        height: 1.6,
-                        color: Colors.black87,
-                      ),
+       case 'follow_up':
+case 'follow_up_reminder':
+case 'site_visit':
+  final message = data['message'] as String?;
+  final propertyName = data['propertyName'] as String?;
+  final visitDate = data['visitDate'] as String?;
+  final visitTime = data['visitTime'] as String?;
+  final location = data['location'] as String?;
+  final contactNumber = data['contactNumber'] as String?;
+  
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.event,
+                      color: Colors.purple.shade700,
+                      size: 36,
                     ),
                   ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.blue,
+                  const SizedBox(height: 14),
+                  Text(
+                    'Follow-up Reminder',
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                      letterSpacing: 0.3,
                     ),
-                    child: const Text('Close', style: TextStyle(fontSize: 16)),
                   ),
                 ],
               ),
-            );
-          }
-          break;
+            ),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (propertyName != null && propertyName.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.home, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                propertyName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (visitDate != null && visitDate.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Date: $visitDate',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (visitTime != null && visitTime.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Time: $visitTime',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (location != null && location.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                location,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (contactNumber != null && contactNumber.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.phone, size: 20, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(
+                              contactNumber,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (message != null && message.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.purple[50],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            message,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              height: 1.6,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+    barrierDismissible: true,
+  );
+  break;
 
         case 'technician_assignment':
         case 'technician_ticket':
@@ -3053,524 +4140,313 @@ String? _extractPhoneNumber(String notes) {
 
   // ✅ NEW: Show detailed ticket dialog
 void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationType) {
-    final ticketId = data['ticketId'] as String?;
+  // Extract all data
+  final ticketId = data['ticketId'] as String?;
   final complaintId = data['complaintId'] as String?;
   final complaintIdFromData = data['complaint_id']?.toString();
-  final complaintNumber = data['complaint_number'] as String?;  // ✅ NEW
+  final complaintNumber = data['complaint_number'] as String?;
   
   final finalTicketId = complaintIdFromData ?? ticketId ?? complaintId;
-  final displayTicketId = complaintNumber ?? finalTicketId;  // ✅ Use complaint_number if available
+  final displayTicketId = complaintNumber ?? finalTicketId;
+  
+  final imageUrl = _extractPreviewImage(data);
+  final timestamp = data['timestamp'] as String?;
+  final createdAt = data['createdAt'] as String?;
+  final finalTimestamp = timestamp ?? createdAt;
   
   final message = data['message'] as String?;
   final reply = data['reply'] as String?;
   final category = data['category'] as String?;
-  final subCategory = data['sub_category'] as String?;  // ✅ NEW
+  final subCategory = data['sub_category'] as String?;
   final status = data['status'] as String?;
   final description = data['description'] as String?;
   final propertyName = data['propertyName'] as String?;
-  final propertyTitle = data['property_title'] as String?;  // ✅ NEW
-  final unitAddress = data['unit_address'] as String?;  // ✅ NEW
-  final complainant = data['complainant'] as String?;  // ✅ NEW
-  final createdAt = data['createdAt'] as String?;
+  final propertyTitle = data['property_title'] as String?;
+  final unitAddress = data['unit_address'] as String?;
+  final complainant = data['complainant'] as String?;
   final updatedAt = data['updatedAt'] as String?;
-  final timestamp = data['timestamp'] as String?;  // ✅ NEW
   final technicianName = data['technicianName'] as String?;
   final priority = data['priority'] as String?;
   
-  // Use property_title if propertyName is not available
   final finalPropertyName = propertyTitle ?? propertyName;
-  
-  // Use timestamp if createdAt is not available
   final finalCreatedAt = timestamp ?? createdAt;
-  
-  // Use sub_category if available, otherwise category
   final finalCategory = subCategory ?? category;
   
-  debugPrint('🎯 Ticket notification - showing complete details');
-  debugPrint('   Ticket ID: $finalTicketId');
-  debugPrint('   Display ID: $displayTicketId');
-  debugPrint('   Type: $notificationType');
-  debugPrint('   Category: $finalCategory');
-  debugPrint('   Status: $status');
+  debugPrint('🎯 Ticket notification - showing beautiful message dialog');
   
-  // Build content widgets
-  List<Widget> contentWidgets = [];
+  // Build message content as TextSpans for rich formatting
+  final List<TextSpan> messageSpans = [];
   
-  // Ticket ID/Number
+  // Ticket number
   if (displayTicketId != null && displayTicketId.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.blue[50],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.blue[200]!, width: 1),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.confirmation_number, size: 18, color: Colors.blue[700]),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Ticket Number',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    displayTicketId,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[700],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(text: '🎫 '));
+    messageSpans.add(TextSpan(
+      text: 'Ticket $displayTicketId',
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+    ));
+    messageSpans.add(const TextSpan(text: '\n\n'));
   }
   
-  // Status and Category row
+  // Status and Category
   if (status != null || finalCategory != null) {
-    contentWidgets.add(
-      Row(
-        children: [
-          if (status != null) ...[
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(status),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Status',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      status,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          if (status != null && finalCategory != null) const SizedBox(width: 8),
-          if (finalCategory != null) ...[
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.purple[50],
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Category',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      finalCategory,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    if (status != null) {
+      messageSpans.add(const TextSpan(text: '📊 Status: '));
+      messageSpans.add(TextSpan(
+        text: status,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ));
+      messageSpans.add(const TextSpan(text: '\n'));
+    }
+    if (finalCategory != null) {
+      messageSpans.add(const TextSpan(text: '📂 Category: '));
+      messageSpans.add(TextSpan(
+        text: finalCategory,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ));
+      messageSpans.add(const TextSpan(text: '\n'));
+    }
+    messageSpans.add(const TextSpan(text: '\n'));
   }
   
-  // Priority (if available)
+  // Priority
   if (priority != null && priority.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: _getPriorityColor(priority),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.flag, size: 14, color: _getPriorityIconColor(priority)),
-            const SizedBox(width: 6),
-            Text(
-              'Priority: $priority',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: _getPriorityIconColor(priority),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    String priorityEmoji = priority.toLowerCase() == 'high' || priority.toLowerCase() == 'urgent' 
+        ? '🔴' : priority.toLowerCase() == 'medium' ? '🟡' : '🟢';
+    messageSpans.add(TextSpan(text: '$priorityEmoji Priority: '));
+    messageSpans.add(TextSpan(
+      text: priority,
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ));
+    messageSpans.add(const TextSpan(text: '\n\n'));
   }
   
-  // ✅ NEW: Complainant Name
-  if (complainant != null && complainant.isNotEmpty) {
-    contentWidgets.add(
-      Row(
-        children: [
-          const Icon(Icons.person_outline, size: 18, color: Colors.grey),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Complainant: $complainant',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+  // Property details
+  if (finalPropertyName != null) {
+    messageSpans.add(const TextSpan(text: '🏠 '));
+    messageSpans.add(TextSpan(
+      text: finalPropertyName,
+      style: const TextStyle(fontWeight: FontWeight.bold),
+    ));
+    messageSpans.add(const TextSpan(text: '\n'));
   }
-  
-  // Property Name and Unit Address
+  if (unitAddress != null) {
+    messageSpans.add(TextSpan(text: '📍 $unitAddress\n'));
+  }
   if (finalPropertyName != null || unitAddress != null) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (finalPropertyName != null) ...[
-              Row(
-                children: [
-                  const Icon(Icons.home, size: 18, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      finalPropertyName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (unitAddress != null) ...[
-              if (finalPropertyName != null) const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      unitAddress,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(text: '\n'));
   }
   
-  // Technician Name
-  if (technicianName != null && technicianName.isNotEmpty) {
-    contentWidgets.add(
-      Row(
-        children: [
-          const Icon(Icons.engineering, size: 18, color: Colors.grey),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Assigned to: $technicianName',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+  // Complainant
+  if (complainant != null && complainant.isNotEmpty) {
+    messageSpans.add(TextSpan(text: '👤 Reported by: $complainant\n\n'));
   }
   
   // Description
   if (description != null && description.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.description, size: 16, color: Colors.grey[700]),
-                const SizedBox(width: 6),
-                Text(
-                  'Description',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(
+      text: '📝 Issue Description:\n',
+      style: TextStyle(fontWeight: FontWeight.bold),
+    ));
+    messageSpans.add(TextSpan(text: '$description\n\n'));
   }
   
-  // Reply (if this is a reply notification)
+  // Technician reply
   if (reply != null && reply.isNotEmpty) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.green[50],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.green[200]!, width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.reply, size: 16, color: Colors.green[700]),
-                const SizedBox(width: 6),
-                Text(
-                  'Technician Reply',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[700],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              reply,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(const TextSpan(
+      text: '💬 Technician Reply:\n',
+      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+    ));
+    messageSpans.add(TextSpan(text: '$reply\n\n'));
   }
   
-  // Message (if different from reply and description)
+  // Technician assigned
+  if (technicianName != null && technicianName.isNotEmpty) {
+    messageSpans.add(TextSpan(text: '👨‍🔧 Assigned to: $technicianName\n\n'));
+  }
+  
+  // Additional message
   if (message != null && message.isNotEmpty && message != reply && message != description) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.blue[50],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          message,
-          style: const TextStyle(
-            fontSize: 14,
-            height: 1.5,
-            color: Colors.black87,
-          ),
-        ),
-      ),
-    );
-    contentWidgets.add(const SizedBox(height: 12));
+    messageSpans.add(TextSpan(text: '📢 $message\n\n'));
   }
   
   // Timestamps
-  if (finalCreatedAt != null || updatedAt != null) {
-    contentWidgets.add(
-      Container(
-        padding: const EdgeInsets.all(10),
+  if (finalCreatedAt != null) {
+    messageSpans.add(const TextSpan(text: '🕐 Created: '));
+    messageSpans.add(TextSpan(
+      text: TimezoneHelper.formatNotificationTime(finalCreatedAt),
+      style: TextStyle(color: Colors.grey[700]),
+    ));
+  }
+  if (updatedAt != null && updatedAt != finalCreatedAt) {
+    if (finalCreatedAt != null) messageSpans.add(const TextSpan(text: '\n'));
+    messageSpans.add(const TextSpan(text: '🔄 Updated: '));
+    messageSpans.add(TextSpan(
+      text: TimezoneHelper.formatNotificationTime(updatedAt),
+      style: TextStyle(color: Colors.grey[700]),
+    ));
+  }
+  
+  // ✅ Show dialog with WHITE BACKGROUND (matching _handleTicketNavigation)
+  Get.dialog(
+    Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
         decoration: BoxDecoration(
-          color: Colors.grey[50],
-          borderRadius: BorderRadius.circular(6),
+          color: Colors.white,  // ✅ WHITE BACKGROUND
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            if (finalCreatedAt != null) ...[
-              Row(
+            // ✅ WHITE header with green icon
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: Colors.white,  // ✅ WHITE HEADER
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
                 children: [
-                  Icon(Icons.access_time, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,  // ✅ Light green circle
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.support_agent,
+                      color: Colors.green.shade700,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Text(
-                    'Created: ${_formatTimestamp(finalCreatedAt)}',
+                    _getTicketTitle(notificationType ?? 'ticket'),
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
+                      fontSize: 21,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                      letterSpacing: 0.3,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            
+            // ✅ Message bubble with light gray background
+            Container(
+              constraints: const BoxConstraints(maxHeight: 480),
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],  // ✅ Very light gray for content
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey[200]!, width: 1.5),
+                  ),
+                  child: messageSpans.isNotEmpty
+                      ? SelectableText.rich(
+                          TextSpan(
+                            style: const TextStyle(
+                              fontSize: 15,
+                              height: 1.7,
+                              color: Colors.black87,
+                            ),
+                            children: messageSpans,
+                          ),
+                        )
+                      : const SelectableText(
+                          '📬 Your ticket has been updated',
+                          style: TextStyle(
+                            fontSize: 15,
+                            height: 1.7,
+                            color: Colors.black87,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            
+            // Action buttons
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              child: Row(
+                children: [
+                  // View Full Ticket button
+                  if (finalTicketId != null && finalTicketId.isNotEmpty)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Get.back();
+                          Get.to(() => TicketDetailsScreen(
+                            complaintId: finalTicketId,
+                            previewImageUrl: imageUrl,
+                            previewImageTimestamp: finalTimestamp,
+                          ));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: const Icon(Icons.visibility_rounded, size: 20),
+                        label: const Text(
+                          'View Ticket',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  
+                  if (finalTicketId != null && finalTicketId.isNotEmpty)
+                    const SizedBox(width: 12),
+                  
+                  // Close button
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
-            if (updatedAt != null && updatedAt != finalCreatedAt) ...[
-              if (finalCreatedAt != null) const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.update, size: 14, color: Colors.grey[600]),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Updated: ${_formatTimestamp(updatedAt)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ],
         ),
       ),
-    );
-  }
-  
-  // Show dialog
-  Get.dialog(
-    AlertDialog(
-      backgroundColor:  AppColors.splashBackgroundColor,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.green[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.support_agent, color: Colors.green, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _getTicketTitle(notificationType!),
-              style: const TextStyle(fontSize: 18),
-            ),
-          ),
-        ],
-      ),
-      content: Container(
-        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 400),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: contentWidgets.isNotEmpty
-                ? contentWidgets
-                : [
-                    const Text(
-                      'Your ticket has been updated',
-                      style: TextStyle(
-                        fontSize: 16,
-                        height: 1.6,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ],
-          ),
-        ),
-      ),
-      actions: [
-        // View Full Ticket button
-      // View Full Ticket button
-if (finalTicketId != null && finalTicketId.isNotEmpty)
-  TextButton.icon(
-    onPressed: () {
-      Get.back(); // Close the dialog first
-      
-      // Navigate directly to TicketDetailsScreen
-      Get.to(() => TicketDetailsScreen(
-        complaintId: finalTicketId,
-      ));
-    },
-    style: TextButton.styleFrom(foregroundColor: Colors.green),
-    icon: const Icon(Icons.visibility, size: 18),
-    label: const Text('View Full Ticket', style: TextStyle(fontSize: 16)),
-  ),
-        // Close button
-        TextButton(
-          onPressed: () => Get.back(),
-          style: TextButton.styleFrom(foregroundColor: Colors.grey),
-          child: const Text('Close', style: TextStyle(fontSize: 16)),
-        ),
-      ],
     ),
     barrierDismissible: true,
   );
@@ -4120,10 +4996,10 @@ case 'property_enquiry':
 
 String _formatDate(String dateString) {
   try {
-    final date = DateTime.parse(dateString);
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    // Use TimezoneHelper to format date in Oman time
+    return TimezoneHelper.formatDateOnly(dateString);
   } catch (e) {
+    debugPrint('Error formatting date: $e');
     return dateString;
   }
 }

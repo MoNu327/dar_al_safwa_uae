@@ -67,6 +67,22 @@
           }
         },
         {
+          "client_id": "961349068661-41c63001s1rl18ldif871ndaeab01sd9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.daralsafwa_uae",
+            "certificate_hash": "780de27ce8f4ffdae1f1ce8ad3c500780c3b4cb9"
+          }
+        },
+        {
+          "client_id": "961349068661-gd9egf5mbpj6u62nhfdh5582n4qqu0nr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.daralsafwa_uae",
+            "certificate_hash": "a46d9d775ce53ffd31738d6ee79cc70dcee8a0a4"
+          }
+        },
+        {
           "client_id": "961349068661-hocj0h0sbp0a3dc838mram47moija8m5.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -102,6 +118,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "961349068661-gje08nincp70o8ikdfp4ini7kn0rbsgg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.majan.app",
+            "certificate_hash": "a46d9d775ce53ffd31738d6ee79cc70dcee8a0a4"
+          }
+        },
         {
           "client_id": "961349068661-j9tcmhujhjtnkgn2m3455e90hm0h158r.apps.googleusercontent.com",
           "client_type": 1,

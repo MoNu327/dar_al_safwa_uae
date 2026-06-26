@@ -10,7 +10,6 @@ import 'package:majan/presentation/widgets/custom_text_formfield_widget.dart';
 import '../../../../core/constants/custom_size.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../widgets/custom_text_widget.dart';
-
 class TicketDetailsScreen extends StatefulWidget {
   final String complaintId;
   final String? previewImageUrl;
@@ -616,215 +615,264 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
     );
   }
 
-  Widget _buildTimelineSection() {
-    final timelineEvents = controller.timeline;
-    if (timelineEvents.isEmpty) {
-      return SizedBox.shrink();
+Widget _buildTimelineSection() {
+  final timelineEvents = controller.timeline;
+  if (timelineEvents.isEmpty) {
+    return SizedBox.shrink();
+  }
+  
+  // ✅ Sort with FORCED logical order (complaint_created ALWAYS first)
+  final sortedEvents = List<TimelineEvent>.from(timelineEvents);
+  sortedEvents.sort((a, b) {
+    // PRIORITY 1: Force complaint_created to always be first
+    if (a.type == 'complaint_created' && b.type != 'complaint_created') return -1;
+    if (b.type == 'complaint_created' && a.type != 'complaint_created') return 1;
+    
+    // PRIORITY 2: Force technician_assigned to be second (after complaint_created)
+    if (a.type == 'technician_assigned' && b.type != 'complaint_created' && b.type != 'technician_assigned') return -1;
+    if (b.type == 'technician_assigned' && a.type != 'complaint_created' && a.type != 'technician_assigned') return 1;
+    
+    // PRIORITY 3: Sort remaining events by timestamp
+    try {
+      if (a.timestamp == null || a.timestamp!.isEmpty) return 1;
+      if (b.timestamp == null || b.timestamp!.isEmpty) return -1;
+      
+      final dateA = _parseTimestamp(a.timestamp!);
+      final dateB = _parseTimestamp(b.timestamp!);
+      
+      return dateA.compareTo(dateB);
+    } catch (e) {
+      debugPrint('⚠️ Error sorting timeline events: $e');
+      return 0;
     }
-    return _buildSection(
-      title: "Timeline Events",
-      icon: HugeIcons.strokeRoundedClock01,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CustomTextWidget(
-            title: "Recent Activities (${timelineEvents.length})",
-            fontSize: Get.height * 0.014,
-            fontWeight: FontWeight.w600,
-            color: AppColors.black600,
-          ),
-          SizedBox(height: screenHeight1),
-          ...timelineEvents.asMap().entries.map((entry) {
-            final index = entry.key;
-            final event = entry.value;
-            debugPrint('📅 Timeline Event Type: ${event.type}');
-            debugPrint('📅 Raw Timestamp: ${event.timestamp}');
-            debugPrint('📅 Formatted Timestamp: ${_formatDateTimeToLocal(event.timestamp)}');
-            return Container(
-              margin: EdgeInsets.only(bottom: index == timelineEvents.length - 1 ? 0 : screenHeight1),
-              padding: EdgeInsets.all(screenWidth2),
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withOpacity(0.2)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: Get.height * 0.04,
-                    height: Get.height * 0.04,
-                    decoration: BoxDecoration(
-                      color: _getTimelineEventColor(event.type),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _getTimelineEventIcon(event.type),
-                      color: AppColors.white,
-                      size: Get.height * 0.02,
-                    ),
+  });
+  
+  return _buildSection(
+    title: "Timeline Events",
+    icon: HugeIcons.strokeRoundedClock01,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextWidget(
+          title: "Recent Activities (${sortedEvents.length})",
+          fontSize: Get.height * 0.014,
+          fontWeight: FontWeight.w600,
+          color: AppColors.black600,
+        ),
+        SizedBox(height: screenHeight1),
+        ...sortedEvents.asMap().entries.map((entry) {
+          final index = entry.key;
+          final event = entry.value;
+          debugPrint('📅 Timeline Event Type: ${event.type}');
+          debugPrint('📅 Raw Timestamp: ${event.timestamp}');
+          debugPrint('📅 Formatted Timestamp: ${_formatDateTimeToLocal(event.timestamp)}');
+          
+          return Container(
+            margin: EdgeInsets.only(bottom: index == sortedEvents.length - 1 ? 0 : screenHeight1),
+            padding: EdgeInsets.all(screenWidth2),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: Get.height * 0.04,
+                  height: Get.height * 0.04,
+                  decoration: BoxDecoration(
+                    color: _getTimelineEventColor(event.type),
+                    shape: BoxShape.circle,
                   ),
-                  SizedBox(width: screenWidth2),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Icon(
+                    _getTimelineEventIcon(event.type),
+                    color: AppColors.white,
+                    size: Get.height * 0.02,
+                  ),
+                ),
+                SizedBox(width: screenWidth2),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: CustomTextWidget(
+                              title: _formatTimelineEventType(event.type),
+                              fontSize: Get.height * 0.014,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.black,
+                            ),
+                          ),
+                          CustomTextWidget(
+                            title: _formatDateTimeToLocal(event.timestamp),
+                            fontSize: Get.height * 0.011,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.black600,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: screenHeight05),
+                      if (event.message != null && event.message!.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: CustomTextWidget(
-                                title: _formatTimelineEventType(event.type),
-                                fontSize: Get.height * 0.014,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.black,
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.all(screenWidth1),
+                              decoration: BoxDecoration(
+                                color: AppColors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  CustomTextWidget(
+                                    title: event.message!,
+                                    fontSize: Get.height * 0.013,
+                                    fontWeight: FontWeight.w400,
+                                    color: AppColors.black,
+                                  ),
+                                  SizedBox(height: screenHeight05),
+                                  if (event.by != null)
+                                    CustomTextWidget(
+                                      title: "By: ${_getPersonNameFromUserBy(event.by!)}",
+                                      fontSize: Get.height * 0.011,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.black600,
+                                    ),
+                                ],
                               ),
                             ),
-                            CustomTextWidget(
-                              title: _formatDateTimeToLocal(event.timestamp),
-                              fontSize: Get.height * 0.011,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.black600,
-                            ),
+                            SizedBox(height: screenHeight05),
                           ],
                         ),
-                        SizedBox(height: screenHeight05),
-                        if (event.message != null && event.message!.isNotEmpty)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: double.infinity,
-                                padding: EdgeInsets.all(screenWidth1),
-                                decoration: BoxDecoration(
-                                  color: AppColors.white,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    CustomTextWidget(
-                                      title: event.message!,
-                                      fontSize: Get.height * 0.013,
-                                      fontWeight: FontWeight.w400,
-                                      color: AppColors.black,
-                                    ),
-                                    SizedBox(height: screenHeight05),
-                                    if (event.by != null)
-                                      CustomTextWidget(
-                                        title: "By: ${_getPersonNameFromUserBy(event.by!)}",
-                                        fontSize: Get.height * 0.011,
-                                        fontWeight: FontWeight.w400,
-                                        color: AppColors.black600,
-                                      ),
-                                  ],
-                                ),
+                      if (event.type == 'status_change' && event.oldStatus != null && event.newStatus != null)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(screenWidth1),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.orange.withOpacity(0.3)),
                               ),
-                              SizedBox(height: screenHeight05),
-                            ],
-                          ),
-                        if (event.type == 'status_change' && event.oldStatus != null && event.newStatus != null)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(screenWidth1),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    CustomTextWidget(
-                                      title: "Status changed: ",
-                                      fontSize: Get.height * 0.012,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.orange,
-                                    ),
-                                    CustomTextWidget(
-                                      title: "${event.oldStatus} → ${event.newStatus}",
-                                      fontSize: Get.height * 0.012,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.orange,
-                                    ),
-                                  ],
-                                ),
+                              child: Row(
+                                children: [
+                                  CustomTextWidget(
+                                    title: "Status changed: ",
+                                    fontSize: Get.height * 0.012,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.orange,
+                                  ),
+                                  CustomTextWidget(
+                                    title: "${event.oldStatus} → ${event.newStatus}",
+                                    fontSize: Get.height * 0.012,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.orange,
+                                  ),
+                                ],
                               ),
-                              SizedBox(height: screenHeight05),
-                            ],
-                          ),
-                        if (event.type == 'technician_assigned' && event.technician != null)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(screenWidth1),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.green.withOpacity(0.3)),
-                                ),
-                                child: CustomTextWidget(
-                                  title: "Technician: ${_getPersonNameFromUserBy(event.technician!)}",
-                                  fontSize: Get.height * 0.012,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.green,
-                                ),
-                              ),
-                              SizedBox(height: screenHeight05),
-                            ],
-                          ),
-                        if (event.type == 'payment')
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(screenWidth1),
-                                decoration: BoxDecoration(
-                                  color: Colors.teal.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.teal.withOpacity(0.3)),
-                                ),
-                                child: CustomTextWidget(
-                                  title: "Payment: ${event.message ?? 'Payment processed'}",
-                                  fontSize: Get.height * 0.012,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.teal,
-                                ),
-                              ),
-                              SizedBox(height: screenHeight05),
-                            ],
-                          ),
-                        if (event.by != null && event.type != 'reply')
-                          Padding(
-                            padding: EdgeInsets.only(bottom: screenHeight05),
-                            child: CustomTextWidget(
-                              title: "By: ${_getPersonNameFromUserBy(event.by!)}",
-                              fontSize: Get.height * 0.011,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.black600,
                             ),
-                          ),
-                        CustomTextWidget(
-                          title: _getTimelineEventDescription(event),
-                          fontSize: Get.height * 0.013,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.black600,
+                            SizedBox(height: screenHeight05),
+                          ],
                         ),
-                      ],
-                    ),
+                      if (event.type == 'technician_assigned' && event.technician != null)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(screenWidth1),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.green.withOpacity(0.3)),
+                              ),
+                              child: CustomTextWidget(
+                                title: "Technician: ${_getPersonNameFromUserBy(event.technician!)}",
+                                fontSize: Get.height * 0.012,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green,
+                              ),
+                            ),
+                            SizedBox(height: screenHeight05),
+                          ],
+                        ),
+                      if (event.type == 'payment')
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(screenWidth1),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                              ),
+                              child: CustomTextWidget(
+                                title: "Payment: ${event.message ?? 'Payment processed'}",
+                                fontSize: Get.height * 0.012,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.teal,
+                              ),
+                            ),
+                            SizedBox(height: screenHeight05),
+                          ],
+                        ),
+                      if (event.by != null && event.type != 'reply')
+                        Padding(
+                          padding: EdgeInsets.only(bottom: screenHeight05),
+                          child: CustomTextWidget(
+                            title: "By: ${_getPersonNameFromUserBy(event.by!)}",
+                            fontSize: Get.height * 0.011,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.black600,
+                          ),
+                        ),
+                      CustomTextWidget(
+                        title: _getTimelineEventDescription(event),
+                        fontSize: Get.height * 0.013,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.black600,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ],
+    ),
+  );
+}
 
+// ✅ Add this helper method to parse timestamps with multiple format support
+DateTime _parseTimestamp(String timestamp) {
+  try {
+    // Try ISO 8601 format first
+    return DateTime.parse(timestamp);
+  } catch (e1) {
+    try {
+      // Try yyyy-MM-dd HH:mm:ss format
+      return DateFormat('yyyy-MM-dd HH:mm:ss').parse(timestamp);
+    } catch (e2) {
+      try {
+        // Try MM/dd/yyyy HH:mm:ss format
+        return DateFormat('MM/dd/yyyy HH:mm:ss').parse(timestamp);
+      } catch (e3) {
+        // Return current time as fallback
+        debugPrint('❌ Failed to parse timestamp: $timestamp');
+        return DateTime.now();
+      }
+    }
+  }
+}
   // ✅ Helper for UserBy object (not Map)
   String _getPersonNameFromUserBy(UserBy userBy) {
     return userBy.name?.trim().isNotEmpty == true ? userBy.name! : 'Unknown';

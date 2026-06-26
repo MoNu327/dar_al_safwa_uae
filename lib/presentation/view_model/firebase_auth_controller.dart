@@ -19,7 +19,6 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../data/model/user_model.dart';
 import '../../domain/controller/user_controller.dart';
 
-
 class AuthService extends GetxController {
   final FirebaseAuth auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -54,16 +53,24 @@ class AuthService extends GetxController {
   var isRegisterAgent = false.obs;
   var isSignOutAll = false.obs;
   
-  // Auto-login state
+  // 🔧 Auto-login management
   final RxBool isAutoLoggingIn = RxBool(false);
   final RxBool hasCheckedAutoLogin = RxBool(false);
+  
+  // 🔧 Prevent duplicate auth handling
+  Timer? _authStateDebouncer;
+  bool _isInitializing = true;
 
   final resendEnabled = false.obs;
   final secondsRemaining = 60.obs;
   Timer? _resendTimer;
   int? _resendToken;
   String verificationId = '';
-   NotificationController? get _notificationController {
+  
+  // ⚡ Cache for user data to avoid repeated Firestore reads
+  final Map<String, Map<String, dynamic>> _userDataCache = {};
+  
+  NotificationController? get _notificationController {
     try {
       if (Get.isRegistered<NotificationController>()) {
         return Get.find<NotificationController>();
@@ -74,360 +81,675 @@ class AuthService extends GetxController {
     return null;
   }
 
-  /// Get current platform information
-String _getPlatformInfo() {
-  if (Platform.isIOS) {
-    return 'ios';
-  } else if (Platform.isAndroid) {
-    return 'android';
-  } else if (Platform.isWindows) {
-    return 'windows';
-  } else if (Platform.isMacOS) {
-    return 'macos';
-  } else if (Platform.isLinux) {
-    return 'linux';
-  } else {
-    return 'web';
-  }
-}
-
-/// Get device information including platform
-Map<String, dynamic> _getDeviceInfo() {
-  return {
-    'mode': _getPlatformInfo(),
-    'modeupdated': _getPlatformInfo(),
-    'lastLoginAt': FieldValue.serverTimestamp(),
-  };
-}
-
-/// Log user activity after successful login
-Future<void> _logLoginActivity(String uid) async {
-  try {
-    debugPrint('📊 Logging login activity for user: $uid');
-
-    // Determine which collection the user belongs to
-    String collection = 'users';
-    
-    final agentDoc = await _firestore.collection('agents').doc(uid).get();
-    if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
-      collection = 'agents';
-      debugPrint('✅ User identified as agent');
+  String _getPlatformInfo() {
+    if (Platform.isIOS) {
+      return 'ios';
+    } else if (Platform.isAndroid) {
+      return 'android';
+    } else if (Platform.isWindows) {
+      return 'windows';
+    } else if (Platform.isMacOS) {
+      return 'macos';
+    } else if (Platform.isLinux) {
+      return 'linux';
     } else {
-      final techDoc = await _firestore.collection('technicians').doc(uid).get();
-      if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
-        collection = 'technicians';
-        debugPrint('✅ User identified as technician');
+      return 'web';
+    }
+  }
+
+  Map<String, dynamic> _getDeviceInfo() {
+    return {
+      'mode': _getPlatformInfo(),
+      'modeupdated': _getPlatformInfo(),
+      'lastLoginAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  // ⚡ Background login activity logging (non-blocking)
+  void _logLoginActivityAsync(String uid) {
+    Future.microtask(() async {
+      try {
+        debugPrint('📊 [Background] Logging login activity for: $uid');
+
+        String collection = 'users';
+        String mode = _getPlatformInfo();
+        String modeUpdated = _getPlatformInfo();
+
+        if (_userDataCache.containsKey(uid)) {
+          final cached = _userDataCache[uid]!;
+          collection = cached['_collection'] ?? 'users';
+          mode = cached['mode'] ?? mode;
+          modeUpdated = cached['modeupdated'] ?? modeUpdated;
+        }
+
+        final response = await ApiService().getuserlogactivity(uid, mode, modeUpdated);
+        
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          debugPrint('✅ [Background] Login activity logged');
+        }
+      } catch (e) {
+        debugPrint('⚠️ [Background] Login activity failed: $e');
       }
-    }
-
-    final userDoc = await _firestore.collection(collection).doc(uid).get();
-
-    String mode;
-    String modeUpdated;
-
-    if (userDoc.exists) {
-      final userData = userDoc.data();
-      mode = userData?['mode'] ?? _getPlatformInfo();
-      modeUpdated = userData?['modeupdated'] ?? _getPlatformInfo();
-      debugPrint('✅ Platform data from $collection - mode: $mode, modeupdated: $modeUpdated');
-    } else {
-      mode = _getPlatformInfo();
-      modeUpdated = _getPlatformInfo();
-      debugPrint('⚠️ Using detected platform: $mode');
-    }
-
-    // Call the API
-    debugPrint('🔄 Calling login activity API...');
-    final response = await ApiService().getuserlogactivity(uid, mode, modeUpdated);
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      debugPrint('✅ Login activity logged successfully');
-      debugPrint('📦 Response: ${response.data}');
-    } else {
-      debugPrint('⚠️ Login activity API failed with status: ${response.statusCode}');
-    }
-  } catch (e) {
-    debugPrint('❌ Error logging login activity: $e');
-    // Don't block login flow if logging fails
+    });
   }
-}
 
   @override
   void onReady() {
     super.onReady();
-    // Bind Firebase auth state changes
-    firebaseUser.bindStream(auth.authStateChanges());
-    ever(firebaseUser, handleAuthChanged);
-    
-    // Check for existing session on app start
-    checkAutoLogin();
+    debugPrint('🚀 [AuthService] onReady - Starting initialization');
+    _initializeAuthService();
   }
 
- /// Check if user is already logged in when app starts
-Future<void> checkAutoLogin() async {
-  if (hasCheckedAutoLogin.value) {
-    debugPrint('⏭️ [checkAutoLogin] Already checked, skipping');
-    return;
+  // 🔧 CRITICAL: Proper initialization sequence for persistent auto-login
+ Future<void> _initializeAuthService() async {
+  try {
+    _isInitializing = true;
+
+    // ✅ Don't call checkAutoLogin here — SplashController handles it
+    // Just bind the auth state listener for future sign-ins/sign-outs
+    firebaseUser.bindStream(auth.authStateChanges());
+    ever(firebaseUser, _handleAuthChangedDebounced);
+
+    _isInitializing = false;
+    debugPrint('✅ [Init] Auth service fully initialized');
+
+  } catch (e) {
+    debugPrint('❌ [Init] Initialization failed: $e');
+    _isInitializing = false;
+    if (auth.currentUser == null) {
+      Get.offAllNamed(AppRoute.login);
+    }
   }
-  
+}
+
+  // 🔧 Debounced handler to prevent rapid-fire auth state changes
+  void _handleAuthChangedDebounced(User? user) {
+    _authStateDebouncer?.cancel();
+    _authStateDebouncer = Timer(const Duration(milliseconds: 300), () {
+      handleAuthChanged(user);
+    });
+  }
+
+  // 🔧 IMPROVED: Auto-login that persists until explicit logout
+  // Future<void> checkAutoLogin() async {
+  //   // Prevent multiple simultaneous auto-login attempts
+  //   if (hasCheckedAutoLogin.value) {
+  //     debugPrint('⏭️ [AutoLogin] Already checked, skipping');
+  //     return;
+  //   }
+    
+  //   try {
+  //     isAutoLoggingIn(true);
+  //     debugPrint('🔍 [AutoLogin] Starting auto-login check...');
+      
+  //     // Firebase Auth automatically persists user sessions
+  //     final currentUser = auth.currentUser;
+      
+  //     if (currentUser != null) {
+  //       debugPrint('✅ [AutoLogin] Found existing session for: ${currentUser.uid}');
+  //       debugPrint('📧 [AutoLogin] Email: ${currentUser.email ?? "N/A"}');
+  //       debugPrint('📱 [AutoLogin] Phone: ${currentUser.phoneNumber ?? "N/A"}');
+        
+  //       // Set user ID for notifications immediately
+  //       _notificationController?.setUserId(currentUser.uid);
+        
+  //       // Run background tasks (non-blocking)
+  //       _syncFCMTokenAsync(currentUser);
+  //       _logLoginActivityAsync(currentUser.uid);
+        
+  //       // Navigate user to appropriate screen based on their role
+  //       await _handleAutoLoginNavigation(currentUser);
+        
+  //       debugPrint('✅ [AutoLogin] Successfully logged in automatically');
+  //     } else {
+  //       debugPrint('ℹ️ [AutoLogin] No existing session found - user needs to login');
+  //       _notificationController?.clearUserId();
+        
+  //       // Navigate to login only if not already there
+  //       if (Get.currentRoute != AppRoute.login) {
+  //         Get.offAllNamed(AppRoute.login);
+  //       }
+  //     }
+      
+  //     hasCheckedAutoLogin(true);
+      
+  //   } catch (e, stackTrace) {
+  //     debugPrint('❌ [AutoLogin] ERROR: $e');
+  //     debugPrint('📝 Stack trace: $stackTrace');
+      
+  //     // On error, navigate to login
+  //     Get.offAllNamed(AppRoute.login);
+      
+  //   } finally {
+  //     isAutoLoggingIn(false);
+  //   }
+  // }
+
+
+
+//   Future<void> checkAutoLogin() async {
+//   if (hasCheckedAutoLogin.value) return;
+
+//   try {
+//     isAutoLoggingIn(true);
+//     debugPrint('🔍 [AutoLogin] Waiting for Firebase to restore session...');
+
+//     // ✅ Wait for Firebase to emit the FIRST auth event
+//     // In release mode, auth.currentUser is null until Firebase reads
+//     // the persisted token from disk. authStateChanges() fires once
+//     // that restore is complete.
+//     final currentUser = await auth.authStateChanges().first
+//         .timeout(
+//           const Duration(seconds: 5),
+//           onTimeout: () {
+//             debugPrint('⚠️ [AutoLogin] Timed out waiting for auth state');
+//             return null; // treat as logged out
+//           },
+//         );
+
+//     debugPrint('👤 [AutoLogin] Resolved user: ${currentUser?.uid ?? "null"}');
+
+//     if (currentUser != null) {
+//       _notificationController?.setUserId(currentUser.uid);
+//       _syncFCMTokenAsync(currentUser);
+//       _logLoginActivityAsync(currentUser.uid);
+//       await _handleAutoLoginNavigation(currentUser);
+//     } else {
+//       _notificationController?.clearUserId();
+//       if (Get.currentRoute != AppRoute.login) {
+//         Get.offAllNamed(AppRoute.login);
+//       }
+//     }
+//   } catch (e) {
+//     debugPrint('❌ [AutoLogin] ERROR: $e');
+//     Get.offAllNamed(AppRoute.login);
+//   } finally {
+//     isAutoLoggingIn(false);
+//     hasCheckedAutoLogin(true);
+//     // Bind stream only AFTER the one-shot check is done
+//     firebaseUser.bindStream(auth.authStateChanges());
+//     ever(firebaseUser, _handleAuthChangedDebounced);
+//   }
+// }
+
+Future<void> checkAutoLogin() async {
+  if (hasCheckedAutoLogin.value) return;
+
   try {
     isAutoLoggingIn(true);
-    debugPrint('🔍 [checkAutoLogin] Starting auto-login check...');
-    
-    final currentUser = auth.currentUser;
-    
+    debugPrint('🔍 [AutoLogin] Waiting for Firebase to restore session...');
+
+    // Release builds: Firebase reads the persisted token from disk and
+    // validates it with Google's servers. This takes 3–8s on Play Store
+    // builds. The authStateChanges() stream emits null immediately while
+    // still initializing, then emits the real user later.
+    //
+    // The old await-for loop broke on the FIRST null emission — making the
+    // 10-second timeout completely useless. We use a Completer instead so
+    // null emissions are simply ignored until the real user arrives or the
+    // timeout fires.
+    final completer = Completer<User?>();
+
+    // Synchronous fast-path: works in debug / warm restarts where the token
+    // is already in memory.
+    if (auth.currentUser != null) {
+      debugPrint('⚡ [AutoLogin] User already in memory: ${auth.currentUser!.uid}');
+      completer.complete(auth.currentUser);
+    }
+
+    // Stream listener — only completes on a non-null user.
+    final sub = auth.authStateChanges().listen(
+      (user) {
+        if (user != null && !completer.isCompleted) {
+          debugPrint('✅ [AutoLogin] Got user from stream: ${user.uid}');
+          completer.complete(user);
+        }
+        // null emission while Firebase is still restoring — keep waiting.
+      },
+      onError: (e) {
+        if (!completer.isCompleted) completer.complete(null);
+      },
+    );
+
+    // Hard timeout: resolve with whatever auth.currentUser is at that point
+    // (may still be null if the user is genuinely not logged in).
+    final timer = Timer(const Duration(seconds: 10), () {
+      if (!completer.isCompleted) {
+        debugPrint('⏰ [AutoLogin] Timeout — currentUser: ${auth.currentUser?.uid ?? "null"}');
+        completer.complete(auth.currentUser);
+      }
+    });
+
+    final currentUser = await completer.future;
+    timer.cancel();
+    await sub.cancel();
+
+    debugPrint('👤 [AutoLogin] Resolved user: ${currentUser?.uid ?? "null"}');
+
     if (currentUser != null) {
-      debugPrint('✅ [checkAutoLogin] Found existing user session: ${currentUser.uid}');
-      debugPrint('📧 [checkAutoLogin] Email: ${currentUser.email}');
-      debugPrint('📱 [checkAutoLogin] Phone: ${currentUser.phoneNumber}');
-      
-      // ✅ Load notifications
       _notificationController?.setUserId(currentUser.uid);
-      debugPrint('📱 [checkAutoLogin] Notifications loaded for user: ${currentUser.uid}');
-      
-      // ✅ CRITICAL: Sync FCM token FIRST (updates platform info)
-      debugPrint('🔄 [checkAutoLogin] Calling _syncFCMToken...');
-      await _syncFCMToken(currentUser);
-      debugPrint('✅ [checkAutoLogin] _syncFCMToken completed');
-      
-      // ✅ THEN log login activity (reads updated platform info)
-      debugPrint('📊 [checkAutoLogin] Calling _logLoginActivity...');
-      await _logLoginActivity(currentUser.uid);
-      debugPrint('✅ [checkAutoLogin] _logLoginActivity completed');
-      
-      // Let handleAuthChanged take care of navigation
-      debugPrint('✅ [checkAutoLogin] Auto-login setup complete');
+      _syncFCMTokenAsync(currentUser);
+      _logLoginActivityAsync(currentUser.uid);
+      await _handleAutoLoginNavigation(currentUser);
     } else {
-      debugPrint('❌ [checkAutoLogin] No existing user session found');
       _notificationController?.clearUserId();
-      
       if (Get.currentRoute != AppRoute.login) {
-        debugPrint('➡️ [checkAutoLogin] Navigating to login');
         Get.offAllNamed(AppRoute.login);
       }
     }
-    
-    hasCheckedAutoLogin(true);
-    debugPrint('✅ [checkAutoLogin] Check completed, flag set to true');
-  } catch (e, stackTrace) {
-    debugPrint('❌ [checkAutoLogin] ERROR: $e');
-    debugPrint('📝 [checkAutoLogin] Stack trace: $stackTrace');
+  } catch (e) {
+    debugPrint('❌ [AutoLogin] ERROR: $e');
     Get.offAllNamed(AppRoute.login);
   } finally {
     isAutoLoggingIn(false);
-    debugPrint('🏁 [checkAutoLogin] Process finished');
+    hasCheckedAutoLogin(true);
+    // Do NOT rebind stream or re-register ever() here — _initializeAuthService
+    // already did both. Doing it again creates duplicate handleAuthChanged calls.
   }
 }
 
-Future<void> _syncFCMToken(User user) async {
-  try {
-    debugPrint('🔄 [_syncFCMToken] Starting for user: ${user.uid}');
-    
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    
-    if (fcmToken == null) {
-      debugPrint('⚠️ [_syncFCMToken] FCM token is null');
-      return;
-    }
-    
-    debugPrint('✅ [_syncFCMToken] FCM Token: ${fcmToken.substring(0, 20)}...');
-    
-    // Determine collection
-    String collection = 'users';
-    
-    debugPrint('🔍 [_syncFCMToken] Checking agents collection...');
-    final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
-    if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
-      collection = 'agents';
-      debugPrint('✅ [_syncFCMToken] User is agent');
-    } else {
-      debugPrint('🔍 [_syncFCMToken] Checking technicians collection...');
-      final techDoc = await _firestore.collection('technicians').doc(user.uid).get();
-      if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
-        collection = 'technicians';
-        debugPrint('✅ [_syncFCMToken] User is technician');
-      } else {
-        debugPrint('✅ [_syncFCMToken] User is regular user');
+  // 🔧 Handle navigation during auto-login
+  Future<void> _handleAutoLoginNavigation(User user) async {
+    try {
+      // Check cache first for faster navigation
+      if (_userDataCache.containsKey(user.uid)) {
+        debugPrint('⚡ [AutoLogin] Using cached user data');
+        await _navigateBasedOnUserData(user.uid, _userDataCache[user.uid]!);
+        return;
       }
-    }
-    
-    debugPrint('📁 [_syncFCMToken] Target collection: $collection');
-    
-    // Get current document to check if this is first time
-    debugPrint('📖 [_syncFCMToken] Reading current document...');
-    final userDoc = await _firestore.collection(collection).doc(user.uid).get();
-    final currentData = userDoc.data();
-    
-    final currentPlatform = _getPlatformInfo();
-    debugPrint('📱 [_syncFCMToken] Current platform: $currentPlatform');
-    
-    if (currentData != null) {
-      debugPrint('📊 [_syncFCMToken] Existing data:');
-      debugPrint('   - mode: ${currentData['mode']}');
-      debugPrint('   - modeupdated: ${currentData['modeupdated']}');
-      debugPrint('   - originalPlatform: ${currentData['originalPlatform']}');
-    } else {
-      debugPrint('⚠️ [_syncFCMToken] Document does not exist!');
-    }
-    
-    // ✅ Prepare update data with ALL timestamp fields
-    Map<String, dynamic> updateData = {
-      'fcmToken': fcmToken,
-      'lastTokenUpdate': FieldValue.serverTimestamp(),
-      'lastLoginAt': FieldValue.serverTimestamp(),
-      'lastUpdated': FieldValue.serverTimestamp(), // ✅ FIX: Add this!
-      'updatedAt': FieldValue.serverTimestamp(),    // ✅ FIX: Add this too!
-      'mode': currentPlatform,
-      'modeupdated': currentPlatform,
-    };
-    
-    debugPrint('📝 [_syncFCMToken] Update data prepared:');
-    debugPrint('   - mode: $currentPlatform');
-    debugPrint('   - modeupdated: $currentPlatform');
-    
-    // Only set 'originalPlatform' if it doesn't exist
-    if (currentData == null || !currentData.containsKey('originalPlatform') || currentData['originalPlatform'] == null) {
-      updateData['originalPlatform'] = currentPlatform;
-      debugPrint('🆕 [_syncFCMToken] Setting original platform: $currentPlatform');
-    } else {
-      debugPrint('ℹ️ [_syncFCMToken] Keeping original platform: ${currentData['originalPlatform']}');
-    }
-    
-    debugPrint('💾 [_syncFCMToken] Updating Firestore document...');
-    await _firestore.collection(collection).doc(user.uid).update(updateData);
-    
-    debugPrint('✅✅✅ [_syncFCMToken] SUCCESS! Token and platform synced to $collection/${user.uid}');
-    debugPrint('📱 [_syncFCMToken] Platform updated to: $currentPlatform');
-    
-    // Verification: Read back the document to confirm update
-    debugPrint('🔍 [_syncFCMToken] Verifying update...');
-    final verifyDoc = await _firestore.collection(collection).doc(user.uid).get();
-    final verifyData = verifyDoc.data();
-    if (verifyData != null) {
-      debugPrint('✅ [_syncFCMToken] Verification - Updated values:');
-      debugPrint('   - mode: ${verifyData['mode']}');
-      debugPrint('   - modeupdated: ${verifyData['modeupdated']}');
-      debugPrint('   - lastUpdated: ${verifyData['lastUpdated']}');
-    }
-    
-  } catch (e, stackTrace) {
-    debugPrint('❌ [_syncFCMToken] ERROR: $e');
-    debugPrint('📝 [_syncFCMToken] Stack trace: $stackTrace');
-    // Don't rethrow - we don't want to block login
-  }
-} 
 
-  void handleAuthChanged(User? user) async {
-  debugPrint('🔄 Auth state changed. User: ${user?.email ?? user?.phoneNumber ?? 'null'}');
+      // Fetch user data from Firestore (parallel queries for speed)
+      debugPrint('⚡ [AutoLogin] Fetching user data from Firestore...');
+      final results = await Future.wait([
+        _firestore.collection('technicians').doc(user.uid).get(),
+        _firestore.collection('agents').doc(user.uid).get(),
+        _firestore.collection('users').doc(user.uid).get(),
+      ]);
 
-  if (user == null) {
-    debugPrint('👤 No user - clearing notifications and redirecting to login');
-    
-    // ✅ Clear notification user context (saves notifications first)
-    _notificationController?.clearUserId();
-    
-    if (Get.currentRoute != AppRoute.login) {
+      final techDoc = results[0];
+      final agentDoc = results[1];
+      final userDoc = results[2];
+
+      Map<String, dynamic>? userData;
+      String collection = 'users';
+
+      // Determine user type and get their data
+      if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
+        userData = techDoc.data();
+        collection = 'technicians';
+        debugPrint('👷 [AutoLogin] User is a Technician');
+      } else if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
+        userData = agentDoc.data();
+        collection = 'agents';
+        debugPrint('🏢 [AutoLogin] User is an Agent');
+      } else if (userDoc.exists) {
+        userData = userDoc.data()!;
+        debugPrint('👤 [AutoLogin] User is a regular User');
+      } else {
+        debugPrint('❌ [AutoLogin] No user document found in Firestore');
+        _notificationController?.clearUserId();
+        await auth.signOut();
+        Get.offAllNamed(AppRoute.login);
+        return;
+      }
+
+      // Cache the data for future use
+      userData!['_collection'] = collection;
+      _userDataCache[user.uid] = userData;
+
+      // Navigate based on user data
+      await _navigateBasedOnUserData(user.uid, userData);
+      
+    } catch (e, stackTrace) {
+      debugPrint('❌ [AutoLogin] Navigation error: $e');
+      debugPrint('📝 Stack: $stackTrace');
       Get.offAllNamed(AppRoute.login);
     }
-    return;
   }
 
-  // ✅ CRITICAL FIX: Set user ID IMMEDIATELY before any other operations
-  debugPrint('👤 User found: ${user.uid}');
-  
-  // ✅ Set user ID (this will load stored notifications)
-  _notificationController?.setUserId(user.uid);
-  debugPrint('📱 Notifications loaded for user: ${user.uid}');
+  // 🔧 Centralized navigation logic based on user role and status
+  Future<void> _navigateBasedOnUserData(String uid, Map<String, dynamic> userData) async {
+    final collection = userData['_collection'] ?? 'users';
+    final role = userData['role'] ?? 'user';
+    final status = userData['status'] ?? 'active';
 
-  // Don't process if we're in the middle of a sign-in operation
-  if (isSignInGoogle.value || isSignInApple.value || isSignInAgent.value || 
-      isSignInTechnician.value || isVerifyPhone.value) {
-    debugPrint('⏳ Sign-in operation in progress, skipping auth state handling');
-    return;
-  }
+    debugPrint('🧭 [Navigation] Collection: $collection, Role: $role, Status: $status');
 
-  try {
-    // Sync FCM token
-    await _syncFCMToken(user);
-
-    // Check if user is a technician first
-    debugPrint('🔍 Checking technician collection...');
-    final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
-
-    if (technicianDoc.exists && technicianDoc.data()?['role'] == 'technician') {
-      debugPrint('✅ User is technician - auto-logging in');
-      await _handleTechnicianUser(user);
+    if (collection == 'technicians') {
+      final userModel = TechnicianProfile(
+        uid: uid,
+        location: userData['location'] ?? '',
+        fullName: userData['fullName'] ?? '',
+        email: userData['email'] ?? '',
+        mobile: userData['mobile'] ?? userData['phoneNumber'] ?? '',
+        photoURL: userData['photoURL'] ?? '',
+        role: 'technician',
+      );
+      Get.find<TechnicianController>().currentUser = userModel;
+      userRole.value = 'technician';
+      debugPrint('✅ [Navigation] Navigating to Technician Dashboard');
+      
       if (Get.currentRoute != AppRoute.technicianDashboard) {
         Get.offAllNamed(AppRoute.technicianDashboard);
       }
-      return;
-    }
-
-    // Check if user is an agent
-    debugPrint('🔍 Checking agents collection...');
-    final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
-
-    if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
-      final status = agentDoc.data()?['status'];
       
+    } else if (collection == 'agents') {
       if (status == 'approved') {
-        debugPrint('✅ User is approved agent - auto-logging in');
-        await _handleAgentUser(user);
+        final userModel = AgentModel(
+          dob: userData['dob'] ?? '',
+          gender: userData['gender'] ?? '',
+          location: userData['location'] ?? '',
+          uid: uid,
+          email: userData['email'] ?? '',
+          name: userData['displayName'] ?? '',
+          role: 'agent',
+          status: status,
+        );
+        Get.find<AgentController>().currentUser = userModel;
+        userRole.value = 'agent';
+        debugPrint('✅ [Navigation] Navigating to Agent Home');
+        
         if (Get.currentRoute != AppRoute.navbar) {
           Get.offAllNamed(AppRoute.navbar);
         }
-        return;
       } else {
-        debugPrint('⏳ Agent status: $status');
+        debugPrint('⚠️ [Navigation] Agent pending approval');
+        userRole.value = 'agent';
         if (Get.currentRoute != AppRoute.approvalPendingPage) {
           Get.offAllNamed(AppRoute.approvalPendingPage);
         }
+      }
+      
+    } else {
+      // Regular user
+      if (status == 'suspended' || status == 'banned') {
+        debugPrint('⚠️ [Navigation] User account is suspended/banned');
+        _notificationController?.clearUserId();
+        await auth.signOut();
+        Get.snackbar(
+          'Account Suspended',
+          'Your account has been suspended. Please contact support.',
+          backgroundColor: Colors.orange[100],
+          colorText: Colors.orange[800],
+        );
+        Get.offAllNamed(AppRoute.login);
         return;
       }
+
+      final userModel = UserModel(
+        uid: uid,
+        email: userData['email'] ?? '',
+        name: userData['displayName'] ?? '',
+        role: role,
+        status: status,
+        location: userData['location'] ?? '',
+        phoneNumber: userData['phoneNumber'] ?? '',
+      );
+      Get.find<UserController>().currentUser = userModel;
+      userRole.value = role;
+      debugPrint('✅ [Navigation] Navigating to User Home');
+      
+      String targetRoute = AppRoute.navbar;
+      if (role == 'technician') {
+        targetRoute = AppRoute.technicianDashboard;
+      }
+
+      if (Get.currentRoute != targetRoute) {
+        Get.offAllNamed(targetRoute);
+      }
+    }
+  }
+
+  // ⚡ Non-blocking FCM token sync
+  void _syncFCMTokenAsync(User user) {
+    Future.microtask(() async {
+      try {
+        debugPrint('🔄 [Background] Syncing FCM token for: ${user.uid}');
+        
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken == null) {
+          debugPrint('⚠️ [Background] No FCM token available');
+          return;
+        }
+        
+        String collection = 'users';
+        if (_userDataCache.containsKey(user.uid)) {
+          collection = _userDataCache[user.uid]!['_collection'] ?? 'users';
+        } else {
+          final results = await Future.wait([
+            _firestore.collection('agents').doc(user.uid).get(),
+            _firestore.collection('technicians').doc(user.uid).get(),
+          ]);
+          
+          if (results[0].exists && results[0].data()?['role'] == 'agent') {
+            collection = 'agents';
+          } else if (results[1].exists && results[1].data()?['role'] == 'technician') {
+            collection = 'technicians';
+          }
+        }
+        
+        final currentPlatform = _getPlatformInfo();
+        final userDoc = await _firestore.collection(collection).doc(user.uid).get();
+        final currentData = userDoc.data();
+        
+        Map<String, dynamic> updateData = {
+          'fcmToken': fcmToken,
+          'lastTokenUpdate': FieldValue.serverTimestamp(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+          'lastUpdated': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'mode': currentPlatform,
+          'modeupdated': currentPlatform,
+        };
+        
+        if (currentData == null || !currentData.containsKey('originalPlatform') || currentData['originalPlatform'] == null) {
+          updateData['originalPlatform'] = currentPlatform;
+        }
+        
+        await _firestore.collection(collection).doc(user.uid).update(updateData);
+        debugPrint('✅ [Background] FCM token synced successfully');
+        
+      } catch (e) {
+        debugPrint('⚠️ [Background] FCM sync failed: $e');
+      }
+    });
+  }
+
+  // 🔧 CRITICAL: Handle auth state changes (for new logins/logouts)
+  void handleAuthChanged(User? user) async {
+      if (!hasCheckedAutoLogin.value) {
+    debugPrint('⏭️ [handleAuthChanged] Auto-login not done yet, skipping');
+    return;
+  }
+    // 🔧 CRITICAL: Skip if any operation is in progress
+    if (_isInitializing ||
+        isAutoLoggingIn.value || 
+        isSignInGoogle.value || 
+        isSignInApple.value || 
+        isSignInAgent.value || 
+        isSignInTechnician.value || 
+        isVerifyPhone.value) {
+      debugPrint('⏳ [handleAuthChanged] Operation in progress, skipping');
+      return;
     }
 
-    // Check regular users collection
-    debugPrint('🔍 Checking users collection...');
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    debugPrint('🔄 [handleAuthChanged] Auth state changed');
+    debugPrint('👤 User: ${user?.email ?? user?.phoneNumber ?? 'null'}');
 
-    if (userDoc.exists) {
-      final userData = userDoc.data()!;
-      debugPrint('✅ User document found in users collection - auto-logging in');
-      debugPrint('📊 User role: ${userData['role']}');
-      await _handleRegularUser(user, userData);
-    } else {
-      debugPrint('❌ No user document found in any collection');
-      // Clear notifications for non-existent user
+    if (user == null) {
+      debugPrint('❌ [handleAuthChanged] No user - clearing session');
       _notificationController?.clearUserId();
+      
+      if (Get.currentRoute != AppRoute.login) {
+        Get.offAllNamed(AppRoute.login);
+      }
+      return;
+    }
+
+    debugPrint('✅ [handleAuthChanged] User found: ${user.uid}');
+    
+    // Set user ID for notifications
+    _notificationController?.setUserId(user.uid);
+
+    try {
+      // Background tasks
+      _syncFCMTokenAsync(user);
+      _logLoginActivityAsync(user.uid);
+
+      // Check cache first
+      if (_userDataCache.containsKey(user.uid)) {
+        debugPrint('⚡ [handleAuthChanged] Using cached data');
+        await _handleCachedUser(user);
+        return;
+      }
+
+      // Fetch user data
+      debugPrint('⚡ [handleAuthChanged] Fetching user data...');
+      final results = await Future.wait([
+        _firestore.collection('technicians').doc(user.uid).get(),
+        _firestore.collection('agents').doc(user.uid).get(),
+        _firestore.collection('users').doc(user.uid).get(),
+      ]);
+
+      final techDoc = results[0];
+      final agentDoc = results[1];
+      final userDoc = results[2];
+
+      Map<String, dynamic>? userData;
+      String collection = 'users';
+
+      if (techDoc.exists && techDoc.data()?['role'] == 'technician') {
+        userData = techDoc.data();
+        collection = 'technicians';
+        userData!['_collection'] = collection;
+        _userDataCache[user.uid] = userData;
+        await _handleTechnicianUser(user, userData);
+        if (Get.currentRoute != AppRoute.technicianDashboard) {
+          Get.offAllNamed(AppRoute.technicianDashboard);
+        }
+        return;
+      }
+
+      if (agentDoc.exists && agentDoc.data()?['role'] == 'agent') {
+        userData = agentDoc.data();
+        collection = 'agents';
+        final status = userData?['status'];
+        userData!['_collection'] = collection;
+        _userDataCache[user.uid] = userData;
+        
+        if (status == 'approved') {
+          await _handleAgentUser(user, userData);
+          if (Get.currentRoute != AppRoute.navbar) {
+            Get.offAllNamed(AppRoute.navbar);
+          }
+        } else {
+          if (Get.currentRoute != AppRoute.approvalPendingPage) {
+            Get.offAllNamed(AppRoute.approvalPendingPage);
+          }
+        }
+        return;
+      }
+
+      if (userDoc.exists) {
+        userData = userDoc.data()!;
+        userData['_collection'] = collection;
+        _userDataCache[user.uid] = userData;
+        await _handleRegularUser(user, userData);
+      } else if (user.phoneNumber != null && user.phoneNumber!.isNotEmpty) {
+        // Phone-auth user whose Firestore doc was created by admin under a
+        // different UID — search by phone number as a fallback before giving up.
+        debugPrint('⚠️ No doc by UID — searching by phoneNumber: ${user.phoneNumber}');
+        final byPhone = await _firestore
+            .collection('users')
+            .where('phoneNumber', isEqualTo: user.phoneNumber)
+            .limit(1)
+            .get();
+
+        // Also try the legacy "mobile" field name used by some admin-created docs
+        final byMobile = byPhone.docs.isEmpty
+            ? await _firestore
+                .collection('users')
+                .where('mobile', isEqualTo: user.phoneNumber)
+                .limit(1)
+                .get()
+            : null;
+
+        final matchDoc =
+            byPhone.docs.isNotEmpty ? byPhone.docs.first : byMobile?.docs.firstOrNull;
+
+        if (matchDoc != null) {
+          debugPrint('✅ Found user by phone number, migrating to new UID');
+          userData = matchDoc.data();
+          // Write the new UID into the existing doc so future logins resolve instantly
+          await _firestore.collection('users').doc(user.uid).set(
+            {...userData, 'uid': user.uid},
+            SetOptions(merge: true),
+          );
+          userData['_collection'] = 'users';
+          _userDataCache[user.uid] = userData;
+          await _handleRegularUser(user, userData);
+        } else {
+          debugPrint('❌ No user document found in any collection or by phone');
+          _notificationController?.clearUserId();
+          await auth.signOut();
+          Get.offAllNamed(AppRoute.login);
+        }
+      } else {
+        debugPrint('❌ No user document found');
+        _notificationController?.clearUserId();
+        await auth.signOut();
+        Get.offAllNamed(AppRoute.login);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ Error in handleAuthChanged: $e');
+      debugPrint('📝 Stack: $stackTrace');
+      _notificationController?.clearUserId();
+      Get.snackbar(
+        'Authentication Error',
+        'Failed to load user data. Please try signing in again.',
+        backgroundColor: Colors.orange[100],
+        colorText: Colors.orange[800],
+      );
       await auth.signOut();
       Get.offAllNamed(AppRoute.login);
     }
-  } catch (e) {
-    debugPrint('❌ Error in handleAuthChanged: $e');
-    _notificationController?.clearUserId();
-    Get.snackbar(
-      'Authentication Error',
-      'Failed to load user data. Please try signing in again.',
-      backgroundColor: Colors.orange[100],
-      colorText: Colors.orange[800],
-    );
-    await auth.signOut();
-    Get.offAllNamed(AppRoute.login);
   }
-}
 
+  // Handle cached user data
+  Future<void> _handleCachedUser(User user) async {
+    final userData = _userDataCache[user.uid]!;
+    final collection = userData['_collection'] ?? 'users';
 
-  /// Handle regular user auto-login
-   Future<void> _handleRegularUser(User user, Map<String, dynamic> userData) async {
+    if (collection == 'technicians') {
+      await _handleTechnicianUser(user, userData);
+      if (Get.currentRoute != AppRoute.technicianDashboard) {
+        Get.offAllNamed(AppRoute.technicianDashboard);
+      }
+    } else if (collection == 'agents') {
+      final status = userData['status'];
+      if (status == 'approved') {
+        await _handleAgentUser(user, userData);
+        if (Get.currentRoute != AppRoute.navbar) {
+          Get.offAllNamed(AppRoute.navbar);
+        }
+      } else {
+        if (Get.currentRoute != AppRoute.approvalPendingPage) {
+          Get.offAllNamed(AppRoute.approvalPendingPage);
+        }
+      }
+    } else {
+      await _handleRegularUser(user, userData);
+    }
+  }
+
+  // Handle regular user
+  Future<void> _handleRegularUser(User user, Map<String, dynamic> userData) async {
     try {
       final status = userData['status'] ?? 'active';
       userRole.value = userData['role'] ?? 'user';
 
-      // Check if account is suspended
       if (status == 'suspended' || status == 'banned') {
-        // ✅ NEW: Clear notifications for suspended users
         _notificationController?.clearUserId();
-        
         await auth.signOut();
         Get.snackbar(
           'Account Suspended',
@@ -450,9 +772,8 @@ Future<void> _syncFCMToken(User user) async {
       );
 
       Get.find<UserController>().currentUser = userModel;
-      debugPrint('✅ Regular user logged in: ${userModel.toJson()}');
+      debugPrint('✅ Regular user logged in');
 
-      // Navigate based on role
       String targetRoute = AppRoute.navbar;
       if (userModel.role == 'technician') {
         targetRoute = AppRoute.technicianDashboard;
@@ -468,19 +789,9 @@ Future<void> _syncFCMToken(User user) async {
     }
   }
 
-    Future<void> _handleAgentUser(User user) async {
+  // Handle agent user
+  Future<void> _handleAgentUser(User user, Map<String, dynamic> userData) async {
     try {
-      final agentDoc = await _firestore.collection('agents').doc(user.uid).get();
-
-      if (!agentDoc.exists || agentDoc.data()?['role'] != 'agent') {
-        debugPrint('Agent document not found or role mismatch');
-        _notificationController?.clearUserId();
-        await auth.signOut();
-        Get.offAllNamed(AppRoute.login);
-        return;
-      }
-
-      final userData = agentDoc.data()!;
       userRole.value = 'agent';
 
       final userModel = AgentModel(
@@ -495,7 +806,7 @@ Future<void> _syncFCMToken(User user) async {
       );
 
       Get.find<AgentController>().currentUser = userModel;
-      debugPrint('✅ Agent user handled successfully: ${userModel.toJson()}');
+      debugPrint('✅ Agent user handled');
     } catch (e) {
       debugPrint('❌ Error handling agent user: $e');
       _notificationController?.clearUserId();
@@ -504,19 +815,9 @@ Future<void> _syncFCMToken(User user) async {
     }
   }
 
- Future<void> _handleTechnicianUser(User user) async {
+  // Handle technician user
+  Future<void> _handleTechnicianUser(User user, Map<String, dynamic> userData) async {
     try {
-      final technicianDoc = await _firestore.collection('technicians').doc(user.uid).get();
-
-      if (!technicianDoc.exists) {
-        debugPrint('Technician document not found');
-        _notificationController?.clearUserId();
-        await auth.signOut();
-        Get.offAllNamed(AppRoute.login);
-        return;
-      }
-
-      final userData = technicianDoc.data()!;
       userRole.value = 'technician';
 
       final userModel = TechnicianProfile(
@@ -530,7 +831,7 @@ Future<void> _syncFCMToken(User user) async {
       );
 
       Get.find<TechnicianController>().currentUser = userModel;
-      debugPrint('✅ Technician user handled successfully: ${userModel.toJson()}');
+      debugPrint('✅ Technician user handled');
     } catch (e) {
       debugPrint('❌ Error handling technician user: $e');
       _notificationController?.clearUserId();
@@ -600,52 +901,46 @@ Future<void> _syncFCMToken(User user) async {
   }
 
   Future<UserCredential?> verifyPhoneNumber({
-  required String verificationId,
-  required String smsCode,
-}) async {
-  try {
-    isVerifyPhone(true);
-    debugPrint('Verifying phone number...');
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    try {
+      isVerifyPhone(true);
+      debugPrint('Verifying phone number...');
 
-    final credential = PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: smsCode,
-    );
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
 
-    final userCredential = await auth.signInWithCredential(credential);
+      final userCredential = await auth.signInWithCredential(credential);
 
-    // ✅ CRITICAL FIX: Sync FCM token BEFORE creating/handling user
-    if (userCredential.user != null) {
-      debugPrint('🔄 Syncing FCM token and platform info...');
-      await _syncFCMToken(userCredential.user!);
-      debugPrint('✅ FCM token and platform synced');
+      // Background operations
+      if (userCredential.user != null) {
+        _syncFCMTokenAsync(userCredential.user!);
+        _logLoginActivityAsync(userCredential.user!.uid);
+      }
+
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        await _createNewPhoneUser(userCredential.user!);
+      } else {
+        await _handleExistingPhoneUser(userCredential.user!);
+      }
+
+      return userCredential;
+    } catch (e) {
+      debugPrint('Phone verification error: $e');
+      Get.snackbar(
+        'Error',
+        e is FirebaseAuthException
+            ? e.message ?? 'Verification failed'
+            : 'Phone verification failed',
+      );
+      return null;
+    } finally {
+      isVerifyPhone(false);
     }
-
-    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-      await _createNewPhoneUser(userCredential.user!);
-    } else {
-      await _handleExistingPhoneUser(userCredential.user!);
-    }
-
-    // ✅ Log login activity for phone authentication
-    if (userCredential.user != null) {
-      await _logLoginActivity(userCredential.user!.uid);
-    }
-
-    return userCredential;
-  } catch (e) {
-    debugPrint('Phone verification error: $e');
-    Get.snackbar(
-      'Error',
-      e is FirebaseAuthException
-          ? e.message ?? 'Verification failed'
-          : 'Phone verification failed',
-    );
-    return null;
-  } finally {
-    isVerifyPhone(false);
   }
-}
 
   Future<void> resendVerificationCode(String phoneNumber) async {
     try {
@@ -675,13 +970,30 @@ Future<void> _syncFCMToken(User user) async {
     }
   }
 
-  // User management methods
   Future<void> _handleExistingPhoneUser(User user) async {
     try {
+      // Check cache first
+      if (_userDataCache.containsKey(user.uid)) {
+        final userData = _userDataCache[user.uid]!;
+        final userModel = UserModel(
+          uid: userData['uid'],
+          phoneNumber: user.phoneNumber,
+          name: userData['displayName'] ?? '',
+          role: userData['role'] ?? 'user',
+          status: userData['status'] ?? 'pending',
+        );
+        await _updateUserInController(userModel);
+        return;
+      }
+
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
       if (userDoc.exists) {
         final userData = userDoc.data()!;
+        // Cache it
+        userData['_collection'] = 'users';
+        _userDataCache[user.uid] = userData;
+        
         final userModel = UserModel(
           uid: userData['uid'],
           phoneNumber: user.phoneNumber,
@@ -709,21 +1021,27 @@ Future<void> _syncFCMToken(User user) async {
           role: 'user',
           status: 'pending',
           phoneNumber: user.phoneNumber);
-      await _firestore.collection('users').doc(user.uid).set({
-  'uid': user.uid,
-  'email': null,
-  'displayName': fullNameController.text.trim(),
-  'photoURL': null,
-  'phoneNumber': user.phoneNumber,
-  'role': 'user',
-  'mode': _getPlatformInfo(), // ✅ Add this
-  'createdAt': FieldValue.serverTimestamp(),
-  'modeupdated': _getPlatformInfo(), // ✅ Add this
-  'lastLoginAt': FieldValue.serverTimestamp(),
-}, SetOptions(merge: true));
+      
+      final userData = {
+        'uid': user.uid,
+        'email': null,
+        'displayName': fullNameController.text.trim(),
+        'photoURL': null,
+        'phoneNumber': user.phoneNumber,
+        'role': 'user',
+        'mode': _getPlatformInfo(),
+        'createdAt': FieldValue.serverTimestamp(),
+        'modeupdated': _getPlatformInfo(),
+        'lastLoginAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore.collection('users').doc(user.uid).set(userData, SetOptions(merge: true));
+
+      // Cache it
+      userData['_collection'] = 'users';
+      _userDataCache[user.uid] = userData;
 
       userRole.value = 'user';
-
       await _updateUserInController(userModel);
     } catch (e) {
       debugPrint('Error creating new phone user: $e');
@@ -735,7 +1053,7 @@ Future<void> _syncFCMToken(User user) async {
     try {
       final userController = Get.find<UserController>();
       userController.currentUser = userModel;
-      debugPrint('User details stored: ${userModel.toJson()}');
+      debugPrint('User details stored');
     } catch (e) {
       debugPrint('Error updating user controller: $e');
       rethrow;
@@ -764,6 +1082,11 @@ Future<void> _syncFCMToken(User user) async {
         );
       }
 
+      // Update cache
+      if (_userDataCache.containsKey(userId)) {
+        _userDataCache[userId]!['displayName'] = newName;
+      }
+
       debugPrint('User name updated successfully');
     } catch (e) {
       debugPrint('Error updating user name: $e');
@@ -771,260 +1094,187 @@ Future<void> _syncFCMToken(User user) async {
     }
   }
 
+  // ⚡ Google Sign-In with background operations
   Future<UserCredential?> signInWithGoogle() async {
-  try {
-    debugPrint('🔐 Google Sign-In started...');
-    isSignInGoogle(true);
+    try {
+      debugPrint('🔐 Google Sign-In started...');
+      isSignInGoogle(true);
 
-    await _googleSignIn.signOut();
-    debugPrint('Previous Google sessions cleared');
-
-    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-    if (googleUser == null) {
-      debugPrint('❌ Google sign-in cancelled by user');
-      return null;
-    }
-
-    debugPrint('✅ Google user selected: ${googleUser.email}');
-
-    final String? googleEmail = googleUser.email;
-    if (googleEmail == null || googleEmail.isEmpty) {
-      debugPrint('❌ Google account has no email address');
-      Get.snackbar('Error', 'Google account must have a valid email address');
       await _googleSignIn.signOut();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        debugPrint('❌ Google sign-in cancelled');
+        return null;
+      }
+
+      debugPrint('✅ Google user: ${googleUser.email}');
+
+      final String? googleEmail = googleUser.email;
+      if (googleEmail == null || googleEmail.isEmpty) {
+        Get.snackbar('Error', 'Google account must have a valid email address');
+        await _googleSignIn.signOut();
+        return null;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('Failed to get Google authentication tokens');
+      }
+
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await auth.signInWithCredential(credential);
+      final User? firebaseUser = userCredential.user;
+
+      if (firebaseUser == null) {
+        throw Exception('Firebase sign-in failed - no user returned');
+      }
+
+      debugPrint('✅ Firebase auth successful');
+
+      // Background operations
+      _syncFCMTokenAsync(firebaseUser);
+      _logLoginActivityAsync(firebaseUser.uid);
+
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        await _handleNewGoogleUser(firebaseUser, googleUser);
+      } else {
+        await _handleExistingGoogleUser(firebaseUser);
+      }
+
+      debugPrint('✅ Google sign-in complete');
+      return userCredential;
+    } catch (e) {
+      debugPrint('❌ Google sign-in error: $e');
+
+      if (e is FirebaseAuthException) {
+        _handleFirebaseAuthException(e);
+      } else if (e is PlatformException) {
+        _handlePlatformException(e);
+      } else {
+        Get.snackbar(
+          'Sign-in Failed',
+          'An unexpected error occurred: ${e.toString()}',
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+        );
+      }
+
       return null;
+    } finally {
+      isSignInGoogle(false);
     }
+  }
 
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-    debugPrint('✅ Google authentication tokens received');
+  Future<void> _handleNewGoogleUser(
+      User firebaseUser, GoogleSignInAccount googleUser) async {
+    debugPrint('Handling new Google user: ${firebaseUser.uid}');
 
-    if (googleAuth.accessToken == null || googleAuth.idToken == null) {
-      debugPrint('❌ Missing Google authentication tokens');
-      throw Exception('Failed to get Google authentication tokens');
-    }
+    try {
+      _notificationController?.setUserId(firebaseUser.uid);
+      
+      final String email = googleUser.email;
+      final String displayName = googleUser.displayName ??
+          firebaseUser.displayName ??
+          email.split('@')[0];
 
-    final OAuthCredential credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
-    debugPrint('✅ Firebase credential created');
+      final userData = {
+        'uid': firebaseUser.uid,
+        'email': email,
+        'displayName': displayName,
+        'photoURL': googleUser.photoUrl ?? firebaseUser.photoURL ?? '',
+        'phoneNumber': firebaseUser.phoneNumber ?? '',
+        'role': 'user',
+        'status': 'active',
+        'provider': 'google',
+        'mode': _getPlatformInfo(),
+        'location': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'registrationCompleted': true,
+        'modeupdated': _getPlatformInfo(),
+        'lastLoginAt': FieldValue.serverTimestamp(),
+      };
 
-    final UserCredential userCredential = await auth.signInWithCredential(credential);
-    final User? firebaseUser = userCredential.user;
+      await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .set(userData, SetOptions(merge: true));
 
-    if (firebaseUser == null) {
-      throw Exception('Firebase sign-in failed - no user returned');
-    }
+      // Cache it
+      userData['_collection'] = 'users';
+      _userDataCache[firebaseUser.uid] = userData;
 
-    debugPrint('✅ Firebase authentication successful');
-    debugPrint('Firebase User UID: ${firebaseUser.uid}');
+      userRole.value = 'user';
 
-    // ✅ CRITICAL FIX: Sync FCM token BEFORE handling user
-    debugPrint('🔄 Syncing FCM token and platform info...');
-    await _syncFCMToken(firebaseUser);
-    debugPrint('✅ FCM token and platform synced');
+      final userModel = UserModel(
+        uid: firebaseUser.uid,
+        email: email,
+        name: displayName,
+        role: 'user',
+        status: 'active',
+        location: '',
+        phoneNumber: firebaseUser.phoneNumber ?? '',
+      );
 
-    // Handle user based on whether they're new or existing
-    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-      debugPrint('🆕 Handling new user...');
-      await _handleNewGoogleUser(firebaseUser, googleUser);
-    } else {
-      debugPrint('👤 Handling existing user...');
-      await _handleExistingGoogleUser(firebaseUser);
-    }
+      Get.find<UserController>().currentUser = userModel;
 
-    debugPrint('✅ Google sign-in completed successfully');
-    return userCredential;
-  } catch (e) {
-    debugPrint('❌ Google sign-in error: $e');
-
-    if (e is FirebaseAuthException) {
-      _handleFirebaseAuthException(e);
-    } else if (e is PlatformException) {
-      _handlePlatformException(e);
-    } else {
       Get.snackbar(
-        'Sign-in Failed',
-        'An unexpected error occurred: ${e.toString()}',
+        'Welcome!',
+        'Account created successfully for $email',
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[800],
+        duration: const Duration(seconds: 3),
+      );
+
+      navigateToHome();
+    } catch (e) {
+      debugPrint('❌ Error creating new Google user: $e');
+      _notificationController?.clearUserId();
+      
+      Get.snackbar(
+        'Account Creation Failed',
+        'Failed to create account. Please try again.',
         backgroundColor: Colors.red[100],
         colorText: Colors.red[800],
+        duration: const Duration(seconds: 5),
       );
+
+      try {
+        await auth.signOut();
+        await _googleSignIn.signOut();
+      } catch (signOutError) {
+        debugPrint('Error during cleanup: $signOutError');
+      }
+
+      Get.offAllNamed('/login');
     }
-
-    return null;
-  } finally {
-    isSignInGoogle(false);
   }
-}
 
-  // Handle new Google user
-Future<void> _handleNewGoogleUser(
-    User firebaseUser, GoogleSignInAccount googleUser) async {
-  debugPrint('Handling new Google user: ${firebaseUser.uid}');
-
-  try {
-    // ✅ CRITICAL: Set user ID FIRST
-    _notificationController?.setUserId(firebaseUser.uid);
-    debugPrint('📱 Notifications initialized for new user: ${firebaseUser.uid}');
-    
-    final String email = googleUser.email;
-    final String displayName = googleUser.displayName ??
-        firebaseUser.displayName ??
-        email.split('@')[0];
-
-   final userData = {
-  'uid': firebaseUser.uid,
-  'email': email,
-  'displayName': displayName,
-  'photoURL': googleUser.photoUrl ?? firebaseUser.photoURL ?? '',
-  'phoneNumber': firebaseUser.phoneNumber ?? '',
-  'role': 'user',
-  'status': 'active',
-  'provider': 'google',
-  'mode': _getPlatformInfo(), // ✅ Add this
-  'location': '',
-  'createdAt': FieldValue.serverTimestamp(),
-  'updatedAt': FieldValue.serverTimestamp(),
-  'registrationCompleted': true,
-  'modeupdated': _getPlatformInfo(), // ✅ Add this
-  'lastLoginAt': FieldValue.serverTimestamp(),
-};
-
-    debugPrint('Creating Firestore document with data: $userData');
-
-    await _firestore
-        .collection('users')
-        .doc(firebaseUser.uid)
-        .set(userData, SetOptions(merge: true));
-
-    debugPrint('✅ Firestore document created successfully');
-
-    userRole.value = 'user';
-
-    final userModel = UserModel(
-      uid: firebaseUser.uid,
-      email: email,
-      name: displayName,
-      role: 'user',
-      status: 'active',
-      location: '',
-      phoneNumber: firebaseUser.phoneNumber ?? '',
-    );
-
-    Get.find<UserController>().currentUser = userModel;
-    debugPrint('✅ User model created and stored: ${userModel.toJson()}');
-
-    // ✅ Log login activity for new Google user
-    await _logLoginActivity(firebaseUser.uid);
-
-    Get.snackbar(
-      'Welcome!',
-      'Account created successfully for $email',
-      backgroundColor: Colors.green[100],
-      colorText: Colors.green[800],
-      duration: const Duration(seconds: 3),
-    );
-
-    navigateToHome();
-  } catch (e) {
-    debugPrint('❌ Error creating new Google user: $e');
-    _notificationController?.clearUserId();
-    
-    Get.snackbar(
-      'Account Creation Failed',
-      'Failed to create account. Please try again.',
-      backgroundColor: Colors.red[100],
-      colorText: Colors.red[800],
-      duration: const Duration(seconds: 5),
-    );
-
-    try {
-      await auth.signOut();
-      await _googleSignIn.signOut();
-    } catch (signOutError) {
-      debugPrint('Error during cleanup: $signOutError');
-    }
-
-    Get.offAllNamed('/login');
-  }
-  
-}
-
-
-  // Handle existing Google user
+  // Check cache first
   Future<void> _handleExistingGoogleUser(User user) async {
     try {
-      // Check user's data in Firestore
+      // Check cache first
+      if (_userDataCache.containsKey(user.uid)) {
+        final userData = _userDataCache[user.uid]!;
+        await _processExistingUserData(user, userData);
+        return;
+      }
+
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      debugPrint('Checking existing user document for UID: ${user.uid}');
 
       if (userDoc.exists) {
         final userData = userDoc.data()!;
-        final status = userData['status'] ?? 'active';
-
-        userRole.value = userData['role'] ?? '';
-
-        debugPrint('User role fetched: ${userRole.value}');
-
-        // Check if account is active
-        if (status == 'suspended' || status == 'banned') {
-          await auth.signOut();
-          await _googleSignIn.signOut();
-          Get.snackbar(
-            'Account Suspended',
-            'Your account has been suspended. Please contact support.',
-            backgroundColor: Colors.orange[100],
-            colorText: Colors.orange[800],
-          );
-          return;
-        }
-
-        // Create user model
-        final userModel = UserModel(
-          location: userData['location'] ?? '',
-          phoneNumber: userData['phoneNumber'] ?? '',
-          uid: user.uid,
-          email: user.email ?? userData['email'] ?? '',
-          name: userData['displayName'] ?? user.displayName ?? '',
-          role: userData['role'] ?? '',
-          status: status,
-        );
-
-        debugPrint('''
-UID: ${userModel.uid}
-Email: ${userModel.email}
-Phone: ${userModel.phoneNumber}
-Location: ${userModel.location}
-Name: ${userModel.name}
-Role: ${userModel.role}
-Status: ${userModel.status}
-Image URL: ${userModel.imageUrl}
-''');
-
-        // Store user in controller
-        Get.find<UserController>().currentUser = userModel;
-        debugPrint('Existing user logged in: ${userModel.toJson()}');
-
-        // ✅ Log login activity for existing Google user
-        await _logLoginActivity(user.uid);
-
-        // Navigate based on role
-        if (userModel.role == 'tenant') {
-          debugPrint('Navigating to Tenant Dashboard...');
-          Get.offAllNamed(AppRoute.navbar);
-        } else if (userModel.role == 'agent') {
-          debugPrint('Navigating to Agent Dashboard...');
-          Get.offAllNamed(AppRoute.navbar);
-        } else if (userModel.role == 'technician') {
-          debugPrint('Navigating to Technician Dashboard...');
-          Get.offAllNamed(AppRoute.technicianDashboard);
-        } else {
-          debugPrint('Navigating to User Home...');
-          navigateToHome();
-        }
+        // Cache it
+        userData['_collection'] = 'users';
+        _userDataCache[user.uid] = userData;
+        
+        await _processExistingUserData(user, userData);
       } else {
-        debugPrint('User document not found for existing user');
-        // This shouldn't happen, but handle gracefully
         await _handleLegacyGoogleUser(user);
       }
     } catch (e) {
@@ -1035,7 +1285,47 @@ Image URL: ${userModel.imageUrl}
     }
   }
 
-  // Handle legacy users (existing Firebase users without proper user documents)
+  // Extract common logic
+  Future<void> _processExistingUserData(User user, Map<String, dynamic> userData) async {
+    final status = userData['status'] ?? 'active';
+    userRole.value = userData['role'] ?? '';
+
+    if (status == 'suspended' || status == 'banned') {
+      await auth.signOut();
+      await _googleSignIn.signOut();
+      Get.snackbar(
+        'Account Suspended',
+        'Your account has been suspended. Please contact support.',
+        backgroundColor: Colors.orange[100],
+        colorText: Colors.orange[800],
+      );
+      return;
+    }
+
+    final userModel = UserModel(
+      location: userData['location'] ?? '',
+      phoneNumber: userData['phoneNumber'] ?? '',
+      uid: user.uid,
+      email: user.email ?? userData['email'] ?? '',
+      name: userData['displayName'] ?? user.displayName ?? '',
+      role: userData['role'] ?? '',
+      status: status,
+    );
+
+    Get.find<UserController>().currentUser = userModel;
+
+    // Navigate based on role
+    if (userModel.role == 'tenant') {
+      Get.offAllNamed(AppRoute.navbar);
+    } else if (userModel.role == 'agent') {
+      Get.offAllNamed(AppRoute.navbar);
+    } else if (userModel.role == 'technician') {
+      Get.offAllNamed(AppRoute.technicianDashboard);
+    } else {
+      navigateToHome();
+    }
+  }
+
   Future<void> _handleLegacyGoogleUser(User user, {String role = 'user'}) async {
     try {
       final userData = {
@@ -1054,6 +1344,11 @@ Image URL: ${userModel.imageUrl}
       };
 
       await _firestore.collection('users').doc(user.uid).set(userData);
+      
+      // Cache it
+      userData['_collection'] = 'users';
+      _userDataCache[user.uid] = userData;
+      
       userRole.value = role;
 
       final userModel = UserModel(
@@ -1075,7 +1370,6 @@ Image URL: ${userModel.imageUrl}
         colorText: Colors.green[800],
       );
 
-      // Navigate based on role
       if (role == 'tenant') {
         Get.offAllNamed(AppRoute.navbar);
       } else if (role == 'agent') {
@@ -1091,7 +1385,6 @@ Image URL: ${userModel.imageUrl}
     }
   }
 
-  // Handle platform-specific exceptions
   void _handlePlatformException(PlatformException e) {
     String message;
 
@@ -1103,7 +1396,7 @@ Image URL: ${userModel.imageUrl}
         message = 'Network error. Please check your internet connection.';
         break;
       case 'sign_in_canceled':
-        return; // Don't show error for user cancellation
+        return;
       default:
         message = 'Sign-in failed. Please try again.';
     }
@@ -1116,7 +1409,6 @@ Image URL: ${userModel.imageUrl}
     );
   }
 
-  // Handle Firebase Auth exceptions
   void _handleFirebaseAuthException(FirebaseAuthException e) {
     String message;
 
@@ -1149,11 +1441,11 @@ Image URL: ${userModel.imageUrl}
     );
   }
 
-  // Agent Registration with Email/Password
+  // Agent Registration
   Future<void> registerAgent() async {
     try {
       isRegisterAgent(true);
-      // Validate form fields
+      
       if (emailController.text.isEmpty ||
           passwordController.text.isEmpty ||
           fullNameController.text.isEmpty ||
@@ -1167,13 +1459,11 @@ Image URL: ${userModel.imageUrl}
         return;
       }
 
-      // Create user in Firebase Auth
       final credential = await auth.createUserWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
 
-      // Create agent profile in Firestore
       if (credential.user == null) {
         Get.snackbar('Error', 'User creation failed');
         return;
@@ -1214,168 +1504,141 @@ Image URL: ${userModel.imageUrl}
     }
   }
 
-  // Email/Password Sign-In for Agents
- Future<UserCredential?> signInAsAgent() async {
-  try {
-    isSignInAgent(true);
-    debugPrint('Attempting agent sign in...');
-    final String email = emailController.text.trim();
-    final String password = passwordController.text.trim();
+  // Agent Sign-In with background operations
+  Future<UserCredential?> signInAsAgent() async {
+    try {
+      isSignInAgent(true);
+      final String email = emailController.text.trim();
+      final String password = passwordController.text.trim();
 
-    debugPrint('Email: $email');
-
-    final credential = await auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    debugPrint('Firebase authentication successful, verifying agent role...');
-    debugPrint('User UID: ${credential.user?.uid}');
-
-    // ✅ CRITICAL: Set user ID immediately
-    if (credential.user != null) {
-      _notificationController?.setUserId(credential.user!.uid);
-      debugPrint('📱 Notifications loaded for agent: ${credential.user!.uid}');
-      
-      // ✅ CRITICAL FIX: Sync FCM token and platform info
-      debugPrint('🔄 Syncing FCM token and platform info...');
-      await _syncFCMToken(credential.user!);
-      debugPrint('✅ FCM token and platform synced');
-    }
-
-    // Verify this is actually an agent
-    final userDoc = await _firestore.collection('agents').doc(credential.user?.uid).get();
-
-    if (userDoc.exists &&
-        userDoc.data()?['role'] == 'agent' &&
-        userDoc.data()?['status'] == 'approved') {
-      debugPrint('Agent verification successful');
-      userRole.value = 'agent';
-      
-      final userData = userDoc.data();
-      final userModel = AgentModel(
-        dob: userData?['dob'] ?? '',
-        gender: userData?['gender'] ?? '',
-        location: userData?['location'] ?? '',
-        uid: credential.user!.uid,
-        email: credential.user!.email!,
-        name: userData?['displayName'] ?? '',
-        role: userData?['role'] ?? 'agent',
-        status: userData?['status'] ?? 'pending',
+      final credential = await auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
 
-      Get.find<AgentController>().currentUser = userModel;
-      debugPrint('User details stored: ${userModel.toJson()}');
+      if (credential.user != null) {
+        _notificationController?.setUserId(credential.user!.uid);
+        
+        // Background operations
+        _syncFCMTokenAsync(credential.user!);
+        _logLoginActivityAsync(credential.user!.uid);
+      }
 
-      // ✅ Log login activity for agent
-      await _logLoginActivity(credential.user!.uid);
+      final userDoc = await _firestore.collection('agents').doc(credential.user?.uid).get();
 
-      navigateToHome();
-      debugPrint('Navigation to agent home completed');
+      if (userDoc.exists &&
+          userDoc.data()?['role'] == 'agent' &&
+          userDoc.data()?['status'] == 'approved') {
+        
+        userRole.value = 'agent';
+        
+        final userData = userDoc.data();
+        // Cache it
+        userData!['_collection'] = 'agents';
+        _userDataCache[credential.user!.uid] = userData;
+        
+        final userModel = AgentModel(
+          dob: userData['dob'] ?? '',
+          gender: userData['gender'] ?? '',
+          location: userData['location'] ?? '',
+          uid: credential.user!.uid,
+          email: credential.user!.email!,
+          name: userData['displayName'] ?? '',
+          role: userData['role'] ?? 'agent',
+          status: userData['status'] ?? 'pending',
+        );
 
-      return credential;
-    } else {
-      debugPrint('Account is not registered as an agent');
+        Get.find<AgentController>().currentUser = userModel;
+
+        navigateToHome();
+
+        return credential;
+      } else {
+        _notificationController?.clearUserId();
+        await auth.signOut();
+        Get.snackbar('Error',
+            '"Sorry! Your account isn\'t registered as an agent yet or still needs approval. Please contact support if you think this is a mistake."');
+        return null;
+      }
+    } on FirebaseAuthException catch (e) {
       _notificationController?.clearUserId();
-      await auth.signOut();
-      Get.snackbar('Error',
-          '"Sorry! Your account isn\'t registered as an agent yet or still needs approval. Please contact support if you think this is a mistake."');
+      Get.snackbar('Error', 'Agent login failed: ${e.message}');
       return null;
+    } catch (e) {
+      _notificationController?.clearUserId();
+      Get.snackbar('Error', 'An unexpected error occurred');
+      return null;
+    } finally {
+      isSignInAgent(false);
     }
-  } on FirebaseAuthException catch (e) {
-    debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
-    _notificationController?.clearUserId();
-    Get.snackbar('Error', 'Agent login failed: ${e.message}');
-    return null;
-  } catch (e) {
-    debugPrint('Unexpected Error: $e');
-    _notificationController?.clearUserId();
-    Get.snackbar('Error', 'An unexpected error occurred');
-    return null;
-  } finally {
-    isSignInAgent(false);
-    debugPrint('Sign in process completed');
   }
-}
 
+  // Technician Sign-In with background operations
+  Future<UserCredential?> signInAsTechnician() async {
+    try {
+      isSignInTechnician(true);
+      final String email = emailController.text.trim();
+      final String password = passwordController.text.trim();
 
- Future<UserCredential?> signInAsTechnician() async {
-  try {
-    isSignInTechnician(true);
-    debugPrint('Attempting technician sign in...');
-    final String email = emailController.text.trim();
-    final String password = passwordController.text.trim();
-
-    final credential = await auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    debugPrint('Firebase authentication successful, verifying Technician role...');
-    
-    // ✅ CRITICAL: Set user ID immediately
-    if (credential.user != null) {
-      _notificationController?.setUserId(credential.user!.uid);
-      debugPrint('📱 Notifications loaded for technician: ${credential.user!.uid}');
-      
-      // ✅ CRITICAL FIX: Sync FCM token and platform info
-      debugPrint('🔄 Syncing FCM token and platform info...');
-      await _syncFCMToken(credential.user!);
-      debugPrint('✅ FCM token and platform synced');
-    }
-    
-    final userDoc = await _firestore
-        .collection('technicians')
-        .doc(credential.user?.uid)
-        .get();
-
-    if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
-      debugPrint('Technician verification successful');
-      userRole.value = 'technician';
-
-      final userData = userDoc.data() as Map<String, dynamic>?;
-
-      final userModel = TechnicianProfile(
-        uid: userData?['uid'] ?? '',
-        location: userData?['location'] ?? '',
-        fullName: userData?['fullName'] ?? '',
-        email: userData?['email'] ?? credential.user?.email ?? '',
-        mobile: userData?['mobile'] ?? userData?['phoneNumber'] ?? '',
-        photoURL: userData?['photoURL'] ?? '',
-        role: userData?['role'] ?? 'technician',
+      final credential = await auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
 
-      Get.find<TechnicianController>().currentUser = userModel;
-      debugPrint('Technician details stored: ${userModel.toJson()}');
+      if (credential.user != null) {
+        _notificationController?.setUserId(credential.user!.uid);
+        
+        // Background operations
+        _syncFCMTokenAsync(credential.user!);
+        _logLoginActivityAsync(credential.user!.uid);
+      }
+      
+      final userDoc = await _firestore
+          .collection('technicians')
+          .doc(credential.user?.uid)
+          .get();
 
-      // ✅ Log login activity for technician
-      await _logLoginActivity(credential.user!.uid);
+      if (userDoc.exists && userDoc.data()?['role'] == 'technician') {
+        userRole.value = 'technician';
 
-      Get.offAllNamed(AppRoute.technicianDashboard);
+        final userData = userDoc.data() as Map<String, dynamic>?;
+        // Cache it
+        userData!['_collection'] = 'technicians';
+        _userDataCache[credential.user!.uid] = userData;
 
-      return credential;
-    } else {
-      debugPrint('Account is not registered as a technician');
+        final userModel = TechnicianProfile(
+          uid: userData['uid'] ?? '',
+          location: userData['location'] ?? '',
+          fullName: userData['fullName'] ?? '',
+          email: userData['email'] ?? credential.user?.email ?? '',
+          mobile: userData['mobile'] ?? userData['phoneNumber'] ?? '',
+          photoURL: userData['photoURL'] ?? '',
+          role: userData['role'] ?? 'technician',
+        );
+
+        Get.find<TechnicianController>().currentUser = userModel;
+
+        Get.offAllNamed(AppRoute.technicianDashboard);
+
+        return credential;
+      } else {
+        _notificationController?.clearUserId();
+        await auth.signOut();
+        Get.snackbar('Error', 'This account is not registered as a technician');
+        return null;
+      }
+    } on FirebaseAuthException catch (e) {
       _notificationController?.clearUserId();
-      await auth.signOut();
-      Get.snackbar('Error', 'This account is not registered as a technician');
+      Get.snackbar('Error', 'Technician login failed: ${e.message}');
       return null;
+    } catch (e) {
+      _notificationController?.clearUserId();
+      Get.snackbar('Error', 'An unexpected error occurred');
+      return null;
+    } finally {
+      isSignInTechnician(false);
     }
-  } on FirebaseAuthException catch (e) {
-    debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
-    _notificationController?.clearUserId();
-    Get.snackbar('Error', 'Technician login failed: ${e.message}');
-    return null;
-  } catch (e) {
-    debugPrint('Unexpected Error: $e');
-    _notificationController?.clearUserId();
-    Get.snackbar('Error', 'An unexpected error occurred');
-    return null;
-  } finally {
-    isSignInTechnician(false);
-    debugPrint('Sign in process completed');
   }
-}
 
   Future<void> setUserRole(String role, {String? tenantId}) async {
     final user = auth.currentUser;
@@ -1416,26 +1679,26 @@ Image URL: ${userModel.imageUrl}
 
       final agentRef = _firestore.collection('agents').doc(user.uid);
       batch.set(
-  agentRef,
-  {
-    'uid': user.uid,
-    'email': user.email,
-    'displayName': fullName,
-    'mobile': mobileNo,
-    'profilePic': "",
-    'gender': gender,
-    'dob': dob,
-    'location': location,
-    'whatsAppNumber': whatsAppNumber,
-    'role': 'agent',
-    'status': 'pending',
-    'mode': _getPlatformInfo(), // ✅ Add this
-    'createdAt': FieldValue.serverTimestamp(),
-    'modeupdated': _getPlatformInfo(), // ✅ Add this
-    'lastLoginAt': FieldValue.serverTimestamp(),
-  },
-  SetOptions(merge: true)
-);
+        agentRef,
+        {
+          'uid': user.uid,
+          'email': user.email,
+          'displayName': fullName,
+          'mobile': mobileNo,
+          'profilePic': "",
+          'gender': gender,
+          'dob': dob,
+          'location': location,
+          'whatsAppNumber': whatsAppNumber,
+          'role': 'agent',
+          'status': 'pending',
+          'mode': _getPlatformInfo(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'modeupdated': _getPlatformInfo(),
+          'lastLoginAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true)
+      );
 
       await batch.commit();
 
@@ -1447,30 +1710,6 @@ Image URL: ${userModel.imageUrl}
     }
   }
 
-
-/// One-time method to update existing users with platform info
-Future<void> updateExistingUsersWithPlatform() async {
-  try {
-    final currentUser = auth.currentUser;
-    if (currentUser == null) return;
-
-    final platformInfo = _getDeviceInfo();
-    
-    // Check all possible collections
-    final collections = ['users', 'agents', 'technicians'];
-    
-    for (final collection in collections) {
-      final doc = await _firestore.collection(collection).doc(currentUser.uid).get();
-      if (doc.exists) {
-        await _firestore.collection(collection).doc(currentUser.uid).update(platformInfo);
-        debugPrint('✅ Updated $collection/${currentUser.uid} with platform info');
-        break;
-      }
-    }
-  } catch (e) {
-    debugPrint('❌ Error updating platform info: $e');
-  }
-}
   Future<UserModel?> loginWithPhone(String phone) async {
     final snapshot = await FirebaseFirestore.instance
         .collection("users")
@@ -1486,252 +1725,183 @@ Future<void> updateExistingUsersWithPlatform() async {
     }
   }
 
- Future<UserCredential?> signInWithApple() async {
-  try {
-    debugPrint('🔐 Apple Sign-In started...');
-    isSignInApple(true);
+  // Apple Sign-In with background operations
+  Future<UserCredential?> signInWithApple() async {
+    try {
+      debugPrint('🔐 Apple Sign-In started...');
+      isSignInApple(true);
 
-    final appleCredential = await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-    );
-
-    debugPrint('✅ Apple credential received');
-    debugPrint('Apple user ID: ${appleCredential.userIdentifier}');
-
-    if (appleCredential.identityToken == null) {
-      debugPrint('❌ Missing Apple identity token');
-      throw Exception('Failed to get Apple authentication token');
-    }
-
-    final OAuthCredential credential = OAuthProvider("apple.com").credential(
-      idToken: appleCredential.identityToken,
-      accessToken: appleCredential.authorizationCode,
-    );
-    debugPrint('✅ Firebase credential created');
-
-    final UserCredential userCredential = await auth.signInWithCredential(credential);
-    final User? firebaseUser = userCredential.user;
-
-    if (firebaseUser == null) {
-      throw Exception('Firebase sign-in failed - no user returned');
-    }
-
-    debugPrint('✅ Firebase authentication successful');
-    debugPrint('Firebase User UID: ${firebaseUser.uid}');
-
-    // ✅ CRITICAL FIX: Sync FCM token BEFORE handling user
-    debugPrint('🔄 Syncing FCM token and platform info...');
-    await _syncFCMToken(firebaseUser);
-    debugPrint('✅ FCM token and platform synced');
-
-    // Handle user based on whether they're new or existing
-    if (userCredential.additionalUserInfo?.isNewUser ?? false) {
-      debugPrint('🆕 Handling new Apple user...');
-      await _handleNewAppleUser(firebaseUser, appleCredential);
-    } else {
-      debugPrint('👤 Handling existing Apple user...');
-      await _handleExistingAppleUser(firebaseUser);
-    }
-
-    debugPrint('✅ Apple sign-in completed successfully');
-    return userCredential;
-  } catch (e) {
-    debugPrint('❌ Apple sign-in error: $e');
-
-    if (e is FirebaseAuthException) {
-      _handleFirebaseAuthException(e);
-    } else if (e is SignInWithAppleAuthorizationException) {
-      _handleAppleAuthException(e);
-    } else {
-      Get.snackbar(
-        'Sign-in Failed',
-        'An unexpected error occurred: ${e.toString()}',
-        backgroundColor: Colors.red[100],
-        colorText: Colors.red[800],
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
       );
+
+      if (appleCredential.identityToken == null) {
+        throw Exception('Failed to get Apple authentication token');
+      }
+
+      final OAuthCredential credential = OAuthProvider("apple.com").credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      final UserCredential userCredential = await auth.signInWithCredential(credential);
+      final User? firebaseUser = userCredential.user;
+
+      if (firebaseUser == null) {
+        throw Exception('Firebase sign-in failed - no user returned');
+      }
+
+      // Background operations
+      _syncFCMTokenAsync(firebaseUser);
+      _logLoginActivityAsync(firebaseUser.uid);
+
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        await _handleNewAppleUser(firebaseUser, appleCredential);
+      } else {
+        await _handleExistingAppleUser(firebaseUser);
+      }
+
+      return userCredential;
+    } catch (e) {
+      debugPrint('❌ Apple sign-in error: $e');
+
+      if (e is FirebaseAuthException) {
+        _handleFirebaseAuthException(e);
+      } else if (e is SignInWithAppleAuthorizationException) {
+        _handleAppleAuthException(e);
+      } else {
+        Get.snackbar(
+          'Sign-in Failed',
+          'An unexpected error occurred: ${e.toString()}',
+          backgroundColor: Colors.red[100],
+          colorText: Colors.red[800],
+        );
+      }
+
+      return null;
+    } finally {
+      isSignInApple(false);
     }
-
-    return null;
-  } finally {
-    isSignInApple(false);
   }
-}
 
-  // Handle new Apple user
   Future<void> _handleNewAppleUser(
     User firebaseUser, AuthorizationCredentialAppleID appleCredential) async {
-  debugPrint('Handling new Apple user: ${firebaseUser.uid}');
-
-  try {
-    // ✅ CRITICAL: Set user ID FIRST
-    _notificationController?.setUserId(firebaseUser.uid);
-    debugPrint('📱 Notifications initialized for new Apple user: ${firebaseUser.uid}');
-    
-    String email = appleCredential.email ?? firebaseUser.email ?? '';
-
-    if (email.isEmpty) {
-      email = '${firebaseUser.uid}@privaterelay.appleid.com';
-      debugPrint('⚠ No email provided, using private relay: $email');
-    }
-
-    String displayName = '';
-    if (appleCredential.givenName != null ||
-        appleCredential.familyName != null) {
-      displayName =
-          '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'
-              .trim();
-    }
-
-    if (displayName.isEmpty) {
-      displayName = firebaseUser.displayName ?? email.split('@')[0];
-    }
-
-   final userData = {
-  'uid': firebaseUser.uid,
-  'email': email,
-  'displayName': displayName,
-  'photoURL': firebaseUser.photoURL ?? '',
-  'phoneNumber': firebaseUser.phoneNumber ?? '',
-  'role': 'user',
-  'status': 'active',
-  'provider': 'apple',
-  'mode': _getPlatformInfo(), // ✅ Add this
-  'appleUserId': appleCredential.userIdentifier,
-  'location': '',
-  'createdAt': FieldValue.serverTimestamp(),
-  'updatedAt': FieldValue.serverTimestamp(),
-  'registrationCompleted': true,
-  'modeupdated': _getPlatformInfo(), // ✅ Add this
-  'lastLoginAt': FieldValue.serverTimestamp(),
-};
-
-    await _firestore
-        .collection('users')
-        .doc(firebaseUser.uid)
-        .set(userData, SetOptions(merge: true));
-
-    debugPrint('✅ Firestore document created successfully');
-
-    userRole.value = 'user';
-
-    final userModel = UserModel(
-      uid: firebaseUser.uid,
-      email: email,
-      name: displayName,
-      role: 'user',
-      status: 'active',
-      location: '',
-      phoneNumber: firebaseUser.phoneNumber ?? '',
-    );
-
-    Get.find<UserController>().currentUser = userModel;
-    debugPrint('✅ User model created and stored: ${userModel.toJson()}');
-
-    // ✅ Log login activity for new Apple user
-    await _logLoginActivity(firebaseUser.uid);
-
-    Get.snackbar(
-      'Welcome!',
-      'Account created successfully${email.contains('privaterelay') ? '' : ' for $email'}',
-      backgroundColor: Colors.green[100],
-      colorText: Colors.green[800],
-      duration: const Duration(seconds: 3),
-    );
-
-    navigateToHome();
-  } catch (e) {
-    debugPrint('❌ Error creating new Apple user: $e');
-    _notificationController?.clearUserId();
-
-    Get.snackbar(
-      'Account Creation Failed',
-      'Failed to create account. Please try again.',
-      backgroundColor: Colors.red[100],
-      colorText: Colors.red[800],
-      duration: const Duration(seconds: 5),
-    );
-
     try {
-      await auth.signOut();
-    } catch (signOutError) {
-      debugPrint('Error during cleanup: $signOutError');
+      _notificationController?.setUserId(firebaseUser.uid);
+      
+      String email = appleCredential.email ?? firebaseUser.email ?? '';
+
+      if (email.isEmpty) {
+        email = '${firebaseUser.uid}@privaterelay.appleid.com';
+      }
+
+      String displayName = '';
+      if (appleCredential.givenName != null ||
+          appleCredential.familyName != null) {
+        displayName =
+            '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'
+                .trim();
+      }
+
+      if (displayName.isEmpty) {
+        displayName = firebaseUser.displayName ?? email.split('@')[0];
+      }
+
+      final userData = {
+        'uid': firebaseUser.uid,
+        'email': email,
+        'displayName': displayName,
+        'photoURL': firebaseUser.photoURL ?? '',
+        'phoneNumber': firebaseUser.phoneNumber ?? '',
+        'role': 'user',
+        'status': 'active',
+        'provider': 'apple',
+        'mode': _getPlatformInfo(),
+        'appleUserId': appleCredential.userIdentifier,
+        'location': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'registrationCompleted': true,
+        'modeupdated': _getPlatformInfo(),
+        'lastLoginAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .set(userData, SetOptions(merge: true));
+
+      // Cache it
+      userData['_collection'] = 'users';
+      _userDataCache[firebaseUser.uid] = userData;
+
+      userRole.value = 'user';
+
+      final userModel = UserModel(
+        uid: firebaseUser.uid,
+        email: email,
+        name: displayName,
+        role: 'user',
+        status: 'active',
+        location: '',
+        phoneNumber: firebaseUser.phoneNumber ?? '',
+      );
+
+      Get.find<UserController>().currentUser = userModel;
+
+      Get.snackbar(
+        'Welcome!',
+        'Account created successfully${email.contains('privaterelay') ? '' : ' for $email'}',
+        backgroundColor: Colors.green[100],
+        colorText: Colors.green[800],
+        duration: const Duration(seconds: 3),
+      );
+
+      navigateToHome();
+    } catch (e) {
+      debugPrint('❌ Error creating new Apple user: $e');
+      _notificationController?.clearUserId();
+
+      Get.snackbar(
+        'Account Creation Failed',
+        'Failed to create account. Please try again.',
+        backgroundColor: Colors.red[100],
+        colorText: Colors.red[800],
+        duration: const Duration(seconds: 5),
+      );
+
+      try {
+        await auth.signOut();
+      } catch (signOutError) {
+        debugPrint('Error during cleanup: $signOutError');
+      }
+
+      Get.offAllNamed('/login');
     }
-
-    Get.offAllNamed('/login');
   }
-}
 
-  // Handle existing Apple user
   Future<void> _handleExistingAppleUser(User user) async {
     try {
+      // Check cache first
+      if (_userDataCache.containsKey(user.uid)) {
+        final userData = _userDataCache[user.uid]!;
+        await _processExistingUserData(user, userData);
+        return;
+      }
+
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      debugPrint('Checking existing user document for UID: ${user.uid}');
 
       if (userDoc.exists) {
         final userData = userDoc.data()!;
-        final status = userData['status'] ?? 'active';
-
-        userRole.value = userData['role'] ?? '';
-
-        debugPrint('User role fetched: ${userRole.value}');
-
-        if (status == 'suspended' || status == 'banned') {
-          await auth.signOut();
-          Get.snackbar(
-            'Account Suspended',
-            'Your account has been suspended. Please contact support.',
-            backgroundColor: Colors.orange[100],
-            colorText: Colors.orange[800],
-          );
-          return;
-        }
-
-        final userModel = UserModel(
-          location: userData['location'] ?? '',
-          phoneNumber: userData['phoneNumber'] ?? '',
-          uid: user.uid,
-          email: user.email ?? userData['email'] ?? '',
-          name: userData['displayName'] ?? user.displayName ?? '',
-          role: userData['role'] ?? '',
-          status: status,
-        );
-
-        debugPrint('''
-UID: ${userModel.uid}
-Email: ${userModel.email}
-Phone: ${userModel.phoneNumber}
-Location: ${userModel.location}
-Name: ${userModel.name}
-Role: ${userModel.role}
-Status: ${userModel.status}
-Image URL: ${userModel.imageUrl}
-''');
-
-        Get.find<UserController>().currentUser = userModel;
-        debugPrint('Existing user logged in: ${userModel.toJson()}');
-
-        // ✅ Log login activity for existing Apple user
-        await _logLoginActivity(user.uid);
-
-        // Navigate based on role
-        if (userModel.role == 'tenant') {
-          debugPrint('Navigating to Tenant Dashboard...');
-          Get.offAllNamed(AppRoute.navbar);
-        } else if (userModel.role == 'agent') {
-          debugPrint('Navigating to Agent Dashboard...');
-          Get.offAllNamed(AppRoute.navbar);
-        } else if (userModel.role == 'technician') {
-          debugPrint('Navigating to Technician Dashboard...');
-          Get.offAllNamed(AppRoute.technicianDashboard);
-        } else {
-          debugPrint('Navigating to User Home...');
-          navigateToHome();
-        }
+        // Cache it
+        userData['_collection'] = 'users';
+        _userDataCache[user.uid] = userData;
+        
+        await _processExistingUserData(user, userData);
       } else {
-        debugPrint('User document not found for existing user');
         await _handleLegacyAppleUser(user);
       }
     } catch (e) {
@@ -1741,7 +1911,6 @@ Image URL: ${userModel.imageUrl}
     }
   }
 
-  // Handle legacy Apple users
   Future<void> _handleLegacyAppleUser(User user, {String role = 'user'}) async {
     try {
       final userData = {
@@ -1760,6 +1929,11 @@ Image URL: ${userModel.imageUrl}
       };
 
       await _firestore.collection('users').doc(user.uid).set(userData);
+      
+      // Cache it
+      userData['_collection'] = 'users';
+      _userDataCache[user.uid] = userData;
+      
       userRole.value = role;
 
       final userModel = UserModel(
@@ -1795,7 +1969,6 @@ Image URL: ${userModel.imageUrl}
     }
   }
 
-  // Handle Apple-specific authorization exceptions
   void _handleAppleAuthException(SignInWithAppleAuthorizationException e) {
     String message;
 
@@ -1842,42 +2015,47 @@ Image URL: ${userModel.imageUrl}
     Get.offAllNamed(AppRoute.login);
   }
 
- Future<void> signOut() async {
-  try {
-    isSignOutAll(true);
-    
-    debugPrint('🚪 Starting sign out process...');
-    
-    // ✅ Clear notifications BEFORE signing out (saves them first)
-    _notificationController?.clearUserId();
-    
-    // Clear auto-login flag
-    hasCheckedAutoLogin(false);
-    
-    // Sign out from Google
-    await _googleSignIn.signOut();
-    
-    // Sign out from Firebase
-    await auth.signOut();
-    
-    // Clear user role
-    userRole.value = '';
-    
-    debugPrint('✅ User signed out successfully');
-    
-    // Navigate to login
-    Get.offAllNamed(AppRoute.login);
-  } catch (e) {
-    debugPrint('❌ Error during sign out: $e');
-    Get.snackbar('Error', 'Failed to sign out: $e');
-  } finally {
-    isSignOutAll(false);
+  // 🔧 CRITICAL: Sign out - clears session and forces login
+  Future<void> signOut() async {
+    try {
+      isSignOutAll(true);
+      
+      debugPrint('🚪 [SignOut] Starting sign out process...');
+      
+      // Clear notification user ID
+      _notificationController?.clearUserId();
+      
+      // Reset auto-login flag so it will check again next time
+      hasCheckedAutoLogin(false);
+      
+      // Clear cache
+      _userDataCache.clear();
+      
+      // Sign out from all providers
+      await _googleSignIn.signOut();
+      await auth.signOut(); // 🔧 This clears Firebase Auth session
+      
+      // Clear user role
+      userRole.value = '';
+      
+      debugPrint('✅ [SignOut] Sign out complete');
+      
+      // Navigate to login
+      Get.offAllNamed(AppRoute.login);
+      
+    } catch (e) {
+      debugPrint('❌ [SignOut] Error during sign out: $e');
+      Get.snackbar('Error', 'Failed to sign out: $e');
+    } finally {
+      isSignOutAll(false);
+    }
   }
-}
   
   @override
   void onClose() {
     _resendTimer?.cancel();
+    _authStateDebouncer?.cancel();
+    _userDataCache.clear();
     emailController.dispose();
     passwordController.dispose();
     fullNameController.dispose();
