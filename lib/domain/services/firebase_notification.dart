@@ -6,6 +6,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/core/utils/timezonehelper.dart';
+import 'package:majan/data/model/notification_model.dart';
 import 'package:majan/data/repositories/api_services.dart';
 import 'package:majan/domain/controller/notification_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,6 +18,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:majan/presentation/view/dashboard/widgets/tenants_ticket_details_screen.dart';
+import 'package:majan/presentation/widgets/notification_detail_sheet.dart';
 import 'package:majan/presentation/widgets/pdf_viewer_widgets.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -660,8 +662,35 @@ Future<void> _downloadAndOpenPdfWithProgress(String url, String fileName) async 
   debugPrint('Body parameter: $body');
     
     try {
+      // ── Unified detail sheet ──────────────────────────────────────────────
+      // PDF/document types keep their own download-and-view flow below.
+      // Every other type is shown in the professional NotificationDetailSheet.
+      const pdfOnlyTypes = [
+        'lease_renewal', 'document', 'letter',
+        'custom_notice', 'pdf_notice', 'notice_pdf', 'tenant_notice',
+      ];
+      if (!pdfOnlyTypes.contains(notificationType)) {
+        final notification = NotificationModel(
+          id: 'fcm_${DateTime.now().millisecondsSinceEpoch}',
+          title: data['title'] as String? ?? '',
+          body: body ?? data['body'] as String? ?? '',
+          type: notificationType ?? 'general',
+          timestamp: DateTime.now(),
+          isRead: false,
+          data: data,
+          imageUrl: data['imageUrl'] as String? ?? data['image_url'] as String?,
+        );
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (Get.isBottomSheetOpen != true) {
+            NotificationDetailSheet.show(notification);
+          }
+        });
+        return;
+      }
+      // ── PDF/document types continue below ─────────────────────────────────
+
       switch (notificationType) {
-        
+
         // ✅ CHAT - Show message dialog
       case 'chat':
 case 'message':
@@ -4149,7 +4178,34 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
   final finalTicketId = complaintIdFromData ?? ticketId ?? complaintId;
   final displayTicketId = complaintNumber ?? finalTicketId;
   
-  final imageUrl = _extractPreviewImage(data);
+  // ✅ FIX: Extract image URL from all possible sources
+  String? imageUrl;
+  
+  // Priority 1: Direct image_url field
+  imageUrl = data['image_url'] as String?;
+  
+  // Priority 2: imageUrl field
+  imageUrl ??= data['imageUrl'] as String?;
+  
+  // Priority 3: original_complaint_images (take first)
+  if (imageUrl == null && data['original_complaint_images'] != null) {
+    final images = data['original_complaint_images'];
+    if (images is List && images.isNotEmpty) {
+      imageUrl = images.first?.toString();
+    } else if (images is String && images.isNotEmpty) {
+      imageUrl = images.split(',').first.trim();
+    }
+  }
+  
+  // Priority 4: Try _extractPreviewImage helper
+  imageUrl ??= _extractPreviewImage(data);
+  
+  debugPrint('🖼️ Image URL extraction debug:');
+  debugPrint('   - data["image_url"]: ${data['image_url']}');
+  debugPrint('   - data["imageUrl"]: ${data['imageUrl']}');
+  debugPrint('   - data["original_complaint_images"]: ${data['original_complaint_images']}');
+  debugPrint('   - Final imageUrl: $imageUrl');
+  
   final timestamp = data['timestamp'] as String?;
   final createdAt = data['createdAt'] as String?;
   final finalTimestamp = timestamp ?? createdAt;
@@ -4159,6 +4215,7 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
   final category = data['category'] as String?;
   final subCategory = data['sub_category'] as String?;
   final status = data['status'] as String?;
+  final statusText = data['status_text'] as String?;
   final description = data['description'] as String?;
   final propertyName = data['propertyName'] as String?;
   final propertyTitle = data['property_title'] as String?;
@@ -4171,6 +4228,7 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
   final finalPropertyName = propertyTitle ?? propertyName;
   final finalCreatedAt = timestamp ?? createdAt;
   final finalCategory = subCategory ?? category;
+  final finalStatus = statusText ?? status;
   
   debugPrint('🎯 Ticket notification - showing beautiful message dialog');
   
@@ -4188,11 +4246,11 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
   }
   
   // Status and Category
-  if (status != null || finalCategory != null) {
-    if (status != null) {
+  if (finalStatus != null || finalCategory != null) {
+    if (finalStatus != null) {
       messageSpans.add(const TextSpan(text: '📊 Status: '));
       messageSpans.add(TextSpan(
-        text: status,
+        text: finalStatus,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ));
       messageSpans.add(const TextSpan(text: '\n'));
@@ -4286,14 +4344,14 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
     ));
   }
   
-  // ✅ Show dialog with WHITE BACKGROUND (matching _handleTicketNavigation)
+  // ✅ Show dialog with WHITE BACKGROUND
   Get.dialog(
     Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 420),
         decoration: BoxDecoration(
-          color: Colors.white,  // ✅ WHITE BACKGROUND
+          color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
@@ -4311,7 +4369,7 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
-                color: Colors.white,  // ✅ WHITE HEADER
+                color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
               ),
               child: Column(
@@ -4319,7 +4377,7 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.green.shade100,  // ✅ Light green circle
+                      color: Colors.green.shade100,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -4351,7 +4409,7 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
                 child: Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],  // ✅ Very light gray for content
+                    color: Colors.grey[50],
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey[200]!, width: 1.5),
                   ),
@@ -4388,6 +4446,11 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
+                          debugPrint('🔄 Navigating to ticket details:');
+                          debugPrint('   - Ticket ID: $finalTicketId');
+                          debugPrint('   - Image URL: $imageUrl');
+                          debugPrint('   - Timestamp: $finalTimestamp');
+                          
                           Get.back();
                           Get.to(() => TicketDetailsScreen(
                             complaintId: finalTicketId,
@@ -4452,26 +4515,7 @@ void _showDetailedTicketDialog(Map<String, dynamic> data, String? notificationTy
   );
 }
 
-// ✅ NEW: Format timestamp helper
-String _formatTimestamp(String timestamp) {
-  try {
-    final dateTime = DateTime.parse(timestamp);
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-    
-    if (difference.inDays == 0) {
-      return 'Today at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    } else {
-      return '${dateTime.day}/${dateTime.month}/${dateTime.year} at ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
-    }
-  } catch (e) {
-    return timestamp;
-  }
-}
-
-// ✅ Helper: Get ticket title based on type
+// Helper: Get ticket title based on type
 String _getTicketTitle(String type) {
   switch (type) {
     case 'complaint_reply':
@@ -4482,9 +4526,9 @@ String _getTicketTitle(String type) {
       return 'Ticket Status Updated';
     case 'complaint':
       return 'Complaint Details';
-    case 'new_complaint':  // ✅ ADD THIS
+    case 'new_complaint':
       return 'New Complaint Registered';
-    case 'new_ticket':  // ✅ ADD THIS
+    case 'new_ticket':
       return 'New Ticket Created';
     case 'tenant_ticket':
       return 'Support Ticket Details';

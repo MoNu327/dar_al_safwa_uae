@@ -7,6 +7,7 @@ import 'package:majan/core/constants/custom_size.dart';
 import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/presentation/widgets/custom_text_widget.dart';
 import 'package:majan/presentation/view_model/localization_controller.dart';
+import 'package:majan/presentation/widgets/notification_detail_sheet.dart';
 
 class NotificationsScreen extends StatelessWidget {
   NotificationsScreen({super.key});
@@ -796,8 +797,7 @@ case 'tenant_notice':
   }
 
   void _handleNotificationTap(NotificationModel notification) {
-    // Use the controller method that handles all notification types
-    notificationController.handleNotificationTap(notification);
+    NotificationDetailSheet.show(notification);
   }
 
   void _showDeleteDialog(NotificationModel notification) {
