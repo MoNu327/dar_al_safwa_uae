@@ -19,19 +19,23 @@ PaymentInstallmentModel _$PaymentInstallmentModelFromJson(
       payment_status: json['payment_status'] as String?,
       expected_date: json['expected_date'] as String?,
       actual_payment_date: json['actual_payment_date'] as String?,
-      cheque_number: json['cheque_number'] as String?,
+      cheque_number:
+          PaymentInstallmentModel._toStringOrNull(json['cheque_number']),
       cheque_date: json['cheque_date'] as String?,
       cheque_bank_name: json['cheque_bank_name'] as String?,
       cheque_image: json['cheque_image'] as String?,
-      transaction_reference: json['transaction_reference'] as String?,
+      transaction_reference: PaymentInstallmentModel._toStringOrNull(
+          json['transaction_reference']),
       transfer_bank_name: json['transfer_bank_name'] as String?,
       transfer_date: json['transfer_date'] as String?,
       transfer_proof: json['transfer_proof'] as String?,
-      receipt_number: json['receipt_number'] as String?,
+      receipt_number:
+          PaymentInstallmentModel._toStringOrNull(json['receipt_number']),
       cash_payment_date: json['cash_payment_date'] as String?,
       receipt_image: json['receipt_image'] as String?,
       payment_description: json['payment_description'] as String?,
-      payment_reference: json['payment_reference'] as String?,
+      payment_reference:
+          PaymentInstallmentModel._toStringOrNull(json['payment_reference']),
       payment_image: json['payment_image'] as String?,
       docstatus: PaymentInstallmentModel._toStringOrNull(json['docstatus']),
       payment_notes: json['payment_notes'] as String?,

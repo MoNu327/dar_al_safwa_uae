@@ -1,3 +1,10 @@
+/// Safely converts any JSON value (int, double, String, null) to a String.
+/// The backend often returns numeric ids/codes/mobiles as ints.
+String _asString(dynamic value) => value?.toString() ?? '';
+
+/// Nullable variant for optional String fields.
+String? _asStringOrNull(dynamic value) => value?.toString();
+
 class TenantDocumentResponse {
   final bool success;
   final String baseUrl;
@@ -78,16 +85,16 @@ class TenantProperty {
 
   factory TenantProperty.fromJson(Map<String, dynamic> json) {
     return TenantProperty(
-      id: json['id'] ?? '',
-      uid: json['uid'] ?? '',
-      propertyId: json['propertyid'] ?? '',
-      unitId: json['unitid'] ?? '',
-      bookingId: json['bookingid'] ?? '',
-      allocationDate: json['allocation_date'] ?? '',
-      startDate: json['start_date'] ?? '',
-      endDate: json['end_date'] ?? '',
-      status: json['status'] ?? '',
-      isRenewed: json['is_renewed'] ?? '',
+      id: _asString(json['id']),
+      uid: _asString(json['uid']),
+      propertyId: _asString(json['propertyid']),
+      unitId: _asString(json['unitid']),
+      bookingId: _asString(json['bookingid']),
+      allocationDate: _asString(json['allocation_date']),
+      startDate: _asString(json['start_date']),
+      endDate: _asString(json['end_date']),
+      status: _asString(json['status']),
+      isRenewed: _asString(json['is_renewed']),
     );
   }
 
@@ -126,12 +133,12 @@ class Booking {
 
   factory Booking.fromJson(Map<String, dynamic> json) {
     return Booking(
-      id: json['id'] ?? '',
-      uid: json['uid'],
-      firstName: json['first_name'] ?? '',
-      lastName: json['last_name'] ?? '',
-      email: json['email'],
-      mobile: json['mobile'] ?? '',
+      id: _asString(json['id']),
+      uid: _asStringOrNull(json['uid']),
+      firstName: _asString(json['first_name']),
+      lastName: _asString(json['last_name']),
+      email: _asStringOrNull(json['email']),
+      mobile: _asString(json['mobile']),
     );
   }
 
@@ -186,22 +193,22 @@ class BookingDocument {
 
   factory BookingDocument.fromJson(Map<String, dynamic> json) {
     return BookingDocument(
-      id: json['id'] ?? '',
-      documentTypeCategory: json['document_type_category'] ?? '',
-      userBid: json['userbid'] ?? '',
-      usersBookingId: json['usersbooking_id'] ?? '',
-      uid: json['uid'],
-      title: json['title'] ?? '',
-      imageUrl: json['image_url'] ?? '',
-      documentType: json['document_type'] ?? '',
-      documentCategory: json['document_category'] ?? '',
-      documentSubtype: json['document_subtype'] ?? '',
-      verificationStatus: json['verification_status'] ?? '',
-      verificationStatusCode: json['verification_status_code'] ?? '',
-      expiryDate: json['expiry_date'] ?? '',
+      id: _asString(json['id']),
+      documentTypeCategory: _asString(json['document_type_category']),
+      userBid: _asString(json['userbid']),
+      usersBookingId: _asString(json['usersbooking_id']),
+      uid: _asStringOrNull(json['uid']),
+      title: _asString(json['title']),
+      imageUrl: _asString(json['image_url']),
+      documentType: _asString(json['document_type']),
+      documentCategory: _asString(json['document_category']),
+      documentSubtype: _asString(json['document_subtype']),
+      verificationStatus: _asString(json['verification_status']),
+      verificationStatusCode: _asString(json['verification_status_code']),
+      expiryDate: _asString(json['expiry_date']),
       isExpired: json['is_expired'] ?? false,
-      createdAt: json['created_at'] ?? '',
-      updatedAt: json['updated_at'] ?? '',
+      createdAt: _asString(json['created_at']),
+      updatedAt: _asString(json['updated_at']),
     );
   }
 
@@ -266,21 +273,21 @@ class PaymentDocument {
 
   factory PaymentDocument.fromJson(Map<String, dynamic> json) {
     return PaymentDocument(
-      id: json['id'] ?? '',
-      documentTypeCategory: json['document_type_category'] ?? '',
-      confirmationId: json['confirmation_id'] ?? '',
-      segmentId: json['segment_id'] ?? '',
-      title: json['title'] ?? '',
-      imageUrl: json['image_url'] ?? '',
-      documentType: json['document_type'] ?? '',
-      documentCategory: json['document_category'] ?? '',
-      documentSubtype: json['document_subtype'] ?? '',
-      verificationStatus: json['verification_status'] ?? '',
-      verificationStatusCode: json['verification_status_code'] ?? '',
-      expiryDate: json['expiry_date'] ?? '',
+      id: _asString(json['id']),
+      documentTypeCategory: _asString(json['document_type_category']),
+      confirmationId: _asString(json['confirmation_id']),
+      segmentId: _asString(json['segment_id']),
+      title: _asString(json['title']),
+      imageUrl: _asString(json['image_url']),
+      documentType: _asString(json['document_type']),
+      documentCategory: _asString(json['document_category']),
+      documentSubtype: _asString(json['document_subtype']),
+      verificationStatus: _asString(json['verification_status']),
+      verificationStatusCode: _asString(json['verification_status_code']),
+      expiryDate: _asString(json['expiry_date']),
       isExpired: json['is_expired'] ?? false,
-      createdAt: json['created_at'] ?? '',
-      updatedAt: json['updated_at'] ?? '',
+      createdAt: _asString(json['created_at']),
+      updatedAt: _asString(json['updated_at']),
       paymentDetails: json['payment_details'] != null
           ? PaymentDetails.fromJson(json['payment_details'])
           : null,
@@ -334,14 +341,14 @@ class PaymentDetails {
 
   factory PaymentDetails.fromJson(Map<String, dynamic> json) {
     return PaymentDetails(
-      paymentMethod: json['payment_method'] ?? '',
-      installmentNumber: json['installment_number'] ?? '',
-      amount: json['amount'] ?? '',
-      chequeNumber: json['cheque_number'] ?? '',
-      chequeDate: json['cheque_date'] ?? '',
-      chequeBankName: json['cheque_bank_name'] ?? '',
-      transactionReference: json['transaction_reference'],
-      receiptNumber: json['receipt_number'],
+      paymentMethod: _asString(json['payment_method']),
+      installmentNumber: _asString(json['installment_number']),
+      amount: _asString(json['amount']),
+      chequeNumber: _asString(json['cheque_number']),
+      chequeDate: _asString(json['cheque_date']),
+      chequeBankName: _asString(json['cheque_bank_name']),
+      transactionReference: _asStringOrNull(json['transaction_reference']),
+      receiptNumber: _asStringOrNull(json['receipt_number']),
       allImages: AllImages.fromJson(json['all_images'] ?? {}),
     );
   }

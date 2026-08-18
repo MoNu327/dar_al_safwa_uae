@@ -22,18 +22,26 @@ class PaymentInstallmentModel {
   final String? payment_status;
   final String? expected_date;
   final String? actual_payment_date;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? cheque_number;
   final String? cheque_date;
   final String? cheque_bank_name;
   final String? cheque_image;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? transaction_reference;
   final String? transfer_bank_name;
   final String? transfer_date;
   final String? transfer_proof;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? receipt_number;
   final String? cash_payment_date;
   final String? receipt_image;
   final String? payment_description;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? payment_reference;
   final String? payment_image;
   

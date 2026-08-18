@@ -301,8 +301,10 @@ Widget _buildPropertySelector() {
           SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: controller.leaseData.value?.id,
+            isExpanded: true,
+            isDense: true,
             decoration: InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: AppColors.lightGrey),
@@ -313,12 +315,33 @@ Widget _buildPropertySelector() {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: AppColors.primaryColor, width: 2),
+                borderSide: BorderSide(color: AppColors.secondaryColor, width: 2),
               ),
               filled: true,
               fillColor: AppColors.whiteLight,
             ),
             icon: Icon(Icons.keyboard_arrow_down, color: AppColors.secondaryColor),
+            // Single-line rendering for the SELECTED value (prevents overflow).
+            selectedItemBuilder: (context) {
+              return allLeases.map((lease) {
+                final unit = (lease.unit_title != null && lease.unit_title!.isNotEmpty)
+                    ? ' • Unit ${lease.unit_title}'
+                    : '';
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${lease.property_title ?? 'Property'}$unit',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: AppColors.black,
+                    ),
+                  ),
+                );
+              }).toList();
+            },
             items: allLeases.map((lease) {
               return DropdownMenuItem<String>(
                 value: lease.id,
@@ -333,15 +356,18 @@ Widget _buildPropertySelector() {
                         fontSize: 14,
                         color: AppColors.black,
                       ),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (lease.unit_title != null)
+                    if (lease.unit_title != null && lease.unit_title!.isNotEmpty)
                       Text(
                         'Unit: ${lease.unit_title}',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.black600,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                   ],
                 ),
@@ -413,13 +439,20 @@ Widget _buildPaymentOverviewCard(LeaseDataModel leaseData, List<PaymentInstallme
     margin: EdgeInsets.all(16),
     padding: EdgeInsets.all(20),
     decoration: BoxDecoration(
-      color: AppColors.primaryColor,
-      borderRadius: BorderRadius.circular(16),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          AppColors.secondaryColor,
+          Color.lerp(AppColors.secondaryColor, AppColors.black, 0.35)!,
+        ],
+      ),
+      borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: AppColors.primaryColor.withOpacity(0.3),
-          blurRadius: 12,
-          offset: Offset(0, 6),
+          color: AppColors.secondaryColor.withOpacity(0.35),
+          blurRadius: 18,
+          offset: Offset(0, 8),
         ),
       ],
     ),
@@ -429,24 +462,31 @@ Widget _buildPaymentOverviewCard(LeaseDataModel leaseData, List<PaymentInstallme
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Payment Overview',
-              style: TextStyle(
-                color: AppColors.black,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet_rounded,
+                    color: AppColors.primaryColor, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Payment Overview',
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.black.withOpacity(0.1),
+                color: AppColors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 '$paidInstallments/$totalInstallments Paid',
                 style: TextStyle(
-                  color: AppColors.black,
+                  color: AppColors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),
@@ -454,228 +494,166 @@ Widget _buildPaymentOverviewCard(LeaseDataModel leaseData, List<PaymentInstallme
             ),
           ],
         ),
-        
-        // Upcoming Payments Section - WITH DATES ADDED
-        if (nextUpcoming.isNotEmpty) ...[
-          SizedBox(height: 16),
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.white.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.black.withOpacity(0.1), width: 1),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.schedule, color: AppColors.black, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Upcoming Payments',
-                      style: TextStyle(
-                        color: AppColors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10),
-                ...nextUpcoming.map((installment) {
-                  final daysUntil = _getDaysUntilPayment(installment);
-                  final amount = installment.amount ?? '0';
-                  final installmentNum = installment.installment_number ?? 'N/A';
-                  
-                  // Get payment date
-                  final paymentMethod = controller.getPaymentMethodForInstallment(installment);
-                  final paymentDate = _getDisplayPaymentDate(installment, paymentMethod);
-                  final formattedDate = paymentDate != null ? _formatPaymentDate(paymentDate) : null;
-                  
-                  String daysText;
-                  Color daysColor;
-                  IconData daysIcon;
-                  
-                  if (daysUntil == 0) {
-                    daysText = 'Due Today';
-                    daysColor = AppColors.warning;
-                    daysIcon = Icons.warning_amber_rounded;
-                  } else if (daysUntil == 1) {
-                    daysText = 'Due Tomorrow';
-                    daysColor = AppColors.warning.withOpacity(0.8);
-                    daysIcon = Icons.access_time;
-                  } else if (daysUntil <= 2) {
-                    daysText = 'Due in $daysUntil days';
-                    daysColor = AppColors.warning.withOpacity(0.7);
-                    daysIcon = Icons.access_time;
-                  } else if (daysUntil <= 7) {
-                    daysText = 'Due in $daysUntil days';
-                    daysColor = AppColors.blueColor;
-                    daysIcon = Icons.schedule;
-                  } else {
-                    daysText = 'Due in $daysUntil days';
-                    daysColor = AppColors.black600;
-                    daysIcon = Icons.schedule;
-                  }
-                  
-                  return Container(
-                    margin: EdgeInsets.only(bottom: 8),
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
+
+        SizedBox(height: 20),
+
+        // Hero row: circular progress ring + total rent
+        Row(
+          children: [
+            _buildProgressRing(progressPercentage),
+            SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Rent',
+                    style: TextStyle(
                       color: AppColors.white.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: daysUntil <= 2 
-                            ? AppColors.warning.withOpacity(0.5)
-                            : AppColors.black.withOpacity(0.1),
-                        width: daysUntil <= 2 ? 1.5 : 1,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'AED ${_formatMoney(totalAmount)}',
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: daysColor.withOpacity(0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(daysIcon, color: daysColor, size: 16),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMiniStat(
+                          'Paid',
+                          'AED ${_formatMoney(paidAmount)}',
+                          AppColors.onlineGreenLight,
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Installment #$installmentNum',
-                                style: TextStyle(
-                                  color: AppColors.black,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Row(
-                                children: [
-                                  Text(
-                                    daysText,
-                                    style: TextStyle(
-                                      color: daysColor,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  Text(
-                                    ' • AED $amount',
-                                    style: TextStyle(
-                                      color: AppColors.black600,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              // PAYMENT DATE ADDED HERE
-                              if (formattedDate != null) ...[
-                                SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(Icons.calendar_today, 
-                                         size: 11, 
-                                         color: AppColors.black600),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      formattedDate,
-                                      style: TextStyle(
-                                        color: AppColors.black600,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
+                      ),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: _buildMiniStat(
+                          'Pending',
+                          'AED ${_formatMoney(pendingAmount)}',
+                          AppColors.primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: 18),
+
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: totalAmount > 0 ? (paidAmount / totalAmount).clamp(0.0, 1.0) : 0,
+            backgroundColor: AppColors.white.withOpacity(0.18),
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.onlineGreenLight),
+            minHeight: 8,
+          ),
+        ),
+
+        // Upcoming Payment highlight
+        if (nextUpcoming.isNotEmpty) ...[
+          SizedBox(height: 18),
+          ...nextUpcoming.map((installment) {
+            final daysUntil = _getDaysUntilPayment(installment);
+            final amount = installment.amount ?? '0';
+            final installmentNum = installment.installment_number ?? 'N/A';
+
+            final paymentMethod =
+                controller.getPaymentMethodForInstallment(installment);
+            final paymentDate =
+                _getDisplayPaymentDate(installment, paymentMethod);
+            final formattedDate =
+                paymentDate != null ? _formatPaymentDate(paymentDate) : null;
+
+            String daysText;
+            IconData daysIcon;
+            if (daysUntil == 0) {
+              daysText = 'Due Today';
+              daysIcon = Icons.warning_amber_rounded;
+            } else if (daysUntil == 1) {
+              daysText = 'Due Tomorrow';
+              daysIcon = Icons.access_time;
+            } else {
+              daysText = 'Due in $daysUntil days';
+              daysIcon = Icons.schedule;
+            }
+
+            return Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.white.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.white.withOpacity(0.15)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor.withOpacity(0.9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(daysIcon, color: AppColors.secondaryColor, size: 18),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Next: Installment #$installmentNum',
+                          style: TextStyle(
+                            color: AppColors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          '$daysText • AED $amount${formattedDate != null ? ' • $formattedDate' : ''}',
+                          style: TextStyle(
+                            color: AppColors.white.withOpacity(0.85),
+                            fontSize: 12,
                           ),
                         ),
                       ],
                     ),
-                  );
-                }).toList(),
-              ],
-            ),
-          ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
         ],
-        
-        SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Total Rent',
-                'AED ${totalAmount.toStringAsFixed(0)}',
-                Icons.account_balance_wallet,
-                AppColors.black,
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Paid',
-                'AED ${paidAmount.toStringAsFixed(0)}',
-                Icons.check_circle,
-                AppColors.onlineGreen,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                'Pending',
-                'AED ${pendingAmount.toStringAsFixed(0)}',
-                Icons.pending,
-                AppColors.warning,
-              ),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                'Progress',
-                '${progressPercentage.toStringAsFixed(0)}%',
-                Icons.trending_up,
-                AppColors.black,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 16),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: LinearProgressIndicator(
-            value: totalAmount > 0 ? paidAmount / totalAmount : 0,
-            backgroundColor: AppColors.black.withOpacity(0.1),
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.onlineGreen),
-            minHeight: 8,
-          ),
-        ),
-        
+
         // Overdue Payments Alert
         if (overduePayments.isNotEmpty) ...[
-          SizedBox(height: 16),
+          SizedBox(height: 14),
           Container(
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.redColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.redColor.withOpacity(0.5), width: 1.5),
+              color: AppColors.redColor.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: AppColors.redColor, size: 20),
-                SizedBox(width: 8),
+                Icon(Icons.error_outline, color: AppColors.white, size: 20),
+                SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,16 +661,16 @@ Widget _buildPaymentOverviewCard(LeaseDataModel leaseData, List<PaymentInstallme
                       Text(
                         'Overdue Payments!',
                         style: TextStyle(
-                          color: AppColors.redColor,
+                          color: AppColors.white,
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
                         ),
                       ),
                       SizedBox(height: 2),
                       Text(
-                        '${overduePayments.length} payment(s) overdue - AED ${overdueAmount.toStringAsFixed(0)}',
+                        '${overduePayments.length} payment(s) overdue • AED ${_formatMoney(overdueAmount)}',
                         style: TextStyle(
-                          color: AppColors.black800,
+                          color: AppColors.white.withOpacity(0.9),
                           fontSize: 12,
                         ),
                       ),
@@ -708,45 +686,106 @@ Widget _buildPaymentOverviewCard(LeaseDataModel leaseData, List<PaymentInstallme
   );
 }
 
+// Circular progress ring for the hero card
+Widget _buildProgressRing(double percentage) {
+  final value = (percentage / 100).clamp(0.0, 1.0);
+  return SizedBox(
+    width: 88,
+    height: 88,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 88,
+          height: 88,
+          child: CircularProgressIndicator(
+            value: value,
+            strokeWidth: 8,
+            backgroundColor: AppColors.white.withOpacity(0.18),
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.onlineGreenLight),
+          ),
+        ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${percentage.toStringAsFixed(0)}%',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              'Paid',
+              style: TextStyle(
+                color: AppColors.white.withOpacity(0.7),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
-Widget _buildStatCard(String label, String value, IconData icon, Color iconColor) {
+// Compact stat used inside the hero card
+Widget _buildMiniStat(String label, String value, Color accent) {
   return Container(
-    padding: EdgeInsets.all(12),
+    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     decoration: BoxDecoration(
-      color: AppColors.white.withOpacity(0.5),
-      borderRadius: BorderRadius.circular(12),
+      color: AppColors.white.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(10),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Icon(icon, color: iconColor, size: 18),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+            ),
             SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: AppColors.black600,
-                  fontSize: 12,
-                ),
-                overflow: TextOverflow.ellipsis,
+            Text(
+              label,
+              style: TextStyle(
+                color: AppColors.white.withOpacity(0.75),
+                fontSize: 11,
               ),
             ),
           ],
         ),
-        SizedBox(height: 6),
-        Text(
-          value,
-          style: TextStyle(
-            color: AppColors.black,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+        SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            value,
+            style: TextStyle(
+              color: AppColors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ],
     ),
   );
+}
+
+// Formats large money values with thousands separators
+String _formatMoney(double amount) {
+  final str = amount.toStringAsFixed(0);
+  final buffer = StringBuffer();
+  final digits = str.replaceAll('-', '');
+  for (int i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return '${amount < 0 ? '-' : ''}$buffer';
 }
 
   Widget _buildLeaseSummaryCard(LeaseDataModel leaseData) {

@@ -10,17 +10,20 @@ LeaseDataModel _$LeaseDataModelFromJson(Map<String, dynamic> json) =>
     LeaseDataModel(
       id: LeaseDataModel._toStringOrNull(json['id']),
       email: json['email'] as String?,
-      mobile: json['mobile'] as String?,
+      mobile: LeaseDataModel._toStringOrNull(json['mobile']),
       confirmation_uid: json['confirmation_uid'] as String?,
       bookingid: LeaseDataModel._toStringOrNull(json['bookingid']),
-      rent_amount: json['rent_amount'] as String?,
+      rent_amount: LeaseDataModel._toStringOrNull(json['rent_amount']),
       payment_plan_id: LeaseDataModel._toStringOrNull(json['payment_plan_id']),
       start_date: json['start_date'] as String?,
       end_date: json['end_date'] as String?,
-      security_deposit_amount: json['security_deposit_amount'] as String?,
+      security_deposit_amount:
+          LeaseDataModel._toStringOrNull(json['security_deposit_amount']),
       security_deposit_due_date: json['security_deposit_due_date'] as String?,
-      govt_fees_amount: json['govt_fees_amount'] as String?,
-      additional_fees_amount: json['additional_fees_amount'] as String?,
+      govt_fees_amount:
+          LeaseDataModel._toStringOrNull(json['govt_fees_amount']),
+      additional_fees_amount:
+          LeaseDataModel._toStringOrNull(json['additional_fees_amount']),
       additional_fees_description:
           json['additional_fees_description'] as String?,
       notes: json['notes'] as String?,
@@ -29,8 +32,9 @@ LeaseDataModel _$LeaseDataModelFromJson(Map<String, dynamic> json) =>
       updated_at: json['updated_at'] as String?,
       leaseversion: LeaseDataModel._toStringOrNull(json['leaseversion']),
       rental_duration: LeaseDataModel._toStringOrNull(json['rental_duration']),
-      payable_rent_amount: json['payable_rent_amount'] as String?,
-      rent_type: json['rent_type'] as String?,
+      payable_rent_amount:
+          LeaseDataModel._toStringOrNull(json['payable_rent_amount']),
+      rent_type: LeaseDataModel._toStringOrNull(json['rent_type']),
       include_security_in_total:
           LeaseDataModel._toStringOrNull(json['include_security_in_total']),
       created_at_formatted: json['created_at_formatted'] as String?,

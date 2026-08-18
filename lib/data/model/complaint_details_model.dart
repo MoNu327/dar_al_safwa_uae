@@ -2,6 +2,10 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'complaint_details_model.g.dart';
 
+/// Safely converts a JSON value (int, double, String, or null) to a String.
+/// The backend sometimes returns numeric ids/amounts as ints instead of Strings.
+String _stringFromJson(dynamic value) => value?.toString() ?? '';
+
 @JsonSerializable(explicitToJson: true)
 class ComplaintDetailsModel {
   final bool success;
@@ -65,9 +69,10 @@ class ComplaintData {
 
 @JsonSerializable(explicitToJson: true)
 class Complaint {
+  @JsonKey(fromJson: _stringFromJson)
   final String id;
 
-  @JsonKey(name: 'complaint_number')
+  @JsonKey(name: 'complaint_number', fromJson: _stringFromJson)
   final String complaintNumber;
 
   final String category;
@@ -100,6 +105,7 @@ class Complaint {
 
 @JsonSerializable()
 class Property {
+  @JsonKey(fromJson: _stringFromJson)
   final String id;
   final String title;
   final Unit unit;
@@ -118,11 +124,13 @@ class Property {
 
 @JsonSerializable()
 class Unit {
+  @JsonKey(fromJson: _stringFromJson)
   final String number;
 
-  @JsonKey(name: 'address_format')
+  @JsonKey(name: 'address_format', fromJson: _stringFromJson)
   final String addressFormat;
 
+  @JsonKey(fromJson: _stringFromJson)
   final String type;
 
   Unit({
@@ -140,6 +148,8 @@ class Unit {
 @JsonSerializable()
 class Payment {
   final String timestamp;
+
+  @JsonKey(fromJson: _stringFromJson)
   final String amount;
   final String status;
   final String method;

@@ -7,43 +7,55 @@ part 'lease_data_model.g.dart';
 class LeaseDataModel {
   @JsonKey(fromJson: _toStringOrNull)
   final String? id;
-  
+
   final String? email;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? mobile;
   final String? confirmation_uid;
-  
+
   @JsonKey(fromJson: _toStringOrNull)
   final String? bookingid;
-  
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? rent_amount;
-  
+
   @JsonKey(fromJson: _toStringOrNull)
   final String? payment_plan_id;
-  
+
   final String? start_date;
   final String? end_date;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? security_deposit_amount;
   final String? security_deposit_due_date;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? govt_fees_amount;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? additional_fees_amount;
   final String? additional_fees_description;
   final String? notes;
   final String? confirmation_status;
   final String? created_at;
   final String? updated_at;
-  
+
   @JsonKey(fromJson: _toStringOrNull)
   final String? leaseversion;
-  
+
   @JsonKey(fromJson: _toStringOrNull)
   final String? rental_duration;
-  
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? payable_rent_amount;
+
+  @JsonKey(fromJson: _toStringOrNull)
   final String? rent_type;
-  
+
   @JsonKey(fromJson: _toStringOrNull)
   final String? include_security_in_total;
-  
+
   final String? created_at_formatted;
   final String? updated_at_formatted;
   final String? property_title;

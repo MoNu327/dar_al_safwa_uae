@@ -1,3 +1,4 @@
+import 'package:majan/core/theme/app_colors.dart';
 import 'package:majan/data/model/lease_data_model.dart';
 import 'package:majan/data/model/lease_response_model.dart';
 import 'package:majan/data/model/payments_installments_model.dart';
@@ -20,6 +21,31 @@ class PaymentDetailsController extends GetxController {
   void onInit() {
     super.onInit();
     loadLeaseData();
+  }
+
+  /// Shows a snackbar safely. During onInit()/first load the Navigator overlay
+  /// may not be mounted yet, so calling Get.snackbar directly throws
+  /// "No Overlay widget found". Deferring to after the current frame guarantees
+  /// the overlay exists.
+  void _showSnack(
+    String title,
+    String message, {
+    SnackPosition position = SnackPosition.BOTTOM,
+    Color? background,
+    Duration duration = const Duration(seconds: 3),
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.snackbar(
+        title,
+        message,
+        snackPosition: position,
+        backgroundColor: (background ?? Colors.black87).withOpacity(0.9),
+        colorText: Colors.white,
+        margin: const EdgeInsets.all(12),
+        borderRadius: 12,
+        duration: duration,
+      );
+    });
   }
 
   String? _getUserId() {
@@ -53,12 +79,10 @@ class PaymentDetailsController extends GetxController {
     
     if (uid == null || uid.isEmpty) {
       errorMessage.value = 'User ID not found. Please log in again.';
-      Get.snackbar(
+      _showSnack(
         'Authentication Error',
         'Unable to retrieve user information',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
+        background: Colors.red,
       );
       return;
     }
@@ -84,15 +108,13 @@ class PaymentDetailsController extends GetxController {
         leaseData.value = allLeases.first;
         
         print('✅ Loaded ${allLeases.length} lease(s) successfully');
-        
+
         if (allLeases.length > 1) {
-          Get.snackbar(
+          _showSnack(
             'Properties Loaded',
-            'You have ${allLeases.length} properties. Use the dropdown to switch between them.',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.blue.withOpacity(0.8),
-            colorText: Colors.white,
-            duration: Duration(seconds: 3),
+            'You have ${allLeases.length} properties. Use the selector to switch between them.',
+            position: SnackPosition.TOP,
+            background: AppColors.secondaryColor,
           );
         }
       } else {
@@ -100,37 +122,23 @@ class PaymentDetailsController extends GetxController {
       }
     } else {
       errorMessage.value = 'Failed to load data: ${response.statusMessage}';
-      Get.snackbar(
-        'Error',
-        'Failed to load lease data',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
-        colorText: Colors.white,
-      );
+      _showSnack('Error', 'Failed to load lease data', background: Colors.red);
     }
   } on TypeError catch (e) {
     errorMessage.value = 'Data parsing error';
     print('❌ Type Error: $e');
     print('❌ Stack trace: ${StackTrace.current}');
-    Get.snackbar(
+    _showSnack(
       'Data Error',
       'Failed to parse server response. Please check the data format.',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.withOpacity(0.8),
-      colorText: Colors.white,
+      background: Colors.red,
     );
   } catch (e, stackTrace) {
     errorMessage.value = e.toString();
     print('❌ Error: $e');
     print('❌ Stack trace: $stackTrace');
-    Get.snackbar(
-      'Error',
-      'An error occurred: ${e.toString()}',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.red.withOpacity(0.8),
-      colorText: Colors.white,
-      duration: Duration(seconds: 3),
-    );
+    _showSnack('Error', 'An error occurred: ${e.toString()}',
+        background: Colors.red);
   } finally {
     isLoading.value = false;
   }
@@ -141,14 +149,13 @@ class PaymentDetailsController extends GetxController {
     if (selectedLease != null) {
       leaseData.value = selectedLease;
       print('🏠 Switched to property: ${selectedLease.property_title}');
-      
-      Get.snackbar(
+
+      _showSnack(
         'Property Selected',
         selectedLease.property_title ?? 'Property',
-        snackPosition: SnackPosition.TOP,
-        backgroundColor: Colors.green.withOpacity(0.8),
-        colorText: Colors.white,
-        duration: Duration(seconds: 2),
+        position: SnackPosition.TOP,
+        background: AppColors.onlineGreen,
+        duration: const Duration(seconds: 2),
       );
     }
   }

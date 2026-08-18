@@ -64,8 +64,8 @@ Map<String, dynamic> _$ComplaintDataToJson(ComplaintData instance) =>
     };
 
 Complaint _$ComplaintFromJson(Map<String, dynamic> json) => Complaint(
-      id: json['id'] as String,
-      complaintNumber: json['complaint_number'] as String,
+      id: _stringFromJson(json['id']),
+      complaintNumber: _stringFromJson(json['complaint_number']),
       category: json['category'] as String,
       subcategory: json['subcategory'] as String,
       description: json['description'] as String,
@@ -88,7 +88,7 @@ Map<String, dynamic> _$ComplaintToJson(Complaint instance) => <String, dynamic>{
     };
 
 Property _$PropertyFromJson(Map<String, dynamic> json) => Property(
-      id: json['id'] as String,
+      id: _stringFromJson(json['id']),
       title: json['title'] as String,
       unit: Unit.fromJson(json['unit'] as Map<String, dynamic>),
     );
@@ -100,9 +100,9 @@ Map<String, dynamic> _$PropertyToJson(Property instance) => <String, dynamic>{
     };
 
 Unit _$UnitFromJson(Map<String, dynamic> json) => Unit(
-      number: json['number'] as String,
-      addressFormat: json['address_format'] as String,
-      type: json['type'] as String,
+      number: _stringFromJson(json['number']),
+      addressFormat: _stringFromJson(json['address_format']),
+      type: _stringFromJson(json['type']),
     );
 
 Map<String, dynamic> _$UnitToJson(Unit instance) => <String, dynamic>{
@@ -113,7 +113,7 @@ Map<String, dynamic> _$UnitToJson(Unit instance) => <String, dynamic>{
 
 Payment _$PaymentFromJson(Map<String, dynamic> json) => Payment(
       timestamp: json['timestamp'] as String,
-      amount: json['amount'] as String,
+      amount: _stringFromJson(json['amount']),
       status: json['status'] as String,
       method: json['method'] as String,
     );
